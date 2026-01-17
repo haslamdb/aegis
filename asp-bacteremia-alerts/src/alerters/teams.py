@@ -1,15 +1,18 @@
-"""Teams alerter using shared webhook channel."""
+"""Teams alerter for bacteremia alerts using shared webhook channel.
+
+Uses the Workflows / Power Automate webhook format with Adaptive Cards.
+"""
 
 from datetime import datetime
 
 from .base import BaseAlerter
 from ..models import CoverageAssessment
 from ..config import config  # This adds common to sys.path
-from common.channels import TeamsWebhookChannel
+from common.channels import TeamsWebhookChannel, TeamsMessage
 
 
 class TeamsAlerter(BaseAlerter):
-    """Send alerts to Microsoft Teams via webhook."""
+    """Send bacteremia alerts to Microsoft Teams via Workflows webhook."""
 
     def __init__(
         self,
@@ -20,7 +23,7 @@ class TeamsAlerter(BaseAlerter):
         Initialize Teams alerter.
 
         Args:
-            webhook_url: Teams incoming webhook URL (or from env TEAMS_WEBHOOK_URL)
+            webhook_url: Teams Workflow webhook URL (or from env TEAMS_WEBHOOK_URL)
             include_phi: Whether to include patient details in message
         """
         url = webhook_url or config.TEAMS_WEBHOOK_URL
@@ -30,46 +33,55 @@ class TeamsAlerter(BaseAlerter):
         self.alert_count = 0
         self.alerts: list[dict] = []
 
-    def send_alert(self, assessment: CoverageAssessment) -> bool:
-        """Send alert to Teams channel."""
-        if not self.channel:
-            print("  Teams: Webhook URL not configured")
-            return False
-
-        # Build facts for the card
+    def _build_facts(self, assessment: CoverageAssessment) -> list[tuple[str, str]]:
+        """Build facts list for the Teams card."""
         current_abx = [a.medication_name for a in assessment.current_antibiotics]
-        abx_list = ", ".join(current_abx) if current_abx else "None"
+        abx_text = ", ".join(current_abx) if current_abx else "None"
 
         if self.include_phi:
             facts = [
                 ("Patient", f"{assessment.patient.name} ({assessment.patient.mrn})"),
                 ("Location", assessment.patient.location or "Unknown"),
                 ("Organism", assessment.culture.organism or "Pending identification"),
-                ("Current Antibiotics", abx_list),
-                ("Coverage Status", assessment.coverage_status.value.upper()),
             ]
+
             if assessment.culture.gram_stain:
-                facts.insert(3, ("Gram Stain", assessment.culture.gram_stain))
+                facts.append(("Gram Stain", assessment.culture.gram_stain))
+
+            facts.extend([
+                ("Current Abx", abx_text),
+                ("Status", f"⚠️ {assessment.coverage_status.value.upper()}"),
+            ])
         else:
             facts = [
                 ("Alert Type", "Bacteremia Coverage Concern"),
-                ("Status", "Action Required"),
+                ("Status", "⚠️ Action Required"),
             ]
 
-        title = "Bacteremia Coverage Alert"
-        text = f"**Recommendation:** {assessment.recommendation}"
+        return facts
 
-        # Use red theme for alerts
-        if self.channel.send_card(
-            title=title,
+    def send_alert(self, assessment: CoverageAssessment) -> bool:
+        """Send alert to Teams channel via Workflows webhook."""
+        if not self.channel:
+            print("  Teams: Webhook URL not configured")
+            return False
+
+        facts = self._build_facts(assessment)
+        recommendation_text = f"**Recommendation:** {assessment.recommendation}"
+
+        message = TeamsMessage(
+            title="🔴 BACTEREMIA COVERAGE ALERT",
             facts=facts,
-            text=text,
-            theme_color="d63333",
-        ):
+            text=recommendation_text,
+            color="Attention",
+        )
+
+        if self.channel.send(message):
             self.alert_count += 1
             self.alerts.append({
                 "timestamp": datetime.now().isoformat(),
                 "mrn": assessment.patient.mrn if self.include_phi else "redacted",
+                "organism": assessment.culture.organism if self.include_phi else "redacted",
             })
             return True
         return False
@@ -81,3 +93,44 @@ class TeamsAlerter(BaseAlerter):
     def is_configured(self) -> bool:
         """Check if Teams alerting is properly configured."""
         return self.channel is not None and self.channel.is_configured()
+
+
+def test_webhook(webhook_url: str | None = None) -> bool:
+    """
+    Send a test message to verify webhook configuration.
+
+    Usage:
+        python -c "from src.alerters.teams import test_webhook; test_webhook('YOUR_URL')"
+
+    Or without URL to use configured TEAMS_WEBHOOK_URL:
+        python -c "from src.alerters.teams import test_webhook; test_webhook()"
+    """
+    url = webhook_url or config.TEAMS_WEBHOOK_URL
+    if not url:
+        print("❌ No webhook URL provided and TEAMS_WEBHOOK_URL not set")
+        return False
+
+    channel = TeamsWebhookChannel(url)
+
+    print("Sending test to Workflows webhook...")
+
+    message = TeamsMessage(
+        title="✅ ASP Bacteremia Alerts - Test Message",
+        facts=[
+            ("Patient", "Test Patient (TEST000)"),
+            ("Location", "Test Unit"),
+            ("Organism", "Test Organism"),
+            ("Status", "✅ TEST"),
+        ],
+        text="If you see this, your webhook is configured correctly!",
+        color="Good",
+    )
+
+    success = channel.send(message)
+
+    if success:
+        print("✅ SUCCESS! Check your Teams channel for the test message.")
+    else:
+        print("❌ FAILED - see error above")
+
+    return success
