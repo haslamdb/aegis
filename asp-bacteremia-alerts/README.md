@@ -2,7 +2,7 @@
 
 Antimicrobial Stewardship Program (ASP) clinical decision support tool that monitors blood culture results and alerts when patients may have inadequate antibiotic coverage.
 
-> **Disclaimer:** All patient data used for testing is **synthetic (artificial)**. **No actual patient data exists in this repository.**
+> **Disclaimer:** All patient data used for testing is **simulated**. **No actual patient data exists in this repository.**
 
 ## Features
 
@@ -112,8 +112,23 @@ ALERT_EMAIL_TO=asp-team@hospital.org
 TEAMS_WEBHOOK_URL=https://prod-XX.westus.logic.azure.com/...
 ```
 
+## Dashboard Integration
+
+Alerts are stored in a shared SQLite database and displayed in the web dashboard:
+
+- **View alerts** at [https://alerts.asp-ai-agent.com:8444](https://alerts.asp-ai-agent.com:8444)
+- **Teams buttons** link to dashboard for acknowledge/resolve actions
+- **Audit trail** tracks all alert lifecycle events
+
+Configure dashboard integration in `.env`:
+```bash
+DASHBOARD_BASE_URL=https://alerts.asp-ai-agent.com:8444
+ALERT_DB_PATH=~/.asp-alerts/alerts.db
+```
+
 ## Documentation
 
+- [Demo Workflow](../docs/demo-workflow.md) - Complete demo walkthrough
 - [Architecture](docs/architecture.md) - System design and components
 - [Setup Guide](docs/setup.md) - Installation and configuration
 - [Clinical Rules](docs/clinical-rules.md) - Coverage logic documentation

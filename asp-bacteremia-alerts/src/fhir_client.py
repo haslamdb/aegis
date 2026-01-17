@@ -80,6 +80,7 @@ class FHIRClient(ABC):
         params = {
             "code": "http://loinc.org|600-7",  # LOINC for blood culture
             "date": f"ge{date_from.strftime('%Y-%m-%d')}",
+            "_count": "500",
         }
         if status:
             params["status"] = status

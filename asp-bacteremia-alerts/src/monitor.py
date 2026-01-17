@@ -162,8 +162,8 @@ class BacteremiaMonitor:
         if culture.fhir_id in self.processed_cultures:
             return False, None
 
-        # Check persistent store
-        if self.alert_store.check_if_alerted(AlertType.BACTEREMIA, culture.fhir_id):
+        # Check persistent store (include resolved to prevent re-alerting)
+        if self.alert_store.check_if_alerted(AlertType.BACTEREMIA, culture.fhir_id, include_resolved=True):
             self.processed_cultures.add(culture.fhir_id)
             return False, None
 

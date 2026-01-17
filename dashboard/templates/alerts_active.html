@@ -5,12 +5,29 @@
 {% block content %}
 <div class="page-header">
     <h1>Active Alerts</h1>
-    <div class="stats-summary">
-        <span class="stat">Total: {{ stats.get('total', 0) }}</span>
-        <span class="stat">Pending: {{ stats.get('status_pending', 0) }}</span>
-        <span class="stat">Sent: {{ stats.get('status_sent', 0) }}</span>
-        <span class="stat">Acknowledged: {{ stats.get('status_acknowledged', 0) }}</span>
-        <span class="stat">Snoozed: {{ stats.get('status_snoozed', 0) }}</span>
+    <div id="refresh-indicator" class="refresh-indicator">
+        <span class="dot"></span>
+        <span>Auto-refresh in <span id="refresh-countdown">30</span>s</span>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card critical">
+        <div class="stat-card-value">{{ stats.get('severity_critical', 0) }}</div>
+        <div class="stat-card-label">Critical</div>
+    </div>
+    <div class="stat-card warning">
+        <div class="stat-card-value">{{ stats.get('severity_warning', 0) }}</div>
+        <div class="stat-card-label">Warning</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-card-value">{{ stats.get('status_pending', 0) + stats.get('status_sent', 0) }}</div>
+        <div class="stat-card-label">Needs Attention</div>
+    </div>
+    <div class="stat-card success">
+        <div class="stat-card-value">{{ stats.get('status_acknowledged', 0) }}</div>
+        <div class="stat-card-label">Acknowledged</div>
     </div>
 </div>
 
@@ -19,18 +36,27 @@
         <label>
             Type:
             <select name="type" onchange="this.form.submit()">
-                <option value="">All</option>
+                <option value="">All Types</option>
                 <option value="bacteremia" {% if current_type == 'bacteremia' %}selected{% endif %}>Bacteremia</option>
                 <option value="broad_spectrum_usage" {% if current_type == 'broad_spectrum_usage' %}selected{% endif %}>Broad Spectrum Usage</option>
             </select>
         </label>
         <label>
-            MRN:
-            <input type="text" name="mrn" value="{{ current_mrn or '' }}" placeholder="Patient MRN">
+            Severity:
+            <select name="severity" onchange="this.form.submit()">
+                <option value="">All Severities</option>
+                <option value="critical" {% if current_severity == 'critical' %}selected{% endif %}>Critical</option>
+                <option value="warning" {% if current_severity == 'warning' %}selected{% endif %}>Warning</option>
+                <option value="info" {% if current_severity == 'info' %}selected{% endif %}>Info</option>
+            </select>
         </label>
-        <button type="submit">Filter</button>
-        {% if current_type or current_mrn %}
-        <a href="{{ url_for('views.alerts_active') }}" class="btn-link">Clear</a>
+        <label>
+            MRN:
+            <input type="text" name="mrn" value="{{ current_mrn or '' }}" placeholder="Search by MRN">
+        </label>
+        <button type="submit" class="btn btn-small">Filter</button>
+        {% if current_type or current_mrn or current_severity %}
+        <a href="{{ url_for('views.alerts_active') }}" class="btn btn-link btn-small">Clear Filters</a>
         {% endif %}
     </form>
 </div>
@@ -42,7 +68,7 @@
             <th>ID</th>
             <th>Type</th>
             <th>Patient</th>
-            <th>Title</th>
+            <th>Summary</th>
             <th>Severity</th>
             <th>Status</th>
             <th>Created</th>
@@ -52,25 +78,49 @@
     <tbody>
         {% for alert in alerts %}
         <tr class="severity-{{ alert.severity }}">
-            <td><a href="{{ url_for('views.alert_detail', alert_id=alert.id) }}">{{ alert.id }}</a></td>
-            <td>{{ alert.alert_type.value }}</td>
             <td>
-                {% if alert.patient_name %}
-                    {{ alert.patient_name }}
-                    {% if alert.patient_mrn %}<br><small>MRN: {{ alert.patient_mrn }}</small>{% endif %}
+                <a href="{{ url_for('views.alert_detail', alert_id=alert.id) }}">#{{ alert.id[:8] }}</a>
+            </td>
+            <td>
+                {% if alert.alert_type.value == 'bacteremia' %}
+                    <span title="Bacteremia Coverage Alert">Bacteremia</span>
+                {% elif alert.alert_type.value == 'broad_spectrum_usage' %}
+                    <span title="Broad Spectrum Antibiotic Usage">Antibiotic Usage</span>
                 {% else %}
-                    <em>Unknown</em>
+                    {{ alert.alert_type.value }}
+                {% endif %}
+            </td>
+            <td class="patient-info">
+                {% if alert.patient_name %}
+                    <span class="patient-name">{{ alert.patient_name }}</span>
+                    {% if alert.patient_mrn %}<br><span class="patient-mrn">MRN: {{ alert.patient_mrn }}</span>{% endif %}
+                {% else %}
+                    <em>Unknown Patient</em>
                 {% endif %}
             </td>
             <td>{{ alert.title or alert.summary or '-' }}</td>
-            <td><span class="badge badge-{{ alert.severity }}">{{ alert.severity }}</span></td>
             <td>
-                <span class="badge badge-status-{{ alert.status.value }}">{{ alert.status.value }}</span>
-                {% if alert.status.value == 'snoozed' and alert.snoozed_until %}
-                <br><small>Until: {{ alert.snoozed_until.strftime('%m/%d %H:%M') }}</small>
+                {% if alert.content and alert.content.get('coverage_status') %}
+                    <span class="badge badge-coverage-{{ alert.content.get('coverage_status')|lower }}">{{ alert.content.get('coverage_status')|upper }}</span>
+                {% else %}
+                    <span class="badge badge-{{ alert.severity }}">{{ alert.severity }}</span>
                 {% endif %}
             </td>
-            <td>{{ alert.created_at.strftime('%Y-%m-%d %H:%M') if alert.created_at else '-' }}</td>
+            <td>
+                {% if alert.alert_type.value == 'bacteremia' and alert.status.value in ('pending', 'sent') %}
+                    <span class="badge badge-status-pending">pending</span>
+                {% else %}
+                    <span class="badge badge-status-{{ alert.status.value }}">{{ alert.status.value }}</span>
+                {% endif %}
+                {% if alert.status.value == 'snoozed' and alert.snoozed_until %}
+                <br><small class="time-relative" data-timestamp="{{ alert.snoozed_until.isoformat() }}">until {{ alert.snoozed_until.strftime('%H:%M') }}</small>
+                {% endif %}
+            </td>
+            <td>
+                <span class="time-relative" data-timestamp="{{ alert.created_at.isoformat() if alert.created_at else '' }}">
+                    {{ alert.created_at.strftime('%Y-%m-%d %H:%M') if alert.created_at else '-' }}
+                </span>
+            </td>
             <td class="actions">
                 <a href="{{ url_for('views.alert_detail', alert_id=alert.id) }}" class="btn btn-small">View</a>
             </td>
@@ -81,6 +131,9 @@
 {% else %}
 <div class="empty-state">
     <p>No active alerts found.</p>
+    {% if current_type or current_mrn or current_severity %}
+    <p style="margin-top: 0.5rem; font-size: 0.875rem;">Try adjusting your filters.</p>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

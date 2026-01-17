@@ -6,8 +6,50 @@
 <div class="page-header">
     <h1>Alert History</h1>
     <div class="stats-summary">
-        <span class="stat">Resolved: {{ stats.get('status_resolved', 0) }}</span>
+        <span class="stat">
+            <span class="stat-number">{{ stats.get('status_resolved', 0) }}</span>
+            <span class="stat-label">Resolved</span>
+        </span>
     </div>
+</div>
+
+<div class="filters">
+    <form method="get" class="filter-form">
+        <label>
+            Type:
+            <select name="type" onchange="this.form.submit()">
+                <option value="">All Types</option>
+                <option value="bacteremia" {% if current_type == 'bacteremia' %}selected{% endif %}>Bacteremia</option>
+                <option value="broad_spectrum_usage" {% if current_type == 'broad_spectrum_usage' %}selected{% endif %}>Broad Spectrum Usage</option>
+            </select>
+        </label>
+        <label>
+            Severity:
+            <select name="severity" onchange="this.form.submit()">
+                <option value="">All Severities</option>
+                <option value="critical" {% if current_severity == 'critical' %}selected{% endif %}>Critical</option>
+                <option value="warning" {% if current_severity == 'warning' %}selected{% endif %}>Warning</option>
+                <option value="info" {% if current_severity == 'info' %}selected{% endif %}>Info</option>
+            </select>
+        </label>
+        <label>
+            Resolution:
+            <select name="resolution" onchange="this.form.submit()">
+                <option value="">All Resolutions</option>
+                {% for value, display in resolution_reasons %}
+                <option value="{{ value }}" {% if current_resolution == value %}selected{% endif %}>{{ display }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            MRN:
+            <input type="text" name="mrn" value="{{ current_mrn or '' }}" placeholder="Search by MRN">
+        </label>
+        <button type="submit" class="btn btn-small">Filter</button>
+        {% if current_type or current_mrn or current_severity or current_resolution %}
+        <a href="{{ url_for('views.alerts_history') }}" class="btn btn-link btn-small">Clear Filters</a>
+        {% endif %}
+    </form>
 </div>
 
 {% if alerts %}
@@ -17,33 +59,59 @@
             <th>ID</th>
             <th>Type</th>
             <th>Patient</th>
-            <th>Title</th>
+            <th>Summary</th>
             <th>Severity</th>
-            <th>Created</th>
-            <th>Resolved</th>
-            <th>Resolved By</th>
             <th>Resolution</th>
+            <th>Resolved</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
         {% for alert in alerts %}
-        <tr class="resolved">
-            <td><a href="{{ url_for('views.alert_detail', alert_id=alert.id) }}">{{ alert.id }}</a></td>
-            <td>{{ alert.alert_type.value }}</td>
+        <tr class="resolved severity-{{ alert.severity }}">
             <td>
+                <a href="{{ url_for('views.alert_detail', alert_id=alert.id) }}">#{{ alert.id[:8] }}</a>
+            </td>
+            <td>
+                {% if alert.alert_type.value == 'bacteremia' %}
+                    Bacteremia
+                {% elif alert.alert_type.value == 'broad_spectrum_usage' %}
+                    Antibiotic Usage
+                {% else %}
+                    {{ alert.alert_type.value }}
+                {% endif %}
+            </td>
+            <td class="patient-info">
                 {% if alert.patient_name %}
-                    {{ alert.patient_name }}
-                    {% if alert.patient_mrn %}<br><small>MRN: {{ alert.patient_mrn }}</small>{% endif %}
+                    <span class="patient-name">{{ alert.patient_name }}</span>
+                    {% if alert.patient_mrn %}<br><span class="patient-mrn">MRN: {{ alert.patient_mrn }}</span>{% endif %}
                 {% else %}
                     <em>Unknown</em>
                 {% endif %}
             </td>
             <td>{{ alert.title or alert.summary or '-' }}</td>
-            <td><span class="badge badge-{{ alert.severity }}">{{ alert.severity }}</span></td>
-            <td>{{ alert.created_at.strftime('%Y-%m-%d %H:%M') if alert.created_at else '-' }}</td>
-            <td>{{ alert.resolved_at.strftime('%Y-%m-%d %H:%M') if alert.resolved_at else '-' }}</td>
-            <td>{{ alert.resolved_by or '-' }}</td>
-            <td>{{ ResolutionReason.display_name(alert.resolution_reason) if alert.resolution_reason else '-' }}</td>
+            <td>
+                {% if alert.content and alert.content.get('coverage_status') %}
+                    <span class="badge badge-coverage-{{ alert.content.get('coverage_status')|lower }}">{{ alert.content.get('coverage_status')|upper }}</span>
+                {% else %}
+                    <span class="badge badge-{{ alert.severity }}">{{ alert.severity }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if alert.resolution_reason %}
+                    {{ ResolutionReason.display_name(alert.resolution_reason) }}
+                {% else %}
+                    <span class="badge badge-status-resolved">Resolved</span>
+                {% endif %}
+            </td>
+            <td>
+                <span class="time-relative" data-timestamp="{{ alert.resolved_at.isoformat() if alert.resolved_at else '' }}">
+                    {{ alert.resolved_at.strftime('%Y-%m-%d %H:%M') if alert.resolved_at else '-' }}
+                </span>
+            </td>
+            <td class="actions">
+                <a href="{{ url_for('views.alert_detail', alert_id=alert.id) }}" class="btn btn-small btn-secondary">View</a>
+            </td>
         </tr>
         {% endfor %}
     </tbody>
@@ -51,6 +119,9 @@
 {% else %}
 <div class="empty-state">
     <p>No resolved alerts found.</p>
+    {% if current_type or current_mrn or current_severity or current_resolution %}
+    <p style="margin-top: 0.5rem; font-size: 0.875rem;">Try adjusting your filters.</p>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

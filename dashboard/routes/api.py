@@ -35,17 +35,24 @@ def acknowledge_alert(alert_id):
     """Acknowledge an alert.
 
     GET: Used by Teams button callbacks (redirects to detail page)
-    POST: Used by API clients (returns JSON)
+    POST with form: Used by dashboard buttons (redirects)
+    POST with JSON: Used by API clients (returns JSON)
     """
     store = current_app.alert_store
 
     # Get username from query param or header
-    acknowledged_by = request.args.get("user") or request.headers.get("X-User", "Teams User")
+    acknowledged_by = request.args.get("user") or request.headers.get("X-User", "Dashboard User")
 
     success = store.acknowledge(alert_id, acknowledged_by=acknowledged_by)
 
-    if request.method == "GET":
-        # Teams callback - redirect to detail page with flash message
+    # Check if this is a browser form submission (redirect) or API call (JSON)
+    is_form_request = (
+        request.method == "GET" or
+        (request.content_type and "form" in request.content_type)
+    )
+
+    if is_form_request:
+        # Browser request - redirect to detail page with flash message
         if success:
             return redirect(url_for("views.alert_detail", alert_id=alert_id, msg="acknowledged"))
         return redirect(url_for("views.alert_detail", alert_id=alert_id, msg="ack_failed"))
@@ -71,18 +78,32 @@ def snooze_alert(alert_id):
     """Snooze an alert.
 
     GET: Used by Teams button callbacks (redirects to detail page)
-    POST: Used by API clients (returns JSON)
+    POST with form: Used by dashboard buttons (redirects)
+    POST with JSON: Used by API clients (returns JSON)
     """
     store = current_app.alert_store
 
-    # Get snooze duration
-    hours = request.args.get("hours", type=int) or request.json.get("hours", 4) if request.is_json else 4
-    snoozed_by = request.args.get("user") or request.headers.get("X-User", "Teams User")
+    # Get snooze duration from query, form, or JSON
+    hours = request.args.get("hours", type=int)
+    if hours is None and request.form:
+        hours = request.form.get("hours", type=int)
+    if hours is None and request.is_json:
+        hours = request.json.get("hours", 4)
+    if hours is None:
+        hours = 4
+
+    snoozed_by = request.args.get("user") or request.headers.get("X-User", "Dashboard User")
 
     success = store.snooze(alert_id, hours=hours, snoozed_by=snoozed_by)
 
-    if request.method == "GET":
-        # Teams callback - redirect to detail page
+    # Check if this is a browser form submission (redirect) or API call (JSON)
+    is_form_request = (
+        request.method == "GET" or
+        (request.content_type and "form" in request.content_type)
+    )
+
+    if is_form_request:
+        # Browser request - redirect to detail page
         if success:
             return redirect(url_for("views.alert_detail", alert_id=alert_id, msg="snoozed"))
         return redirect(url_for("views.alert_detail", alert_id=alert_id, msg="snooze_failed"))
@@ -265,14 +286,28 @@ def add_note(alert_id):
     """Add a note to an alert."""
     store = current_app.alert_store
 
-    data = request.json or {}
-    note = data.get("note")
-    user = data.get("user") or request.headers.get("X-User", "API User")
+    # Handle form or JSON data
+    if request.form:
+        note = request.form.get("note")
+        user = request.form.get("user") or "Dashboard User"
+    else:
+        data = request.json or {}
+        note = data.get("note")
+        user = data.get("user") or request.headers.get("X-User", "API User")
 
     if not note:
+        # For form submissions, redirect back with error
+        if request.content_type and "form" in request.content_type:
+            return redirect(url_for("views.alert_detail", alert_id=alert_id, msg="note_empty"))
         return jsonify({"error": "note field required"}), 400
 
     success = store.add_note(alert_id, note=note, added_by=user)
+
+    # Check if this is a form submission
+    if request.content_type and "form" in request.content_type:
+        if success:
+            return redirect(url_for("views.alert_detail", alert_id=alert_id, msg="note_added"))
+        return redirect(url_for("views.alert_detail", alert_id=alert_id, msg="note_failed"))
 
     if success:
         return jsonify({"success": True})

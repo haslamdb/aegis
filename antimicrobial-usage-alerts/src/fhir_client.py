@@ -54,7 +54,7 @@ class FHIRClient(ABC):
             rxnorm_codes: Optional list of RxNorm codes to filter by.
                          If None, returns all active medication requests.
         """
-        params = {"status": "active"}
+        params = {"status": "active", "_count": "500"}
 
         if rxnorm_codes:
             # FHIR uses code system|code format

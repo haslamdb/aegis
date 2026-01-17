@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Reports & Analytics</h1>
+</div>
+
+<div class="filters">
+    <form method="get" class="filter-form">
+        <label>
+            Alert Type:
+            <select name="type" onchange="this.form.submit()">
+                {% for value, display in alert_types %}
+                <option value="{{ value }}" {% if current_type == value %}selected{% endif %}>{{ display }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Time Period:
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if current_days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="14" {% if current_days == 14 %}selected{% endif %}>Last 14 days</option>
+                <option value="30" {% if current_days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="60" {% if current_days == 60 %}selected{% endif %}>Last 60 days</option>
+                <option value="90" {% if current_days == 90 %}selected{% endif %}>Last 90 days</option>
+            </select>
+        </label>
+    </form>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ analytics.total_alerts }}</div>
+        <div class="stat-label">Total Alerts</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "%.1f"|format(analytics.avg_alerts_per_day) }}</div>
+        <div class="stat-label">Avg per Day</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ "%.0f"|format(analytics.resolution_rate) }}%</div>
+        <div class="stat-label">Resolution Rate</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">
+            {% if analytics.response_times_formatted.avg_time_to_resolve %}
+                {{ analytics.response_times_formatted.avg_time_to_resolve }}
+            {% else %}
+                -
+            {% endif %}
+        </div>
+        <div class="stat-label">Avg Time to Resolve</div>
+    </div>
+</div>
+
+<div class="reports-layout">
+    <!-- Left Column -->
+    <div class="reports-main">
+        <!-- Alerts by Day -->
+        <div class="report-card">
+            <h3>Alerts by Day</h3>
+            {% if analytics.alerts_by_day %}
+            <div class="chart-container">
+                <div class="bar-chart">
+                    {% set max_count = namespace(val=1) %}
+                    {% for item in analytics.alerts_by_day %}
+                        {% if item.count > max_count.val %}
+                            {% set max_count.val = item.count %}
+                        {% endif %}
+                    {% endfor %}
+                    {% for item in analytics.alerts_by_day %}
+                    <div class="bar-row">
+                        <span class="bar-label">{{ item.date }}</span>
+                        <div class="bar-wrapper">
+                            <div class="bar" style="width: {{ (item.count / max_count.val * 100)|int }}%;">
+                                <span class="bar-value">{{ item.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <p class="no-data">No alerts in this period.</p>
+            {% endif %}
+        </div>
+
+        <!-- Alerts by Day of Week -->
+        <div class="report-card">
+            <h3>Alerts by Day of Week</h3>
+            {% if analytics.by_day_of_week %}
+            <div class="chart-container">
+                <div class="bar-chart horizontal">
+                    {% set max_dow = namespace(val=1) %}
+                    {% for item in analytics.by_day_of_week %}
+                        {% if item.count > max_dow.val %}
+                            {% set max_dow.val = item.count %}
+                        {% endif %}
+                    {% endfor %}
+                    {% for item in analytics.by_day_of_week %}
+                    <div class="bar-row">
+                        <span class="bar-label">{{ item.day }}</span>
+                        <div class="bar-wrapper">
+                            <div class="bar" style="width: {{ (item.count / max_dow.val * 100)|int }}%;">
+                                <span class="bar-value">{{ item.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <p class="no-data">No data available.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="reports-sidebar">
+        <!-- Resolution Breakdown -->
+        <div class="report-card">
+            <h3>Resolution Breakdown</h3>
+            {% if analytics.resolution_breakdown %}
+            <table class="breakdown-table">
+                <thead>
+                    <tr>
+                        <th>Resolution</th>
+                        <th>Count</th>
+                        <th>%</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in analytics.resolution_breakdown %}
+                    <tr>
+                        <td>{{ ResolutionReason.display_name(item.reason) }}</td>
+                        <td>{{ item.count }}</td>
+                        <td>
+                            <div class="percentage-bar-wrapper">
+                                <div class="percentage-bar" style="width: {{ item.percentage|int }}%;"></div>
+                                <span class="percentage-text">{{ "%.1f"|format(item.percentage) }}%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="no-data">No resolved alerts in this period.</p>
+            {% endif %}
+        </div>
+
+        <!-- Severity Breakdown -->
+        <div class="report-card">
+            <h3>By Severity</h3>
+            {% if analytics.by_severity %}
+            <div class="severity-breakdown">
+                {% for severity, count in analytics.by_severity.items() %}
+                <div class="severity-item">
+                    <span class="badge badge-{{ severity }}">{{ severity }}</span>
+                    <span class="severity-count">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="no-data">No data available.</p>
+            {% endif %}
+        </div>
+
+        <!-- Status Breakdown -->
+        <div class="report-card">
+            <h3>By Status</h3>
+            {% if analytics.by_status %}
+            <div class="status-breakdown">
+                {% for status, count in analytics.by_status.items() %}
+                <div class="status-item">
+                    <span class="badge badge-status-{{ status }}">{{ status }}</span>
+                    <span class="status-count">{{ count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="no-data">No data available.</p>
+            {% endif %}
+        </div>
+
+        <!-- Response Times -->
+        <div class="report-card">
+            <h3>Response Times</h3>
+            <dl class="response-times">
+                <dt>Avg Time to Acknowledge</dt>
+                <dd>{{ analytics.response_times_formatted.avg_time_to_ack or '-' }}</dd>
+                <dt>Avg Time to Resolve</dt>
+                <dd>{{ analytics.response_times_formatted.avg_time_to_resolve or '-' }}</dd>
+                <dt>Fastest Resolution</dt>
+                <dd>{{ analytics.response_times_formatted.min_time_to_resolve or '-' }}</dd>
+                <dt>Slowest Resolution</dt>
+                <dd>{{ analytics.response_times_formatted.max_time_to_resolve or '-' }}</dd>
+            </dl>
+        </div>
+    </div>
+</div>
+{% endblock %}

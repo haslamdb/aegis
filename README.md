@@ -2,7 +2,13 @@
 
 Antimicrobial Stewardship Program (ASP) clinical decision support and alerting system. This monorepo contains modules for real-time monitoring, alerting, and analytics to support antimicrobial stewardship activities.
 
-> **Disclaimer:** All patient data in this repository is **synthetic (artificial)** and was generated using [Synthea](https://github.com/synthetichealth/synthea) or custom test data generators. **No actual patient data exists in this repository.** Any resemblance to real patients is coincidental.
+> **Disclaimer:** All patient data in this repository is **simulated** and was generated using [Synthea](https://github.com/synthetichealth/synthea) or custom test data generators. **No actual patient data exists in this repository.** Any resemblance to real patients is coincidental.
+
+## Live Demo
+
+**Dashboard:** [https://alerts.asp-ai-agent.com:8444](https://alerts.asp-ai-agent.com:8444)
+
+The demo environment includes synthetic patient data for testing alert workflows.
 
 ## Architecture
 
@@ -13,7 +19,9 @@ asp-alerts/
 │   └── alert_store/                # Persistent alert tracking (SQLite)
 ├── dashboard/                      # Web dashboard for alert management
 ├── asp-bacteremia-alerts/          # Blood culture coverage monitoring
-└── antimicrobial-usage-alerts/     # Broad-spectrum usage monitoring
+├── antimicrobial-usage-alerts/     # Broad-spectrum usage monitoring
+├── scripts/                        # Demo and utility scripts
+└── docs/                           # Documentation
 ```
 
 ## Current Modules
@@ -47,12 +55,17 @@ Monitors broad-spectrum antibiotic usage duration. Alerts when meropenem, vancom
 Web-based alert management dashboard for viewing, acknowledging, and resolving alerts.
 
 **Features:**
-- Active and historical alert views
+- Active and historical alert views with filtering
 - Acknowledge, snooze, and resolve actions
 - Resolution tracking with reasons and notes
+- **Reports & Analytics** - Alert volume, resolution times, resolution breakdown
+- **Help page** - Interactive demo workflow guide
 - Audit trail for compliance
 - Teams button callbacks
-- API for programmatic access
+- CCHMC-branded color scheme
+- Auto-refresh on active alerts page
+
+**[Documentation →](dashboard/README.md)** | **[Demo Workflow →](docs/demo-workflow.md)**
 
 ## Shared Infrastructure
 
@@ -71,7 +84,8 @@ SQLite-backed persistent storage for alert lifecycle management:
 
 - **Deduplication** - Prevents re-alerting on the same source (culture, order)
 - **Status tracking** - Pending, Sent, Acknowledged, Snoozed, Resolved
-- **Resolution reasons** - Track how alerts were handled
+- **Resolution reasons** - Track how alerts were handled (Changed Therapy, Discussed with Team, etc.)
+- **Analytics** - Alert volume, response times, resolution breakdown
 - **Audit trail** - Full history of alert actions for compliance
 
 ## Quick Start
@@ -113,13 +127,31 @@ pip install -r requirements.txt
 # Copy and configure environment
 cp .env.template .env
 
-# Run the dashboard
-python -m app
-# or
+# Run the dashboard (development)
 flask run
 
 # Visit http://localhost:5000
 ```
+
+For production deployment, see [docs/demo-workflow.md](docs/demo-workflow.md#remote-access--production-deployment).
+
+## Demo Workflow
+
+Generate test alerts using the demo scripts:
+
+```bash
+# Create a patient with MRSA bacteremia (should trigger alert)
+python scripts/demo_blood_culture.py --organism mrsa
+
+# Create a patient on meropenem for 5 days (exceeds 72h threshold)
+python scripts/demo_antimicrobial_usage.py --antibiotic meropenem --days 5
+
+# Run monitors to detect and send alerts
+cd asp-bacteremia-alerts && python -m src.monitor
+cd antimicrobial-usage-alerts && python -m src.runner --once
+```
+
+See [docs/demo-workflow.md](docs/demo-workflow.md) for complete walkthrough.
 
 ## Configuration
 
@@ -190,7 +222,8 @@ asp-alerts/
 │   ├── app.py                 # Flask application
 │   ├── routes/                # API and view routes
 │   ├── templates/             # Jinja2 templates
-│   └── static/                # CSS
+│   ├── static/                # CSS
+│   └── deploy/                # Production deployment configs
 ├── asp-bacteremia-alerts/
 │   └── src/
 │       ├── alerters/          # Notification handlers
@@ -201,7 +234,12 @@ asp-alerts/
 │       ├── alerters/          # Notification handlers
 │       ├── monitor.py         # Usage monitoring service
 │       └── runner.py          # CLI entry point
-└── scripts/                   # Utilities
+├── scripts/                   # Demo and utility scripts
+│   ├── demo_blood_culture.py
+│   ├── demo_antimicrobial_usage.py
+│   └── generate_pediatric_data.py
+└── docs/                      # Documentation
+    └── demo-workflow.md       # Complete demo guide
 ```
 
 ## License

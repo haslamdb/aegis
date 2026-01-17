@@ -2,7 +2,7 @@
 
 from flask import Blueprint, render_template, redirect, url_for, current_app, request
 
-from common.alert_store import AlertStatus, ResolutionReason
+from common.alert_store import AlertStatus, AlertType, ResolutionReason
 
 views_bp = Blueprint("views", __name__)
 
@@ -21,6 +21,7 @@ def alerts_active():
     # Get filter parameters
     alert_type = request.args.get("type")
     patient_mrn = request.args.get("mrn")
+    severity = request.args.get("severity")
 
     # Build filter kwargs
     filter_kwargs = {
@@ -33,7 +34,6 @@ def alerts_active():
     }
 
     if alert_type:
-        from common.alert_store import AlertType
         try:
             filter_kwargs["alert_type"] = AlertType(alert_type)
         except ValueError:
@@ -42,8 +42,27 @@ def alerts_active():
     if patient_mrn:
         filter_kwargs["patient_mrn"] = patient_mrn
 
+    if severity:
+        filter_kwargs["severity"] = severity
+
     alerts = store.list_alerts(**filter_kwargs)
-    stats = store.get_stats()
+
+    # Sort alerts: bacteremia first, then by severity (critical > warning > info), then by date
+    severity_order = {"critical": 0, "warning": 1, "info": 2}
+    type_order = {AlertType.BACTEREMIA: 0, AlertType.BROAD_SPECTRUM_USAGE: 1, AlertType.CUSTOM: 2}
+    alerts.sort(key=lambda a: (
+        type_order.get(a.alert_type, 99),
+        severity_order.get(a.severity, 99),
+    ))
+
+    # Get stats for active alerts only
+    active_statuses = [
+        AlertStatus.PENDING,
+        AlertStatus.SENT,
+        AlertStatus.ACKNOWLEDGED,
+        AlertStatus.SNOOZED,
+    ]
+    stats = store.get_stats(status=active_statuses)
 
     return render_template(
         "alerts_active.html",
@@ -51,6 +70,7 @@ def alerts_active():
         stats=stats,
         current_type=alert_type,
         current_mrn=patient_mrn,
+        current_severity=severity,
     )
 
 
@@ -59,14 +79,47 @@ def alerts_history():
     """List resolved alerts."""
     store = current_app.alert_store
 
-    alerts = store.list_alerts(status=AlertStatus.RESOLVED)
-    stats = store.get_stats()
+    # Get filter parameters
+    alert_type = request.args.get("type")
+    patient_mrn = request.args.get("mrn")
+    severity = request.args.get("severity")
+    resolution = request.args.get("resolution")
+
+    # Build filter kwargs
+    filter_kwargs = {"status": AlertStatus.RESOLVED}
+
+    if alert_type:
+        try:
+            filter_kwargs["alert_type"] = AlertType(alert_type)
+        except ValueError:
+            pass
+
+    if patient_mrn:
+        filter_kwargs["patient_mrn"] = patient_mrn
+
+    if severity:
+        filter_kwargs["severity"] = severity
+
+    if resolution:
+        filter_kwargs["resolution_reason"] = resolution
+
+    alerts = store.list_alerts(**filter_kwargs)
+    # Get stats for resolved alerts only
+    stats = store.get_stats(status=AlertStatus.RESOLVED)
+
+    # Get resolution reason options for dropdown
+    resolution_reasons = ResolutionReason.all_options()
 
     return render_template(
         "alerts_history.html",
         alerts=alerts,
         stats=stats,
         ResolutionReason=ResolutionReason,
+        resolution_reasons=resolution_reasons,
+        current_type=alert_type,
+        current_mrn=patient_mrn,
+        current_severity=severity,
+        current_resolution=resolution,
     )
 
 
@@ -91,3 +144,52 @@ def alert_detail(alert_id):
         resolution_reasons=resolution_reasons,
         ResolutionReason=ResolutionReason,
     )
+
+
+@views_bp.route("/reports")
+def reports():
+    """Show analytics and reports."""
+    store = current_app.alert_store
+
+    # Get filter parameters
+    alert_type = request.args.get("type")
+    days = request.args.get("days", 30, type=int)
+
+    # Validate days
+    if days < 1:
+        days = 1
+    elif days > 365:
+        days = 365
+
+    # Parse alert type
+    parsed_type = None
+    if alert_type:
+        try:
+            parsed_type = AlertType(alert_type)
+        except ValueError:
+            pass
+
+    # Get analytics data
+    analytics = store.get_analytics(alert_type=parsed_type, days=days)
+
+    # Get alert type options for dropdown
+    alert_types = [
+        ("", "All Types"),
+        ("bacteremia", "Bacteremia"),
+        ("broad_spectrum_usage", "Broad Spectrum Usage"),
+    ]
+
+    return render_template(
+        "reports.html",
+        analytics=analytics,
+        alert_types=alert_types,
+        current_type=alert_type,
+        current_days=days,
+        ResolutionReason=ResolutionReason,
+    )
+
+
+@views_bp.route("/help")
+def help_page():
+    """Show help/demo workflow documentation."""
+    return render_template("help.html")

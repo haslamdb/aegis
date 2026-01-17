@@ -47,8 +47,12 @@ class ResolutionReason(Enum):
     OTHER = "other"                         # Other reason (see notes)
 
     @classmethod
-    def display_name(cls, reason: "ResolutionReason") -> str:
-        """Get human-readable display name for a reason."""
+    def display_name(cls, reason: "ResolutionReason | str") -> str:
+        """Get human-readable display name for a reason.
+
+        Args:
+            reason: Either a ResolutionReason enum or a string value
+        """
         display_names = {
             cls.ACKNOWLEDGED: "Acknowledged",
             cls.MESSAGED_TEAM: "Messaged Team",
@@ -60,6 +64,12 @@ class ResolutionReason(Enum):
             cls.PATIENT_DISCHARGED: "Patient Discharged",
             cls.OTHER: "Other",
         }
+        # If it's a string, try to convert to enum first
+        if isinstance(reason, str):
+            try:
+                reason = cls(reason)
+            except ValueError:
+                return reason  # Return as-is if not a valid enum value
         return display_names.get(reason, reason.value)
 
     @classmethod

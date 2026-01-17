@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚠</text></svg>">
 </head>
 <body>
     <nav class="navbar">
@@ -14,8 +15,14 @@
         <div class="nav-links">
             <a href="{{ url_for('views.alerts_active') }}" {% if request.endpoint == 'views.alerts_active' %}class="active"{% endif %}>Active Alerts</a>
             <a href="{{ url_for('views.alerts_history') }}" {% if request.endpoint == 'views.alerts_history' %}class="active"{% endif %}>History</a>
+            <a href="{{ url_for('views.reports') }}" {% if request.endpoint == 'views.reports' %}class="active"{% endif %}>Reports</a>
+            <a href="{{ url_for('views.help_page') }}" {% if request.endpoint == 'views.help_page' %}class="active"{% endif %}>Help</a>
         </div>
     </nav>
+
+    <div class="disclaimer-banner">
+        <strong>Demo Environment:</strong> All patient data displayed is simulated. No real patient data is available through this dashboard.
+    </div>
 
     <main class="container">
         {% if request.args.get('msg') %}
@@ -30,6 +37,12 @@
                 Failed to acknowledge alert.
             {% elif request.args.get('msg') == 'snooze_failed' %}
                 Failed to snooze alert.
+            {% elif request.args.get('msg') == 'note_added' %}
+                Note added successfully.
+            {% elif request.args.get('msg') == 'note_empty' %}
+                Note cannot be empty.
+            {% elif request.args.get('msg') == 'note_failed' %}
+                Failed to add note.
             {% else %}
                 {{ request.args.get('msg') }}
             {% endif %}
@@ -40,7 +53,94 @@
     </main>
 
     <footer class="footer">
-        <p>ASP Alerts Dashboard</p>
+        <p>ASP Alerts Dashboard &bull; Cincinnati Children's Hospital</p>
     </footer>
+
+    <script>
+    // Relative time formatting
+    function timeAgo(dateString) {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+
+        const intervals = {
+            year: 31536000,
+            month: 2592000,
+            week: 604800,
+            day: 86400,
+            hour: 3600,
+            minute: 60
+        };
+
+        for (const [unit, secondsInUnit] of Object.entries(intervals)) {
+            const interval = Math.floor(seconds / secondsInUnit);
+            if (interval >= 1) {
+                return interval === 1 ? `1 ${unit} ago` : `${interval} ${unit}s ago`;
+            }
+        }
+        return 'just now';
+    }
+
+    // Update all relative times on the page
+    function updateRelativeTimes() {
+        document.querySelectorAll('[data-timestamp]').forEach(el => {
+            const timestamp = el.getAttribute('data-timestamp');
+            el.textContent = timeAgo(timestamp);
+
+            // Mark as urgent if more than 4 hours old and not resolved
+            const hours = (new Date() - new Date(timestamp)) / (1000 * 60 * 60);
+            if (hours > 4 && !el.closest('.resolved')) {
+                el.setAttribute('data-urgent', 'true');
+            }
+        });
+    }
+
+    // Auto-refresh for active alerts page
+    let refreshInterval;
+    const REFRESH_SECONDS = 30;
+
+    function startAutoRefresh() {
+        const indicator = document.getElementById('refresh-indicator');
+        const countdown = document.getElementById('refresh-countdown');
+
+        if (!indicator) return;
+
+        let seconds = REFRESH_SECONDS;
+
+        refreshInterval = setInterval(() => {
+            seconds--;
+            if (countdown) countdown.textContent = seconds;
+
+            if (seconds <= 0) {
+                location.reload();
+            }
+        }, 1000);
+    }
+
+    function stopAutoRefresh() {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        updateRelativeTimes();
+        setInterval(updateRelativeTimes, 60000); // Update every minute
+
+        if (document.getElementById('refresh-indicator')) {
+            startAutoRefresh();
+        }
+    });
+
+    // Pause refresh when tab is not visible
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopAutoRefresh();
+        } else if (document.getElementById('refresh-indicator')) {
+            startAutoRefresh();
+        }
+    });
+    </script>
 </body>
 </html>

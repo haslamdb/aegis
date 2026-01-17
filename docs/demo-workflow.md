@@ -2,7 +2,7 @@
 
 This guide walks through a complete demonstration of the ASP Alerts system, showing how real-time clinical alerts are triggered when new patient data arrives.
 
-> **Disclaimer:** All patient data used in this demo is synthetic (artificial). No actual patient data exists in this repository.
+> **Disclaimer:** All patient data used in this demo is simulated. No actual patient data exists in this repository.
 
 ## Prerequisites
 

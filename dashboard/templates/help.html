@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}Help - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Demo Workflow Guide</h1>
+</div>
+
+<div class="help-content">
+    <div class="help-card">
+        <h2>Overview</h2>
+        <p>This guide walks through generating and managing ASP alerts. The system monitors two scenarios:</p>
+        <ol>
+            <li><strong>Bacteremia Alert</strong> - Patient with positive blood culture lacking appropriate antibiotic coverage</li>
+            <li><strong>Antimicrobial Usage Alert</strong> - Patient on broad-spectrum antibiotics exceeding the 72-hour threshold</li>
+        </ol>
+    </div>
+
+    <div class="help-card">
+        <h2>Quick Start Commands</h2>
+
+        <h3>1. Generate a Blood Culture Alert</h3>
+        <p>Create a patient with a positive blood culture (MRSA) without appropriate coverage:</p>
+        <pre><code>cd /home/david/projects/asp-alerts
+python scripts/demo_blood_culture.py --organism mrsa</code></pre>
+
+        <p>Then run the bacteremia monitor to detect and alert:</p>
+        <pre><code>cd asp-bacteremia-alerts
+python -m src.monitor</code></pre>
+
+        <h3>2. Generate an Antimicrobial Usage Alert</h3>
+        <p>Create a patient on meropenem for 5 days (exceeds 72h threshold):</p>
+        <pre><code>cd /home/david/projects/asp-alerts
+python scripts/demo_antimicrobial_usage.py --antibiotic meropenem --days 5</code></pre>
+
+        <p>Then run the usage monitor:</p>
+        <pre><code>cd antimicrobial-usage-alerts
+python -m src.runner --once --verbose</code></pre>
+    </div>
+
+    <div class="help-card">
+        <h2>Blood Culture Scenarios</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Command</th>
+                    <th>Scenario</th>
+                    <th>Alert?</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>--organism mrsa</code></td>
+                    <td>MRSA, no antibiotic</td>
+                    <td><span class="badge badge-critical">Yes</span></td>
+                </tr>
+                <tr>
+                    <td><code>--organism mrsa --antibiotic vancomycin</code></td>
+                    <td>MRSA with vancomycin</td>
+                    <td><span class="badge badge-status-resolved">No</span></td>
+                </tr>
+                <tr>
+                    <td><code>--organism mrsa --antibiotic cefazolin</code></td>
+                    <td>MRSA with wrong antibiotic</td>
+                    <td><span class="badge badge-critical">Yes</span></td>
+                </tr>
+                <tr>
+                    <td><code>--organism pseudomonas</code></td>
+                    <td>Pseudomonas, no coverage</td>
+                    <td><span class="badge badge-critical">Yes</span></td>
+                </tr>
+                <tr>
+                    <td><code>--organism pseudomonas --antibiotic meropenem</code></td>
+                    <td>Pseudomonas with meropenem</td>
+                    <td><span class="badge badge-status-resolved">No</span></td>
+                </tr>
+                <tr>
+                    <td><code>--organism candida</code></td>
+                    <td>Candida, no antifungal</td>
+                    <td><span class="badge badge-critical">Yes</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Antimicrobial Usage Scenarios</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Command</th>
+                    <th>Duration</th>
+                    <th>Alert Level</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>--antibiotic meropenem --days 2</code></td>
+                    <td>48 hours</td>
+                    <td><span class="badge badge-status-resolved">None</span></td>
+                </tr>
+                <tr>
+                    <td><code>--antibiotic meropenem --days 4</code></td>
+                    <td>96 hours</td>
+                    <td><span class="badge badge-warning">Warning</span></td>
+                </tr>
+                <tr>
+                    <td><code>--antibiotic vancomycin --days 7</code></td>
+                    <td>168 hours</td>
+                    <td><span class="badge badge-critical">Critical</span></td>
+                </tr>
+                <tr>
+                    <td><code>--antibiotic ceftriaxone --days 5</code></td>
+                    <td>120 hours</td>
+                    <td><span class="badge badge-status-resolved">None</span> (not monitored)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Alert Resolution Workflow</h2>
+        <ol>
+            <li><strong>View</strong> - Click on an alert to see details</li>
+            <li><strong>Acknowledge</strong> - Mark as seen (stays in active list)</li>
+            <li><strong>Snooze 4h</strong> - Temporarily suppress the alert</li>
+            <li><strong>Resolve</strong> - Close with a resolution reason:
+                <ul>
+                    <li>Acknowledged - No action needed</li>
+                    <li>Messaged Team - Contacted the care team</li>
+                    <li>Discussed with Team - Had discussion with providers</li>
+                    <li>Therapy Changed - Antibiotic regimen was modified</li>
+                    <li>Therapy Stopped - Antibiotic was discontinued</li>
+                    <li>Patient Discharged - Patient left the hospital</li>
+                </ul>
+            </li>
+        </ol>
+        <p>Resolved alerts move to the <a href="{{ url_for('views.alerts_history') }}">History</a> tab with a full audit trail.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Interactive Demo Mode</h2>
+        <p>For live demos where the audience can choose scenarios:</p>
+        <pre><code># Blood culture - choose organism and antibiotic interactively
+python scripts/demo_blood_culture.py --interactive
+
+# Antimicrobial usage - choose drug and duration interactively
+python scripts/demo_antimicrobial_usage.py --interactive</code></pre>
+    </div>
+
+    <div class="help-card">
+        <h2>Troubleshooting</h2>
+
+        <h3>FHIR server not responding</h3>
+        <pre><code># Check if container is running
+docker ps | grep hapi
+
+# Restart if needed
+cd asp-bacteremia-alerts
+docker-compose down && docker-compose up -d</code></pre>
+
+        <h3>Clear all data and start fresh</h3>
+        <pre><code># Clear FHIR server data
+cd asp-bacteremia-alerts
+docker-compose down && docker-compose up -d
+
+# Clear alert database
+rm -f ~/.asp-alerts/alerts.db</code></pre>
+
+        <h3>Verify data was uploaded</h3>
+        <pre><code>curl "http://localhost:8081/fhir/Patient?_count=5" | python -m json.tool</code></pre>
+    </div>
+
+    <div class="help-card">
+        <h2>Architecture</h2>
+        <pre class="architecture-diagram">
++-------------------+     +-------------------+
+|   Demo Scripts    |----&gt;|  HAPI FHIR        |
+|   (add patients)  |     |  Server :8081     |
++-------------------+     +---------+---------+
+                                    |
+                    +---------------+---------------+
+                    v                               v
+          +-------------------+           +-------------------+
+          |   Bacteremia      |           |  Antimicrobial    |
+          |    Monitor        |           |  Usage Monitor    |
+          +---------+---------+           +---------+---------+
+                    |                               |
+                    +--------------+----------------+
+                                   v
+                         +-------------------+
+                         |   Alert Store     |
+                         |   (SQLite)        |
+                         +---------+---------+
+                                   |
+                    +--------------+---------------+
+                    v              v               v
+           +-----------+   +-----------+   +-----------+
+           | Dashboard |   |   Teams   |   |   Email   |
+           +-----------+   +-----------+   +-----------+
+        </pre>
+    </div>
+</div>
+{% endblock %}

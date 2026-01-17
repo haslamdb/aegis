@@ -2,7 +2,7 @@
 
 Monitors broad-spectrum antibiotic usage duration and alerts when medications exceed configurable thresholds. Part of the [ASP Alerts](../README.md) system.
 
-> **Disclaimer:** All patient data used for testing is **synthetic (artificial)**. **No actual patient data exists in this repository.**
+> **Disclaimer:** All patient data used for testing is **simulated**. **No actual patient data exists in this repository.**
 
 ## Overview
 
@@ -92,13 +92,13 @@ POLL_INTERVAL=300
 
 ```bash
 # Dashboard URL for Teams action buttons
-DASHBOARD_BASE_URL=http://your-dashboard:5000
+DASHBOARD_BASE_URL=https://alerts.asp-ai-agent.com:8444
 
 # API key for secure callbacks
 DASHBOARD_API_KEY=your-secret-key
 
 # Alert database path (shared with dashboard)
-ALERT_DB_PATH=/path/to/alerts.db
+ALERT_DB_PATH=~/.asp-alerts/alerts.db
 ```
 
 ## Monitored Medications
@@ -232,4 +232,6 @@ python -m src.runner --once --verbose --dry-run
 ## Related Documentation
 
 - [ASP Alerts Overview](../README.md)
+- [Demo Workflow](../docs/demo-workflow.md) - Complete demo walkthrough
 - [Bacteremia Alerts](../asp-bacteremia-alerts/README.md)
+- [Dashboard](../dashboard/README.md)

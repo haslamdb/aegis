@@ -61,10 +61,11 @@ class BroadSpectrumMonitor:
         for assessment in all_assessments:
             order_id = assessment.medication.fhir_id
 
-            # Check persistent store first
+            # Check persistent store first (include resolved to prevent re-alerting)
             if self.alert_store.check_if_alerted(
                 AlertType.BROAD_SPECTRUM_USAGE,
                 order_id,
+                include_resolved=True,
             ):
                 continue
 

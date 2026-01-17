@@ -477,6 +477,8 @@ class AlertStore:
         status: AlertStatus | list[AlertStatus] | None = None,
         alert_type: AlertType | None = None,
         patient_mrn: str | None = None,
+        severity: str | None = None,
+        resolution_reason: str | None = None,
         limit: int = 100,
         include_expired_snooze: bool = True,
     ) -> list[StoredAlert]:
@@ -486,6 +488,8 @@ class AlertStore:
             status: Filter by status (single or list)
             alert_type: Filter by alert type
             patient_mrn: Filter by patient MRN
+            severity: Filter by severity (critical, warning, info)
+            resolution_reason: Filter by resolution reason
             limit: Maximum results
             include_expired_snooze: If True, include snoozed alerts past expiration
 
@@ -511,6 +515,14 @@ class AlertStore:
         if patient_mrn:
             conditions.append("patient_mrn = ?")
             params.append(patient_mrn)
+
+        if severity:
+            conditions.append("severity = ?")
+            params.append(severity)
+
+        if resolution_reason:
+            conditions.append("resolution_reason = ?")
+            params.append(resolution_reason)
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         params.append(limit)
@@ -577,31 +589,252 @@ class AlertStore:
 
     # Statistics
 
-    def get_stats(self) -> dict[str, int]:
-        """Get alert statistics."""
+    def get_stats(
+        self,
+        status: AlertStatus | list[AlertStatus] | None = None,
+    ) -> dict[str, int]:
+        """Get alert statistics.
+
+        Args:
+            status: Filter by status (single, list, or None for all)
+        """
         with self._connect() as conn:
             stats = {}
 
-            # Count by status
+            # Build status filter
+            status_filter = ""
+            params: list = []
+            if status:
+                if isinstance(status, list):
+                    placeholders = ",".join("?" * len(status))
+                    status_filter = f" WHERE status IN ({placeholders})"
+                    params = [s.value for s in status]
+                else:
+                    status_filter = " WHERE status = ?"
+                    params = [status.value]
+
+            # Count by status (within filter)
             cursor = conn.execute(
-                "SELECT status, COUNT(*) FROM alerts GROUP BY status"
+                f"SELECT status, COUNT(*) FROM alerts{status_filter} GROUP BY status",
+                params
             )
             for row in cursor:
                 stats[f"status_{row[0]}"] = row[1]
 
-            # Total
-            cursor = conn.execute("SELECT COUNT(*) FROM alerts")
+            # Total (within filter)
+            cursor = conn.execute(
+                f"SELECT COUNT(*) FROM alerts{status_filter}",
+                params
+            )
             stats["total"] = cursor.fetchone()[0]
 
-            # Today's alerts
+            # Today's alerts (within filter)
             today = datetime.now().date().isoformat()
+            today_filter = status_filter.replace(" WHERE ", " WHERE date(created_at) = ? AND ") if status_filter else " WHERE date(created_at) = ?"
+            today_params = [today] + params if status_filter else [today]
             cursor = conn.execute(
-                "SELECT COUNT(*) FROM alerts WHERE date(created_at) = ?",
-                (today,)
+                f"SELECT COUNT(*) FROM alerts{today_filter}",
+                today_params
             )
             stats["today"] = cursor.fetchone()[0]
 
+            # Count by severity (within filter)
+            cursor = conn.execute(
+                f"SELECT severity, COUNT(*) FROM alerts{status_filter} GROUP BY severity",
+                params
+            )
+            for row in cursor:
+                stats[f"severity_{row[0]}"] = row[1]
+
             return stats
+
+    # Analytics / Reports
+
+    def get_analytics(
+        self,
+        alert_type: AlertType | None = None,
+        days: int = 30,
+    ) -> dict:
+        """Get comprehensive analytics for reporting.
+
+        Args:
+            alert_type: Filter by alert type (None for all)
+            days: Number of days to include in analysis
+
+        Returns:
+            Dictionary with analytics data
+        """
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        type_filter = ""
+        params: list = [cutoff]
+
+        if alert_type:
+            type_filter = " AND alert_type = ?"
+            params.append(alert_type.value)
+
+        with self._connect() as conn:
+            analytics = {
+                "period_days": days,
+                "alert_type": alert_type.value if alert_type else "all",
+            }
+
+            # Total alerts in period
+            cursor = conn.execute(
+                f"SELECT COUNT(*) FROM alerts WHERE created_at >= ?{type_filter}",
+                params
+            )
+            analytics["total_alerts"] = cursor.fetchone()[0]
+
+            # Alerts by day
+            cursor = conn.execute(
+                f"""
+                SELECT date(created_at) as day, COUNT(*) as count
+                FROM alerts
+                WHERE created_at >= ?{type_filter}
+                GROUP BY date(created_at)
+                ORDER BY day DESC
+                """,
+                params
+            )
+            analytics["alerts_by_day"] = [
+                {"date": row[0], "count": row[1]} for row in cursor.fetchall()
+            ]
+
+            # Average alerts per day
+            if analytics["alerts_by_day"]:
+                analytics["avg_alerts_per_day"] = round(
+                    analytics["total_alerts"] / len(analytics["alerts_by_day"]), 1
+                )
+            else:
+                analytics["avg_alerts_per_day"] = 0
+
+            # Alerts by severity
+            cursor = conn.execute(
+                f"""
+                SELECT severity, COUNT(*) as count
+                FROM alerts
+                WHERE created_at >= ?{type_filter}
+                GROUP BY severity
+                ORDER BY count DESC
+                """,
+                params
+            )
+            analytics["by_severity"] = {row[0]: row[1] for row in cursor.fetchall()}
+
+            # Alerts by status
+            cursor = conn.execute(
+                f"""
+                SELECT status, COUNT(*) as count
+                FROM alerts
+                WHERE created_at >= ?{type_filter}
+                GROUP BY status
+                """,
+                params
+            )
+            analytics["by_status"] = {row[0]: row[1] for row in cursor.fetchall()}
+
+            # Resolution reason breakdown (for resolved alerts)
+            cursor = conn.execute(
+                f"""
+                SELECT resolution_reason, COUNT(*) as count
+                FROM alerts
+                WHERE created_at >= ?{type_filter}
+                  AND status = 'resolved'
+                  AND resolution_reason IS NOT NULL
+                GROUP BY resolution_reason
+                ORDER BY count DESC
+                """,
+                params
+            )
+            resolution_data = cursor.fetchall()
+            total_resolved = sum(row[1] for row in resolution_data)
+            analytics["resolution_breakdown"] = [
+                {
+                    "reason": row[0],
+                    "count": row[1],
+                    "percentage": round(row[1] / total_resolved * 100, 1) if total_resolved > 0 else 0
+                }
+                for row in resolution_data
+            ]
+            analytics["total_resolved"] = total_resolved
+
+            # Response time metrics (for resolved alerts)
+            cursor = conn.execute(
+                f"""
+                SELECT
+                    AVG(CAST((julianday(acknowledged_at) - julianday(created_at)) * 24 * 60 AS INTEGER)) as avg_time_to_ack_min,
+                    AVG(CAST((julianday(resolved_at) - julianday(created_at)) * 24 * 60 AS INTEGER)) as avg_time_to_resolve_min,
+                    MIN(CAST((julianday(resolved_at) - julianday(created_at)) * 24 * 60 AS INTEGER)) as min_time_to_resolve_min,
+                    MAX(CAST((julianday(resolved_at) - julianday(created_at)) * 24 * 60 AS INTEGER)) as max_time_to_resolve_min
+                FROM alerts
+                WHERE created_at >= ?{type_filter}
+                  AND status = 'resolved'
+                  AND resolved_at IS NOT NULL
+                """,
+                params
+            )
+            row = cursor.fetchone()
+            analytics["response_times"] = {
+                "avg_time_to_ack_minutes": round(row[0]) if row[0] else None,
+                "avg_time_to_resolve_minutes": round(row[1]) if row[1] else None,
+                "min_time_to_resolve_minutes": round(row[2]) if row[2] else None,
+                "max_time_to_resolve_minutes": round(row[3]) if row[3] else None,
+            }
+
+            # Convert minutes to human-readable format
+            def format_duration(minutes):
+                if minutes is None:
+                    return None
+                if minutes < 60:
+                    return f"{minutes} min"
+                hours = minutes // 60
+                mins = minutes % 60
+                if hours < 24:
+                    return f"{hours}h {mins}m" if mins else f"{hours}h"
+                days = hours // 24
+                hours = hours % 24
+                return f"{days}d {hours}h" if hours else f"{days}d"
+
+            analytics["response_times_formatted"] = {
+                "avg_time_to_ack": format_duration(analytics["response_times"]["avg_time_to_ack_minutes"]),
+                "avg_time_to_resolve": format_duration(analytics["response_times"]["avg_time_to_resolve_minutes"]),
+                "min_time_to_resolve": format_duration(analytics["response_times"]["min_time_to_resolve_minutes"]),
+                "max_time_to_resolve": format_duration(analytics["response_times"]["max_time_to_resolve_minutes"]),
+            }
+
+            # Resolution rate
+            total_in_period = analytics["total_alerts"]
+            if total_in_period > 0:
+                analytics["resolution_rate"] = round(total_resolved / total_in_period * 100, 1)
+            else:
+                analytics["resolution_rate"] = 0
+
+            # Alerts by day of week
+            cursor = conn.execute(
+                f"""
+                SELECT
+                    CASE CAST(strftime('%w', created_at) AS INTEGER)
+                        WHEN 0 THEN 'Sunday'
+                        WHEN 1 THEN 'Monday'
+                        WHEN 2 THEN 'Tuesday'
+                        WHEN 3 THEN 'Wednesday'
+                        WHEN 4 THEN 'Thursday'
+                        WHEN 5 THEN 'Friday'
+                        WHEN 6 THEN 'Saturday'
+                    END as day_name,
+                    COUNT(*) as count
+                FROM alerts
+                WHERE created_at >= ?{type_filter}
+                GROUP BY strftime('%w', created_at)
+                ORDER BY CAST(strftime('%w', created_at) AS INTEGER)
+                """,
+                params
+            )
+            analytics["by_day_of_week"] = [
+                {"day": row[0], "count": row[1]} for row in cursor.fetchall()
+            ]
+
+            return analytics
 
     # Cleanup
 
