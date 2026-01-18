@@ -145,8 +145,9 @@ class NoteChunker:
                     break
 
                 section_label = "Assessment/Plan" if chunk.section_type == "assessment_plan" else "ID/Microbiology"
+                author_str = f" by {note.author}" if note.author else ""
                 context_parts.append(
-                    f"[{note.note_type.upper()} - {note.date.strftime('%Y-%m-%d')}]\n"
+                    f"[{note.note_type.upper()} - {note.date.strftime('%Y-%m-%d')}{author_str}]\n"
                     f"{section_label}:\n{chunk.content}"
                 )
                 total_length += len(chunk.content)
@@ -167,8 +168,9 @@ class NoteChunker:
                 content = content[:available_space] + "... [truncated]"
 
             if content:
+                author_str = f" by {note.author}" if note.author else ""
                 context_parts.append(
-                    f"[{note.note_type.upper()} - {note.date.strftime('%Y-%m-%d')}]\n"
+                    f"[{note.note_type.upper()} - {note.date.strftime('%Y-%m-%d')}{author_str}]\n"
                     f"Full Note:\n{content}"
                 )
                 total_length += len(content)
