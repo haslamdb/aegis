@@ -9,7 +9,7 @@ The NHSN reporting module implements a four-stage workflow that separates **fact
 1. **Rule-Based Screening** - Identifies HAI candidates based on NHSN criteria (BSI + central line + timing requirements)
 2. **LLM Extraction** - Extracts clinical facts from notes (symptoms, alternate sources, MBI factors)
 3. **Rules Engine** - Applies deterministic NHSN criteria to extracted facts
-4. **IP Review** - Routes uncertain cases to Infection Prevention for human review
+4. **IP Review** - ALL candidates routed to Infection Prevention for final decision (LLM provides classification and confidence, IP confirms or rejects)
 
 ```
 Blood Culture (positive)
@@ -39,9 +39,11 @@ Blood Culture (positive)
          │               4. Contamination check
          │               5. Default to CLABSI
          │
-         ├── High confidence ───► Auto-classify
-         │
-         └── Review flags ──────► IP Review Queue
+         ▼
+┌─────────────────────┐
+│    IP Review        │  ALL candidates reviewed by IP
+│  (Human Decision)   │  LLM provides classification + confidence
+└─────────────────────┘  IP makes final confirm/reject decision
          │
          ▼
 ┌─────────────────────┐
@@ -69,9 +71,9 @@ This separation provides:
 - **CLABSI Detection** - Rule-based screening per CDC/NHSN criteria
 - **Note Processing** - Retrieves clinical notes from FHIR or Clarity
 - **LLM Classification** - Local Ollama inference (PHI-safe, no BAA required)
-- **Confidence-Based Triage** - Automatic routing based on classification confidence
-- **IP Review Dashboard** - Web interface for reviewing uncertain cases
-- **Audit Trail** - Full logging of all classifications and decisions
+- **IP Review Workflow** - ALL candidates go to IP for final decision; LLM provides classification + confidence as decision support
+- **IP Review Dashboard** - Web interface showing pending reviews, confirmed HAI, and confirmed not-HAI counts
+- **Audit Trail** - Full logging of all classifications, IP decisions, and override tracking
 - **FHIR + Clarity Support** - Abstraction layer for multiple EHR data sources
 
 ## Quick Start
@@ -197,10 +199,10 @@ Copy `.env.template` to `.env` and configure:
 | `LLM_BACKEND` | `ollama` | LLM backend: `ollama` or `claude` |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama API endpoint |
 | `OLLAMA_MODEL` | `llama3.1:70b` | Model for classification |
-| `AUTO_CLASSIFY_THRESHOLD` | `0.85` | Confidence above which to auto-confirm HAI |
-| `IP_REVIEW_THRESHOLD` | `0.60` | Confidence below which requires manual review |
 | `MIN_DEVICE_DAYS` | `2` | Minimum device days for CLABSI eligibility |
 | `POLL_INTERVAL` | `300` | Seconds between monitoring cycles |
+
+> **Note:** All candidates are routed to IP review regardless of LLM confidence. The confidence score is displayed to IP as decision support but does not affect routing.
 
 ## CLABSI Detection Criteria
 
@@ -258,22 +260,37 @@ Each step produces auditable reasoning that IP can review.
 | `CONTAMINATION` | Likely contamination (single commensal culture) |
 | `NOT_ELIGIBLE` | Doesn't meet basic eligibility (line days, timing) |
 
-### Review Routing
+### IP Review Workflow
 
-Cases are flagged for IP review when:
-- Documentation quality is poor/limited
-- Possible alternate sources need verification
-- MBI-LCBI criteria are borderline
-- Multiple review flags are raised
+**All classified candidates go to IP review.** The LLM provides a classification and confidence score as decision support, but IP always makes the final determination. This ensures:
+- Human oversight on all HAI determinations
+- Consistent application of clinical judgment
+- Override tracking for LLM quality assessment
+
+When IP submits a final decision (Confirmed HAI or Confirmed Not HAI), any prior incomplete reviews (e.g., "needs more info") are automatically superseded.
+
+**IP Decision Options:**
+- **Confirmed** - CLABSI confirmed, will be reported to NHSN
+- **Not CLABSI** - Rejected (secondary source, MBI-LCBI, contamination, etc.)
+- **Needs More Info** - Keep in queue for additional review (does not close the case)
 
 ## Dashboard Integration
 
-The module integrates with the ASP Alerts dashboard:
+The module integrates with the ASP Alerts dashboard at `/nhsn`:
 
-- `/nhsn` - NHSN module overview
-- `/nhsn/candidates` - All detected candidates
-- `/nhsn/pending-review` - Cases awaiting IP review
-- `/nhsn/events` - Confirmed NHSN events
+**Dashboard Stats:**
+- **Pending Review** (primary) - Cases awaiting IP decision
+- **Confirmed HAI** - CLABSI cases confirmed by IP
+- **Confirmed Not HAI** - Cases rejected by IP (secondary source, MBI-LCBI, etc.)
+- **NHSN Events** - Events ready for NHSN submission
+
+**Pages:**
+- `/nhsn` - Overview with stats and recent activity
+- `/nhsn/reviews` - IP Review Queue (primary workflow)
+- `/nhsn/candidates` - All active candidates
+- `/nhsn/history` - Resolved cases (confirmed and rejected)
+- `/nhsn/reports` - Analytics and LLM quality metrics
+- `/nhsn/submission` - NHSN reporting (CSV export or DIRECT protocol)
 
 ## Test Data Generation
 
@@ -380,6 +397,9 @@ View the audit log on the submission page at `/nhsn/submission`.
 ## Roadmap
 
 - [x] CLABSI detection and classification
+- [x] LLM extraction + rules engine architecture
+- [x] IP review workflow (all candidates routed to IP)
+- [x] Override tracking for LLM quality assessment
 - [x] NHSN CSV export
 - [x] NHSN DIRECT protocol submission
 - [x] CDA document generation
