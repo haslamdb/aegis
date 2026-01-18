@@ -28,11 +28,12 @@
         <label>
             Time Period:
             <select name="days" onchange="this.form.submit()">
-                <option value="7" {% if current_days == 7 %}selected{% endif %}>Last 7 days</option>
-                <option value="14" {% if current_days == 14 %}selected{% endif %}>Last 14 days</option>
-                <option value="30" {% if current_days == 30 %}selected{% endif %}>Last 30 days</option>
-                <option value="60" {% if current_days == 60 %}selected{% endif %}>Last 60 days</option>
-                <option value="90" {% if current_days == 90 %}selected{% endif %}>Last 90 days</option>
+                <option value="submission" {% if current_days == 'submission' %}selected{% endif %}>Since Last Submission{% if last_submission %} ({{ last_submission.period_end }}){% endif %}</option>
+                <option value="7" {% if current_days == '7' %}selected{% endif %}>Last 7 days</option>
+                <option value="14" {% if current_days == '14' %}selected{% endif %}>Last 14 days</option>
+                <option value="30" {% if current_days == '30' %}selected{% endif %}>Last 30 days</option>
+                <option value="60" {% if current_days == '60' %}selected{% endif %}>Last 60 days</option>
+                <option value="90" {% if current_days == '90' %}selected{% endif %}>Last 90 days</option>
             </select>
         </label>
     </form>

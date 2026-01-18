@@ -28,7 +28,12 @@ def dashboard():
     """NHSN reporting dashboard overview."""
     try:
         db = get_nhsn_db()
-        stats = db.get_summary_stats()
+
+        # Get last submission to filter stats
+        last_submission = db.get_last_submission()
+        since_date = last_submission["period_end"] if last_submission else None
+
+        stats = db.get_summary_stats(since_date=since_date)
         # Only show active candidates (not confirmed/rejected)
         recent = db.get_active_candidates(limit=10)
         pending_reviews = db.get_pending_reviews()
@@ -38,6 +43,7 @@ def dashboard():
             stats=stats,
             recent_candidates=recent,
             pending_reviews=pending_reviews,
+            last_submission=last_submission,
         )
     except Exception as e:
         current_app.logger.error(f"Error loading NHSN dashboard: {e}")
@@ -48,11 +54,10 @@ def dashboard():
                 "pending_classification": 0,
                 "pending_review": 0,
                 "confirmed_hai": 0,
-                "total_events": 0,
-                "unreported_events": 0,
             },
             recent_candidates=[],
             pending_reviews=[],
+            last_submission=None,
             error=str(e),
         )
 
@@ -429,13 +434,26 @@ def reports():
 
         # Get filter parameters
         hai_type_str = request.args.get("type")
-        days = request.args.get("days", 30, type=int)
+        days_param = request.args.get("days", "submission")  # Default to since last submission
 
-        # Validate days
-        if days < 1:
-            days = 1
-        elif days > 365:
-            days = 365
+        # Get last submission for filtering
+        last_submission = db.get_last_submission()
+        since_date = None
+
+        # Handle "since_submission" vs numeric days
+        if days_param == "submission":
+            if last_submission:
+                since_date = last_submission["period_end"]
+            days = 30  # Fallback if no submission
+        else:
+            try:
+                days = int(days_param)
+                if days < 1:
+                    days = 1
+                elif days > 365:
+                    days = 365
+            except ValueError:
+                days = 30
 
         # Parse HAI type
         hai_type = None
@@ -446,7 +464,7 @@ def reports():
                 hai_type = None
 
         # Get report data
-        report_data = db.get_hai_report_data(days)
+        report_data = db.get_hai_report_data(days, since_date=since_date)
 
         # Get confirmed HAIs for the list
         confirmed_hais = db.get_confirmed_hai_in_period(days, hai_type)
@@ -470,7 +488,8 @@ def reports():
             confirmed_hais=confirmed_hais,
             hai_types=hai_types,
             current_type=hai_type_str or "",
-            current_days=days,
+            current_days=days_param,
+            last_submission=last_submission,
             override_stats=override_stats,
             recent_overrides=recent_overrides,
         )
@@ -490,7 +509,8 @@ def reports():
             confirmed_hais=[],
             hai_types=[("", "All HAI Types")],
             current_type="",
-            current_days=30,
+            current_days="submission",
+            last_submission=None,
             override_stats={
                 "total_reviews": 0,
                 "completed_reviews": 0,

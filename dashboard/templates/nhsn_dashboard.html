@@ -25,14 +25,23 @@
     <div class="stat-card stat-success">
         <div class="stat-value">{{ stats.confirmed_hai or 0 }}</div>
         <div class="stat-label">Confirmed HAI</div>
+        {% if stats.since_date %}<div class="stat-sublabel">Since {{ stats.since_date }}</div>{% endif %}
     </div>
     <div class="stat-card">
         <div class="stat-value">{{ stats.rejected_hai or 0 }}</div>
         <div class="stat-label">Confirmed Not HAI</div>
+        {% if stats.since_date %}<div class="stat-sublabel">Since {{ stats.since_date }}</div>{% endif %}
     </div>
-    <div class="stat-card">
-        <div class="stat-value">{{ stats.total_events or 0 }}</div>
-        <div class="stat-label">NHSN Events</div>
+    <div class="stat-card stat-info">
+        {% if last_submission %}
+        <div class="stat-value stat-date">{{ last_submission.period_end }}</div>
+        <div class="stat-label">Last Submission</div>
+        <div class="stat-sublabel">{{ last_submission.event_count }} events submitted</div>
+        {% else %}
+        <div class="stat-value stat-date">-</div>
+        <div class="stat-label">Last Submission</div>
+        <div class="stat-sublabel">No submissions yet</div>
+        {% endif %}
     </div>
 </div>
 
@@ -137,6 +146,10 @@
     font-size: 2rem;
     font-weight: bold;
     color: #1e293b;
+}
+
+.stat-value.stat-date {
+    font-size: 1.25rem;
 }
 
 .stat-label {

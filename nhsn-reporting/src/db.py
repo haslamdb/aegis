@@ -619,29 +619,44 @@ class NHSNDatabase:
             rows = conn.execute("SELECT * FROM nhsn_candidate_stats").fetchall()
             return [dict(row) for row in rows]
 
-    def get_summary_stats(self) -> dict[str, Any]:
-        """Get overall summary statistics."""
+    def get_summary_stats(self, since_date: str | None = None) -> dict[str, Any]:
+        """Get overall summary statistics.
+
+        Args:
+            since_date: Optional date string (YYYY-MM-DD) to filter stats.
+                       If provided, only counts candidates created after this date.
+                       Typically set to the last NHSN submission date.
+
+        Returns:
+            Dictionary with summary statistics.
+        """
         with self._get_connection() as conn:
+            # Build date filter clause
+            date_filter = ""
+            date_params = ()
+            if since_date:
+                date_filter = " AND created_at >= ?"
+                date_params = (since_date,)
+
             total = conn.execute(
-                "SELECT COUNT(*) FROM nhsn_candidates"
+                f"SELECT COUNT(*) FROM nhsn_candidates WHERE 1=1{date_filter}",
+                date_params,
             ).fetchone()[0]
             pending = conn.execute(
-                "SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'pending'"
+                f"SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'pending'{date_filter}",
+                date_params,
             ).fetchone()[0]
             pending_review = conn.execute(
-                "SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'pending_review'"
+                f"SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'pending_review'{date_filter}",
+                date_params,
             ).fetchone()[0]
             confirmed = conn.execute(
-                "SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'confirmed'"
+                f"SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'confirmed'{date_filter}",
+                date_params,
             ).fetchone()[0]
             rejected = conn.execute(
-                "SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'rejected'"
-            ).fetchone()[0]
-            events = conn.execute(
-                "SELECT COUNT(*) FROM nhsn_events"
-            ).fetchone()[0]
-            unreported = conn.execute(
-                "SELECT COUNT(*) FROM nhsn_events WHERE reported = 0"
+                f"SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'rejected'{date_filter}",
+                date_params,
             ).fetchone()[0]
 
             return {
@@ -650,8 +665,7 @@ class NHSNDatabase:
                 "pending_review": pending_review,
                 "confirmed_hai": confirmed,
                 "rejected_hai": rejected,
-                "total_events": events,
-                "unreported_events": unreported,
+                "since_date": since_date,
             }
 
     def get_override_stats(self) -> dict[str, Any]:
@@ -821,16 +835,22 @@ class NHSNDatabase:
 
             return [self._row_to_candidate(row) for row in rows]
 
-    def get_hai_counts_by_type(self, days: int = 30) -> dict[str, int]:
+    def get_hai_counts_by_type(
+        self, days: int = 30, since_date: str | None = None
+    ) -> dict[str, int]:
         """Get counts of confirmed HAI by type in the given period.
 
         Args:
-            days: Number of days to look back
+            days: Number of days to look back (ignored if since_date provided)
+            since_date: Optional date string (YYYY-MM-DD) to filter from
 
         Returns:
             Dictionary mapping HAI type to count
         """
-        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        if since_date:
+            cutoff = since_date
+        else:
+            cutoff = (datetime.now() - timedelta(days=days)).isoformat()
 
         with self._get_connection() as conn:
             rows = conn.execute(
@@ -847,17 +867,26 @@ class NHSNDatabase:
 
             return {row["hai_type"]: row["count"] for row in rows}
 
-    def get_hai_counts_by_day(self, days: int = 30, hai_type: HAIType | None = None) -> list[dict]:
+    def get_hai_counts_by_day(
+        self,
+        days: int = 30,
+        since_date: str | None = None,
+        hai_type: HAIType | None = None,
+    ) -> list[dict]:
         """Get daily counts of confirmed HAI in the given period.
 
         Args:
-            days: Number of days to look back
+            days: Number of days to look back (ignored if since_date provided)
+            since_date: Optional date string (YYYY-MM-DD) to filter from
             hai_type: Filter by HAI type (all types if None)
 
         Returns:
             List of dicts with 'date' and 'count' keys
         """
-        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        if since_date:
+            cutoff = since_date
+        else:
+            cutoff = (datetime.now() - timedelta(days=days)).isoformat()
 
         with self._get_connection() as conn:
             if hai_type:
@@ -888,16 +917,23 @@ class NHSNDatabase:
 
             return [{"date": row["date"], "count": row["count"]} for row in rows]
 
-    def get_hai_report_data(self, days: int = 30) -> dict[str, Any]:
+    def get_hai_report_data(
+        self, days: int = 30, since_date: str | None = None
+    ) -> dict[str, Any]:
         """Get comprehensive HAI report data.
 
         Args:
-            days: Number of days to look back
+            days: Number of days to look back (ignored if since_date provided)
+            since_date: Optional date string (YYYY-MM-DD) to filter from.
+                       Typically set to last NHSN submission date.
 
         Returns:
             Dictionary with all report metrics
         """
-        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+        if since_date:
+            cutoff = since_date
+        else:
+            cutoff = (datetime.now() - timedelta(days=days)).isoformat()
 
         with self._get_connection() as conn:
             # Total confirmed in period
@@ -927,10 +963,10 @@ class NHSNDatabase:
             )
 
             # Counts by type
-            by_type = self.get_hai_counts_by_type(days)
+            by_type = self.get_hai_counts_by_type(days, since_date)
 
             # Counts by day
-            by_day = self.get_hai_counts_by_day(days)
+            by_day = self.get_hai_counts_by_day(days, since_date)
 
             # Get review decision breakdown
             review_breakdown = conn.execute(
@@ -956,6 +992,7 @@ class NHSNDatabase:
                     {"decision": row["reviewer_decision"], "count": row["count"]}
                     for row in review_breakdown
                 ],
+                "since_date": since_date,
             }
 
     # --- NHSN Submission Operations ---
