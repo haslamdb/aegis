@@ -122,6 +122,21 @@ body {
     border-bottom-color: var(--color-accent);
 }
 
+.nav-divider {
+    color: rgba(255, 255, 255, 0.3);
+    padding: 1rem 0.5rem;
+    user-select: none;
+}
+
+.nav-switch {
+    color: rgba(255, 255, 255, 0.6) !important;
+    font-style: italic;
+}
+
+.nav-switch:hover {
+    color: var(--color-white) !important;
+}
+
 /* ============================================
    Disclaimer Banner
    ============================================ */
