@@ -18,7 +18,7 @@ class ClarityNoteSource(BaseNoteSource):
     """Clarity HNO_INFO-based note retrieval."""
 
     def __init__(self, connection_string: str | None = None):
-        self.connection_string = connection_string or Config.CLARITY_CONNECTION_STRING
+        self.connection_string = connection_string or Config.get_clarity_connection_string()
         self._engine = None
 
     def _get_engine(self):
@@ -32,6 +32,10 @@ class ClarityNoteSource(BaseNoteSource):
             except ImportError:
                 raise ImportError("sqlalchemy required for Clarity access")
         return self._engine
+
+    def _is_sqlite(self) -> bool:
+        """Check if using SQLite (mock) database."""
+        return "sqlite" in (self.connection_string or "").lower()
 
     def get_notes_for_patient(
         self,
@@ -190,7 +194,7 @@ class ClarityDeviceSource(BaseDeviceSource):
     """Clarity IP_FLWSHT_MEAS-based device retrieval."""
 
     def __init__(self, connection_string: str | None = None):
-        self.connection_string = connection_string or Config.CLARITY_CONNECTION_STRING
+        self.connection_string = connection_string or Config.get_clarity_connection_string()
         self._engine = None
 
     def _get_engine(self):
@@ -204,6 +208,10 @@ class ClarityDeviceSource(BaseDeviceSource):
             except ImportError:
                 raise ImportError("sqlalchemy required for Clarity access")
         return self._engine
+
+    def _is_sqlite(self) -> bool:
+        """Check if using SQLite (mock) database."""
+        return "sqlite" in (self.connection_string or "").lower()
 
     def get_central_lines(
         self,
@@ -292,7 +300,7 @@ class ClarityCultureSource(BaseCultureSource):
     """Clarity-based culture result retrieval."""
 
     def __init__(self, connection_string: str | None = None):
-        self.connection_string = connection_string or Config.CLARITY_CONNECTION_STRING
+        self.connection_string = connection_string or Config.get_clarity_connection_string()
         self._engine = None
 
     def _get_engine(self):
@@ -306,6 +314,10 @@ class ClarityCultureSource(BaseCultureSource):
             except ImportError:
                 raise ImportError("sqlalchemy required for Clarity access")
         return self._engine
+
+    def _is_sqlite(self) -> bool:
+        """Check if using SQLite (mock) database."""
+        return "sqlite" in (self.connection_string or "").lower()
 
     def get_positive_blood_cultures(
         self,

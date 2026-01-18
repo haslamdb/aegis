@@ -712,6 +712,7 @@ body {
     box-shadow: var(--shadow-lg);
     margin-bottom: 0;
     overflow: hidden;
+    padding: 1.5rem;
 }
 
 .alert-header {
