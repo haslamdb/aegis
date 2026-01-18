@@ -29,7 +29,8 @@ def dashboard():
     try:
         db = get_nhsn_db()
         stats = db.get_summary_stats()
-        recent = db.get_recent_candidates(limit=10)
+        # Only show active candidates (not confirmed/rejected)
+        recent = db.get_active_candidates(limit=10)
         pending_reviews = db.get_pending_reviews()
 
         return render_template(
@@ -58,7 +59,7 @@ def dashboard():
 
 @nhsn_bp.route("/candidates")
 def candidates():
-    """List all CLABSI candidates."""
+    """List active CLABSI candidates (pending review)."""
     try:
         db = get_nhsn_db()
 
@@ -70,15 +71,19 @@ def candidates():
         from src.models import CandidateStatus, HAIType
 
         if status_filter:
+            # Specific status filter requested
             try:
                 status = CandidateStatus(status_filter)
                 candidates = db.get_candidates_by_status(
                     status, HAIType(hai_type) if hai_type else None
                 )
             except ValueError:
-                candidates = db.get_recent_candidates(limit=100)
+                candidates = db.get_active_candidates(limit=100)
         else:
-            candidates = db.get_recent_candidates(limit=100)
+            # Default: show only active candidates (not confirmed/rejected)
+            candidates = db.get_active_candidates(
+                limit=100, hai_type=HAIType(hai_type) if hai_type else None
+            )
 
         # Get stats
         stats = db.get_summary_stats()
@@ -94,6 +99,57 @@ def candidates():
         current_app.logger.error(f"Error loading candidates: {e}")
         return render_template(
             "nhsn_candidates.html",
+            candidates=[],
+            stats={},
+            error=str(e),
+        )
+
+
+@nhsn_bp.route("/history")
+def history():
+    """Show resolved candidates (confirmed CLABSI or rejected)."""
+    try:
+        db = get_nhsn_db()
+
+        # Get filter parameters
+        status_filter = request.args.get("status")  # confirmed or rejected
+        hai_type = request.args.get("type", "clabsi")
+
+        from src.models import CandidateStatus, HAIType
+
+        if status_filter:
+            # Specific status filter (confirmed or rejected only)
+            try:
+                status = CandidateStatus(status_filter)
+                if status in (CandidateStatus.CONFIRMED, CandidateStatus.REJECTED):
+                    candidates = db.get_candidates_by_status(
+                        status, HAIType(hai_type) if hai_type else None
+                    )
+                else:
+                    # Invalid filter for history, show all resolved
+                    candidates = db.get_resolved_candidates(limit=100)
+            except ValueError:
+                candidates = db.get_resolved_candidates(limit=100)
+        else:
+            # Default: show all resolved candidates
+            candidates = db.get_resolved_candidates(
+                limit=100, hai_type=HAIType(hai_type) if hai_type else None
+            )
+
+        # Get stats
+        stats = db.get_summary_stats()
+
+        return render_template(
+            "nhsn_history.html",
+            candidates=candidates,
+            stats=stats,
+            current_status=status_filter,
+            current_type=hai_type,
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error loading history: {e}")
+        return render_template(
+            "nhsn_history.html",
             candidates=[],
             stats={},
             error=str(e),
