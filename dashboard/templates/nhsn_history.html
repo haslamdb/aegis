@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}CLABSI Candidates - {{ app_name }}{% endblock %}
+{% block title %}CLABSI History - {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Active CLABSI Candidates</h1>
-    <p class="subtitle">Candidates awaiting classification or review</p>
+    <h1>CLABSI History</h1>
+    <p class="subtitle">Resolved candidates - confirmed CLABSI or rejected</p>
 </div>
 
 {% if error %}
@@ -20,10 +20,9 @@
         <label>
             Status:
             <select name="status" onchange="this.form.submit()">
-                <option value="">All Active</option>
-                <option value="pending" {% if current_status == 'pending' %}selected{% endif %}>Pending Classification</option>
-                <option value="classified" {% if current_status == 'classified' %}selected{% endif %}>Classified</option>
-                <option value="pending_review" {% if current_status == 'pending_review' %}selected{% endif %}>Pending Review</option>
+                <option value="">All Resolved</option>
+                <option value="confirmed" {% if current_status == 'confirmed' %}selected{% endif %}>Confirmed CLABSI</option>
+                <option value="rejected" {% if current_status == 'rejected' %}selected{% endif %}>Not CLABSI</option>
             </select>
         </label>
         <input type="hidden" name="type" value="{{ current_type or 'clabsi' }}">
@@ -33,22 +32,16 @@
 <!-- Stats Summary -->
 {% if stats %}
 <div class="stats-row">
-    <span class="stat-item">
-        <strong>{{ stats.total_candidates or 0 }}</strong> Total
-    </span>
-    <span class="stat-item stat-warning">
-        <strong>{{ stats.pending_classification or 0 }}</strong> Pending
-    </span>
-    <span class="stat-item stat-info">
-        <strong>{{ stats.pending_review or 0 }}</strong> Review
-    </span>
     <span class="stat-item stat-success">
-        <strong>{{ stats.confirmed_hai or 0 }}</strong> Confirmed
+        <strong>{{ stats.confirmed_hai or 0 }}</strong> Confirmed CLABSI
+    </span>
+    <span class="stat-item stat-secondary">
+        <strong>{{ stats.total_candidates - stats.confirmed_hai - stats.pending_classification - stats.pending_review if stats.total_candidates else 0 }}</strong> Rejected
     </span>
 </div>
 {% endif %}
 
-<!-- Candidates Table -->
+<!-- History Table -->
 {% if candidates %}
 <table class="table">
     <thead>
@@ -58,15 +51,14 @@
             <th>Culture Date</th>
             <th>Device</th>
             <th>Device Days</th>
-            <th>Criteria Met</th>
-            <th>Status</th>
-            <th>Created</th>
+            <th>Result</th>
+            <th>Resolved</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
         {% for c in candidates %}
-        <tr class="{% if not c.meets_initial_criteria %}excluded{% endif %} {% if c.status.value == 'confirmed' %}confirmed{% endif %}">
+        <tr class="{% if c.status.value == 'confirmed' %}confirmed{% else %}rejected{% endif %}">
             <td>
                 <strong>{{ c.patient.mrn }}</strong>
                 {% if c.patient.name %}
@@ -77,7 +69,7 @@
                 {% if c.culture.organism %}
                     {{ c.culture.organism }}
                 {% else %}
-                    <span class="text-muted">Pending</span>
+                    <span class="text-muted">Unknown</span>
                 {% endif %}
             </td>
             <td>{{ c.culture.collection_date.strftime('%Y-%m-%d') }}<br><small>{{ c.culture.collection_date.strftime('%H:%M') }}</small></td>
@@ -94,18 +86,12 @@
             <td class="text-center">
                 <strong>{{ c.device_days_at_culture if c.device_days_at_culture is not none else '?' }}</strong>
             </td>
-            <td class="text-center">
-                {% if c.meets_initial_criteria %}
-                    <span class="icon-success" title="Meets criteria">✓</span>
-                {% else %}
-                    <span class="icon-error" title="{{ c.exclusion_reason }}">✗</span>
-                    <br><small class="text-muted">{{ c.exclusion_reason }}</small>
-                {% endif %}
-            </td>
             <td>
-                <span class="badge badge-{{ 'success' if c.status.value == 'confirmed' else 'danger' if c.status.value == 'rejected' else 'warning' if c.status.value == 'pending' else 'info' if c.status.value == 'pending_review' else 'secondary' }}">
-                    {{ c.status.value | replace('_', ' ') | title }}
-                </span>
+                {% if c.status.value == 'confirmed' %}
+                    <span class="badge badge-success">Confirmed CLABSI</span>
+                {% else %}
+                    <span class="badge badge-secondary">Not CLABSI</span>
+                {% endif %}
             </td>
             <td>
                 <span data-timestamp="{{ c.created_at.isoformat() }}">{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
@@ -119,23 +105,23 @@
 </table>
 {% else %}
 <div class="empty-state">
-    <h3>No Active Candidates</h3>
+    <h3>No Resolved Cases</h3>
     <p>
         {% if current_status %}
             No candidates with status "{{ current_status }}" found.
         {% else %}
-            All candidates have been reviewed. Check the History page for resolved cases.
+            No CLABSI candidates have been resolved yet.
         {% endif %}
     </p>
     <p>
-        <a href="{{ url_for('nhsn.history') }}" class="btn btn-secondary">View History</a>
+        <a href="{{ url_for('nhsn.candidates') }}" class="btn btn-primary">View Active Candidates</a>
     </p>
 </div>
 {% endif %}
 
 <div class="page-actions">
     <a href="{{ url_for('nhsn.dashboard') }}" class="btn">&larr; Back to Dashboard</a>
-    <a href="{{ url_for('nhsn.history') }}" class="btn">View History</a>
+    <a href="{{ url_for('nhsn.candidates') }}" class="btn">View Active Candidates</a>
 </div>
 
 <style>
@@ -179,27 +165,15 @@
     border-radius: 4px;
 }
 
-.stat-item.stat-warning { background: #fef3c7; }
-.stat-item.stat-info { background: #dbeafe; }
 .stat-item.stat-success { background: #d1fae5; }
-
-tr.excluded {
-    opacity: 0.6;
-    background: #f8fafc;
-}
+.stat-item.stat-secondary { background: #e2e8f0; }
 
 tr.confirmed {
     background: #f0fdf4;
 }
 
-.icon-success {
-    color: #10b981;
-    font-size: 1.25rem;
-}
-
-.icon-error {
-    color: #ef4444;
-    font-size: 1.25rem;
+tr.rejected {
+    background: #f8fafc;
 }
 
 .badge {
@@ -211,9 +185,6 @@ tr.confirmed {
 }
 
 .badge-success { background: #10b981; color: white; }
-.badge-danger { background: #ef4444; color: white; }
-.badge-warning { background: #f59e0b; color: white; }
-.badge-info { background: #3b82f6; color: white; }
 .badge-secondary { background: #64748b; color: white; }
 
 .empty-state {
@@ -232,20 +203,12 @@ tr.confirmed {
     color: #64748b;
 }
 
-.empty-state code {
-    display: inline-block;
-    margin-top: 0.5rem;
-    padding: 0.5rem 1rem;
-    background: #1e293b;
-    color: #e2e8f0;
-    border-radius: 4px;
-    font-family: monospace;
-}
-
 .page-actions {
     margin-top: 2rem;
     padding-top: 1rem;
     border-top: 1px solid #e2e8f0;
+    display: flex;
+    gap: 1rem;
 }
 
 .text-center {

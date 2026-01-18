@@ -128,6 +128,49 @@ class NHSNDatabase:
                 ).fetchall()
             return [self._row_to_candidate(row) for row in rows]
 
+    def get_active_candidates(
+        self, limit: int = 100, hai_type: HAIType | None = None
+    ) -> list[HAICandidate]:
+        """Get active candidates (pending, classified, pending_review)."""
+        active_statuses = (
+            CandidateStatus.PENDING.value,
+            CandidateStatus.CLASSIFIED.value,
+            CandidateStatus.PENDING_REVIEW.value,
+        )
+        with self._get_connection() as conn:
+            if hai_type:
+                rows = conn.execute(
+                    f"SELECT * FROM nhsn_candidates WHERE status IN (?, ?, ?) AND hai_type = ? ORDER BY created_at DESC LIMIT ?",
+                    (*active_statuses, hai_type.value, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    f"SELECT * FROM nhsn_candidates WHERE status IN (?, ?, ?) ORDER BY created_at DESC LIMIT ?",
+                    (*active_statuses, limit),
+                ).fetchall()
+            return [self._row_to_candidate(row) for row in rows]
+
+    def get_resolved_candidates(
+        self, limit: int = 100, hai_type: HAIType | None = None
+    ) -> list[HAICandidate]:
+        """Get resolved candidates (confirmed or rejected) for history."""
+        resolved_statuses = (
+            CandidateStatus.CONFIRMED.value,
+            CandidateStatus.REJECTED.value,
+        )
+        with self._get_connection() as conn:
+            if hai_type:
+                rows = conn.execute(
+                    f"SELECT * FROM nhsn_candidates WHERE status IN (?, ?) AND hai_type = ? ORDER BY created_at DESC LIMIT ?",
+                    (*resolved_statuses, hai_type.value, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    f"SELECT * FROM nhsn_candidates WHERE status IN (?, ?) ORDER BY created_at DESC LIMIT ?",
+                    (*resolved_statuses, limit),
+                ).fetchall()
+            return [self._row_to_candidate(row) for row in rows]
+
     def check_candidate_exists(self, hai_type: HAIType, culture_id: str) -> bool:
         """Check if a candidate already exists for this culture."""
         with self._get_connection() as conn:

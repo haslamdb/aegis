@@ -47,18 +47,18 @@
 <div class="section">
     <h2>Quick Actions</h2>
     <div class="quick-links">
-        <a href="{{ url_for('nhsn.candidates') }}" class="btn btn-primary">View All Candidates</a>
+        <a href="{{ url_for('nhsn.candidates') }}" class="btn btn-primary">Active Candidates</a>
         <a href="{{ url_for('nhsn.candidates', status='pending') }}" class="btn btn-warning">Pending Classification</a>
         <a href="{{ url_for('nhsn.reviews') }}" class="btn btn-info">IP Review Queue</a>
+        <a href="{{ url_for('nhsn.history') }}" class="btn btn-secondary">History</a>
         <a href="{{ url_for('nhsn.reports') }}" class="btn btn-success">Reports & Analytics</a>
         <a href="{{ url_for('nhsn.submission') }}" class="btn btn-nhsn">NHSN Submission</a>
-        <a href="{{ url_for('nhsn.help_page') }}" class="btn btn-secondary">Help & Demo Guide</a>
     </div>
 </div>
 
-<!-- Recent Candidates -->
+<!-- Active Candidates -->
 <div class="section">
-    <h2>Recent Candidates</h2>
+    <h2>Active Candidates</h2>
     {% if recent_candidates %}
     <table class="table">
         <thead>
@@ -99,10 +99,10 @@
         </tbody>
     </table>
     <div class="text-center">
-        <a href="{{ url_for('nhsn.candidates') }}">View all candidates &rarr;</a>
+        <a href="{{ url_for('nhsn.candidates') }}">View all active candidates &rarr;</a>
     </div>
     {% else %}
-    <p class="empty-state">No candidates detected yet. Run the NHSN monitor to detect candidates.</p>
+    <p class="empty-state">No active candidates. All cases have been reviewed. <a href="{{ url_for('nhsn.history') }}">View history</a></p>
     {% endif %}
 </div>
 
