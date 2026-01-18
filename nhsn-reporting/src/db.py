@@ -864,6 +864,52 @@ class NHSNDatabase:
 
         return log_id
 
+    def get_last_submission(self) -> dict[str, Any] | None:
+        """Get the most recent submission to NHSN.
+
+        Returns:
+            Dictionary with last submission info, or None if no submissions
+        """
+        with self._get_connection() as conn:
+            # Create table if not exists
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS nhsn_submission_audit (
+                    id TEXT PRIMARY KEY,
+                    action TEXT NOT NULL,
+                    user_name TEXT NOT NULL,
+                    period_start TEXT NOT NULL,
+                    period_end TEXT NOT NULL,
+                    event_count INTEGER NOT NULL,
+                    notes TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+
+            row = conn.execute(
+                """
+                SELECT * FROM nhsn_submission_audit
+                WHERE action = 'submitted'
+                ORDER BY created_at DESC
+                LIMIT 1
+                """,
+            ).fetchone()
+
+            if not row:
+                return None
+
+            return {
+                "id": row["id"],
+                "action": row["action"],
+                "user_name": row["user_name"],
+                "period_start": row["period_start"],
+                "period_end": row["period_end"],
+                "event_count": row["event_count"],
+                "notes": row["notes"],
+                "created_at": datetime.fromisoformat(row["created_at"]),
+            }
+
     def get_submission_audit_log(self, limit: int = 20) -> list[dict[str, Any]]:
         """Get the submission audit log.
 

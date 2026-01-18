@@ -494,6 +494,9 @@ def submission():
         # Get audit log
         audit_log = db.get_submission_audit_log(limit=10)
 
+        # Get last submission info
+        last_submission = db.get_last_submission()
+
         return render_template(
             "nhsn_submission.html",
             events=events,
@@ -501,6 +504,7 @@ def submission():
             to_date=to_date.strftime("%Y-%m-%d"),
             preparer_name=preparer_name,
             audit_log=audit_log,
+            last_submission=last_submission,
         )
     except Exception as e:
         current_app.logger.error(f"Error loading NHSN submission page: {e}")
@@ -513,6 +517,7 @@ def submission():
             to_date=today.strftime("%Y-%m-%d"),
             preparer_name="",
             audit_log=[],
+            last_submission=None,
             error=str(e),
         )
 

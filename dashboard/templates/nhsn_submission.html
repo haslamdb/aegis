@@ -20,6 +20,43 @@
 </div>
 {% endif %}
 
+<!-- Last Submission Info -->
+{% if last_submission %}
+<div class="last-submission-card">
+    <div class="last-submission-header">
+        <span class="last-submission-icon">&#10003;</span>
+        <strong>Last NHSN Submission</strong>
+    </div>
+    <div class="last-submission-details">
+        <div class="last-submission-item">
+            <span class="label">Period:</span>
+            <span class="value">{{ last_submission.period_start }} to {{ last_submission.period_end }}</span>
+        </div>
+        <div class="last-submission-item">
+            <span class="label">Submitted:</span>
+            <span class="value">{{ last_submission.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+        </div>
+        <div class="last-submission-item">
+            <span class="label">By:</span>
+            <span class="value">{{ last_submission.user_name }}</span>
+        </div>
+        <div class="last-submission-item">
+            <span class="label">Events:</span>
+            <span class="value">{{ last_submission.event_count }}</span>
+        </div>
+    </div>
+    <div class="last-submission-hint">
+        <strong>Suggested next start date:</strong> {{ last_submission.period_end }}
+        <button type="button" class="btn btn-sm btn-link" onclick="setFromLastSubmission()">Use this date</button>
+    </div>
+</div>
+{% else %}
+<div class="no-submission-card">
+    <span class="no-submission-icon">&#9432;</span>
+    <span>No previous NHSN submissions recorded. This will be your first submission.</span>
+</div>
+{% endif %}
+
 <!-- Submission Parameters -->
 <div class="submission-form-card">
     <h2>Generate NHSN Submission Report</h2>
@@ -275,6 +312,91 @@
 </div>
 
 <style>
+/* Last Submission Card */
+.last-submission-card {
+    background: #f0fdf4;
+    border: 1px solid #22c55e;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.last-submission-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    color: #166534;
+    font-size: 1.1rem;
+}
+
+.last-submission-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: #22c55e;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.9rem;
+}
+
+.last-submission-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.last-submission-item {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.last-submission-item .label {
+    color: #166534;
+    font-weight: 500;
+}
+
+.last-submission-item .value {
+    color: #15803d;
+}
+
+.last-submission-hint {
+    padding-top: 0.75rem;
+    border-top: 1px solid #bbf7d0;
+    color: #166534;
+    font-size: 0.95rem;
+}
+
+.last-submission-hint .btn-link {
+    background: none;
+    border: none;
+    color: #15803d;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    font-weight: 600;
+}
+
+.no-submission-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: #64748b;
+}
+
+.no-submission-icon {
+    font-size: 1.25rem;
+    color: #94a3b8;
+}
+
 .submission-form-card {
     background: white;
     border-radius: 8px;
@@ -536,6 +658,18 @@ function formatDate(date) {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+}
+
+function setFromLastSubmission() {
+    {% if last_submission %}
+    // Set from date to day after last submission end date
+    const lastEndDate = new Date('{{ last_submission.period_end }}');
+    lastEndDate.setDate(lastEndDate.getDate() + 1);
+    document.getElementById('from_date').value = formatDate(lastEndDate);
+
+    // Set to date to today
+    document.getElementById('to_date').value = formatDate(new Date());
+    {% endif %}
 }
 
 // Set default dates on page load if not already set
