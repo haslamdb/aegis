@@ -1,0 +1,550 @@
+"""Database operations for NHSN reporting module."""
+
+import json
+import logging
+import sqlite3
+from datetime import datetime, date
+from pathlib import Path
+from typing import Any
+
+from .models import (
+    HAICandidate,
+    HAIType,
+    CandidateStatus,
+    Classification,
+    ClassificationDecision,
+    Review,
+    ReviewQueueType,
+    ReviewerDecision,
+    NHSNEvent,
+    Patient,
+    CultureResult,
+    DeviceInfo,
+    SupportingEvidence,
+    LLMAuditEntry,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class NHSNDatabase:
+    """SQLite database for NHSN candidate and classification storage."""
+
+    def __init__(self, db_path: str | Path):
+        self.db_path = Path(db_path).expanduser()
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        self._init_db()
+
+    def _init_db(self) -> None:
+        """Initialize the database schema."""
+        schema_path = Path(__file__).parent.parent / "schema.sql"
+        with open(schema_path) as f:
+            schema = f.read()
+
+        with self._get_connection() as conn:
+            conn.executescript(schema)
+
+    def _get_connection(self) -> sqlite3.Connection:
+        """Get a database connection with row factory."""
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    # --- Candidate Operations ---
+
+    def save_candidate(self, candidate: HAICandidate) -> None:
+        """Save or update an HAI candidate."""
+        row = candidate.to_db_row()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO nhsn_candidates (
+                    id, hai_type, patient_id, patient_mrn, patient_name,
+                    culture_id, culture_date, organism, device_info,
+                    device_days_at_culture, meets_initial_criteria,
+                    exclusion_reason, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["id"],
+                    row["hai_type"],
+                    row["patient_id"],
+                    row["patient_mrn"],
+                    row["patient_name"],
+                    row["culture_id"],
+                    row["culture_date"],
+                    row["organism"],
+                    row["device_info"],
+                    row["device_days_at_culture"],
+                    row["meets_initial_criteria"],
+                    row["exclusion_reason"],
+                    row["status"],
+                    row["created_at"],
+                ),
+            )
+            conn.commit()
+
+    def get_candidate(self, candidate_id: str) -> HAICandidate | None:
+        """Get a candidate by ID."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM nhsn_candidates WHERE id = ?", (candidate_id,)
+            ).fetchone()
+            if row:
+                return self._row_to_candidate(row)
+            return None
+
+    def get_candidates_by_status(
+        self, status: CandidateStatus, hai_type: HAIType | None = None
+    ) -> list[HAICandidate]:
+        """Get candidates by status."""
+        with self._get_connection() as conn:
+            if hai_type:
+                rows = conn.execute(
+                    "SELECT * FROM nhsn_candidates WHERE status = ? AND hai_type = ? ORDER BY created_at DESC",
+                    (status.value, hai_type.value),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM nhsn_candidates WHERE status = ? ORDER BY created_at DESC",
+                    (status.value,),
+                ).fetchall()
+            return [self._row_to_candidate(row) for row in rows]
+
+    def get_recent_candidates(
+        self, limit: int = 100, hai_type: HAIType | None = None
+    ) -> list[HAICandidate]:
+        """Get recent candidates."""
+        with self._get_connection() as conn:
+            if hai_type:
+                rows = conn.execute(
+                    "SELECT * FROM nhsn_candidates WHERE hai_type = ? ORDER BY created_at DESC LIMIT ?",
+                    (hai_type.value, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM nhsn_candidates ORDER BY created_at DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
+            return [self._row_to_candidate(row) for row in rows]
+
+    def check_candidate_exists(self, hai_type: HAIType, culture_id: str) -> bool:
+        """Check if a candidate already exists for this culture."""
+        with self._get_connection() as conn:
+            result = conn.execute(
+                "SELECT 1 FROM nhsn_candidates WHERE hai_type = ? AND culture_id = ?",
+                (hai_type.value, culture_id),
+            ).fetchone()
+            return result is not None
+
+    def update_candidate_status(
+        self, candidate_id: str, status: CandidateStatus
+    ) -> None:
+        """Update candidate status."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE nhsn_candidates SET status = ? WHERE id = ?",
+                (status.value, candidate_id),
+            )
+            conn.commit()
+
+    def _row_to_candidate(self, row: sqlite3.Row) -> HAICandidate:
+        """Convert database row to HAICandidate."""
+        device_info = None
+        if row["device_info"]:
+            di = json.loads(row["device_info"])
+            device_info = DeviceInfo(
+                device_type=di["device_type"],
+                insertion_date=datetime.fromisoformat(di["insertion_date"])
+                if di.get("insertion_date")
+                else None,
+                removal_date=datetime.fromisoformat(di["removal_date"])
+                if di.get("removal_date")
+                else None,
+                site=di.get("site"),
+                fhir_id=di.get("fhir_id"),
+            )
+
+        return HAICandidate(
+            id=row["id"],
+            hai_type=HAIType(row["hai_type"]),
+            patient=Patient(
+                fhir_id=row["patient_id"],
+                mrn=row["patient_mrn"],
+                name=row["patient_name"] or "",
+            ),
+            culture=CultureResult(
+                fhir_id=row["culture_id"],
+                collection_date=datetime.fromisoformat(row["culture_date"]),
+                organism=row["organism"],
+            ),
+            device_info=device_info,
+            device_days_at_culture=row["device_days_at_culture"],
+            meets_initial_criteria=bool(row["meets_initial_criteria"]),
+            exclusion_reason=row["exclusion_reason"],
+            status=CandidateStatus(row["status"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+    # --- Classification Operations ---
+
+    def save_classification(self, classification: Classification) -> None:
+        """Save an LLM classification."""
+        row = classification.to_db_row()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO nhsn_classifications (
+                    id, candidate_id, decision, confidence, alternative_source,
+                    is_mbi_lcbi, supporting_evidence, contradicting_evidence,
+                    reasoning, model_used, prompt_version, tokens_used,
+                    processing_time_ms, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["id"],
+                    row["candidate_id"],
+                    row["decision"],
+                    row["confidence"],
+                    row["alternative_source"],
+                    row["is_mbi_lcbi"],
+                    row["supporting_evidence"],
+                    row["contradicting_evidence"],
+                    row["reasoning"],
+                    row["model_used"],
+                    row["prompt_version"],
+                    row["tokens_used"],
+                    row["processing_time_ms"],
+                    row["created_at"],
+                ),
+            )
+            conn.commit()
+
+    def get_classification(self, classification_id: str) -> Classification | None:
+        """Get a classification by ID."""
+        with self._get_connection() as conn:
+            row = conn.execute(
+                "SELECT * FROM nhsn_classifications WHERE id = ?", (classification_id,)
+            ).fetchone()
+            if row:
+                return self._row_to_classification(row)
+            return None
+
+    def get_classifications_for_candidate(
+        self, candidate_id: str
+    ) -> list[Classification]:
+        """Get all classifications for a candidate."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM nhsn_classifications WHERE candidate_id = ? ORDER BY created_at DESC",
+                (candidate_id,),
+            ).fetchall()
+            return [self._row_to_classification(row) for row in rows]
+
+    def _row_to_classification(self, row: sqlite3.Row) -> Classification:
+        """Convert database row to Classification."""
+        supporting = []
+        if row["supporting_evidence"]:
+            for e in json.loads(row["supporting_evidence"]):
+                supporting.append(
+                    SupportingEvidence(
+                        text=e["text"],
+                        source=e["source"],
+                        date=datetime.fromisoformat(e["date"]) if e.get("date") else None,
+                        relevance=e.get("relevance"),
+                    )
+                )
+
+        contradicting = []
+        if row["contradicting_evidence"]:
+            for e in json.loads(row["contradicting_evidence"]):
+                contradicting.append(
+                    SupportingEvidence(
+                        text=e["text"],
+                        source=e["source"],
+                        date=datetime.fromisoformat(e["date"]) if e.get("date") else None,
+                        relevance=e.get("relevance"),
+                    )
+                )
+
+        return Classification(
+            id=row["id"],
+            candidate_id=row["candidate_id"],
+            decision=ClassificationDecision(row["decision"]),
+            confidence=row["confidence"],
+            alternative_source=row["alternative_source"],
+            is_mbi_lcbi=bool(row["is_mbi_lcbi"]),
+            supporting_evidence=supporting,
+            contradicting_evidence=contradicting,
+            reasoning=row["reasoning"],
+            model_used=row["model_used"],
+            prompt_version=row["prompt_version"],
+            tokens_used=row["tokens_used"] or 0,
+            processing_time_ms=row["processing_time_ms"] or 0,
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+    # --- Review Operations ---
+
+    def save_review(self, review: Review) -> None:
+        """Save a review queue entry."""
+        row = review.to_db_row()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO nhsn_reviews (
+                    id, candidate_id, classification_id, queue_type, reviewed,
+                    reviewer, reviewer_decision, reviewer_notes, created_at, reviewed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["id"],
+                    row["candidate_id"],
+                    row["classification_id"],
+                    row["queue_type"],
+                    row["reviewed"],
+                    row["reviewer"],
+                    row["reviewer_decision"],
+                    row["reviewer_notes"],
+                    row["created_at"],
+                    row["reviewed_at"],
+                ),
+            )
+            conn.commit()
+
+    def get_pending_reviews(
+        self, queue_type: ReviewQueueType | None = None
+    ) -> list[dict[str, Any]]:
+        """Get pending reviews with candidate and classification info."""
+        with self._get_connection() as conn:
+            if queue_type:
+                rows = conn.execute(
+                    "SELECT * FROM nhsn_pending_reviews WHERE queue_type = ?",
+                    (queue_type.value,),
+                ).fetchall()
+            else:
+                rows = conn.execute("SELECT * FROM nhsn_pending_reviews").fetchall()
+            return [dict(row) for row in rows]
+
+    def save_review(
+        self,
+        candidate_id: str,
+        reviewer: str,
+        decision: ReviewerDecision,
+        notes: str | None = None,
+        classification_id: str | None = None,
+        is_completed: bool = True,
+    ) -> str:
+        """Save a new review entry with individual parameters.
+
+        Args:
+            candidate_id: The candidate being reviewed
+            reviewer: Name of the reviewer
+            decision: The review decision
+            notes: Optional notes about the decision
+            classification_id: Optional linked classification
+            is_completed: Whether this is a final decision (False for "needs more info")
+        """
+        import uuid
+        review_id = str(uuid.uuid4())
+        now = datetime.now()
+
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO nhsn_reviews (
+                    id, candidate_id, classification_id, queue_type, reviewed,
+                    reviewer, reviewer_decision, reviewer_notes, created_at, reviewed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    review_id,
+                    candidate_id,
+                    classification_id,
+                    ReviewQueueType.IP_REVIEW.value,
+                    is_completed,  # Only mark as reviewed for final decisions
+                    reviewer,
+                    decision.value,
+                    notes,
+                    now.isoformat(),
+                    now.isoformat() if is_completed else None,
+                ),
+            )
+            conn.commit()
+        return review_id
+
+    def save_review_object(self, review: Review) -> None:
+        """Save a Review object to the database."""
+        row = review.to_db_row()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO nhsn_reviews (
+                    id, candidate_id, classification_id, queue_type, reviewed,
+                    reviewer, reviewer_decision, reviewer_notes, created_at, reviewed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["id"],
+                    row["candidate_id"],
+                    row["classification_id"],
+                    row["queue_type"],
+                    row["reviewed"],
+                    row["reviewer"],
+                    row["reviewer_decision"],
+                    row["reviewer_notes"],
+                    row["created_at"],
+                    row["reviewed_at"],
+                ),
+            )
+            conn.commit()
+
+    def complete_review(
+        self,
+        review_id: str,
+        reviewer: str,
+        decision: ReviewerDecision,
+        notes: str | None = None,
+    ) -> None:
+        """Mark a review as complete."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE nhsn_reviews
+                SET reviewed = 1, reviewer = ?, reviewer_decision = ?,
+                    reviewer_notes = ?, reviewed_at = ?
+                WHERE id = ?
+                """,
+                (
+                    reviewer,
+                    decision.value,
+                    notes,
+                    datetime.now().isoformat(),
+                    review_id,
+                ),
+            )
+            conn.commit()
+
+    # --- NHSN Event Operations ---
+
+    def save_event(self, event: NHSNEvent) -> None:
+        """Save a confirmed NHSN event."""
+        row = event.to_db_row()
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO nhsn_events (
+                    id, candidate_id, event_date, hai_type, location_code,
+                    pathogen_code, reported, reported_at, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["id"],
+                    row["candidate_id"],
+                    row["event_date"],
+                    row["hai_type"],
+                    row["location_code"],
+                    row["pathogen_code"],
+                    row["reported"],
+                    row["reported_at"],
+                    row["created_at"],
+                ),
+            )
+            conn.commit()
+
+    def get_unreported_events(self) -> list[NHSNEvent]:
+        """Get events that haven't been reported to NHSN yet."""
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM nhsn_events WHERE reported = 0 ORDER BY event_date"
+            ).fetchall()
+            return [self._row_to_event(row) for row in rows]
+
+    def mark_event_reported(self, event_id: str) -> None:
+        """Mark an event as reported."""
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE nhsn_events SET reported = 1, reported_at = ? WHERE id = ?",
+                (datetime.now().isoformat(), event_id),
+            )
+            conn.commit()
+
+    def _row_to_event(self, row: sqlite3.Row) -> NHSNEvent:
+        """Convert database row to NHSNEvent."""
+        return NHSNEvent(
+            id=row["id"],
+            candidate_id=row["candidate_id"],
+            event_date=date.fromisoformat(row["event_date"]),
+            hai_type=HAIType(row["hai_type"]),
+            location_code=row["location_code"],
+            pathogen_code=row["pathogen_code"],
+            reported=bool(row["reported"]),
+            reported_at=datetime.fromisoformat(row["reported_at"])
+            if row["reported_at"]
+            else None,
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
+    # --- Audit Operations ---
+
+    def log_llm_call(self, entry: LLMAuditEntry) -> None:
+        """Log an LLM API call for auditing."""
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO nhsn_llm_audit (
+                    candidate_id, model, success, input_tokens, output_tokens,
+                    response_time_ms, error_message, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    entry.candidate_id,
+                    entry.model,
+                    entry.success,
+                    entry.input_tokens,
+                    entry.output_tokens,
+                    entry.response_time_ms,
+                    entry.error_message,
+                    entry.created_at.isoformat(),
+                ),
+            )
+            conn.commit()
+
+    # --- Statistics ---
+
+    def get_candidate_stats(self) -> list[dict[str, Any]]:
+        """Get candidate statistics by type and status."""
+        with self._get_connection() as conn:
+            rows = conn.execute("SELECT * FROM nhsn_candidate_stats").fetchall()
+            return [dict(row) for row in rows]
+
+    def get_summary_stats(self) -> dict[str, Any]:
+        """Get overall summary statistics."""
+        with self._get_connection() as conn:
+            total = conn.execute(
+                "SELECT COUNT(*) FROM nhsn_candidates"
+            ).fetchone()[0]
+            pending = conn.execute(
+                "SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'pending'"
+            ).fetchone()[0]
+            pending_review = conn.execute(
+                "SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'pending_review'"
+            ).fetchone()[0]
+            confirmed = conn.execute(
+                "SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'confirmed'"
+            ).fetchone()[0]
+            events = conn.execute(
+                "SELECT COUNT(*) FROM nhsn_events"
+            ).fetchone()[0]
+            unreported = conn.execute(
+                "SELECT COUNT(*) FROM nhsn_events WHERE reported = 0"
+            ).fetchone()[0]
+
+            return {
+                "total_candidates": total,
+                "pending_classification": pending,
+                "pending_review": pending_review,
+                "confirmed_hai": confirmed,
+                "total_events": events,
+                "unreported_events": unreported,
+            }

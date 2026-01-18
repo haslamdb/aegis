@@ -23,6 +23,17 @@ class Config:
     # Pagination
     ALERTS_PER_PAGE = int(os.environ.get("ALERTS_PER_PAGE", "50"))
 
+    # Email Notifications
+    SMTP_SERVER = os.environ.get("SMTP_SERVER", "")
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+    SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "asp-alerts@example.com")
+    SENDER_NAME = os.environ.get("SENDER_NAME", "ASP Alerts")
+
+    # NHSN Module
+    NHSN_NOTIFICATION_EMAIL = os.environ.get("NHSN_NOTIFICATION_EMAIL", "")
+
 
 class DevelopmentConfig(Config):
     """Development configuration."""

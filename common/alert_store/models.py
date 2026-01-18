@@ -11,6 +11,8 @@ class AlertType(Enum):
     """Types of alerts that can be stored."""
     BACTEREMIA = "bacteremia"
     BROAD_SPECTRUM_USAGE = "broad_spectrum_usage"
+    NHSN_CLABSI = "nhsn_clabsi"        # NHSN CLABSI candidate
+    NHSN_REVIEW = "nhsn_review"        # NHSN review queue item
     CUSTOM = "custom"
 
 
