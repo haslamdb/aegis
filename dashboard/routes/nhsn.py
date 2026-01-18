@@ -497,6 +497,18 @@ def submission():
         # Get last submission info
         last_submission = db.get_last_submission()
 
+        # Check DIRECT configuration
+        from src.config import Config
+        direct_configured = Config.is_direct_configured()
+        direct_config = None
+        if direct_configured:
+            direct_config = {
+                "facility_id": Config.NHSN_FACILITY_ID,
+                "facility_name": Config.NHSN_FACILITY_NAME,
+                "sender_address": Config.NHSN_SENDER_DIRECT_ADDRESS,
+                "nhsn_address": Config.NHSN_DIRECT_ADDRESS,
+            }
+
         return render_template(
             "nhsn_submission.html",
             events=events,
@@ -505,6 +517,8 @@ def submission():
             preparer_name=preparer_name,
             audit_log=audit_log,
             last_submission=last_submission,
+            direct_configured=direct_configured,
+            direct_config=direct_config,
         )
     except Exception as e:
         current_app.logger.error(f"Error loading NHSN submission page: {e}")
@@ -518,6 +532,8 @@ def submission():
             preparer_name="",
             audit_log=[],
             last_submission=None,
+            direct_configured=False,
+            direct_config=None,
             error=str(e),
         )
 
@@ -674,3 +690,135 @@ def mark_submitted():
         current_app.logger.error(f"Error marking events as submitted: {e}")
         from flask import redirect, url_for
         return redirect(url_for("nhsn.submission", error=str(e)))
+
+
+@nhsn_bp.route("/submission/direct", methods=["POST"])
+def direct_submission():
+    """Submit HAI events directly to NHSN via DIRECT protocol."""
+    try:
+        db = get_nhsn_db()
+        from datetime import datetime
+        from flask import redirect, url_for
+
+        from_date_str = request.form.get("from_date")
+        to_date_str = request.form.get("to_date")
+        preparer_name = request.form.get("preparer_name", "Unknown")
+
+        from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+        to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+
+        # Check if DIRECT is configured
+        from src.config import Config
+        if not Config.is_direct_configured():
+            return redirect(url_for(
+                "nhsn.submission",
+                from_date=from_date_str,
+                to_date=to_date_str,
+                preparer_name=preparer_name,
+                error="DIRECT protocol not configured. Please configure HISP credentials."
+            ))
+
+        # Get events
+        events = db.get_confirmed_hai_in_date_range(from_date, to_date)
+        if not events:
+            return redirect(url_for(
+                "nhsn.submission",
+                from_date=from_date_str,
+                to_date=to_date_str,
+                preparer_name=preparer_name,
+                error="No events to submit for the selected period."
+            ))
+
+        # Generate CDA documents
+        from src.cda import CDAGenerator, create_bsi_document_from_candidate
+        from src.direct import DirectClient
+
+        direct_config = Config.get_direct_config()
+        generator = CDAGenerator(
+            facility_id=direct_config.facility_id,
+            facility_name=direct_config.facility_name,
+        )
+
+        cda_documents = []
+        for event in events:
+            bsi_doc = create_bsi_document_from_candidate(
+                event,
+                facility_id=direct_config.facility_id,
+                facility_name=direct_config.facility_name,
+                author_name=preparer_name,
+            )
+            cda_xml = generator.generate_bsi_document(bsi_doc)
+            cda_documents.append(cda_xml)
+
+        # Submit via DIRECT
+        client = DirectClient(direct_config)
+        result = client.submit_cda_documents(
+            cda_documents=cda_documents,
+            submission_type="HAI-BSI",
+            preparer_name=preparer_name,
+        )
+
+        if result.success:
+            # Log the submission
+            db.log_submission_action(
+                action="direct_submitted",
+                user_name=preparer_name,
+                period_start=from_date_str,
+                period_end=to_date_str,
+                event_count=len(events),
+                notes=f"DIRECT submission. Message ID: {result.message_id}",
+            )
+
+            # Mark events as submitted
+            event_ids = [e.id for e in events]
+            db.mark_events_as_submitted(event_ids)
+
+            return redirect(url_for(
+                "nhsn.submission",
+                from_date=from_date_str,
+                to_date=to_date_str,
+                preparer_name=preparer_name,
+                success_message=f"Successfully submitted {len(events)} events to NHSN via DIRECT. Message ID: {result.message_id}"
+            ))
+        else:
+            return redirect(url_for(
+                "nhsn.submission",
+                from_date=from_date_str,
+                to_date=to_date_str,
+                preparer_name=preparer_name,
+                error=f"DIRECT submission failed: {result.error_message}"
+            ))
+
+    except Exception as e:
+        current_app.logger.error(f"Error in DIRECT submission: {e}")
+        from flask import redirect, url_for
+        return redirect(url_for("nhsn.submission", error=str(e)))
+
+
+@nhsn_bp.route("/submission/test-direct", methods=["POST"])
+def test_direct_connection():
+    """Test the DIRECT protocol connection."""
+    try:
+        from src.config import Config
+        from src.direct import DirectClient
+
+        if not Config.is_direct_configured():
+            return jsonify({
+                "success": False,
+                "message": "DIRECT protocol not configured",
+            })
+
+        direct_config = Config.get_direct_config()
+        client = DirectClient(direct_config)
+        success, message = client.test_connection()
+
+        return jsonify({
+            "success": success,
+            "message": message,
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": str(e),
+        })

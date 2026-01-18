@@ -191,10 +191,62 @@
     </table>
 </div>
 
-<!-- Mark as Submitted -->
+<!-- Direct NHSN Submission -->
+<div class="direct-submission-card">
+    <h3>Direct NHSN Submission (via DIRECT Protocol)</h3>
+    {% if direct_configured %}
+    <div class="direct-status direct-status-configured">
+        <span class="status-icon">&#10003;</span>
+        <div class="status-details">
+            <strong>DIRECT Protocol Configured</strong>
+            <div class="config-info">
+                <span><strong>Facility:</strong> {{ direct_config.facility_name }} ({{ direct_config.facility_id }})</span>
+                <span><strong>Sender:</strong> {{ direct_config.sender_address }}</span>
+            </div>
+        </div>
+    </div>
+    <p>Submit HAI events directly to NHSN using the DIRECT protocol. This generates HL7 CDA documents and sends them securely via your configured HISP.</p>
+    <form method="post" action="{{ url_for('nhsn.direct_submission') }}" id="directSubmitForm">
+        <input type="hidden" name="from_date" value="{{ from_date }}">
+        <input type="hidden" name="to_date" value="{{ to_date }}">
+        <input type="hidden" name="preparer_name" value="{{ preparer_name }}">
+        <div class="direct-buttons">
+            <button type="submit" class="btn btn-direct"
+                    onclick="return confirm('Submit {{ events | length }} events directly to NHSN via DIRECT protocol?');">
+                <span class="icon">&#9993;</span> Submit {{ events | length }} Events via DIRECT
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="testDirectConnection()">
+                Test Connection
+            </button>
+        </div>
+    </form>
+    <div id="directTestResult" class="direct-test-result" style="display: none;"></div>
+    {% else %}
+    <div class="direct-status direct-status-not-configured">
+        <span class="status-icon">&#9888;</span>
+        <div class="status-details">
+            <strong>DIRECT Protocol Not Configured</strong>
+            <p>To enable direct NHSN submission, configure your HISP credentials in the environment settings.</p>
+        </div>
+    </div>
+    <div class="direct-setup-info">
+        <h4>Setup Requirements:</h4>
+        <ol>
+            <li><strong>HISP Account:</strong> Contact a Health Information Service Provider (e.g., <a href="https://rosettahealth.com" target="_blank">RosettaHealth</a>)</li>
+            <li><strong>NHSN DIRECT Address:</strong> Sign up for DIRECT in NHSN application</li>
+            <li><strong>Configure Settings:</strong> Add HISP credentials to your environment file</li>
+        </ol>
+        <p><a href="https://www.cdc.gov/nhsn/cdaportal/importingdata.html" target="_blank">
+            Learn more about NHSN DIRECT submission &rarr;
+        </a></p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Manual Submission (Mark as Submitted) -->
 <div class="submission-action-card">
-    <h3>Mark Events as Submitted to NHSN</h3>
-    <p>After you have entered these events into the NHSN system, click below to mark them as reported.</p>
+    <h3>Manual Submission (Mark as Submitted)</h3>
+    <p>If you entered events manually into the NHSN web application, click below to mark them as reported in this system.</p>
     <form method="post" action="{{ url_for('nhsn.mark_submitted') }}" id="markSubmittedForm">
         <input type="hidden" name="from_date" value="{{ from_date }}">
         <input type="hidden" name="to_date" value="{{ to_date }}">
@@ -239,8 +291,8 @@
             <tr>
                 <td>{{ entry.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                 <td>
-                    <span class="badge badge-{{ 'success' if entry.action == 'submitted' else 'info' }}">
-                        {{ entry.action | title }}
+                    <span class="badge badge-{{ 'success' if entry.action == 'submitted' else 'nhsn' if entry.action == 'direct_submitted' else 'info' }}">
+                        {{ entry.action | replace('_', ' ') | title }}
                     </span>
                 </td>
                 <td>{{ entry.user_name }}</td>
@@ -497,6 +549,129 @@
     color: #475569;
 }
 
+/* Direct Submission Card */
+.direct-submission-card {
+    background: white;
+    border: 1px solid #0f766e;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.direct-submission-card h3 {
+    margin: 0 0 1rem 0;
+    color: #0f766e;
+}
+
+.direct-status {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.direct-status-configured {
+    background: #f0fdf4;
+    border: 1px solid #22c55e;
+}
+
+.direct-status-not-configured {
+    background: #fefce8;
+    border: 1px solid #eab308;
+}
+
+.direct-status .status-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.direct-status-configured .status-icon {
+    color: #22c55e;
+}
+
+.direct-status-not-configured .status-icon {
+    color: #eab308;
+}
+
+.direct-status .status-details {
+    flex: 1;
+}
+
+.direct-status .status-details strong {
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.direct-status .config-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+    color: #166534;
+}
+
+.direct-buttons {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.btn-direct {
+    background: #0f766e;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+.btn-direct:hover {
+    background: #0d6b63;
+}
+
+.direct-setup-info {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f8fafc;
+    border-radius: 6px;
+}
+
+.direct-setup-info h4 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1rem;
+    color: #334155;
+}
+
+.direct-setup-info ol {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.direct-setup-info li {
+    margin: 0.5rem 0;
+}
+
+.direct-test-result {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.direct-test-result.success {
+    background: #f0fdf4;
+    border: 1px solid #22c55e;
+    color: #166534;
+}
+
+.direct-test-result.error {
+    background: #fef2f2;
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
 .submission-action-card {
     background: #f0fdf4;
     border: 1px solid #22c55e;
@@ -580,6 +755,7 @@
 .badge-hai-cauti { background: #f59e0b; color: white; }
 .badge-hai-ssi { background: #8b5cf6; color: white; }
 .badge-hai-vae { background: #3b82f6; color: white; }
+.badge-nhsn { background: #0f766e; color: white; }
 
 .icon {
     margin-right: 0.25rem;
@@ -670,6 +846,34 @@ function setFromLastSubmission() {
     // Set to date to today
     document.getElementById('to_date').value = formatDate(new Date());
     {% endif %}
+}
+
+function testDirectConnection() {
+    const resultDiv = document.getElementById('directTestResult');
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'direct-test-result';
+    resultDiv.innerHTML = 'Testing connection...';
+
+    fetch('{{ url_for("nhsn.test_direct_connection") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.className = 'direct-test-result success';
+            resultDiv.innerHTML = '<strong>Success:</strong> ' + data.message;
+        } else {
+            resultDiv.className = 'direct-test-result error';
+            resultDiv.innerHTML = '<strong>Error:</strong> ' + data.message;
+        }
+    })
+    .catch(error => {
+        resultDiv.className = 'direct-test-result error';
+        resultDiv.innerHTML = '<strong>Error:</strong> ' + error;
+    });
 }
 
 // Set default dates on page load if not already set
