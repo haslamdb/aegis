@@ -400,20 +400,39 @@ View the audit log on the submission page at `/nhsn/submission`.
 - [x] LLM extraction + rules engine architecture
 - [x] IP review workflow (all candidates routed to IP)
 - [x] Override tracking for LLM quality assessment
+- [x] Source attribution for evidence (note type, date, author)
 - [x] NHSN CSV export
 - [x] NHSN DIRECT protocol submission
 - [x] CDA document generation
 - [x] Reports and analytics dashboard
-- [ ] **Denominator data for rate calculation** - Central line days and/or patient days needed for CLABSI rate (CLABSIs per 1,000 central line days). Options:
-  - Pull from Clarity flowsheet data (IP_FLWSHT_MEAS) where nurses document daily line presence
-  - FHIR DeviceUseStatement with timing data (if reliably populated)
-  - Manual entry on Submission page
-  - Integration with existing line-day tracking system
-  - *TODO: Determine how CCHMC currently tracks central line days*
+- [x] Stats reset with each NHSN submission
 - [ ] CAUTI detection (catheter-associated UTI)
 - [ ] SSI detection (surgical site infection)
 - [ ] VAE detection (ventilator-associated event)
 - [ ] Epic SMART on FHIR integration
+
+## Future Work
+
+### CLABSI Rate Denominator ([#1](https://github.com/haslamdb/asp-alerts/issues/1))
+
+Central line days aggregation needed for CLABSI rate calculation:
+- **Formula**: CLABSI Rate = (CLABSI count / central line days) × 1,000
+- **Data Source**: FHIR DeviceUseStatement (already captured for candidate detection)
+- **Implementation**: `src/data/denominator.py`
+
+Options for line day tracking:
+- Aggregate from FHIR DeviceUseStatement timing data
+- Pull from Clarity flowsheet data (IP_FLWSHT_MEAS)
+- Manual entry on Submission page
+- Integration with existing line-day tracking system
+
+### Clarity Integration for AU/AR Reporting ([#2](https://github.com/haslamdb/asp-alerts/issues/2))
+
+Census days and antibiotic use data for NHSN Antibiotic Use (AU) and Antimicrobial Resistance (AR) modules:
+- **Census Days**: Patient days by unit/location from `PAT_ENC_HSP`
+- **Antibiotic Use**: Days of therapy, defined daily doses from `MAR_ADMIN_INFO`, `ORDER_MED`
+- **Data Source**: Epic Clarity database (first production use of `clarity_source.py`)
+- **Rates**: AU/AR metrics per NHSN methodology
 
 ## Related Documentation
 
