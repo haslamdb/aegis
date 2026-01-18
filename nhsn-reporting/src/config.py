@@ -91,6 +91,27 @@ class Config:
     EPIC_PRIVATE_KEY_PATH: str | None = os.getenv("EPIC_PRIVATE_KEY_PATH")
     EPIC_FHIR_BASE_URL: str | None = os.getenv("EPIC_FHIR_BASE_URL")
 
+    # --- NHSN DIRECT Protocol Submission ---
+    # HISP (Health Information Service Provider) settings
+    NHSN_HISP_SMTP_SERVER: str | None = os.getenv("NHSN_HISP_SMTP_SERVER")
+    NHSN_HISP_SMTP_PORT: int = int(os.getenv("NHSN_HISP_SMTP_PORT", "587"))
+    NHSN_HISP_SMTP_USERNAME: str | None = os.getenv("NHSN_HISP_SMTP_USERNAME")
+    NHSN_HISP_SMTP_PASSWORD: str | None = os.getenv("NHSN_HISP_SMTP_PASSWORD")
+    NHSN_HISP_USE_TLS: bool = os.getenv("NHSN_HISP_USE_TLS", "true").lower() == "true"
+
+    # DIRECT addresses
+    NHSN_SENDER_DIRECT_ADDRESS: str | None = os.getenv("NHSN_SENDER_DIRECT_ADDRESS")
+    NHSN_DIRECT_ADDRESS: str | None = os.getenv("NHSN_DIRECT_ADDRESS")
+
+    # Facility info for NHSN reporting
+    NHSN_FACILITY_ID: str | None = os.getenv("NHSN_FACILITY_ID")
+    NHSN_FACILITY_NAME: str | None = os.getenv("NHSN_FACILITY_NAME")
+
+    # Optional certificates for S/MIME (if required by HISP)
+    NHSN_SENDER_CERT_PATH: str | None = os.getenv("NHSN_SENDER_CERT_PATH")
+    NHSN_SENDER_KEY_PATH: str | None = os.getenv("NHSN_SENDER_KEY_PATH")
+    NHSN_CERT_PATH: str | None = os.getenv("NHSN_CERT_PATH")
+
     @classmethod
     def get_fhir_base_url(cls) -> str:
         """Get the FHIR base URL (Epic if configured, otherwise default)."""
@@ -122,6 +143,40 @@ class Config:
     def is_email_configured(cls) -> bool:
         """Check if email notifications are configured."""
         return bool(cls.SMTP_SERVER) and bool(cls.NHSN_NOTIFICATION_EMAIL)
+
+    @classmethod
+    def is_direct_configured(cls) -> bool:
+        """Check if NHSN DIRECT protocol submission is configured."""
+        return all([
+            cls.NHSN_HISP_SMTP_SERVER,
+            cls.NHSN_HISP_SMTP_USERNAME,
+            cls.NHSN_HISP_SMTP_PASSWORD,
+            cls.NHSN_SENDER_DIRECT_ADDRESS,
+            cls.NHSN_DIRECT_ADDRESS,
+        ])
+
+    @classmethod
+    def get_direct_config(cls):
+        """Get DIRECT configuration for submission client.
+
+        Returns:
+            DirectConfig object or None if not configured
+        """
+        from .direct import DirectConfig
+        return DirectConfig(
+            hisp_smtp_server=cls.NHSN_HISP_SMTP_SERVER or "",
+            hisp_smtp_port=cls.NHSN_HISP_SMTP_PORT,
+            hisp_smtp_username=cls.NHSN_HISP_SMTP_USERNAME or "",
+            hisp_smtp_password=cls.NHSN_HISP_SMTP_PASSWORD or "",
+            hisp_use_tls=cls.NHSN_HISP_USE_TLS,
+            sender_direct_address=cls.NHSN_SENDER_DIRECT_ADDRESS or "",
+            nhsn_direct_address=cls.NHSN_DIRECT_ADDRESS or "",
+            facility_id=cls.NHSN_FACILITY_ID or "",
+            facility_name=cls.NHSN_FACILITY_NAME or "",
+            sender_cert_path=cls.NHSN_SENDER_CERT_PATH or "",
+            sender_key_path=cls.NHSN_SENDER_KEY_PATH or "",
+            nhsn_cert_path=cls.NHSN_CERT_PATH or "",
+        )
 
 
 # Module-level convenience instance
