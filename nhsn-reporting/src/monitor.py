@@ -408,6 +408,9 @@ Review in Dashboard: {Config.DASHBOARD_BASE_URL}/nhsn/candidates/{candidate.id}
                     new_status = self._determine_status(classification)
                     self.db.update_candidate_status(candidate.id, new_status)
 
+                    # Create review entry so it appears in pending reviews queue
+                    self._create_review_entry(candidate, classification)
+
                     logger.info(
                         f"Classified {candidate.id} as {classification.decision.value} "
                         f"(confidence={classification.confidence:.2f}, status={new_status.value})"
@@ -444,26 +447,35 @@ Review in Dashboard: {Config.DASHBOARD_BASE_URL}/nhsn/candidates/{candidate.id}
         return results
 
     def _determine_status(self, classification) -> CandidateStatus:
-        """Determine candidate status based on classification result."""
-        decision = classification.decision
+        """Determine candidate status based on classification result.
 
-        if decision == ClassificationDecision.HAI_CONFIRMED:
-            if classification.confidence >= Config.AUTO_CLASSIFY_THRESHOLD:
-                return CandidateStatus.CONFIRMED
-            else:
-                return CandidateStatus.PENDING_REVIEW
+        All classified candidates go to pending_review for IP final decision.
+        The LLM provides classification and confidence, but IP always reviews.
+        """
+        # All cases go to pending_review - IP makes the final call
+        return CandidateStatus.PENDING_REVIEW
 
-        elif decision == ClassificationDecision.NOT_HAI:
-            if classification.confidence >= Config.AUTO_CLASSIFY_THRESHOLD:
-                return CandidateStatus.EXCLUDED
-            else:
-                return CandidateStatus.PENDING_REVIEW
+    def _create_review_entry(self, candidate: HAICandidate, classification) -> None:
+        """Create a review queue entry for IP review.
 
-        elif decision == ClassificationDecision.PENDING_REVIEW:
-            return CandidateStatus.PENDING_REVIEW
+        Args:
+            candidate: The HAI candidate
+            classification: The LLM classification result
+        """
+        import uuid
+        from datetime import datetime
+        from .models import Review, ReviewQueueType
 
-        else:
-            return CandidateStatus.PENDING_REVIEW
+        review = Review(
+            id=str(uuid.uuid4()),
+            candidate_id=candidate.id,
+            classification_id=classification.id,
+            queue_type=ReviewQueueType.IP_REVIEW,
+            reviewed=False,
+            created_at=datetime.now(),
+        )
+        self.db.save_review_object(review)
+        logger.debug(f"Created review entry {review.id} for candidate {candidate.id}")
 
     def run_full_pipeline(self, dry_run: bool = False) -> dict:
         """Run full pipeline: detection + classification.

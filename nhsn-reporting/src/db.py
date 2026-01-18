@@ -493,6 +493,39 @@ class NHSNDatabase:
             )
             conn.commit()
 
+    def supersede_old_reviews(self, candidate_id: str, superseding_review_id: str) -> int:
+        """Mark any prior incomplete reviews for a candidate as superseded.
+
+        When a final decision is submitted, any previous "needs_more_info" reviews
+        should be marked as reviewed=1 so they don't appear in the pending queue.
+
+        Args:
+            candidate_id: The candidate whose old reviews to supersede
+            superseding_review_id: The ID of the new final review (to exclude from update)
+
+        Returns:
+            Number of reviews that were superseded
+        """
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                """
+                UPDATE nhsn_reviews
+                SET reviewed = 1,
+                    reviewer_notes = COALESCE(reviewer_notes || ' ', '') || '[Superseded by later review]',
+                    reviewed_at = ?
+                WHERE candidate_id = ?
+                  AND reviewed = 0
+                  AND id != ?
+                """,
+                (
+                    datetime.now().isoformat(),
+                    candidate_id,
+                    superseding_review_id,
+                ),
+            )
+            conn.commit()
+            return cursor.rowcount
+
     # --- NHSN Event Operations ---
 
     def save_event(self, event: NHSNEvent) -> None:
@@ -601,6 +634,9 @@ class NHSNDatabase:
             confirmed = conn.execute(
                 "SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'confirmed'"
             ).fetchone()[0]
+            rejected = conn.execute(
+                "SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'rejected'"
+            ).fetchone()[0]
             events = conn.execute(
                 "SELECT COUNT(*) FROM nhsn_events"
             ).fetchone()[0]
@@ -613,6 +649,7 @@ class NHSNDatabase:
                 "pending_classification": pending,
                 "pending_review": pending_review,
                 "confirmed_hai": confirmed,
+                "rejected_hai": rejected,
                 "total_events": events,
                 "unreported_events": unreported,
             }
