@@ -194,9 +194,16 @@
                 </button>
             </div>
 
+            <div class="classification-divider">
+                <span>If Not CLABSI, specify reason:</span>
+            </div>
+
             <div class="secondary-buttons">
                 <button type="button" class="btn btn-mbi btn-block" data-decision="mbi_lcbi">
                     MBI-LCBI
+                </button>
+                <button type="button" class="btn btn-secondary-source btn-block" data-decision="secondary">
+                    Secondary
                 </button>
                 <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
                     Needs More Info
@@ -413,10 +420,36 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
     margin-bottom: 0.75rem;
 }
 
+.classification-divider {
+    margin: 1rem 0;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.8rem;
+    position: relative;
+}
+
+.classification-divider::before,
+.classification-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 20%;
+    height: 1px;
+    background: #e2e8f0;
+}
+
+.classification-divider::before {
+    left: 0;
+}
+
+.classification-divider::after {
+    right: 0;
+}
+
 .secondary-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
 }
 
 .btn-clabsi {
@@ -451,8 +484,9 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
     background: #f59e0b;
     color: white;
     border: 2px solid #f59e0b;
-    padding: 0.75rem;
+    padding: 0.6rem 0.25rem;
     font-weight: 500;
+    font-size: 0.85rem;
 }
 
 .btn-mbi:hover {
@@ -460,12 +494,27 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
     border-color: #d97706;
 }
 
+.btn-secondary-source {
+    background: #8b5cf6;
+    color: white;
+    border: 2px solid #8b5cf6;
+    padding: 0.6rem 0.25rem;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.btn-secondary-source:hover {
+    background: #7c3aed;
+    border-color: #7c3aed;
+}
+
 .btn-info-needed {
     background: #6b7280;
     color: white;
     border: 2px solid #6b7280;
-    padding: 0.75rem;
+    padding: 0.6rem 0.25rem;
     font-weight: 500;
+    font-size: 0.85rem;
 }
 
 .btn-info-needed:hover {
@@ -599,7 +648,15 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
 
 /* Responsive */
 @media (max-width: 1024px) {
-    .classification-buttons,
+    .classification-buttons {
+        grid-template-columns: 1fr;
+    }
+    .secondary-buttons {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+}
+
+@media (max-width: 480px) {
     .secondary-buttons {
         grid-template-columns: 1fr;
     }

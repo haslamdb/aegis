@@ -248,7 +248,8 @@ def api_submit_review(candidate_id):
         decision_map = {
             "confirmed": ReviewerDecision.CONFIRMED,
             "rejected": ReviewerDecision.REJECTED,
-            "mbi_lcbi": ReviewerDecision.CONFIRMED,  # MBI-LCBI is still confirmed, just flagged
+            "mbi_lcbi": ReviewerDecision.REJECTED,  # MBI-LCBI is Not CLABSI
+            "secondary": ReviewerDecision.REJECTED,  # Secondary source is Not CLABSI
             "needs_more_info": ReviewerDecision.NEEDS_MORE_INFO,
         }
 
@@ -273,14 +274,17 @@ def api_submit_review(candidate_id):
             else:
                 notes = "CLABSI confirmed by IP review."
         elif decision == "mbi_lcbi":
-            new_status = CandidateStatus.CONFIRMED
-            notes = f"MBI-LCBI confirmed. {notes}" if notes else "Classified as MBI-LCBI by IP review."
+            new_status = CandidateStatus.REJECTED
+            notes = f"Not CLABSI - MBI-LCBI. {notes}" if notes else "Not CLABSI - classified as MBI-LCBI."
+        elif decision == "secondary":
+            new_status = CandidateStatus.REJECTED
+            notes = f"Not CLABSI - Secondary to another infection. {notes}" if notes else "Not CLABSI - secondary to another infection source."
         elif decision == "rejected":
             new_status = CandidateStatus.REJECTED
             if notes:
                 notes = f"Not CLABSI. {notes}"
             else:
-                notes = "Rejected - not CLABSI."
+                notes = "Not CLABSI."
         elif decision == "needs_more_info":
             # Keep in pending_review status so it stays in active list
             new_status = CandidateStatus.PENDING_REVIEW
@@ -289,7 +293,7 @@ def api_submit_review(candidate_id):
             new_status = candidate.status  # Keep current status
 
         # Save the review (but mark as not completed for needs_more_info)
-        is_final_decision = decision in ["confirmed", "rejected", "mbi_lcbi"]
+        is_final_decision = decision in ["confirmed", "rejected", "mbi_lcbi", "secondary"]
         db.save_review(
             candidate_id=candidate_id,
             reviewer=reviewer,
@@ -353,7 +357,8 @@ def _send_review_notification(candidate, decision, reviewer, notes):
         decision_text = {
             "confirmed": "CLABSI Confirmed",
             "rejected": "Not CLABSI",
-            "mbi_lcbi": "MBI-LCBI Confirmed",
+            "mbi_lcbi": "Not CLABSI - MBI-LCBI",
+            "secondary": "Not CLABSI - Secondary",
             "needs_more_info": "Needs More Information",
         }.get(decision, decision)
 
