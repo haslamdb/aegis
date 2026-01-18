@@ -1,0 +1,1 @@
+"""NHSN reporting module tests."""

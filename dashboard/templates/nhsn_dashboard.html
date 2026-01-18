@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+
+{% block title %}NHSN Reporting - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>NHSN HAI Reporting</h1>
+    <p class="subtitle">Healthcare-Associated Infection Candidate Detection</p>
+</div>
+
+{% if error %}
+<div class="alert alert-warning">
+    <strong>Note:</strong> Unable to load some data. The NHSN module may not be fully configured.
+    <br><small>{{ error }}</small>
+</div>
+{% endif %}
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_candidates or 0 }}</div>
+        <div class="stat-label">Total Candidates</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-value">{{ stats.pending_classification or 0 }}</div>
+        <div class="stat-label">Pending Classification</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-value">{{ stats.pending_review or 0 }}</div>
+        <div class="stat-label">Pending IP Review</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-value">{{ stats.confirmed_hai or 0 }}</div>
+        <div class="stat-label">Confirmed HAI</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_events or 0 }}</div>
+        <div class="stat-label">NHSN Events</div>
+    </div>
+    <div class="stat-card stat-critical">
+        <div class="stat-value">{{ stats.unreported_events or 0 }}</div>
+        <div class="stat-label">Unreported</div>
+    </div>
+</div>
+
+<!-- Quick Links -->
+<div class="section">
+    <h2>Quick Actions</h2>
+    <div class="quick-links">
+        <a href="{{ url_for('nhsn.candidates') }}" class="btn btn-primary">View All Candidates</a>
+        <a href="{{ url_for('nhsn.candidates', status='pending') }}" class="btn btn-warning">Pending Classification</a>
+        <a href="{{ url_for('nhsn.reviews') }}" class="btn btn-info">IP Review Queue</a>
+    </div>
+</div>
+
+<!-- Recent Candidates -->
+<div class="section">
+    <h2>Recent Candidates</h2>
+    {% if recent_candidates %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Organism</th>
+                <th>Culture Date</th>
+                <th>Device Days</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in recent_candidates %}
+            <tr class="{% if not c.meets_initial_criteria %}excluded{% endif %}">
+                <td>
+                    <strong>{{ c.patient.mrn }}</strong>
+                    {% if c.patient.name %}
+                    <br><small>{{ c.patient.name }}</small>
+                    {% endif %}
+                </td>
+                <td>{{ c.culture.organism or 'Pending' }}</td>
+                <td>{{ c.culture.collection_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ c.device_days_at_culture or '?' }}</td>
+                <td>
+                    <span class="badge badge-{{ 'success' if c.status.value == 'confirmed' else 'warning' if c.status.value == 'pending' else 'info' if c.status.value == 'pending_review' else 'secondary' }}">
+                        {{ c.status.value | replace('_', ' ') | title }}
+                    </span>
+                    {% if not c.meets_initial_criteria %}
+                    <br><small class="text-muted">{{ c.exclusion_reason }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('nhsn.candidate_detail', candidate_id=c.id) }}" class="btn btn-sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="text-center">
+        <a href="{{ url_for('nhsn.candidates') }}">View all candidates &rarr;</a>
+    </div>
+    {% else %}
+    <p class="empty-state">No candidates detected yet. Run the NHSN monitor to detect candidates.</p>
+    {% endif %}
+</div>
+
+<!-- Pending Reviews -->
+{% if pending_reviews %}
+<div class="section">
+    <h2>Pending IP Reviews</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>HAI Type</th>
+                <th>Organism</th>
+                <th>Confidence</th>
+                <th>Queued</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for r in pending_reviews[:5] %}
+            <tr>
+                <td>
+                    <strong>{{ r.patient_mrn }}</strong>
+                    {% if r.patient_name %}
+                    <br><small>{{ r.patient_name }}</small>
+                    {% endif %}
+                </td>
+                <td>{{ r.hai_type | upper }}</td>
+                <td>{{ r.organism or 'Unknown' }}</td>
+                <td>
+                    {% if r.confidence %}
+                    {{ (r.confidence * 100) | round(1) }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+                <td data-timestamp="{{ r.queued_at }}">{{ r.queued_at }}</td>
+                <td>
+                    <a href="{{ url_for('nhsn.candidate_detail', candidate_id=r.candidate_id) }}" class="btn btn-sm btn-primary">Review</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if pending_reviews | length > 5 %}
+    <div class="text-center">
+        <a href="{{ url_for('nhsn.reviews') }}">View all {{ pending_reviews | length }} pending reviews &rarr;</a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-card.stat-warning { border-left: 4px solid #f59e0b; }
+.stat-card.stat-info { border-left: 4px solid #3b82f6; }
+.stat-card.stat-success { border-left: 4px solid #10b981; }
+.stat-card.stat-critical { border-left: 4px solid #ef4444; }
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.stat-label {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.section {
+    margin-bottom: 2rem;
+}
+
+.section h2 {
+    color: #1e293b;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+}
+
+.quick-links {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-info {
+    background: #3b82f6;
+    color: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+tr.excluded {
+    opacity: 0.6;
+}
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-success { background: #10b981; color: white; }
+.badge-warning { background: #f59e0b; color: white; }
+.badge-info { background: #3b82f6; color: white; }
+.badge-secondary { background: #64748b; color: white; }
+
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+}
+</style>
+{% endblock %}

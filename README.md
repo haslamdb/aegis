@@ -20,6 +20,7 @@ asp-alerts/
 ├── dashboard/                      # Web dashboard for alert management
 ├── asp-bacteremia-alerts/          # Blood culture coverage monitoring
 ├── antimicrobial-usage-alerts/     # Broad-spectrum usage monitoring
+├── nhsn-reporting/                 # NHSN HAI detection and classification
 ├── scripts/                        # Demo and utility scripts
 └── docs/                           # Documentation
 ```
@@ -49,6 +50,20 @@ Monitors broad-spectrum antibiotic usage duration. Alerts when meropenem, vancom
 - Teams alerts with acknowledge/snooze buttons
 
 **[Documentation →](antimicrobial-usage-alerts/README.md)**
+
+### nhsn-reporting
+
+Automated NHSN Healthcare-Associated Infection (HAI) detection and classification. Uses rule-based screening combined with LLM-assisted classification to identify CLABSI candidates and route them through an IP review workflow.
+
+**Features:**
+- CLABSI detection per CDC/NHSN surveillance criteria
+- Clinical note retrieval from FHIR or Clarity
+- Local Ollama LLM classification (PHI-safe, no BAA required)
+- Confidence-based triage (auto-classify, IP review, manual review)
+- Dashboard integration for IP review workflow
+- Common contaminant handling (requires 2 positive cultures)
+
+**[Documentation →](nhsn-reporting/README.md)**
 
 ### dashboard
 
@@ -230,6 +245,15 @@ asp-alerts/
 │       ├── alerters/          # Notification handlers
 │       ├── monitor.py         # Usage monitoring service
 │       └── runner.py          # CLI entry point
+├── nhsn-reporting/
+│   └── src/
+│       ├── candidates/        # Rule-based HAI detection
+│       ├── classifiers/       # LLM classification
+│       ├── data/              # FHIR/Clarity data access
+│       ├── llm/               # Ollama/Claude backends
+│       ├── notes/             # Clinical note processing
+│       ├── review/            # IP review workflow
+│       └── monitor.py         # Main orchestration service
 ├── scripts/                   # Demo and utility scripts
 │   ├── demo_blood_culture.py
 │   ├── demo_antimicrobial_usage.py
