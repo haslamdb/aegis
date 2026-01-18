@@ -388,3 +388,72 @@ View in Dashboard: {Config.DASHBOARD_BASE_URL}/nhsn/candidates/{candidate.id}
 def help_page():
     """Show NHSN help and demo workflow documentation."""
     return render_template("nhsn_help.html")
+
+
+@nhsn_bp.route("/reports")
+def reports():
+    """Show HAI reports and analytics."""
+    try:
+        db = get_nhsn_db()
+        from src.models import HAIType
+
+        # Get filter parameters
+        hai_type_str = request.args.get("type")
+        days = request.args.get("days", 30, type=int)
+
+        # Validate days
+        if days < 1:
+            days = 1
+        elif days > 365:
+            days = 365
+
+        # Parse HAI type
+        hai_type = None
+        if hai_type_str:
+            try:
+                hai_type = HAIType(hai_type_str)
+            except ValueError:
+                hai_type = None
+
+        # Get report data
+        report_data = db.get_hai_report_data(days)
+
+        # Get confirmed HAIs for the list
+        confirmed_hais = db.get_confirmed_hai_in_period(days, hai_type)
+
+        # Build HAI type options for filter
+        hai_types = [
+            ("", "All HAI Types"),
+            ("clabsi", "CLABSI"),
+            ("cauti", "CAUTI"),
+            ("ssi", "SSI"),
+            ("vae", "VAE"),
+        ]
+
+        return render_template(
+            "nhsn_reports.html",
+            report_data=report_data,
+            confirmed_hais=confirmed_hais,
+            hai_types=hai_types,
+            current_type=hai_type_str or "",
+            current_days=days,
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error loading NHSN reports: {e}")
+        return render_template(
+            "nhsn_reports.html",
+            report_data={
+                "total_confirmed": 0,
+                "total_rejected": 0,
+                "total_reviewed": 0,
+                "confirmation_rate": 0,
+                "by_type": {},
+                "by_day": [],
+                "review_breakdown": [],
+            },
+            confirmed_hais=[],
+            hai_types=[("", "All HAI Types")],
+            current_type="",
+            current_days=30,
+            error=str(e),
+        )

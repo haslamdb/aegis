@@ -3,7 +3,7 @@
 import json
 import logging
 import sqlite3
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -547,4 +547,182 @@ class NHSNDatabase:
                 "confirmed_hai": confirmed,
                 "total_events": events,
                 "unreported_events": unreported,
+            }
+
+    # --- Reporting ---
+
+    def get_confirmed_hai_in_period(
+        self, days: int = 30, hai_type: HAIType | None = None
+    ) -> list[HAICandidate]:
+        """Get confirmed HAI candidates in the given time period.
+
+        Args:
+            days: Number of days to look back
+            hai_type: Filter by HAI type (all types if None)
+
+        Returns:
+            List of confirmed HAI candidates
+        """
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+
+        with self._get_connection() as conn:
+            if hai_type:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM nhsn_candidates
+                    WHERE status = 'confirmed'
+                    AND hai_type = ?
+                    AND created_at >= ?
+                    ORDER BY created_at DESC
+                    """,
+                    (hai_type.value, cutoff),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM nhsn_candidates
+                    WHERE status = 'confirmed'
+                    AND created_at >= ?
+                    ORDER BY created_at DESC
+                    """,
+                    (cutoff,),
+                ).fetchall()
+
+            return [self._row_to_candidate(row) for row in rows]
+
+    def get_hai_counts_by_type(self, days: int = 30) -> dict[str, int]:
+        """Get counts of confirmed HAI by type in the given period.
+
+        Args:
+            days: Number of days to look back
+
+        Returns:
+            Dictionary mapping HAI type to count
+        """
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+
+        with self._get_connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT hai_type, COUNT(*) as count
+                FROM nhsn_candidates
+                WHERE status = 'confirmed'
+                AND created_at >= ?
+                GROUP BY hai_type
+                ORDER BY count DESC
+                """,
+                (cutoff,),
+            ).fetchall()
+
+            return {row["hai_type"]: row["count"] for row in rows}
+
+    def get_hai_counts_by_day(self, days: int = 30, hai_type: HAIType | None = None) -> list[dict]:
+        """Get daily counts of confirmed HAI in the given period.
+
+        Args:
+            days: Number of days to look back
+            hai_type: Filter by HAI type (all types if None)
+
+        Returns:
+            List of dicts with 'date' and 'count' keys
+        """
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+
+        with self._get_connection() as conn:
+            if hai_type:
+                rows = conn.execute(
+                    """
+                    SELECT DATE(created_at) as date, COUNT(*) as count
+                    FROM nhsn_candidates
+                    WHERE status = 'confirmed'
+                    AND hai_type = ?
+                    AND created_at >= ?
+                    GROUP BY DATE(created_at)
+                    ORDER BY date
+                    """,
+                    (hai_type.value, cutoff),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT DATE(created_at) as date, COUNT(*) as count
+                    FROM nhsn_candidates
+                    WHERE status = 'confirmed'
+                    AND created_at >= ?
+                    GROUP BY DATE(created_at)
+                    ORDER BY date
+                    """,
+                    (cutoff,),
+                ).fetchall()
+
+            return [{"date": row["date"], "count": row["count"]} for row in rows]
+
+    def get_hai_report_data(self, days: int = 30) -> dict[str, Any]:
+        """Get comprehensive HAI report data.
+
+        Args:
+            days: Number of days to look back
+
+        Returns:
+            Dictionary with all report metrics
+        """
+        cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+
+        with self._get_connection() as conn:
+            # Total confirmed in period
+            total_confirmed = conn.execute(
+                """
+                SELECT COUNT(*) FROM nhsn_candidates
+                WHERE status = 'confirmed' AND created_at >= ?
+                """,
+                (cutoff,),
+            ).fetchone()[0]
+
+            # Total rejected in period
+            total_rejected = conn.execute(
+                """
+                SELECT COUNT(*) FROM nhsn_candidates
+                WHERE status = 'rejected' AND created_at >= ?
+                """,
+                (cutoff,),
+            ).fetchone()[0]
+
+            # Total reviewed (confirmed + rejected)
+            total_reviewed = total_confirmed + total_rejected
+
+            # Confirmation rate
+            confirmation_rate = (
+                (total_confirmed / total_reviewed * 100) if total_reviewed > 0 else 0
+            )
+
+            # Counts by type
+            by_type = self.get_hai_counts_by_type(days)
+
+            # Counts by day
+            by_day = self.get_hai_counts_by_day(days)
+
+            # Get review decision breakdown
+            review_breakdown = conn.execute(
+                """
+                SELECT reviewer_decision, COUNT(*) as count
+                FROM nhsn_reviews
+                WHERE reviewed = 1
+                AND created_at >= ?
+                GROUP BY reviewer_decision
+                ORDER BY count DESC
+                """,
+                (cutoff,),
+            ).fetchall()
+
+            return {
+                "total_confirmed": total_confirmed,
+                "total_rejected": total_rejected,
+                "total_reviewed": total_reviewed,
+                "confirmation_rate": confirmation_rate,
+                "by_type": by_type,
+                "by_day": by_day,
+                "review_breakdown": [
+                    {"decision": row["reviewer_decision"], "count": row["count"]}
+                    for row in review_breakdown
+                ],
             }

@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}HAI Reports - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>HAI Reports & Analytics</h1>
+    <a href="{{ url_for('nhsn.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% if error %}
+<div class="alert alert-warning">
+    <strong>Note:</strong> Unable to load some data.
+    <br><small>{{ error }}</small>
+</div>
+{% endif %}
+
+<div class="filters">
+    <form method="get" class="filter-form">
+        <label>
+            HAI Type:
+            <select name="type" onchange="this.form.submit()">
+                {% for value, display in hai_types %}
+                <option value="{{ value }}" {% if current_type == value %}selected{% endif %}>{{ display }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Time Period:
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if current_days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="14" {% if current_days == 14 %}selected{% endif %}>Last 14 days</option>
+                <option value="30" {% if current_days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="60" {% if current_days == 60 %}selected{% endif %}>Last 60 days</option>
+                <option value="90" {% if current_days == 90 %}selected{% endif %}>Last 90 days</option>
+            </select>
+        </label>
+    </form>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-success">
+        <div class="stat-value">{{ report_data.total_confirmed }}</div>
+        <div class="stat-label">Confirmed HAI</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ report_data.total_rejected }}</div>
+        <div class="stat-label">Not HAI</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ report_data.total_reviewed }}</div>
+        <div class="stat-label">Total Reviewed</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-value">{{ "%.1f"|format(report_data.confirmation_rate) }}%</div>
+        <div class="stat-label">Confirmation Rate</div>
+    </div>
+</div>
+
+<div class="reports-layout">
+    <!-- Left Column -->
+    <div class="reports-main">
+        <!-- HAI by Day Chart -->
+        <div class="report-card">
+            <h3>Confirmed HAI by Day</h3>
+            {% if report_data.by_day %}
+            <div class="chart-container">
+                <div class="bar-chart">
+                    {% set max_count = namespace(val=1) %}
+                    {% for item in report_data.by_day %}
+                        {% if item.count > max_count.val %}
+                            {% set max_count.val = item.count %}
+                        {% endif %}
+                    {% endfor %}
+                    {% for item in report_data.by_day %}
+                    <div class="bar-row">
+                        <span class="bar-label">{{ item.date }}</span>
+                        <div class="bar-wrapper">
+                            <div class="bar bar-hai" style="width: {{ (item.count / max_count.val * 100)|int }}%;">
+                                <span class="bar-value">{{ item.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <p class="no-data">No confirmed HAI in this period.</p>
+            {% endif %}
+        </div>
+
+        <!-- Confirmed HAI List -->
+        <div class="report-card">
+            <h3>Confirmed HAI Cases</h3>
+            {% if confirmed_hais %}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Patient</th>
+                        <th>HAI Type</th>
+                        <th>Organism</th>
+                        <th>Device Days</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hai in confirmed_hais %}
+                    <tr>
+                        <td>{{ hai.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <strong>{{ hai.patient.name or 'Unknown' }}</strong>
+                            <br><small class="text-muted">{{ hai.patient.mrn }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-hai-{{ hai.hai_type.value }}">
+                                {{ hai.hai_type.value | upper }}
+                            </span>
+                        </td>
+                        <td>{{ hai.culture.organism or 'Unknown' }}</td>
+                        <td>{{ hai.device_days_at_culture if hai.device_days_at_culture is not none else '-' }}</td>
+                        <td>
+                            <a href="{{ url_for('nhsn.candidate_detail', candidate_id=hai.id) }}" class="btn btn-small">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="no-data">No confirmed HAI cases in this period.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="reports-sidebar">
+        <!-- HAI by Type -->
+        <div class="report-card">
+            <h3>HAI by Type</h3>
+            {% if report_data.by_type %}
+            <div class="type-breakdown">
+                {% set total_hai = report_data.total_confirmed or 1 %}
+                {% for hai_type, count in report_data.by_type.items() %}
+                <div class="type-item">
+                    <div class="type-header">
+                        <span class="badge badge-hai-{{ hai_type }}">{{ hai_type | upper }}</span>
+                        <span class="type-count">{{ count }}</span>
+                    </div>
+                    <div class="type-bar-wrapper">
+                        <div class="type-bar type-bar-{{ hai_type }}" style="width: {{ (count / total_hai * 100)|int }}%;"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="no-data">No HAI data available.</p>
+            {% endif %}
+        </div>
+
+        <!-- Review Decision Breakdown -->
+        <div class="report-card">
+            <h3>Review Decisions</h3>
+            {% if report_data.review_breakdown %}
+            <table class="breakdown-table">
+                <thead>
+                    <tr>
+                        <th>Decision</th>
+                        <th>Count</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in report_data.review_breakdown %}
+                    <tr>
+                        <td>
+                            {% if item.decision == 'confirmed' %}
+                                <span class="badge badge-success">Confirmed</span>
+                            {% elif item.decision == 'rejected' %}
+                                <span class="badge badge-secondary">Rejected</span>
+                            {% elif item.decision == 'needs_more_info' %}
+                                <span class="badge badge-warning">Needs Info</span>
+                            {% else %}
+                                <span class="badge">{{ item.decision }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ item.count }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="no-data">No reviews in this period.</p>
+            {% endif %}
+        </div>
+
+        <!-- Quick Links -->
+        <div class="report-card">
+            <h3>Quick Links</h3>
+            <div class="quick-links-vertical">
+                <a href="{{ url_for('nhsn.candidates') }}" class="btn btn-primary btn-block">All Candidates</a>
+                <a href="{{ url_for('nhsn.candidates', status='pending_review') }}" class="btn btn-warning btn-block">Pending Review</a>
+                <a href="{{ url_for('nhsn.reviews') }}" class="btn btn-info btn-block">Review History</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* HAI Type Badges */
+.badge-hai-clabsi {
+    background: #dc2626;
+    color: white;
+}
+
+.badge-hai-cauti {
+    background: #f59e0b;
+    color: white;
+}
+
+.badge-hai-ssi {
+    background: #8b5cf6;
+    color: white;
+}
+
+.badge-hai-vae {
+    background: #3b82f6;
+    color: white;
+}
+
+/* Type Breakdown */
+.type-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.type-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.type-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.type-count {
+    font-weight: 600;
+    font-size: 1.25rem;
+}
+
+.type-bar-wrapper {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.type-bar {
+    height: 100%;
+    border-radius: 4px;
+    min-width: 4px;
+}
+
+.type-bar-clabsi { background: #dc2626; }
+.type-bar-cauti { background: #f59e0b; }
+.type-bar-ssi { background: #8b5cf6; }
+.type-bar-vae { background: #3b82f6; }
+
+/* Bar chart */
+.bar-hai {
+    background: linear-gradient(90deg, #dc2626, #f87171);
+}
+
+/* Quick links vertical */
+.quick-links-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.btn-block {
+    width: 100%;
+    text-align: center;
+}
+
+/* Table styling */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table th {
+    background: #f8fafc;
+    font-weight: 600;
+}
+
+.table tr:hover {
+    background: #f8fafc;
+}
+
+.btn-small {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+
+.text-muted {
+    color: #64748b;
+}
+
+.no-data {
+    color: #64748b;
+    text-align: center;
+    padding: 2rem;
+    font-style: italic;
+}
+
+/* Breakdown table */
+.breakdown-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.breakdown-table th,
+.breakdown-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.breakdown-table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #64748b;
+}
+</style>
+{% endblock %}
