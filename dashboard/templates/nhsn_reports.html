@@ -158,41 +158,6 @@
             {% endif %}
         </div>
 
-        <!-- Review Decision Breakdown -->
-        <div class="report-card">
-            <h3>Review Decisions</h3>
-            {% if report_data.review_breakdown %}
-            <table class="breakdown-table">
-                <thead>
-                    <tr>
-                        <th>Decision</th>
-                        <th>Count</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in report_data.review_breakdown %}
-                    <tr>
-                        <td>
-                            {% if item.decision == 'confirmed' %}
-                                <span class="badge badge-success">Confirmed</span>
-                            {% elif item.decision == 'rejected' %}
-                                <span class="badge badge-secondary">Rejected</span>
-                            {% elif item.decision == 'needs_more_info' %}
-                                <span class="badge badge-warning">Needs Info</span>
-                            {% else %}
-                                <span class="badge">{{ item.decision }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ item.count }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p class="no-data">No reviews in this period.</p>
-            {% endif %}
-        </div>
-
         <!-- LLM Quality Metrics -->
         <div class="report-card">
             <h3>LLM Classification Quality</h3>
