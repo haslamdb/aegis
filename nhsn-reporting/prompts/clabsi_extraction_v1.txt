@@ -31,6 +31,24 @@ your confidence level based on how explicitly it is documented:
 - **not_found**: Not mentioned in the documentation
 - **ruled_out**: Explicitly excluded or ruled out
 
+### Source Attribution
+For key findings, provide a "source" object that identifies where in the
+medical record the evidence was found. This helps IP reviewers verify findings.
+The source object includes:
+- **note_type**: Type of note (e.g., "Progress Note", "ID Consult", "Discharge Summary", "Nursing Note")
+- **note_date**: Date of the note in YYYY-MM-DD format
+- **author**: Name and credentials of the note author if available (e.g., "David Haslam, MD")
+
+Example: If you find "Grade 2 mucositis" in a progress note dated 2026-01-14
+written by David Haslam, MD, include:
+```json
+"mucositis_source": {
+  "note_type": "Progress Note",
+  "note_date": "2026-01-14",
+  "author": "David Haslam, MD"
+}
+```
+
 ### 1. Alternate Infection Sources
 Look for any documented infections at sites OTHER than the bloodstream that
 could be the source of bacteremia. For each, note:
@@ -38,6 +56,7 @@ could be the source of bacteremia. For each, note:
 - Whether the same organism is mentioned at that site
 - Whether cultures from that site are positive
 - A direct quote from the documentation
+- **Source**: note type, date, and author where this was documented
 
 Common alternate sources to look for:
 - Pneumonia/VAP: chest imaging findings, respiratory cultures, ventilator changes
@@ -58,29 +77,37 @@ Extract documented vital signs and symptoms:
 
 ### 3. MBI-LCBI Factors (Mucosal Barrier Injury)
 Look for evidence of:
-- Mucositis (and grade if documented)
-- GI GVHD (and grade if documented)
-- Severe diarrhea
-- Necrotizing enterocolitis (NEC)
-- Neutropenia (and ANC value if documented)
-- Stem cell transplant status (allogeneic vs autologous, days post-transplant)
-- Recent chemotherapy (and regimen if documented)
+- Mucositis (and grade if documented) - include source
+- GI GVHD (and grade if documented) - include source
+- Severe diarrhea - include source
+- Necrotizing enterocolitis (NEC) - include source
+- Neutropenia (and ANC value if documented) - include source
+- Stem cell transplant status (allogeneic vs autologous, days post-transplant) - include source
+- Recent chemotherapy (and regimen if documented) - include source
+
+**Important**: For each MBI factor found, provide the source object identifying
+where it was documented (note type, date, and author).
 
 ### 4. Line Assessment
 Look for documentation about the central line:
-- Is line infection suspected by the clinical team?
-- Was the line removed due to suspected infection?
-- Exit site findings (erythema, purulence, drainage)
-- Tunnel infection
-- Catheter tip culture results
+- Is line infection suspected by the clinical team? - include source
+- Was the line removed due to suspected infection? - include source
+- Exit site findings (erythema, purulence, drainage) - include source
+- Tunnel infection - include source
+- Catheter tip culture results - include source
 - Line dysfunction
+
+**Important**: For key line findings, provide the source object identifying
+where it was documented.
 
 ### 5. Contamination Signals
 Look for evidence suggesting the culture may be contamination:
-- Clinical team explicitly calling it contamination
+- Clinical team explicitly calling it contamination - include source
 - No antibiotics given for this culture
 - Antibiotics stopped early after culture
 - Documentation suggesting culture not clinically significant
+
+**Important**: If contamination is documented, include the source object.
 
 ### 6. Clinical Context
 - What is the clinical team's working diagnosis or impression?
@@ -99,7 +126,11 @@ Respond with a JSON object matching this schema:
       "same_organism_mentioned": true|false|null,
       "culture_from_site_positive": true|false|null,
       "supporting_quote": "direct quote from notes",
-      "note_date": "YYYY-MM-DD or null"
+      "source": {{
+        "note_type": "Progress Note|ID Consult|Discharge Summary|Nursing Note|etc.",
+        "note_date": "YYYY-MM-DD",
+        "author": "Name, Credentials or null"
+      }}
     }}
   ],
   "primary_diagnosis_if_stated": "string or null",
@@ -121,28 +152,40 @@ Respond with a JSON object matching this schema:
   "mbi_factors": {{
     "mucositis_documented": "definite|probable|possible|not_found|ruled_out",
     "mucositis_grade": number|null,
+    "mucositis_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "gi_gvhd_documented": "definite|probable|possible|not_found|ruled_out",
     "gi_gvhd_grade": number|null,
+    "gi_gvhd_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "severe_diarrhea": "definite|probable|possible|not_found|ruled_out",
+    "severe_diarrhea_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "nec_documented": "definite|probable|possible|not_found|ruled_out",
+    "nec_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "neutropenia_documented": "definite|probable|possible|not_found|ruled_out",
     "anc_value": number|null,
+    "neutropenia_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "stem_cell_transplant": "definite|probable|possible|not_found|ruled_out",
     "transplant_type": "allogeneic|autologous|null",
     "days_post_transplant": number|null,
     "conditioning_regimen": "string or null",
+    "transplant_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "recent_chemotherapy": "definite|probable|possible|not_found|ruled_out",
-    "chemo_regimen": "string or null"
+    "chemo_regimen": "string or null",
+    "chemotherapy_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null
   }},
 
   "line_assessment": {{
     "line_infection_suspected": "definite|probable|possible|not_found|ruled_out",
+    "line_infection_suspected_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "line_removed_for_infection": "definite|probable|possible|not_found|ruled_out",
+    "line_removed_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "exit_site_erythema": "definite|probable|possible|not_found|ruled_out",
     "exit_site_purulence": "definite|probable|possible|not_found|ruled_out",
+    "exit_site_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "tunnel_infection": "definite|probable|possible|not_found|ruled_out",
+    "tunnel_infection_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "catheter_tip_culture_positive": "definite|probable|possible|not_found|ruled_out",
     "catheter_tip_organism": "string or null",
+    "catheter_tip_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
     "line_dysfunction": "definite|probable|possible|not_found|ruled_out"
   }},
 
@@ -151,7 +194,8 @@ Respond with a JSON object matching this schema:
     "no_antibiotics_given": true|false|null,
     "antibiotics_stopped_early": "definite|probable|possible|not_found|ruled_out",
     "documented_as_contaminant": "definite|probable|possible|not_found|ruled_out",
-    "clinical_note_quote": "string or null"
+    "clinical_note_quote": "string or null",
+    "source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null
   }},
 
   "clinical_context_summary": "Brief summary of relevant clinical context",

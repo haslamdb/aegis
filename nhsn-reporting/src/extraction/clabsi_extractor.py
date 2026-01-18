@@ -25,10 +25,22 @@ from ..rules.schemas import (
     MBIFactors,
     LineAssessment,
     ContaminationAssessment,
+    EvidenceSource,
 )
 
 logger = logging.getLogger(__name__)
 
+
+# Reusable schema for evidence source attribution
+EVIDENCE_SOURCE_SCHEMA = {
+    "type": ["object", "null"],
+    "properties": {
+        "note_type": {"type": "string"},
+        "note_date": {"type": "string"},
+        "author": {"type": ["string", "null"]},
+    },
+    "required": ["note_type", "note_date"],
+}
 
 # JSON Schema for structured extraction output
 EXTRACTION_OUTPUT_SCHEMA = {
@@ -47,7 +59,7 @@ EXTRACTION_OUTPUT_SCHEMA = {
                     "same_organism_mentioned": {"type": ["boolean", "null"]},
                     "culture_from_site_positive": {"type": ["boolean", "null"]},
                     "supporting_quote": {"type": "string"},
-                    "note_date": {"type": ["string", "null"]},
+                    "source": EVIDENCE_SOURCE_SCHEMA,
                 },
                 "required": ["site", "confidence", "supporting_quote"],
             },
@@ -74,30 +86,42 @@ EXTRACTION_OUTPUT_SCHEMA = {
             "properties": {
                 "mucositis_documented": {"type": "string"},
                 "mucositis_grade": {"type": ["integer", "null"]},
+                "mucositis_source": EVIDENCE_SOURCE_SCHEMA,
                 "gi_gvhd_documented": {"type": "string"},
                 "gi_gvhd_grade": {"type": ["integer", "null"]},
+                "gi_gvhd_source": EVIDENCE_SOURCE_SCHEMA,
                 "severe_diarrhea": {"type": "string"},
+                "severe_diarrhea_source": EVIDENCE_SOURCE_SCHEMA,
                 "nec_documented": {"type": "string"},
+                "nec_source": EVIDENCE_SOURCE_SCHEMA,
                 "neutropenia_documented": {"type": "string"},
                 "anc_value": {"type": ["number", "null"]},
+                "neutropenia_source": EVIDENCE_SOURCE_SCHEMA,
                 "stem_cell_transplant": {"type": "string"},
                 "transplant_type": {"type": ["string", "null"]},
                 "days_post_transplant": {"type": ["integer", "null"]},
                 "conditioning_regimen": {"type": ["string", "null"]},
+                "transplant_source": EVIDENCE_SOURCE_SCHEMA,
                 "recent_chemotherapy": {"type": "string"},
                 "chemo_regimen": {"type": ["string", "null"]},
+                "chemotherapy_source": EVIDENCE_SOURCE_SCHEMA,
             },
         },
         "line_assessment": {
             "type": "object",
             "properties": {
                 "line_infection_suspected": {"type": "string"},
+                "line_infection_suspected_source": EVIDENCE_SOURCE_SCHEMA,
                 "line_removed_for_infection": {"type": "string"},
+                "line_removed_source": EVIDENCE_SOURCE_SCHEMA,
                 "exit_site_erythema": {"type": "string"},
                 "exit_site_purulence": {"type": "string"},
+                "exit_site_source": EVIDENCE_SOURCE_SCHEMA,
                 "tunnel_infection": {"type": "string"},
+                "tunnel_infection_source": EVIDENCE_SOURCE_SCHEMA,
                 "catheter_tip_culture_positive": {"type": "string"},
                 "catheter_tip_organism": {"type": ["string", "null"]},
+                "catheter_tip_source": EVIDENCE_SOURCE_SCHEMA,
                 "line_dysfunction": {"type": "string"},
             },
         },
@@ -109,6 +133,7 @@ EXTRACTION_OUTPUT_SCHEMA = {
                 "antibiotics_stopped_early": {"type": "string"},
                 "documented_as_contaminant": {"type": "string"},
                 "clinical_note_quote": {"type": ["string", "null"]},
+                "source": EVIDENCE_SOURCE_SCHEMA,
             },
         },
         "clinical_context_summary": {"type": "string"},
@@ -284,7 +309,7 @@ Respond with JSON matching the ClinicalExtraction schema."""
                     same_organism_mentioned=site_data.get("same_organism_mentioned"),
                     culture_from_site_positive=site_data.get("culture_from_site_positive"),
                     supporting_quote=site_data.get("supporting_quote", ""),
-                    note_date=site_data.get("note_date"),
+                    source=EvidenceSource.from_dict(site_data.get("source")),
                 ))
             except Exception as e:
                 logger.warning(f"Failed to parse alternate site: {e}")
@@ -312,32 +337,44 @@ Respond with JSON matching the ClinicalExtraction schema."""
         mbi_factors = MBIFactors(
             mucositis_documented=self._parse_confidence(mbi_data.get("mucositis_documented")),
             mucositis_grade=mbi_data.get("mucositis_grade"),
+            mucositis_source=EvidenceSource.from_dict(mbi_data.get("mucositis_source")),
             gi_gvhd_documented=self._parse_confidence(mbi_data.get("gi_gvhd_documented")),
             gi_gvhd_grade=mbi_data.get("gi_gvhd_grade"),
+            gi_gvhd_source=EvidenceSource.from_dict(mbi_data.get("gi_gvhd_source")),
             severe_diarrhea=self._parse_confidence(mbi_data.get("severe_diarrhea")),
+            severe_diarrhea_source=EvidenceSource.from_dict(mbi_data.get("severe_diarrhea_source")),
             nec_documented=self._parse_confidence(mbi_data.get("nec_documented")),
+            nec_source=EvidenceSource.from_dict(mbi_data.get("nec_source")),
             neutropenia_documented=self._parse_confidence(mbi_data.get("neutropenia_documented")),
             anc_value=mbi_data.get("anc_value"),
+            neutropenia_source=EvidenceSource.from_dict(mbi_data.get("neutropenia_source")),
             stem_cell_transplant=self._parse_confidence(mbi_data.get("stem_cell_transplant")),
             transplant_type=mbi_data.get("transplant_type"),
             days_post_transplant=mbi_data.get("days_post_transplant"),
             conditioning_regimen=mbi_data.get("conditioning_regimen"),
+            transplant_source=EvidenceSource.from_dict(mbi_data.get("transplant_source")),
             recent_chemotherapy=self._parse_confidence(mbi_data.get("recent_chemotherapy")),
             chemo_regimen=mbi_data.get("chemo_regimen"),
+            chemotherapy_source=EvidenceSource.from_dict(mbi_data.get("chemotherapy_source")),
         )
 
         # Parse line assessment
         line_data = result.get("line_assessment", {})
         line_assessment = LineAssessment(
             line_infection_suspected=self._parse_confidence(line_data.get("line_infection_suspected")),
+            line_infection_suspected_source=EvidenceSource.from_dict(line_data.get("line_infection_suspected_source")),
             line_removed_for_infection=self._parse_confidence(line_data.get("line_removed_for_infection")),
+            line_removed_source=EvidenceSource.from_dict(line_data.get("line_removed_source")),
             exit_site_erythema=self._parse_confidence(line_data.get("exit_site_erythema")),
             exit_site_purulence=self._parse_confidence(line_data.get("exit_site_purulence")),
+            exit_site_source=EvidenceSource.from_dict(line_data.get("exit_site_source")),
             tunnel_infection=self._parse_confidence(line_data.get("tunnel_infection")),
+            tunnel_infection_source=EvidenceSource.from_dict(line_data.get("tunnel_infection_source")),
             catheter_tip_culture_positive=self._parse_confidence(
                 line_data.get("catheter_tip_culture_positive")
             ),
             catheter_tip_organism=line_data.get("catheter_tip_organism"),
+            catheter_tip_source=EvidenceSource.from_dict(line_data.get("catheter_tip_source")),
             line_dysfunction=self._parse_confidence(line_data.get("line_dysfunction")),
         )
 
@@ -353,6 +390,7 @@ Respond with JSON matching the ClinicalExtraction schema."""
                 contam_data.get("documented_as_contaminant")
             ),
             clinical_note_quote=contam_data.get("clinical_note_quote"),
+            source=EvidenceSource.from_dict(contam_data.get("source")),
         )
 
         # Build final extraction

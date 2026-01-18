@@ -28,6 +28,45 @@ class ConfidenceLevel(str, Enum):
     RULED_OUT = "ruled_out"     # Explicitly excluded/ruled out
 
 
+@dataclass
+class EvidenceSource:
+    """Source attribution for an extracted finding.
+
+    Helps IP reviewers track down the evidence in the medical record.
+    Format when displayed: "Progress Note 01/14/2026: David Haslam, MD"
+    """
+    note_type: str  # Progress Note, ID Consult, Discharge Summary, etc.
+    note_date: str  # YYYY-MM-DD
+    author: str | None = None  # Name and credentials if available
+
+    def __str__(self) -> str:
+        """Format for display."""
+        base = f"{self.note_type} {self.note_date}"
+        if self.author:
+            base += f": {self.author}"
+        return base
+
+    def to_dict(self) -> dict:
+        return {
+            "note_type": self.note_type,
+            "note_date": self.note_date,
+            "author": self.author,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict | str | None) -> "EvidenceSource | None":
+        if data is None:
+            return None
+        if isinstance(data, str):
+            # Handle legacy string format
+            return cls(note_type="Note", note_date="", author=data)
+        return cls(
+            note_type=data.get("note_type", "Note"),
+            note_date=data.get("note_date", ""),
+            author=data.get("author"),
+        )
+
+
 class CLABSIClassification(str, Enum):
     """Final classification from the rules engine."""
     CLABSI = "clabsi"                     # Central line-associated BSI
@@ -54,7 +93,7 @@ class DocumentedInfectionSite:
     same_organism_mentioned: bool | None  # True if notes say same bug
     culture_from_site_positive: bool | None  # True if site culture positive
     supporting_quote: str  # Direct quote from documentation
-    note_date: str | None  # Date of the note containing this info
+    source: EvidenceSource | None = None  # Source attribution for this finding
 
     def to_dict(self) -> dict:
         return {
@@ -63,18 +102,22 @@ class DocumentedInfectionSite:
             "same_organism_mentioned": self.same_organism_mentioned,
             "culture_from_site_positive": self.culture_from_site_positive,
             "supporting_quote": self.supporting_quote,
-            "note_date": self.note_date,
+            "source": self.source.to_dict() if self.source else None,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "DocumentedInfectionSite":
+        # Handle legacy note_date field
+        source_data = data.get("source")
+        if source_data is None and data.get("note_date"):
+            source_data = {"note_type": "Note", "note_date": data.get("note_date")}
         return cls(
             site=data.get("site", "unknown"),
             confidence=ConfidenceLevel(data.get("confidence", "not_found")),
             same_organism_mentioned=data.get("same_organism_mentioned"),
             culture_from_site_positive=data.get("culture_from_site_positive"),
             supporting_quote=data.get("supporting_quote", ""),
-            note_date=data.get("note_date"),
+            source=EvidenceSource.from_dict(source_data),
         )
 
 
@@ -142,41 +185,55 @@ class MBIFactors:
     # Mucosal injury indicators
     mucositis_documented: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
     mucositis_grade: int | None = None  # Grade 1-4 if documented
+    mucositis_source: EvidenceSource | None = None
     gi_gvhd_documented: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
     gi_gvhd_grade: int | None = None
+    gi_gvhd_source: EvidenceSource | None = None
     severe_diarrhea: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
+    severe_diarrhea_source: EvidenceSource | None = None
     nec_documented: ConfidenceLevel = ConfidenceLevel.NOT_FOUND  # Necrotizing enterocolitis
+    nec_source: EvidenceSource | None = None
 
     # Immunocompromised status
     neutropenia_documented: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
     anc_value: float | None = None  # Most recent ANC if documented
+    neutropenia_source: EvidenceSource | None = None
 
     # Transplant status
     stem_cell_transplant: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
     transplant_type: str | None = None  # "allogeneic", "autologous"
     days_post_transplant: int | None = None
     conditioning_regimen: str | None = None  # If mentioned
+    transplant_source: EvidenceSource | None = None
 
     # Chemotherapy
     recent_chemotherapy: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
     chemo_regimen: str | None = None
+    chemotherapy_source: EvidenceSource | None = None
 
     def to_dict(self) -> dict:
         return {
             "mucositis_documented": self.mucositis_documented.value,
             "mucositis_grade": self.mucositis_grade,
+            "mucositis_source": self.mucositis_source.to_dict() if self.mucositis_source else None,
             "gi_gvhd_documented": self.gi_gvhd_documented.value,
             "gi_gvhd_grade": self.gi_gvhd_grade,
+            "gi_gvhd_source": self.gi_gvhd_source.to_dict() if self.gi_gvhd_source else None,
             "severe_diarrhea": self.severe_diarrhea.value,
+            "severe_diarrhea_source": self.severe_diarrhea_source.to_dict() if self.severe_diarrhea_source else None,
             "nec_documented": self.nec_documented.value,
+            "nec_source": self.nec_source.to_dict() if self.nec_source else None,
             "neutropenia_documented": self.neutropenia_documented.value,
             "anc_value": self.anc_value,
+            "neutropenia_source": self.neutropenia_source.to_dict() if self.neutropenia_source else None,
             "stem_cell_transplant": self.stem_cell_transplant.value,
             "transplant_type": self.transplant_type,
             "days_post_transplant": self.days_post_transplant,
             "conditioning_regimen": self.conditioning_regimen,
+            "transplant_source": self.transplant_source.to_dict() if self.transplant_source else None,
             "recent_chemotherapy": self.recent_chemotherapy.value,
             "chemo_regimen": self.chemo_regimen,
+            "chemotherapy_source": self.chemotherapy_source.to_dict() if self.chemotherapy_source else None,
         }
 
     @classmethod
@@ -184,18 +241,25 @@ class MBIFactors:
         return cls(
             mucositis_documented=ConfidenceLevel(data.get("mucositis_documented", "not_found")),
             mucositis_grade=data.get("mucositis_grade"),
+            mucositis_source=EvidenceSource.from_dict(data.get("mucositis_source")),
             gi_gvhd_documented=ConfidenceLevel(data.get("gi_gvhd_documented", "not_found")),
             gi_gvhd_grade=data.get("gi_gvhd_grade"),
+            gi_gvhd_source=EvidenceSource.from_dict(data.get("gi_gvhd_source")),
             severe_diarrhea=ConfidenceLevel(data.get("severe_diarrhea", "not_found")),
+            severe_diarrhea_source=EvidenceSource.from_dict(data.get("severe_diarrhea_source")),
             nec_documented=ConfidenceLevel(data.get("nec_documented", "not_found")),
+            nec_source=EvidenceSource.from_dict(data.get("nec_source")),
             neutropenia_documented=ConfidenceLevel(data.get("neutropenia_documented", "not_found")),
             anc_value=data.get("anc_value"),
+            neutropenia_source=EvidenceSource.from_dict(data.get("neutropenia_source")),
             stem_cell_transplant=ConfidenceLevel(data.get("stem_cell_transplant", "not_found")),
             transplant_type=data.get("transplant_type"),
             days_post_transplant=data.get("days_post_transplant"),
             conditioning_regimen=data.get("conditioning_regimen"),
+            transplant_source=EvidenceSource.from_dict(data.get("transplant_source")),
             recent_chemotherapy=ConfidenceLevel(data.get("recent_chemotherapy", "not_found")),
             chemo_regimen=data.get("chemo_regimen"),
+            chemotherapy_source=EvidenceSource.from_dict(data.get("chemotherapy_source")),
         )
 
 
@@ -207,23 +271,33 @@ class LineAssessment:
     and any suspected line complications.
     """
     line_infection_suspected: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
+    line_infection_suspected_source: EvidenceSource | None = None
     line_removed_for_infection: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
+    line_removed_source: EvidenceSource | None = None
     exit_site_erythema: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
     exit_site_purulence: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
+    exit_site_source: EvidenceSource | None = None  # Source for exit site findings
     tunnel_infection: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
+    tunnel_infection_source: EvidenceSource | None = None
     catheter_tip_culture_positive: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
     catheter_tip_organism: str | None = None
+    catheter_tip_source: EvidenceSource | None = None
     line_dysfunction: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
 
     def to_dict(self) -> dict:
         return {
             "line_infection_suspected": self.line_infection_suspected.value,
+            "line_infection_suspected_source": self.line_infection_suspected_source.to_dict() if self.line_infection_suspected_source else None,
             "line_removed_for_infection": self.line_removed_for_infection.value,
+            "line_removed_source": self.line_removed_source.to_dict() if self.line_removed_source else None,
             "exit_site_erythema": self.exit_site_erythema.value,
             "exit_site_purulence": self.exit_site_purulence.value,
+            "exit_site_source": self.exit_site_source.to_dict() if self.exit_site_source else None,
             "tunnel_infection": self.tunnel_infection.value,
+            "tunnel_infection_source": self.tunnel_infection_source.to_dict() if self.tunnel_infection_source else None,
             "catheter_tip_culture_positive": self.catheter_tip_culture_positive.value,
             "catheter_tip_organism": self.catheter_tip_organism,
+            "catheter_tip_source": self.catheter_tip_source.to_dict() if self.catheter_tip_source else None,
             "line_dysfunction": self.line_dysfunction.value,
         }
 
@@ -231,12 +305,17 @@ class LineAssessment:
     def from_dict(cls, data: dict) -> "LineAssessment":
         return cls(
             line_infection_suspected=ConfidenceLevel(data.get("line_infection_suspected", "not_found")),
+            line_infection_suspected_source=EvidenceSource.from_dict(data.get("line_infection_suspected_source")),
             line_removed_for_infection=ConfidenceLevel(data.get("line_removed_for_infection", "not_found")),
+            line_removed_source=EvidenceSource.from_dict(data.get("line_removed_source")),
             exit_site_erythema=ConfidenceLevel(data.get("exit_site_erythema", "not_found")),
             exit_site_purulence=ConfidenceLevel(data.get("exit_site_purulence", "not_found")),
+            exit_site_source=EvidenceSource.from_dict(data.get("exit_site_source")),
             tunnel_infection=ConfidenceLevel(data.get("tunnel_infection", "not_found")),
+            tunnel_infection_source=EvidenceSource.from_dict(data.get("tunnel_infection_source")),
             catheter_tip_culture_positive=ConfidenceLevel(data.get("catheter_tip_culture_positive", "not_found")),
             catheter_tip_organism=data.get("catheter_tip_organism"),
+            catheter_tip_source=EvidenceSource.from_dict(data.get("catheter_tip_source")),
             line_dysfunction=ConfidenceLevel(data.get("line_dysfunction", "not_found")),
         )
 
@@ -253,6 +332,7 @@ class ContaminationAssessment:
     antibiotics_stopped_early: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
     documented_as_contaminant: ConfidenceLevel = ConfidenceLevel.NOT_FOUND
     clinical_note_quote: str | None = None
+    source: EvidenceSource | None = None  # Source for contamination documentation
 
     def to_dict(self) -> dict:
         return {
@@ -261,6 +341,7 @@ class ContaminationAssessment:
             "antibiotics_stopped_early": self.antibiotics_stopped_early.value,
             "documented_as_contaminant": self.documented_as_contaminant.value,
             "clinical_note_quote": self.clinical_note_quote,
+            "source": self.source.to_dict() if self.source else None,
         }
 
     @classmethod
@@ -271,6 +352,7 @@ class ContaminationAssessment:
             antibiotics_stopped_early=ConfidenceLevel(data.get("antibiotics_stopped_early", "not_found")),
             documented_as_contaminant=ConfidenceLevel(data.get("documented_as_contaminant", "not_found")),
             clinical_note_quote=data.get("clinical_note_quote"),
+            source=EvidenceSource.from_dict(data.get("source")),
         )
 
 

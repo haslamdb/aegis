@@ -14,6 +14,7 @@ criteria deterministically.
 
 from .schemas import (
     ConfidenceLevel,
+    EvidenceSource,
     DocumentedInfectionSite,
     SymptomExtraction,
     MBIFactors,
@@ -28,6 +29,7 @@ from .clabsi_engine import CLABSIRulesEngine
 
 __all__ = [
     "ConfidenceLevel",
+    "EvidenceSource",
     "DocumentedInfectionSite",
     "SymptomExtraction",
     "MBIFactors",
