@@ -17,21 +17,22 @@
 
 <!-- Stats Cards -->
 <div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-value">{{ stats.total_candidates or 0 }}</div>
-        <div class="stat-label">Total Candidates</div>
+    <div class="stat-card stat-primary">
+        <div class="stat-value">{{ pending_reviews | length }}</div>
+        <div class="stat-label">Pending Review</div>
+        <div class="stat-sublabel">Awaiting IP Decision</div>
     </div>
     <div class="stat-card stat-warning">
         <div class="stat-value">{{ stats.pending_classification or 0 }}</div>
         <div class="stat-label">Pending Classification</div>
     </div>
-    <div class="stat-card stat-info">
-        <div class="stat-value">{{ stats.pending_review or 0 }}</div>
-        <div class="stat-label">Pending IP Review</div>
-    </div>
     <div class="stat-card stat-success">
         <div class="stat-value">{{ stats.confirmed_hai or 0 }}</div>
         <div class="stat-label">Confirmed HAI</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.rejected_hai or 0 }}</div>
+        <div class="stat-label">Rejected</div>
     </div>
     <div class="stat-card">
         <div class="stat-value">{{ stats.total_events or 0 }}</div>
@@ -171,6 +172,11 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
+.stat-card.stat-primary {
+    border-left: 4px solid #6366f1;
+    background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%);
+}
+.stat-card.stat-primary .stat-value { color: #4f46e5; }
 .stat-card.stat-warning { border-left: 4px solid #f59e0b; }
 .stat-card.stat-info { border-left: 4px solid #3b82f6; }
 .stat-card.stat-success { border-left: 4px solid #10b981; }
@@ -186,6 +192,12 @@
     color: #64748b;
     font-size: 0.875rem;
     margin-top: 0.25rem;
+}
+
+.stat-sublabel {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    margin-top: 0.125rem;
 }
 
 .section {

@@ -118,6 +118,7 @@ FROM nhsn_candidates
 GROUP BY hai_type, status, DATE(created_at);
 
 -- Pending reviews view
+-- Filters out resolved candidates (confirmed/rejected) to prevent stale reviews from appearing
 CREATE VIEW IF NOT EXISTS nhsn_pending_reviews AS
 SELECT
     r.id as review_id,
@@ -136,6 +137,7 @@ FROM nhsn_reviews r
 JOIN nhsn_candidates c ON r.candidate_id = c.id
 LEFT JOIN nhsn_classifications cl ON r.classification_id = cl.id
 WHERE r.reviewed = 0
+  AND c.status IN ('pending_review', 'classified', 'pending')
 ORDER BY r.created_at ASC;
 
 -- IP Review Override Statistics

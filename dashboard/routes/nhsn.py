@@ -368,7 +368,7 @@ def api_submit_review(candidate_id):
 
         # Save the review with override tracking
         is_final_decision = decision in ["confirmed", "rejected", "mbi_lcbi", "secondary"]
-        db.save_review(
+        review_id = db.save_review(
             candidate_id=candidate_id,
             reviewer=reviewer,
             decision=decision_enum,
@@ -383,6 +383,12 @@ def api_submit_review(candidate_id):
         # Only update candidate status for final decisions
         if is_final_decision:
             db.update_candidate_status(candidate_id, new_status)
+            # Supersede any prior incomplete reviews (e.g., "needs_more_info")
+            superseded_count = db.supersede_old_reviews(candidate_id, review_id)
+            if superseded_count > 0:
+                current_app.logger.info(
+                    f"Superseded {superseded_count} prior incomplete review(s) for candidate {candidate_id}"
+                )
 
         # Send email notification if configured
         try:
