@@ -560,9 +560,9 @@ class ARIsolate:
     encounter_id: str
     specimen_date: date
     specimen_type: str  # Blood, Urine, Respiratory, etc.
-    specimen_source: str | None = None
     organism_code: str  # NHSN organism code
     organism_name: str
+    specimen_source: str | None = None
     location_code: str | None = None
     is_first_isolate: bool = True  # First per patient per quarter
     is_hai_associated: bool = False

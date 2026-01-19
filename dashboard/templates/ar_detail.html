@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}Antimicrobial Resistance Detail - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Antimicrobial Resistance (AR) Report</h1>
+    <p class="subtitle">Quarterly Resistance Data for NHSN Reporting</p>
+</div>
+
+{% if error %}
+<div class="alert alert-warning">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Filters -->
+<div class="filter-section">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="year">Year</label>
+            <select id="year" name="year">
+                {% for q in available_quarters | unique(attribute='year') %}
+                {% if loop.first or available_quarters[loop.index0-1].year != q.year %}
+                <option value="{{ q.year }}" {% if year == q.year %}selected{% endif %}>{{ q.year }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="quarter">Quarter</label>
+            <select id="quarter" name="quarter">
+                <option value="1" {% if quarter == 1 %}selected{% endif %}>Q1 (Jan-Mar)</option>
+                <option value="2" {% if quarter == 2 %}selected{% endif %}>Q2 (Apr-Jun)</option>
+                <option value="3" {% if quarter == 3 %}selected{% endif %}>Q3 (Jul-Sep)</option>
+                <option value="4" {% if quarter == 4 %}selected{% endif %}>Q4 (Oct-Dec)</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="location">Location</label>
+            <select id="location" name="location">
+                <option value="">All Locations</option>
+                {% for loc in available_locations %}
+                <option value="{{ loc }}" {% if current_location == loc %}selected{% endif %}>{{ loc }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Apply Filters</button>
+    </form>
+</div>
+
+<!-- Quick Links -->
+<div class="quick-links">
+    <a href="{{ url_for('au_ar.dashboard') }}" class="btn btn-outline">Back to AU/AR Dashboard</a>
+    <a href="{{ url_for('au_ar.api_ar_export', year=year, quarter=quarter, location=current_location) }}" class="btn btn-secondary">Export CSV</a>
+</div>
+
+{% if ar_summary %}
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-value">{{ ar_summary.overall_totals.total_cultures }}</div>
+        <div class="stat-label">Total Cultures</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-value">{{ ar_summary.overall_totals.first_isolates }}</div>
+        <div class="stat-label">First Isolates</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-value">{{ ar_summary.overall_totals.unique_organisms }}</div>
+        <div class="stat-label">Unique Organisms</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ ar_summary.period.quarter_string }}</div>
+        <div class="stat-label">Reporting Period</div>
+    </div>
+</div>
+
+<!-- Phenotype Summary -->
+{% if phenotype_data %}
+<div class="section">
+    <h2>Resistance Phenotypes</h2>
+    <p class="section-desc">MDRO phenotype prevalence based on first-isolate rule</p>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Phenotype</th>
+                <th>Location</th>
+                <th class="text-right">Eligible Isolates</th>
+                <th class="text-right">Phenotype Positive</th>
+                <th class="text-right">% Positive</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in phenotype_data %}
+            <tr>
+                <td>
+                    <strong>{{ row.phenotype_code }}</strong>
+                    <br><small class="text-muted">{{ row.phenotype_name }}</small>
+                </td>
+                <td>{{ row.nhsn_location_code }}</td>
+                <td class="text-right">{{ row.eligible_isolates }}</td>
+                <td class="text-right">{{ row.phenotype_isolates }}</td>
+                <td class="text-right">
+                    <span class="badge badge-{{ 'danger' if row.percent_positive > 30 else 'warning' if row.percent_positive > 15 else 'success' }}">
+                        {{ row.percent_positive }}%
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Resistance Rates by Organism/Antibiotic -->
+{% if resistance_data %}
+<div class="section">
+    <h2>Resistance Rates by Organism</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Organism</th>
+                <th>Antibiotic</th>
+                <th>Location</th>
+                <th class="text-right">Total Tested</th>
+                <th class="text-right">Resistant</th>
+                <th class="text-right">% Resistant</th>
+                <th class="text-right">% Non-Susceptible</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in resistance_data %}
+            <tr>
+                <td><em>{{ row.organism_name }}</em></td>
+                <td>{{ row.antibiotic }}</td>
+                <td>{{ row.nhsn_location_code }}</td>
+                <td class="text-right">{{ row.total_isolates }}</td>
+                <td class="text-right">{{ row.resistant_isolates }}</td>
+                <td class="text-right">
+                    <span class="badge badge-{{ 'danger' if row.percent_resistant > 30 else 'warning' if row.percent_resistant > 15 else 'success' }}">
+                        {{ row.percent_resistant }}%
+                    </span>
+                </td>
+                <td class="text-right">{{ row.percent_non_susceptible }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Location Detail -->
+{% if ar_summary.locations %}
+<div class="section">
+    <h2>Isolates by Location</h2>
+    {% for loc in ar_summary.locations %}
+    <div class="location-card">
+        <h3>{{ loc.nhsn_location_code }} ({{ loc.total_isolates }} isolates)</h3>
+        <ul class="organism-list">
+            {% for org in loc.organisms %}
+            <li>
+                <em>{{ org.organism_name }}</em>
+                <span class="count">({{ org.isolate_count }})</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <p>No antimicrobial resistance data found for the selected period.</p>
+    <p>This could mean no culture/susceptibility data was recorded, or the data sources are not configured.</p>
+</div>
+{% endif %}
+
+<style>
+.filter-section {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.filter-form {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.filter-group input, .filter-group select {
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+}
+
+.quick-links {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-card.stat-primary { border-left: 4px solid #6366f1; }
+.stat-card.stat-info { border-left: 4px solid #3b82f6; }
+.stat-card.stat-warning { border-left: 4px solid #f59e0b; }
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.stat-label {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.section {
+    margin-bottom: 2rem;
+}
+
+.section h2 {
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    font-size: 1.25rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+}
+
+.section-desc {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.table th {
+    background: #f8fafc;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.text-muted {
+    color: #94a3b8;
+}
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-success { background: #10b981; color: white; }
+.badge-warning { background: #f59e0b; color: white; }
+.badge-danger { background: #ef4444; color: white; }
+
+.location-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.location-card h3 {
+    font-size: 1rem;
+    color: #1e293b;
+    margin-bottom: 0.75rem;
+}
+
+.organism-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.organism-list li {
+    background: #f1f5f9;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.organism-list .count {
+    color: #64748b;
+    margin-left: 0.25rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+}
+</style>
+{% endblock %}

@@ -59,24 +59,32 @@ Tracking file for implementing the AEGIS expansion plan. See `aegis_implementati
 
 ## Phase 5: AU Reporting (Antibiotic Usage)
 
-**Status:** Not Started
+**Status:** In Progress (2026-01-19)
 
 ### Core Implementation
-- [ ] Implement AUDataExtractor class
-- [ ] Create NHSN antimicrobial code mapping
-- [ ] Implement DOT (Days of Therapy) calculation
-- [ ] Implement DDD (Defined Daily Doses) calculation (optional)
+- [x] Implement AUDataExtractor class (`nhsn-reporting/src/data/au_extractor.py`)
+- [x] Create NHSN antimicrobial code mapping (`mock_clarity/schema.sql` - NHSN_ANTIMICROBIAL_MAP)
+- [x] Implement DOT (Days of Therapy) calculation
+- [x] Implement DDD (Defined Daily Doses) calculation
 
 ### Data Queries
-- [ ] Add Clarity MAR queries for antimicrobial administrations
-- [ ] Add patient days by location queries
-- [ ] Add NHSN location mapping queries
+- [x] Add Clarity MAR queries for antimicrobial administrations
+- [x] Add patient days by location queries (via DenominatorCalculator)
+- [x] Add NHSN location mapping queries
+
+### Mock Clarity Schema
+- [x] Add RX_MED_ONE (medication master)
+- [x] Add ORDER_MED (medication orders)
+- [x] Add MAR_ADMIN_INFO (medication administrations)
+- [x] Add NHSN_ANTIMICROBIAL_MAP (NHSN code mapping)
+- [x] Add reference data for common antimicrobials (25 medications)
 
 ### Dashboard & Reporting
-- [ ] Create AU dashboard routes
-- [ ] Create AU dashboard templates
-- [ ] Implement CSV export for AU
-- [ ] Implement CDA generation for AU (NHSN submission)
+- [x] Create AU dashboard routes (`dashboard/routes/au_ar.py`)
+- [x] Create AU dashboard templates (`au_ar_dashboard.html`, `au_detail.html`)
+- [x] Implement CSV export for AU (NHSN format)
+- [x] Create AU/AR submission page (`au_ar_submission.html`)
+- [ ] Implement CDA generation for AU (NHSN submission) - Future enhancement
 
 ### Testing
 - [ ] Write unit tests for AU extractor
@@ -174,23 +182,31 @@ Tracking file for implementing the AEGIS expansion plan. See `aegis_implementati
 
 ## Phase 6: AR Reporting (Antimicrobial Resistance)
 
-**Status:** Not Started
+**Status:** In Progress (2026-01-19)
 
 ### Core Implementation
-- [ ] Implement ARDataExtractor class
-- [ ] Implement first-isolate deduplication logic
-- [ ] Implement phenotype calculations (MRSA, VRE, ESBL, CRE, etc.)
-- [ ] Create NHSN phenotype definitions mapping
+- [x] Implement ARDataExtractor class (`nhsn-reporting/src/data/ar_extractor.py`)
+- [x] Implement first-isolate deduplication logic (NHSN first-isolate rule)
+- [x] Implement phenotype calculations (MRSA, VRE, ESBL, CRE, CRPA, CRAB)
+- [x] Create NHSN phenotype definitions mapping (`mock_clarity/schema.sql` - NHSN_PHENOTYPE_MAP)
 
 ### Data Queries
-- [ ] Add Clarity queries for culture results
-- [ ] Add Clarity queries for susceptibility data
+- [x] Add Clarity queries for culture results
+- [x] Add Clarity queries for susceptibility data
+
+### Mock Clarity Schema
+- [x] Add CULTURE_RESULTS table
+- [x] Add CULTURE_ORGANISM table
+- [x] Add SUSCEPTIBILITY_RESULTS table
+- [x] Add NHSN_PHENOTYPE_MAP table
+- [x] Add reference data for MDRO phenotypes (6 phenotypes)
 
 ### Dashboard & Reporting
-- [ ] Create AR dashboard routes
-- [ ] Create AR dashboard templates
-- [ ] Implement CSV export for AR
-- [ ] Implement CDA generation for AR
+- [x] Create AR dashboard routes (`dashboard/routes/au_ar.py`)
+- [x] Create AR dashboard templates (`ar_detail.html`)
+- [x] Implement CSV export for AR (NHSN format)
+- [x] Integrated into AU/AR submission page
+- [ ] Implement CDA generation for AR - Future enhancement
 
 ### Testing
 - [ ] Write unit tests for AR extractor
@@ -318,4 +334,9 @@ The plan proposes separate model classes for each HAI type. Our existing `HAICan
 |------|---------|----------------|
 | 2026-01-19 | 1 | Created tracking file, completed code audit |
 | 2026-01-19 | 1 | **Phase 1 Complete:** Added AU/AR tables to schema.sql, denominator tables, config settings for CAUTI/VAE/SSI/AU/AR, and AU/AR models to models.py |
+| 2026-01-19 | 2 | **Phase 5/6 Progress:** Extended mock Clarity schema with MAR and susceptibility tables, added antimicrobial and phenotype reference data |
+| 2026-01-19 | 2 | Created AUDataExtractor class with DOT/DDD calculations, MAR queries |
+| 2026-01-19 | 2 | Created ARDataExtractor class with first-isolate rule, phenotype detection |
+| 2026-01-19 | 2 | Added AU/AR dashboard routes (au_ar.py) and templates (au_ar_dashboard.html, au_detail.html, ar_detail.html, denominators.html, au_ar_submission.html) |
+| 2026-01-19 | 2 | Integrated DenominatorCalculator with AU/AR dashboard, added denominators page |
 

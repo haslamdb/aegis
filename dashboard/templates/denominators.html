@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+
+{% block title %}Denominators - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>NHSN Denominator Data</h1>
+    <p class="subtitle">Device-Days and Patient-Days for HAI Rate Calculation</p>
+</div>
+
+{% if error %}
+<div class="alert alert-warning">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Filters -->
+<div class="filter-section">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="from_date">From Date</label>
+            <input type="date" id="from_date" name="from_date" value="{{ from_date }}">
+        </div>
+        <div class="filter-group">
+            <label for="to_date">To Date</label>
+            <input type="date" id="to_date" name="to_date" value="{{ to_date }}">
+        </div>
+        <div class="filter-group">
+            <label for="location">Location</label>
+            <select id="location" name="location">
+                <option value="">All Locations</option>
+                {% for loc in available_locations %}
+                <option value="{{ loc }}" {% if current_location == loc %}selected{% endif %}>{{ loc }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Apply Filters</button>
+    </form>
+</div>
+
+<!-- Quick Links -->
+<div class="quick-links">
+    <a href="{{ url_for('au_ar.dashboard') }}" class="btn btn-outline">Back to AU/AR Dashboard</a>
+    <a href="{{ url_for('nhsn.dashboard') }}" class="btn btn-outline">HAI Dashboard</a>
+</div>
+
+{% if denom_summary and denom_summary.locations %}
+
+<!-- Summary by Location -->
+<div class="section">
+    <h2>Summary by Location</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Location</th>
+                <th class="text-right">Patient Days</th>
+                <th class="text-right">Central Line Days</th>
+                <th class="text-right">CL Utilization</th>
+                <th class="text-right">Catheter Days</th>
+                <th class="text-right">UC Utilization</th>
+                <th class="text-right">Ventilator Days</th>
+                <th class="text-right">Vent Utilization</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for loc in denom_summary.locations %}
+            <tr>
+                <td><strong>{{ loc.nhsn_location_code }}</strong></td>
+                <td class="text-right">{{ loc.totals.patient_days }}</td>
+                <td class="text-right">{{ loc.totals.central_line_days }}</td>
+                <td class="text-right">{{ (loc.totals.central_line_utilization * 100) | round(1) }}%</td>
+                <td class="text-right">{{ loc.totals.urinary_catheter_days }}</td>
+                <td class="text-right">{{ (loc.totals.urinary_catheter_utilization * 100) | round(1) }}%</td>
+                <td class="text-right">{{ loc.totals.ventilator_days }}</td>
+                <td class="text-right">{{ (loc.totals.ventilator_utilization * 100) | round(1) }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Monthly Detail -->
+{% for loc in denom_summary.locations %}
+<div class="section location-section">
+    <h2>{{ loc.nhsn_location_code }} - Monthly Detail</h2>
+    <table class="table table-compact">
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th class="text-right">Patient Days</th>
+                <th class="text-right">Central Line Days</th>
+                <th class="text-right">CL Util %</th>
+                <th class="text-right">Catheter Days</th>
+                <th class="text-right">UC Util %</th>
+                <th class="text-right">Ventilator Days</th>
+                <th class="text-right">Vent Util %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for month in loc.months %}
+            <tr>
+                <td><strong>{{ month.month }}</strong></td>
+                <td class="text-right">{{ month.patient_days }}</td>
+                <td class="text-right">{{ month.central_line_days }}</td>
+                <td class="text-right">{{ (month.central_line_utilization * 100) | round(1) }}%</td>
+                <td class="text-right">{{ month.urinary_catheter_days }}</td>
+                <td class="text-right">{{ (month.urinary_catheter_utilization * 100) | round(1) }}%</td>
+                <td class="text-right">{{ month.ventilator_days }}</td>
+                <td class="text-right">{{ (month.ventilator_utilization * 100) | round(1) }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td><strong>Total</strong></td>
+                <td class="text-right"><strong>{{ loc.totals.patient_days }}</strong></td>
+                <td class="text-right"><strong>{{ loc.totals.central_line_days }}</strong></td>
+                <td class="text-right"><strong>{{ (loc.totals.central_line_utilization * 100) | round(1) }}%</strong></td>
+                <td class="text-right"><strong>{{ loc.totals.urinary_catheter_days }}</strong></td>
+                <td class="text-right"><strong>{{ (loc.totals.urinary_catheter_utilization * 100) | round(1) }}%</strong></td>
+                <td class="text-right"><strong>{{ loc.totals.ventilator_days }}</strong></td>
+                <td class="text-right"><strong>{{ (loc.totals.ventilator_utilization * 100) | round(1) }}%</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% endfor %}
+
+<!-- Explanation -->
+<div class="section info-section">
+    <h2>Understanding Denominators</h2>
+    <div class="info-grid">
+        <div class="info-card">
+            <h3>Patient Days</h3>
+            <p>Total number of days patients were admitted to each unit. This is the base denominator for all HAI rate calculations.</p>
+        </div>
+        <div class="info-card">
+            <h3>Device Days</h3>
+            <p>Number of patient-days with a specific device present:</p>
+            <ul>
+                <li><strong>Central Line Days</strong> - For CLABSI rate</li>
+                <li><strong>Urinary Catheter Days</strong> - For CAUTI rate</li>
+                <li><strong>Ventilator Days</strong> - For VAE rate</li>
+            </ul>
+        </div>
+        <div class="info-card">
+            <h3>Device Utilization Ratio</h3>
+            <p>Device Days / Patient Days. Indicates how frequently devices are used in each unit. Higher ratios indicate more intensive device use.</p>
+        </div>
+        <div class="info-card">
+            <h3>HAI Rates</h3>
+            <p>HAI events per 1,000 device-days. For example:</p>
+            <p class="formula">CLABSI Rate = (# CLABSIs / Central Line Days) x 1,000</p>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<div class="empty-state">
+    <p>No denominator data found for the selected period.</p>
+    <p>This could mean no flowsheet data is available, or the data sources are not configured.</p>
+</div>
+{% endif %}
+
+<style>
+.filter-section {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.filter-form {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.filter-group input, .filter-group select {
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+}
+
+.quick-links {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+.section {
+    margin-bottom: 2rem;
+}
+
+.section h2 {
+    color: #1e293b;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+}
+
+.location-section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.table th {
+    background: #f8fafc;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.table-compact th, .table-compact td {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.total-row {
+    background: #f1f5f9;
+}
+
+.info-section {
+    background: #f0f9ff;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.info-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.info-card h3 {
+    font-size: 1rem;
+    color: #0369a1;
+    margin-bottom: 0.5rem;
+}
+
+.info-card p {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.info-card ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.formula {
+    background: #f1f5f9;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+}
+</style>
+{% endblock %}
