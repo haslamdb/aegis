@@ -1,0 +1,318 @@
+# AEGIS Implementation Progress
+
+Tracking file for implementing the AEGIS expansion plan. See `aegis_implementation_plan.md` for full specifications.
+
+**Last Updated:** 2026-01-19
+
+---
+
+## Priority Order (Revised)
+
+| Priority | Module | Rationale |
+|----------|--------|-----------|
+| 1 | **Phase 1: Infrastructure** | Prerequisite for all other phases |
+| 2 | **Phase 5: AU Reporting** | CMS requirement, monthly cadence, high value |
+| 3 | **Phase 3: VAE** | Complex but high clinical value |
+| 4 | **Phase 4: SSI** | Surgical procedure tracking, complex timing |
+| 5 | **Phase 2: CAUTI** | Similar to CLABSI architecture |
+| 6 | **Phase 6: AR Reporting** | Builds on AU data, quarterly cadence |
+| 7 | **Phase 7: Integration** | Final polish, testing, documentation |
+
+---
+
+## Phase 1: Infrastructure
+
+**Status:** Not Started
+
+### Database Schema Extensions
+- [ ] CAUTI tables (cauti_candidates, cauti_classifications, cauti_reviews)
+- [ ] VAE tables (vae_candidates, vae_daily_assessments, vae_classifications, vae_reviews)
+- [ ] SSI tables (ssi_procedures, ssi_candidates, ssi_classifications, ssi_reviews)
+- [ ] AU tables (au_monthly_summary, au_antimicrobial_usage, au_patient_level)
+- [ ] AR tables (ar_quarterly_summary, ar_isolates, ar_susceptibilities, ar_phenotype_summary)
+- [ ] Shared denominator tables (denominators_daily, denominators_monthly)
+
+### Shared Models
+- [ ] Add HAI type enums to models.py
+- [ ] Add CAUTI models (CAUTICandidate, CAUTIClassification, etc.)
+- [ ] Add VAE models (VAECandidate, VAEDailyAssessment, etc.)
+- [ ] Add SSI models (SSIProcedure, SSICandidate, etc.)
+- [ ] Add AU models (AUMonthlySummary, AUAntimicrobialUsage, etc.)
+- [ ] Add AR models (ARQuarterlySummary, ARIsolate, etc.)
+
+### Configuration Updates
+- [ ] Add CAUTI settings to config.py
+- [ ] Add VAE settings to config.py
+- [ ] Add SSI settings to config.py
+- [ ] Add AU settings to config.py
+- [ ] Add AR settings to config.py
+
+### Abstract Base Classes
+- [ ] Verify/create BaseCandidateDetector
+- [ ] Verify/create BaseHAIClassifier
+- [ ] Verify/create BaseExtractor
+- [ ] Verify/create BaseRulesEngine
+
+---
+
+## Phase 5: AU Reporting (Antibiotic Usage)
+
+**Status:** Not Started
+
+### Core Implementation
+- [ ] Implement AUDataExtractor class
+- [ ] Create NHSN antimicrobial code mapping
+- [ ] Implement DOT (Days of Therapy) calculation
+- [ ] Implement DDD (Defined Daily Doses) calculation (optional)
+
+### Data Queries
+- [ ] Add Clarity MAR queries for antimicrobial administrations
+- [ ] Add patient days by location queries
+- [ ] Add NHSN location mapping queries
+
+### Dashboard & Reporting
+- [ ] Create AU dashboard routes
+- [ ] Create AU dashboard templates
+- [ ] Implement CSV export for AU
+- [ ] Implement CDA generation for AU (NHSN submission)
+
+### Testing
+- [ ] Write unit tests for AU extractor
+- [ ] Create AU test fixtures/demo data
+
+---
+
+## Phase 3: VAE Detection Module
+
+**Status:** Not Started
+
+### Core Implementation
+- [ ] Implement VAECandidateDetector
+- [ ] Create VAE extraction prompt
+- [ ] Implement VAEExtractor
+- [ ] Implement VAERulesEngine (VAC/IVAC/PVAP logic)
+- [ ] Implement VAEClassifier
+
+### Data Queries
+- [ ] Add FHIR queries for ventilator data
+- [ ] Add Clarity queries for ventilator flowsheets
+- [ ] Implement daily assessment tracking
+
+### Dashboard & Reporting
+- [ ] Create VAE dashboard routes
+- [ ] Create VAE dashboard templates
+- [ ] Add VAE to IP review workflow
+
+### Testing
+- [ ] Write unit tests for VAE detector
+- [ ] Write unit tests for VAE rules engine
+- [ ] Create VAE test fixtures/demo data
+- [ ] Extend Synthea ventilation module if needed
+
+---
+
+## Phase 4: SSI Detection Module
+
+**Status:** Not Started
+
+### Core Implementation
+- [ ] Define NHSN procedure code mappings
+- [ ] Implement SSICandidateDetector
+- [ ] Create SSI extraction prompt
+- [ ] Implement SSIExtractor
+- [ ] Implement SSIRulesEngine (Superficial/Deep/Organ-Space)
+- [ ] Implement SSIClassifier
+
+### Data Queries
+- [ ] Add FHIR queries for surgical procedures
+- [ ] Add Clarity queries for surgical data
+- [ ] Implement surveillance window logic (30/90 days based on procedure)
+
+### Dashboard & Reporting
+- [ ] Create SSI dashboard routes
+- [ ] Create SSI dashboard templates
+- [ ] Add SSI to IP review workflow
+
+### Testing
+- [ ] Write unit tests for SSI detector
+- [ ] Write unit tests for SSI rules engine
+- [ ] Create SSI test fixtures/demo data
+- [ ] Create Synthea surgical procedure module
+
+---
+
+## Phase 2: CAUTI Detection Module
+
+**Status:** Not Started
+
+### Core Implementation
+- [ ] Implement CAUTICandidateDetector
+- [ ] Create CAUTI extraction prompt
+- [ ] Implement CAUTIExtractor
+- [ ] Implement CAUTIRulesEngine
+- [ ] Implement CAUTIClassifier
+
+### Data Queries
+- [ ] Add FHIR queries for urinary catheters
+- [ ] Add Clarity queries for urinary catheter flowsheets
+- [ ] Implement CFU threshold logic (≥100,000)
+
+### Dashboard & Reporting
+- [ ] Create CAUTI dashboard routes
+- [ ] Create CAUTI dashboard templates
+- [ ] Add CAUTI to IP review workflow
+
+### Testing
+- [ ] Write unit tests for CAUTI detector
+- [ ] Write unit tests for CAUTI rules engine
+- [ ] Create CAUTI test fixtures/demo data
+- [ ] Verify Synthea urinary catheter module generates appropriate data
+
+---
+
+## Phase 6: AR Reporting (Antimicrobial Resistance)
+
+**Status:** Not Started
+
+### Core Implementation
+- [ ] Implement ARDataExtractor class
+- [ ] Implement first-isolate deduplication logic
+- [ ] Implement phenotype calculations (MRSA, VRE, ESBL, CRE, etc.)
+- [ ] Create NHSN phenotype definitions mapping
+
+### Data Queries
+- [ ] Add Clarity queries for culture results
+- [ ] Add Clarity queries for susceptibility data
+
+### Dashboard & Reporting
+- [ ] Create AR dashboard routes
+- [ ] Create AR dashboard templates
+- [ ] Implement CSV export for AR
+- [ ] Implement CDA generation for AR
+
+### Testing
+- [ ] Write unit tests for AR extractor
+- [ ] Write unit tests for phenotype calculations
+- [ ] Create AR test fixtures/demo data
+
+---
+
+## Phase 7: Integration & Testing
+
+**Status:** Not Started
+
+### Integration
+- [ ] Create unified NHSN submission page (all HAI types + AU/AR)
+- [ ] DIRECT protocol testing for new modules
+- [ ] End-to-end testing with Synthea data
+
+### Performance & Polish
+- [ ] Performance optimization
+- [ ] Documentation updates
+- [ ] User acceptance testing
+
+---
+
+## Code Audit Notes
+
+**Audit Date:** 2026-01-19
+
+### Existing Infrastructure (What We Have)
+
+#### Base Classes (All Present)
+- [x] `BaseCandidateDetector` - `src/candidates/base.py` - Abstract base for rule-based screening
+- [x] `BaseHAIClassifier` - `src/classifiers/base.py` - Abstract base for LLM classification
+- [x] `BaseNoteSource` - `src/data/base.py` - Abstract for clinical note retrieval
+- [x] `BaseDeviceSource` - `src/data/base.py` - Abstract for device data retrieval
+- [x] `BaseCultureSource` - `src/data/base.py` - Abstract for culture data retrieval
+
+#### Models (`src/models.py`)
+- [x] `HAIType` enum - Already includes CLABSI, CAUTI, SSI, VAE
+- [x] `HAICandidate` - Generic candidate model with `hai_type` field
+- [x] `Classification` - Generic classification result
+- [x] `Review` - IP review with override tracking
+- [x] `NHSNEvent` - Confirmed reportable event
+- [x] `DeviceInfo` - Device information with days calculation
+- [x] `CultureResult` - Culture result data
+- [x] `ClinicalNote` - Note data model
+
+#### Database Schema (`schema.sql`)
+- [x] `nhsn_candidates` - Generic table with `hai_type` field (can store any HAI type)
+- [x] `nhsn_classifications` - Generic classification storage
+- [x] `nhsn_reviews` - IP review queue with override tracking
+- [x] `nhsn_events` - Confirmed events with `hai_type` field
+- [x] Various views for stats, pending reviews, override tracking
+
+#### Configuration (`src/config.py`)
+- [x] FHIR and Clarity data source config
+- [x] LLM backend config (Ollama/Claude)
+- [x] CLABSI-specific settings (MIN_DEVICE_DAYS, POST_REMOVAL_WINDOW_DAYS)
+- [x] NHSN DIRECT protocol submission config
+- [ ] **MISSING:** CAUTI-specific settings
+- [ ] **MISSING:** VAE-specific settings
+- [ ] **MISSING:** SSI-specific settings
+- [ ] **MISSING:** AU/AR reporting settings
+
+#### CLABSI Implementation (Reference Pattern)
+- [x] `CLABSICandidateDetector` - `src/candidates/clabsi.py`
+- [x] `CLABSIExtractor` - `src/extraction/clabsi_extractor.py`
+- [x] `CLABSIRulesEngine` - `src/rules/clabsi_engine.py`
+- [x] `CLABSIClassifierV2` - `src/classifiers/clabsi_classifier_v2.py`
+- [x] CLABSI extraction prompt - `prompts/clabsi_extraction_v1.txt`
+
+#### Data Sources
+- [x] `FHIRSource` - `src/data/fhir_source.py` - FHIR R4 queries
+- [x] `ClaritySource` - `src/data/clarity_source.py` - Clarity SQL queries
+- [x] `DenominatorCalculator` - `src/data/denominator.py` - Line days, patient days, catheter days, ventilator days
+
+#### Synthea Modules (for test data)
+- [x] `central_line.json` - Central line device generation
+- [x] `urinary_catheter.json` - Urinary catheter generation
+- [x] `mechanical_ventilation.json` - Ventilator/ETT generation
+- [x] `synthea_to_clarity.py` - Sync FHIR to mock Clarity
+
+### Plan vs Reality Adjustments
+
+#### Schema: Plan Proposes Separate Tables, We Have Generic Tables
+The implementation plan proposes separate tables for each HAI type (cauti_candidates, vae_candidates, etc.).
+However, our existing schema uses a single `nhsn_candidates` table with an `hai_type` field.
+
+**Decision Options:**
+1. **Keep generic tables** - Simpler, less schema changes, use `hai_type` for filtering
+2. **Add HAI-specific tables** - More complexity but allows HAI-specific fields
+
+**Recommendation:** Start with generic tables for CAUTI/VAE/SSI since they share similar workflows. Add HAI-specific tables only for AU/AR which have fundamentally different data models.
+
+#### Models: Generic vs Specific
+The plan proposes separate model classes for each HAI type. Our existing `HAICandidate` is generic.
+
+**Decision:** Extend the generic models with optional HAI-specific fields rather than creating entirely separate classes. Create HAI-specific subclasses only where the data model is fundamentally different.
+
+#### What Needs to Be Added
+
+**Phase 1 (Infrastructure):**
+- [ ] Add AU tables (monthly summaries, antimicrobial usage, patient-level)
+- [ ] Add AR tables (quarterly summaries, isolates, susceptibilities, phenotypes)
+- [ ] Add denominators_daily and denominators_monthly tables
+- [ ] Add HAI-specific config settings
+
+**Phases 2-4 (CAUTI/VAE/SSI):**
+- [ ] Can largely follow CLABSI pattern with generic tables
+- [ ] Need new: Detector, Extractor, RulesEngine, Classifier for each
+- [ ] Need new: Prompts for each HAI type
+- [ ] Need: FHIR/Clarity queries for urine cultures, ventilator data, surgical procedures
+
+**Phases 5-6 (AU/AR):**
+- [ ] Fundamentally different from HAI detection - aggregation/reporting focused
+- [ ] Need new tables (as outlined in plan)
+- [ ] Need new extractors for MAR data, susceptibility data
+- [ ] Need NHSN code mappings
+
+---
+
+## Session Log
+
+| Date | Session | Work Completed |
+|------|---------|----------------|
+| 2026-01-19 | 1 | Created tracking file, beginning audit |
+
