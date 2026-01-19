@@ -1,0 +1,127 @@
+{
+  "name": "Urinary Catheter",
+  "remarks": [
+    "Custom module for ASP Alerts NHSN testing.",
+    "Places indwelling urinary catheters in hospitalized patients.",
+    "Creates DeviceUseStatement resources for CAUTI detection."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Age_Guard"
+    },
+
+    "Age_Guard": {
+      "type": "Guard",
+      "allow": {
+        "condition_type": "Age",
+        "operator": ">=",
+        "quantity": 1,
+        "unit": "months"
+      },
+      "direct_transition": "Chance_of_Hospitalization_With_Catheter"
+    },
+
+    "Chance_of_Hospitalization_With_Catheter": {
+      "type": "Simple",
+      "remarks": ["25% chance of hospitalization requiring urinary catheter"],
+      "distributed_transition": [
+        {"distribution": 0.25, "transition": "Hospital_Admission"},
+        {"distribution": 0.75, "transition": "Terminal"}
+      ]
+    },
+
+    "Hospital_Admission": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Catheter_Insertion_Procedure"
+    },
+
+    "Catheter_Insertion_Procedure": {
+      "type": "Procedure",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "410024004",
+          "display": "Catheterization of urinary bladder"
+        }
+      ],
+      "duration": {
+        "low": 5,
+        "high": 15,
+        "unit": "minutes"
+      },
+      "direct_transition": "Place_Foley_Catheter"
+    },
+
+    "Place_Foley_Catheter": {
+      "type": "Device",
+      "code": {
+        "system": "SNOMED-CT",
+        "code": "25062003",
+        "display": "Indwelling urinary catheter"
+      },
+      "assign_to_attribute": "urinary_catheter_device",
+      "direct_transition": "Catheter_Dwell_Time"
+    },
+
+    "Catheter_Dwell_Time": {
+      "type": "Delay",
+      "remarks": ["Urinary catheter remains in place 2-14 days"],
+      "range": {
+        "low": 2,
+        "high": 14,
+        "unit": "days"
+      },
+      "direct_transition": "Catheter_Removal_Decision"
+    },
+
+    "Catheter_Removal_Decision": {
+      "type": "Simple",
+      "remarks": ["90% chance catheter is removed before discharge"],
+      "distributed_transition": [
+        {"distribution": 0.90, "transition": "Remove_Catheter"},
+        {"distribution": 0.10, "transition": "Discharge_With_Catheter"}
+      ]
+    },
+
+    "Remove_Catheter": {
+      "type": "DeviceEnd",
+      "device": "urinary_catheter_device",
+      "direct_transition": "Post_Removal_Delay"
+    },
+
+    "Post_Removal_Delay": {
+      "type": "Delay",
+      "range": {
+        "low": 1,
+        "high": 3,
+        "unit": "days"
+      },
+      "direct_transition": "Discharge"
+    },
+
+    "Discharge_With_Catheter": {
+      "type": "Simple",
+      "remarks": ["Patient discharged with catheter (rare, e.g., neurogenic bladder)"],
+      "direct_transition": "Discharge"
+    },
+
+    "Discharge": {
+      "type": "EncounterEnd",
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}
