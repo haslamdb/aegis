@@ -494,6 +494,20 @@ body {
     text-decoration: underline;
 }
 
+/* Ensure buttons in tables have white text */
+.alerts-table a.btn,
+.audit-table a.btn,
+table a.btn {
+    color: var(--color-white) !important;
+    text-decoration: none;
+}
+
+.alerts-table a.btn:hover,
+.audit-table a.btn:hover,
+table a.btn:hover {
+    text-decoration: none;
+}
+
 /* Severity row highlighting */
 .severity-critical {
     border-left: 4px solid var(--color-danger) !important;
