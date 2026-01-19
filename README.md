@@ -354,6 +354,8 @@ Each module uses environment variables for configuration. Copy `.env.template` t
 
 | Priority | Module | Description |
 |----------|--------|-------------|
+| High | **Natural Language Query Interface** | Allow ASP/IPC users to query data in plain English (e.g., "Show E. coli resistance in urine isolates over 10 years"). Uses Claude API with BAA for SQL generation; PHI stays on-premises |
+| High | **Interactive Analytics Dashboards** | Plotly-based interactive charts for resistance trends, antibiotic usage patterns, HAI rates over time. Drill-down capability, date range selection, export to PDF/PNG |
 | High | **Automated Metrics** | Auto-generate DOT reports, benchmarks, and quality metrics with AI-written narrative summaries |
 | High | **Guideline Adherence** | Monitor prescribing against fever/neutropenia and other guidelines; report concordance |
 | High | **Bug-Drug Mismatch** | Identify when organisms are not covered by current therapy; suggest alternatives |
