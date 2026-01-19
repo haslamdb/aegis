@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+
+{% block title %}AU/AR NHSN Submission - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>NHSN AU/AR Submission</h1>
+    <p class="subtitle">Prepare and export data for NHSN submission</p>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Submission Type Toggle -->
+<div class="submission-toggle">
+    <a href="{{ url_for('au_ar.submission', type='au') }}" class="toggle-btn {% if submission_type == 'au' %}active{% endif %}">
+        Antibiotic Usage (AU)
+    </a>
+    <a href="{{ url_for('au_ar.submission', type='ar') }}" class="toggle-btn {% if submission_type == 'ar' %}active{% endif %}">
+        Antimicrobial Resistance (AR)
+    </a>
+</div>
+
+{% if submission_type == 'au' %}
+<!-- AU Submission Section -->
+<div class="submission-section">
+    <h2>Antibiotic Usage (AU) - Monthly Report</h2>
+    <p class="section-desc">AU data is reported monthly to NHSN.</p>
+
+    <!-- Period Selection -->
+    <form method="get" class="period-form">
+        <input type="hidden" name="type" value="au">
+        <div class="filter-group">
+            <label for="from_date">From Date</label>
+            <input type="date" id="from_date" name="from_date" value="{{ from_date }}">
+        </div>
+        <div class="filter-group">
+            <label for="to_date">To Date</label>
+            <input type="date" id="to_date" name="to_date" value="{{ to_date }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Load Data</button>
+    </form>
+
+    {% if au_summary %}
+    <!-- Summary -->
+    <div class="summary-box">
+        <h3>Period Summary: {{ au_summary.date_range.start }} to {{ au_summary.date_range.end }}</h3>
+        <div class="summary-stats">
+            <div class="summary-stat">
+                <span class="value">{{ au_summary.overall_totals.total_dot }}</span>
+                <span class="label">Total DOT</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ au_summary.overall_totals.total_patient_days }}</span>
+                <span class="label">Patient Days</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ au_summary.overall_totals.dot_per_1000_pd }}</span>
+                <span class="label">DOT/1000 PD</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ au_summary.locations | length }}</span>
+                <span class="label">Locations</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Preview -->
+    {% if au_summary.locations %}
+    <div class="data-preview">
+        <h3>Data Preview</h3>
+        <table class="table table-compact">
+            <thead>
+                <tr>
+                    <th>Location</th>
+                    <th>Month</th>
+                    <th class="text-right">Patient Days</th>
+                    <th class="text-right">Total DOT</th>
+                    <th class="text-right">Antimicrobials</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loc in au_summary.locations %}
+                {% for month in loc.months %}
+                <tr>
+                    <td>{{ loc.nhsn_location_code }}</td>
+                    <td>{{ month.month }}</td>
+                    <td class="text-right">{{ month.patient_days }}</td>
+                    <td class="text-right">{{ month.total_dot }}</td>
+                    <td class="text-right">{{ month.antimicrobials | length }}</td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Export Actions -->
+    <div class="export-actions">
+        <h3>Export Options</h3>
+        <div class="action-buttons">
+            <a href="{{ url_for('au_ar.api_au_export', from_date=from_date, to_date=to_date) }}" class="btn btn-primary btn-lg">
+                Download CSV for NHSN
+            </a>
+            <a href="{{ url_for('au_ar.au_detail', from_date=from_date, to_date=to_date) }}" class="btn btn-secondary">
+                View Detailed Report
+            </a>
+        </div>
+        <p class="export-note">
+            The CSV export is formatted for NHSN AU module import. Review the data before submission.
+        </p>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Select a date range and click "Load Data" to preview AU data for submission.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+<!-- AR Submission Section -->
+<div class="submission-section">
+    <h2>Antimicrobial Resistance (AR) - Quarterly Report</h2>
+    <p class="section-desc">AR data is reported quarterly to NHSN.</p>
+
+    <!-- Period Selection -->
+    <form method="get" class="period-form">
+        <input type="hidden" name="type" value="ar">
+        <div class="filter-group">
+            <label for="year">Year</label>
+            <select id="year" name="year">
+                {% for y in range(2024, 2027) %}
+                <option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="quarter">Quarter</label>
+            <select id="quarter" name="quarter">
+                <option value="1" {% if quarter == 1 %}selected{% endif %}>Q1 (Jan-Mar)</option>
+                <option value="2" {% if quarter == 2 %}selected{% endif %}>Q2 (Apr-Jun)</option>
+                <option value="3" {% if quarter == 3 %}selected{% endif %}>Q3 (Jul-Sep)</option>
+                <option value="4" {% if quarter == 4 %}selected{% endif %}>Q4 (Oct-Dec)</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Load Data</button>
+    </form>
+
+    {% if ar_summary %}
+    <!-- Summary -->
+    <div class="summary-box">
+        <h3>Quarter Summary: {{ ar_summary.period.quarter_string }}</h3>
+        <div class="summary-stats">
+            <div class="summary-stat">
+                <span class="value">{{ ar_summary.overall_totals.total_cultures }}</span>
+                <span class="label">Total Cultures</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ ar_summary.overall_totals.first_isolates }}</span>
+                <span class="label">First Isolates</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ ar_summary.overall_totals.unique_organisms }}</span>
+                <span class="label">Unique Organisms</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ ar_summary.locations | length }}</span>
+                <span class="label">Locations</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phenotype Summary -->
+    {% if ar_summary.phenotypes %}
+    <div class="data-preview">
+        <h3>Resistance Phenotype Summary</h3>
+        <table class="table table-compact">
+            <thead>
+                <tr>
+                    <th>Phenotype</th>
+                    <th>Location</th>
+                    <th class="text-right">Eligible</th>
+                    <th class="text-right">Positive</th>
+                    <th class="text-right">% Positive</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pheno in ar_summary.phenotypes %}
+                <tr>
+                    <td><strong>{{ pheno.phenotype_code }}</strong></td>
+                    <td>{{ pheno.nhsn_location_code }}</td>
+                    <td class="text-right">{{ pheno.eligible_isolates }}</td>
+                    <td class="text-right">{{ pheno.phenotype_isolates }}</td>
+                    <td class="text-right">
+                        <span class="badge badge-{{ 'danger' if pheno.percent_positive > 30 else 'warning' if pheno.percent_positive > 15 else 'success' }}">
+                            {{ pheno.percent_positive }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Export Actions -->
+    <div class="export-actions">
+        <h3>Export Options</h3>
+        <div class="action-buttons">
+            <a href="{{ url_for('au_ar.api_ar_export', year=year, quarter=quarter) }}" class="btn btn-primary btn-lg">
+                Download CSV for NHSN
+            </a>
+            <a href="{{ url_for('au_ar.ar_detail', year=year, quarter=quarter) }}" class="btn btn-secondary">
+                View Detailed Report
+            </a>
+        </div>
+        <p class="export-note">
+            The CSV export includes both isolate data and susceptibility results. First-isolate rule has been applied.
+        </p>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Select a year and quarter, then click "Load Data" to preview AR data for submission.</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Quick Links -->
+<div class="section">
+    <div class="quick-links">
+        <a href="{{ url_for('au_ar.dashboard') }}" class="btn btn-outline">AU/AR Dashboard</a>
+        <a href="{{ url_for('nhsn.submission') }}" class="btn btn-outline">HAI Submission</a>
+    </div>
+</div>
+
+<style>
+.submission-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    background: #F1F5F9;
+    border-radius: 10px;
+    padding: 0.25rem;
+    width: fit-content;
+}
+
+.toggle-btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #64748b;
+    font-weight: 500;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-btn:hover {
+    color: #1e293b;
+}
+
+.toggle-btn.active {
+    background: white;
+    color: #0E7490;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+}
+
+.submission-section {
+    background: white;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+    margin-bottom: 2rem;
+}
+
+.submission-section h2 {
+    color: #0E7490;
+    margin-bottom: 0.5rem;
+}
+
+.section-desc {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.period-form {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.filter-group input, .filter-group select {
+    padding: 0.5rem;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    transition: border-color 0.2s;
+}
+
+.filter-group input:focus, .filter-group select:focus {
+    outline: none;
+    border-color: #0891B2;
+    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+}
+
+.summary-box {
+    background: linear-gradient(135deg, #E0F2FE 0%, #F8FAFC 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border-left: 4px solid #0891B2;
+}
+
+.summary-box h3 {
+    color: #0E7490;
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.summary-stat .value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #0E7490;
+}
+
+.summary-stat .label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.data-preview {
+    margin-bottom: 2rem;
+}
+
+.data-preview h3 {
+    color: #334155;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #E2E8F0;
+    text-align: left;
+}
+
+.table th {
+    background: #F8FAFC;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.table-compact th, .table-compact td {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-success { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; }
+.badge-warning { background: linear-gradient(135deg, #D97706 0%, #B45309 100%); color: white; }
+.badge-danger { background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); color: white; }
+
+.export-actions {
+    background: linear-gradient(135deg, #D1FAE5 0%, #F0FDF4 100%);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid #34D399;
+}
+
+.export-actions h3 {
+    color: #047857;
+    margin-bottom: 1rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+.export-note {
+    color: #047857;
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+    background: #F8FAFC;
+    border-radius: 10px;
+}
+
+.quick-links {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-outline {
+    background: white;
+    border: 2px solid #0891B2;
+    color: #0891B2;
+    transition: all 0.3s;
+}
+
+.btn-outline:hover {
+    background: #0891B2;
+    color: white;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1rem;
+}
+
+.alert-danger {
+    background: #FEE2E2;
+    border: 1px solid #DC2626;
+    color: #991b1b;
+}
+</style>
+{% endblock %}

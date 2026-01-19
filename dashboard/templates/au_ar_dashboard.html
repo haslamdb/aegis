@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+
+{% block title %}AU/AR Reporting - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Antibiotic Usage & Resistance Reporting</h1>
+    <p class="subtitle">NHSN AU/AR Module Data</p>
+</div>
+
+{% if error %}
+<div class="alert alert-warning">
+    <strong>Note:</strong> Unable to load some data. The AU/AR module may not be fully configured.
+    <br><small>{{ error }}</small>
+</div>
+{% endif %}
+
+<!-- Quick Links -->
+<div class="section">
+    <div class="quick-links">
+        <a href="{{ url_for('au_ar.au_detail') }}" class="btn btn-primary">AU Detail</a>
+        <a href="{{ url_for('au_ar.ar_detail') }}" class="btn btn-secondary">AR Detail</a>
+        <a href="{{ url_for('au_ar.denominators') }}" class="btn btn-info">Denominators</a>
+        <a href="{{ url_for('au_ar.submission') }}" class="btn btn-nhsn">NHSN Submission</a>
+        <a href="{{ url_for('nhsn.dashboard') }}" class="btn btn-outline">HAI Dashboard</a>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-value">{{ au_summary.overall_totals.total_dot if au_summary else 0 }}</div>
+        <div class="stat-label">Total DOT</div>
+        <div class="stat-sublabel">Days of Therapy ({{ current_month }})</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-value">{{ au_summary.overall_totals.dot_per_1000_pd if au_summary else 0 }}</div>
+        <div class="stat-label">DOT/1000 PD</div>
+        <div class="stat-sublabel">Rate per Patient Days</div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-value">{{ ar_summary.overall_totals.first_isolates if ar_summary else 0 }}</div>
+        <div class="stat-label">First Isolates</div>
+        <div class="stat-sublabel">Q{{ current_quarter }} {{ current_year }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ ar_summary.overall_totals.unique_organisms if ar_summary else 0 }}</div>
+        <div class="stat-label">Unique Organisms</div>
+        <div class="stat-sublabel">Q{{ current_quarter }} {{ current_year }}</div>
+    </div>
+</div>
+
+<!-- AU Section -->
+<div class="section">
+    <h2>Antibiotic Usage (AU) - {{ current_month }}</h2>
+    {% if au_summary and au_summary.locations %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Location</th>
+                <th class="text-right">Patient Days</th>
+                <th class="text-right">Total DOT</th>
+                <th class="text-right">DOT/1000 PD</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for loc in au_summary.locations %}
+            <tr>
+                <td><strong>{{ loc.nhsn_location_code }}</strong></td>
+                <td class="text-right">{{ loc.totals.patient_days }}</td>
+                <td class="text-right">{{ loc.totals.total_dot }}</td>
+                <td class="text-right">{{ loc.totals.dot_per_1000_pd }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td><strong>Total</strong></td>
+                <td class="text-right"><strong>{{ au_summary.overall_totals.total_patient_days }}</strong></td>
+                <td class="text-right"><strong>{{ au_summary.overall_totals.total_dot }}</strong></td>
+                <td class="text-right"><strong>{{ au_summary.overall_totals.dot_per_1000_pd }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% else %}
+    <p class="empty-state">No antibiotic usage data available for the current period. <a href="{{ url_for('au_ar.au_detail') }}">View detailed AU report</a></p>
+    {% endif %}
+</div>
+
+<!-- AR Section -->
+<div class="section">
+    <h2>Antimicrobial Resistance (AR) - Q{{ current_quarter }} {{ current_year }}</h2>
+    {% if ar_summary and ar_summary.phenotypes %}
+    <h3>Resistance Phenotypes</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Phenotype</th>
+                <th>Location</th>
+                <th class="text-right">Eligible Isolates</th>
+                <th class="text-right">Positive</th>
+                <th class="text-right">% Positive</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pheno in ar_summary.phenotypes %}
+            <tr>
+                <td>
+                    <strong>{{ pheno.phenotype_code }}</strong>
+                    <br><small>{{ pheno.phenotype_name }}</small>
+                </td>
+                <td>{{ pheno.nhsn_location_code }}</td>
+                <td class="text-right">{{ pheno.eligible_isolates }}</td>
+                <td class="text-right">{{ pheno.phenotype_isolates }}</td>
+                <td class="text-right">
+                    <span class="badge badge-{{ 'danger' if pheno.percent_positive > 20 else 'warning' if pheno.percent_positive > 10 else 'success' }}">
+                        {{ pheno.percent_positive }}%
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% elif ar_summary and ar_summary.locations %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Location</th>
+                <th class="text-right">Total Isolates</th>
+                <th>Top Organisms</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for loc in ar_summary.locations %}
+            <tr>
+                <td><strong>{{ loc.nhsn_location_code }}</strong></td>
+                <td class="text-right">{{ loc.total_isolates }}</td>
+                <td>
+                    {% for org in loc.organisms[:3] %}
+                    {{ org.organism_name }} ({{ org.isolate_count }}){% if not loop.last %}, {% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No antimicrobial resistance data available for the current quarter. <a href="{{ url_for('au_ar.ar_detail') }}">View detailed AR report</a></p>
+    {% endif %}
+</div>
+
+<!-- Denominators Section -->
+<div class="section">
+    <h2>Denominators - {{ current_month }}</h2>
+    {% if denom_summary and denom_summary.locations %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Location</th>
+                <th class="text-right">Patient Days</th>
+                <th class="text-right">Central Line Days</th>
+                <th class="text-right">Catheter Days</th>
+                <th class="text-right">Ventilator Days</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for loc in denom_summary.locations %}
+            <tr>
+                <td><strong>{{ loc.nhsn_location_code }}</strong></td>
+                <td class="text-right">{{ loc.totals.patient_days }}</td>
+                <td class="text-right">{{ loc.totals.central_line_days }}</td>
+                <td class="text-right">{{ loc.totals.urinary_catheter_days }}</td>
+                <td class="text-right">{{ loc.totals.ventilator_days }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No denominator data available. <a href="{{ url_for('au_ar.denominators') }}">View denominator details</a></p>
+    {% endif %}
+</div>
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-card.stat-primary { border-left: 4px solid #6366f1; }
+.stat-card.stat-primary .stat-value { color: #4f46e5; }
+.stat-card.stat-info { border-left: 4px solid #3b82f6; }
+.stat-card.stat-warning { border-left: 4px solid #f59e0b; }
+.stat-card.stat-success { border-left: 4px solid #10b981; }
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.stat-label {
+    color: #64748b;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.stat-sublabel {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    margin-top: 0.125rem;
+}
+
+.section {
+    margin-bottom: 2rem;
+}
+
+.section h2 {
+    color: #1e293b;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+}
+
+.section h3 {
+    color: #475569;
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.quick-links {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+.btn-info {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-nhsn {
+    background: #0f766e;
+    color: white;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.table th, .table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table th {
+    background: #f8fafc;
+    font-weight: 600;
+    text-align: left;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.total-row {
+    background: #f1f5f9;
+}
+
+.badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-success { background: #10b981; color: white; }
+.badge-warning { background: #f59e0b; color: white; }
+.badge-danger { background: #ef4444; color: white; }
+
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+}
+</style>
+{% endblock %}

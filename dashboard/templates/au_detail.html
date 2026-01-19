@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}Antibiotic Usage Detail - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Antibiotic Usage (AU) Report</h1>
+    <p class="subtitle">Days of Therapy by Location and Antimicrobial</p>
+</div>
+
+{% if error %}
+<div class="alert alert-warning">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Filters -->
+<div class="filter-section">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="from_date">From Date</label>
+            <input type="date" id="from_date" name="from_date" value="{{ from_date }}">
+        </div>
+        <div class="filter-group">
+            <label for="to_date">To Date</label>
+            <input type="date" id="to_date" name="to_date" value="{{ to_date }}">
+        </div>
+        <div class="filter-group">
+            <label for="location">Location</label>
+            <select id="location" name="location">
+                <option value="">All Locations</option>
+                {% for loc in available_locations %}
+                <option value="{{ loc }}" {% if current_location == loc %}selected{% endif %}>{{ loc }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Apply Filters</button>
+    </form>
+</div>
+
+<!-- Quick Links -->
+<div class="quick-links">
+    <a href="{{ url_for('au_ar.dashboard') }}" class="btn btn-outline">Back to AU/AR Dashboard</a>
+    <a href="{{ url_for('au_ar.api_au_export', from_date=from_date, to_date=to_date, location=current_location) }}" class="btn btn-secondary">Export CSV</a>
+</div>
+
+{% if au_summary and au_summary.locations %}
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-value">{{ au_summary.overall_totals.total_dot }}</div>
+        <div class="stat-label">Total DOT</div>
+    </div>
+    <div class="stat-card stat-info">
+        <div class="stat-value">{{ au_summary.overall_totals.total_patient_days }}</div>
+        <div class="stat-label">Patient Days</div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-value">{{ au_summary.overall_totals.dot_per_1000_pd }}</div>
+        <div class="stat-label">DOT/1000 PD</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ au_summary.locations | length }}</div>
+        <div class="stat-label">Locations</div>
+    </div>
+</div>
+
+<!-- Category Summary -->
+{% if category_data %}
+<div class="section">
+    <h2>Usage by Antimicrobial Category</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Month</th>
+                <th class="text-right">Total DOT</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in category_data %}
+            <tr>
+                <td><strong>{{ row.nhsn_category }}</strong></td>
+                <td>{{ row.nhsn_location_code }}</td>
+                <td>{{ row.month }}</td>
+                <td class="text-right">{{ row.total_dot }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Location Detail -->
+{% for loc in au_summary.locations %}
+<div class="section location-section">
+    <h2>{{ loc.nhsn_location_code }} - Summary</h2>
+    <div class="location-stats">
+        <span><strong>Total DOT:</strong> {{ loc.totals.total_dot }}</span>
+        <span><strong>Patient Days:</strong> {{ loc.totals.patient_days }}</span>
+        <span><strong>Rate:</strong> {{ loc.totals.dot_per_1000_pd }} DOT/1000 PD</span>
+    </div>
+
+    {% for month in loc.months %}
+    <div class="month-section">
+        <h3>{{ month.month }} ({{ month.patient_days }} patient days, {{ month.total_dot }} DOT, {{ month.dot_per_1000_pd }}/1000 PD)</h3>
+        <table class="table table-compact">
+            <thead>
+                <tr>
+                    <th>NHSN Code</th>
+                    <th>Medication</th>
+                    <th>Category</th>
+                    <th>Route</th>
+                    <th class="text-right">DOT</th>
+                    <th class="text-right">DOT/1000 PD</th>
+                    {% if month.antimicrobials[0].defined_daily_doses is defined %}
+                    <th class="text-right">DDD</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for abx in month.antimicrobials %}
+                <tr>
+                    <td><code>{{ abx.nhsn_code }}</code></td>
+                    <td>{{ abx.medication_name }}</td>
+                    <td>{{ abx.nhsn_category }}</td>
+                    <td>{{ abx.route }}</td>
+                    <td class="text-right">{{ abx.days_of_therapy }}</td>
+                    <td class="text-right">{{ abx.dot_per_1000_pd }}</td>
+                    {% if abx.defined_daily_doses is defined %}
+                    <td class="text-right">{{ abx.defined_daily_doses }}</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+</div>
+{% endfor %}
+
+{% else %}
+<div class="empty-state">
+    <p>No antibiotic usage data found for the selected period.</p>
+    <p>This could mean no antimicrobial administrations were recorded, or the data sources are not configured.</p>
+</div>
+{% endif %}
+
+<style>
+.filter-section {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.filter-form {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.filter-group input, .filter-group select {
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+}
+
+.quick-links {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-card.stat-primary { border-left: 4px solid #6366f1; }
+.stat-card.stat-info { border-left: 4px solid #3b82f6; }
+.stat-card.stat-success { border-left: 4px solid #10b981; }
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.stat-label {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.section {
+    margin-bottom: 2rem;
+}
+
+.section h2 {
+    color: #1e293b;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+}
+
+.location-section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.location-stats {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1rem;
+    color: #64748b;
+}
+
+.month-section {
+    margin-top: 1.5rem;
+}
+
+.month-section h3 {
+    font-size: 1rem;
+    color: #475569;
+    margin-bottom: 0.75rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.table th {
+    background: #f8fafc;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.table-compact th, .table-compact td {
+    padding: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.text-right {
+    text-align: right;
+}
+
+code {
+    background: #f1f5f9;
+    padding: 0.125rem 0.375rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+}
+</style>
+{% endblock %}

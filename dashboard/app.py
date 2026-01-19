@@ -38,10 +38,12 @@ def create_app(config=None):
     from .routes.views import views_bp
     from .routes.api import api_bp
     from .routes.nhsn import nhsn_bp
+    from .routes.au_ar import au_ar_bp
 
     app.register_blueprint(views_bp)
     app.register_blueprint(api_bp, url_prefix="/api")
     app.register_blueprint(nhsn_bp)
+    app.register_blueprint(au_ar_bp)
 
     # Context processor for templates
     @app.context_processor

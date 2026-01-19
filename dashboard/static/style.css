@@ -1,54 +1,57 @@
-/* ASP Alerts Dashboard - CCHMC Theme */
+/* ASP Alerts Dashboard - CCHMC Theme (Refreshed) */
 
 :root {
-    /* CCHMC Brand Colors - from logo */
-    --color-primary: #8B1D41;           /* Dark maroon/wine - "Children's" */
-    --color-primary-dark: #6B1631;
-    --color-primary-light: #A93558;
-    --color-secondary: #00A9A5;         /* Teal/cyan - logo accent */
-    --color-secondary-dark: #008B87;
-    --color-secondary-light: #33BFBC;
-    --color-tertiary: #A4367B;          /* Magenta/purple - logo element */
-    --color-tertiary-light: #C75A9A;
-    --color-accent: #efcce0;            /* Light pink */
-    --color-accent-dark: #ddc7d2;
+    /* CCHMC Brand Colors - vibrant palette from logo */
+    --color-primary: #0891B2;           /* Vibrant teal/cyan - main brand color */
+    --color-primary-dark: #0E7490;
+    --color-primary-light: #22D3EE;
+    --color-secondary: #A4367B;         /* Magenta/pink - accent color */
+    --color-secondary-dark: #831843;
+    --color-secondary-light: #EC4899;
+    --color-tertiary: #059669;          /* Fresh green - from logo swoosh */
+    --color-tertiary-light: #34D399;
+    --color-accent: #E0F2FE;            /* Light cyan tint */
+    --color-accent-dark: #BAE6FD;
 
-    /* Semantic Colors - using CCHMC palette */
-    --color-success: #00A9A5;           /* Teal - matches logo */
-    --color-success-light: #d4f5f4;
-    --color-warning: #E5A823;           /* Warm gold */
-    --color-warning-light: #fff3cd;
-    --color-danger: #8B1D41;            /* Maroon - matches primary */
-    --color-danger-light: #f8d7da;
-    --color-info: #00A9A5;              /* Teal */
-    --color-info-light: #d1f2f1;
+    /* Semantic Colors */
+    --color-success: #059669;           /* Green */
+    --color-success-light: #D1FAE5;
+    --color-warning: #D97706;           /* Amber/orange */
+    --color-warning-light: #FEF3C7;
+    --color-danger: #DC2626;            /* Clear red for alerts */
+    --color-danger-light: #FEE2E2;
+    --color-info: #0891B2;              /* Teal */
+    --color-info-light: #CFFAFE;
 
-    /* Neutrals */
+    /* Neutrals - cooler tones */
     --color-white: #ffffff;
-    --color-gray-50: #f8f9fa;
-    --color-gray-100: #f1f3f5;
-    --color-gray-200: #e9ecef;
-    --color-gray-300: #dee2e6;
-    --color-gray-400: #ced4da;
-    --color-gray-500: #adb5bd;
-    --color-gray-600: #6c757d;
-    --color-gray-700: #495057;
-    --color-gray-800: #343a40;
-    --color-gray-900: #212529;
+    --color-gray-50: #F8FAFC;
+    --color-gray-100: #F1F5F9;
+    --color-gray-200: #E2E8F0;
+    --color-gray-300: #CBD5E1;
+    --color-gray-400: #94A3B8;
+    --color-gray-500: #64748B;
+    --color-gray-600: #475569;
+    --color-gray-700: #334155;
+    --color-gray-800: #1E293B;
+    --color-gray-900: #0F172A;
 
-    /* Shadows */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    /* Shadows - softer, more modern */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
 
     /* Border radius */
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
 
     /* Transitions */
     --transition-fast: 150ms ease;
     --transition-normal: 250ms ease;
+    --transition-smooth: 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -61,7 +64,8 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     line-height: 1.6;
     color: var(--color-gray-800);
-    background: linear-gradient(135deg, var(--color-gray-100) 0%, var(--color-accent) 100%);
+    background: linear-gradient(180deg, var(--color-gray-50) 0%, var(--color-gray-100) 50%, var(--color-accent) 100%);
+    background-attachment: fixed;
     min-height: 100vh;
 }
 
@@ -69,7 +73,7 @@ body {
    Navigation
    ============================================ */
 .navbar {
-    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    background: linear-gradient(135deg, var(--color-gray-800) 0%, var(--color-gray-900) 100%);
     color: var(--color-white);
     padding: 0 1.5rem;
     display: flex;
@@ -79,6 +83,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 100;
+    border-bottom: 3px solid var(--color-primary);
 }
 
 .nav-brand a {
@@ -118,8 +123,8 @@ body {
 
 .nav-links a.active {
     color: var(--color-white);
-    background: rgba(255, 255, 255, 0.15);
-    border-bottom-color: var(--color-accent);
+    background: rgba(255, 255, 255, 0.1);
+    border-bottom-color: var(--color-primary-light);
 }
 
 .nav-divider {
@@ -137,20 +142,63 @@ body {
     color: var(--color-white) !important;
 }
 
+/* Quick links to other dashboards */
+.nav-au-ar,
+.nav-nhsn {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-radius: var(--radius-sm);
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.nav-au-ar {
+    background: rgba(124, 58, 237, 0.7) !important;  /* Purple for AU/AR */
+}
+
+.nav-au-ar:hover {
+    background: rgba(124, 58, 237, 0.9) !important;
+}
+
+.nav-nhsn {
+    background: rgba(5, 150, 105, 0.7) !important;  /* Green for HAI */
+}
+
+.nav-nhsn:hover {
+    background: rgba(5, 150, 105, 0.9) !important;
+}
+
+.nav-alerts {
+    background: rgba(220, 38, 38, 0.7) !important;  /* Red for Alerts */
+}
+
+.nav-alerts:hover {
+    background: rgba(220, 38, 38, 0.9) !important;
+}
+
 /* ============================================
    Disclaimer Banner
    ============================================ */
 .disclaimer-banner {
-    background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%);
-    color: #856404;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, var(--color-gray-800) 0%, var(--color-gray-900) 100%);
+    color: rgba(255, 255, 255, 0.85);
     padding: 0.75rem 1.5rem;
     text-align: center;
     font-size: 0.875rem;
-    border-bottom: 1px solid #ffc107;
+    border-top: 3px solid var(--color-primary);
+    z-index: 99;
 }
 
 .disclaimer-banner strong {
-    color: #664d03;
+    color: var(--color-white);
+}
+
+/* Add padding to body to prevent content from being hidden behind fixed banner */
+body {
+    padding-bottom: 3.5rem;
 }
 
 /* ============================================
@@ -214,7 +262,7 @@ body {
 .stat-number {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--color-secondary-dark);
+    color: var(--color-primary-dark);
 }
 
 .stat-label {
@@ -236,28 +284,54 @@ body {
     padding: 1.5rem;
     box-shadow: var(--shadow-md);
     border-left: 4px solid var(--color-primary);
-    transition: all var(--transition-normal);
+    transition: all var(--transition-smooth);
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100px;
+    height: 100px;
+    background: linear-gradient(135deg, transparent 50%, var(--color-accent) 50%);
+    opacity: 0.5;
+    border-radius: 0 0 0 100%;
 }
 
 .stat-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px);
     box-shadow: var(--shadow-lg);
 }
 
 .stat-card.critical {
     border-left-color: var(--color-danger);
 }
+.stat-card.critical::before {
+    background: linear-gradient(135deg, transparent 50%, var(--color-danger-light) 50%);
+}
 
 .stat-card.warning {
     border-left-color: var(--color-warning);
 }
+.stat-card.warning::before {
+    background: linear-gradient(135deg, transparent 50%, var(--color-warning-light) 50%);
+}
 
 .stat-card.success {
-    border-left-color: var(--color-secondary);
+    border-left-color: var(--color-success);
+}
+.stat-card.success::before {
+    background: linear-gradient(135deg, transparent 50%, var(--color-success-light) 50%);
 }
 
 .stat-card.info {
-    border-left-color: var(--color-tertiary);
+    border-left-color: var(--color-secondary);
+}
+.stat-card.info::before {
+    background: linear-gradient(135deg, transparent 50%, rgba(164, 54, 123, 0.1) 50%);
 }
 
 .stat-card-value {
@@ -346,8 +420,8 @@ body {
 
 .flash-success {
     background: var(--color-success-light);
-    color: var(--color-secondary-dark);
-    border: 1px solid var(--color-secondary);
+    color: #047857;
+    border: 1px solid var(--color-success);
 }
 
 .flash-success::before {
@@ -454,43 +528,43 @@ body {
 }
 
 .badge-critical {
-    background: var(--color-danger);
+    background: linear-gradient(135deg, var(--color-danger) 0%, #B91C1C 100%);
     color: var(--color-white);
 }
 
 .badge-warning {
-    background: var(--color-warning);
-    color: var(--color-gray-900);
+    background: linear-gradient(135deg, var(--color-warning) 0%, #B45309 100%);
+    color: var(--color-white);
 }
 
 .badge-info {
-    background: var(--color-tertiary);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     color: var(--color-white);
 }
 
 .badge-status-pending {
-    background: var(--color-gray-500);
+    background: linear-gradient(135deg, var(--color-gray-400) 0%, var(--color-gray-500) 100%);
     color: var(--color-white);
 }
 
 .badge-status-sent {
-    background: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     color: var(--color-white);
 }
 
 .badge-status-acknowledged {
-    background: var(--color-secondary);
+    background: linear-gradient(135deg, var(--color-success) 0%, #047857 100%);
     color: var(--color-white);
 }
 
 .badge-status-snoozed {
-    background: var(--color-warning);
-    color: var(--color-gray-900);
+    background: linear-gradient(135deg, var(--color-warning) 0%, #B45309 100%);
+    color: var(--color-white);
 }
 
 .badge-status-resolved {
-    background: var(--color-gray-400);
-    color: var(--color-gray-800);
+    background: var(--color-gray-300);
+    color: var(--color-gray-700);
 }
 
 /* Coverage status badges for bacteremia alerts */
@@ -524,19 +598,21 @@ body {
     border: none;
     border-radius: var(--radius-md);
     cursor: pointer;
-    transition: all var(--transition-fast);
-    background: var(--color-primary);
+    transition: all var(--transition-smooth);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     color: var(--color-white);
+    box-shadow: 0 2px 4px rgba(8, 145, 178, 0.3);
 }
 
 .btn:hover {
-    background: var(--color-primary-dark);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(8, 145, 178, 0.4);
 }
 
 .btn:active {
     transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(8, 145, 178, 0.3);
 }
 
 .btn-small {
@@ -545,51 +621,60 @@ body {
 }
 
 .btn-primary {
-    background: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
     color: var(--color-white);
 }
 
 .btn-secondary {
-    background: var(--color-gray-600);
+    background: linear-gradient(135deg, var(--color-gray-500) 0%, var(--color-gray-600) 100%);
     color: var(--color-white);
+    box-shadow: 0 2px 4px rgba(100, 116, 139, 0.3);
 }
 
 .btn-secondary:hover {
-    background: var(--color-gray-700);
+    background: linear-gradient(135deg, var(--color-gray-600) 0%, var(--color-gray-700) 100%);
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.4);
 }
 
 .btn-success {
-    background: var(--color-secondary);
+    background: linear-gradient(135deg, var(--color-success) 0%, #047857 100%);
     color: var(--color-white);
+    box-shadow: 0 2px 4px rgba(5, 150, 105, 0.3);
 }
 
 .btn-success:hover {
-    background: var(--color-secondary-dark);
+    background: linear-gradient(135deg, var(--color-tertiary-light) 0%, var(--color-success) 100%);
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.4);
 }
 
 .btn-warning {
-    background: var(--color-warning);
-    color: var(--color-gray-900);
+    background: linear-gradient(135deg, var(--color-warning) 0%, #B45309 100%);
+    color: var(--color-white);
+    box-shadow: 0 2px 4px rgba(217, 119, 6, 0.3);
 }
 
 .btn-danger {
-    background: var(--color-danger);
+    background: linear-gradient(135deg, var(--color-danger) 0%, #B91C1C 100%);
     color: var(--color-white);
+    box-shadow: 0 2px 4px rgba(220, 38, 38, 0.3);
 }
 
 .btn-danger:hover {
-    background: #a93226;
+    background: linear-gradient(135deg, #EF4444 0%, var(--color-danger) 100%);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
 }
 
 .btn-outline {
     background: transparent;
     border: 2px solid var(--color-primary);
     color: var(--color-primary);
+    box-shadow: none;
 }
 
 .btn-outline:hover {
     background: var(--color-primary);
     color: var(--color-white);
+    box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
 }
 
 .btn-link {
@@ -597,6 +682,7 @@ body {
     color: var(--color-primary);
     padding: 0.5rem;
     font-weight: 500;
+    box-shadow: none;
 }
 
 .btn-link:hover {
@@ -668,12 +754,12 @@ body {
 
 .resolved-card {
     background: var(--color-success-light);
-    border-left: 4px solid var(--color-secondary);
+    border-left: 4px solid var(--color-success);
 }
 
 .resolved-card h3 {
-    color: var(--color-secondary-dark);
-    border-bottom-color: var(--color-secondary);
+    color: #047857;
+    border-bottom-color: var(--color-success);
 }
 
 .resolution-dl {
@@ -753,11 +839,11 @@ body {
 .info-section h3 {
     font-size: 0.875rem;
     margin-bottom: 1rem;
-    color: var(--color-primary);
+    color: var(--color-primary-dark);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 600;
-    border-bottom: 2px solid var(--color-accent);
+    border-bottom: 2px solid var(--color-primary);
     padding-bottom: 0.5rem;
 }
 
@@ -786,6 +872,7 @@ body {
     font-family: inherit;
     font-size: 0.875rem;
     border-left: 3px solid var(--color-primary);
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 /* ============================================
@@ -879,13 +966,13 @@ body {
     padding: 1.5rem;
     border-radius: var(--radius-md);
     margin-top: 1.5rem;
-    border-left: 4px solid var(--color-secondary);
+    border-left: 4px solid var(--color-success);
 }
 
 .resolution-info h3 {
     font-size: 1rem;
     margin-bottom: 1rem;
-    color: var(--color-secondary-dark);
+    color: #047857;
 }
 
 .resolution-info dl {
@@ -936,8 +1023,8 @@ body {
     display: block;
     font-size: 3rem;
     margin-bottom: 1rem;
-    color: var(--color-secondary);
-    opacity: 0.5;
+    color: var(--color-success);
+    opacity: 0.6;
 }
 
 .empty-state p {
@@ -979,6 +1066,7 @@ body {
 .footer {
     text-align: center;
     padding: 2rem;
+    padding-bottom: 4rem; /* Extra padding for fixed disclaimer */
     color: var(--color-gray-500);
     font-size: 0.875rem;
 }
@@ -1021,7 +1109,7 @@ body {
 .refresh-indicator .dot {
     width: 8px;
     height: 8px;
-    background: var(--color-secondary);
+    background: var(--color-primary);
     border-radius: 50%;
     animation: pulse 2s infinite;
 }
@@ -1192,8 +1280,10 @@ body {
 .stat-card .stat-value {
     font-size: 2.25rem;
     font-weight: 700;
-    color: var(--color-primary);
+    color: var(--color-primary-dark);
     line-height: 1;
+    position: relative;
+    z-index: 1;
 }
 
 .stat-card .stat-label {
@@ -1202,6 +1292,8 @@ body {
     margin-top: 0.5rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    position: relative;
+    z-index: 1;
 }
 
 /* Reports two-column layout */
@@ -1238,7 +1330,7 @@ body {
     color: var(--color-gray-700);
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid var(--color-accent);
+    border-bottom: 2px solid var(--color-primary);
 }
 
 /* Bar chart */
@@ -1275,7 +1367,7 @@ body {
 }
 
 .bar {
-    background: linear-gradient(135deg, var(--color-secondary-dark) 0%, var(--color-secondary) 100%);
+    background: linear-gradient(135deg, var(--color-primary-dark) 0%, var(--color-primary) 100%);
     height: 100%;
     border-radius: var(--radius-sm);
     min-width: 28px;
@@ -1327,7 +1419,7 @@ body {
 
 .percentage-bar {
     height: 8px;
-    background: linear-gradient(135deg, var(--color-tertiary) 0%, var(--color-tertiary-light) 100%);
+    background: linear-gradient(135deg, var(--color-secondary-dark) 0%, var(--color-secondary) 100%);
     border-radius: 4px;
     transition: width 0.3s ease;
 }
@@ -1432,10 +1524,10 @@ body {
 
 .help-card h2 {
     font-size: 1.25rem;
-    color: var(--color-primary);
+    color: var(--color-primary-dark);
     margin-bottom: 1rem;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid var(--color-accent);
+    border-bottom: 2px solid var(--color-primary);
 }
 
 .help-card h3 {

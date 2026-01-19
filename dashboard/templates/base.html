@@ -4,40 +4,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=2">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚠</text></svg>">
 </head>
 <body>
     <nav class="navbar">
         {% set is_nhsn = request.endpoint and request.endpoint.startswith('nhsn.') %}
+        {% set is_au_ar = request.endpoint and request.endpoint.startswith('au_ar.') %}
         <div class="nav-brand">
             {% if is_nhsn %}
-            <a href="{{ url_for('nhsn.dashboard') }}">NHSN Reporting</a>
+            <a href="{{ url_for('nhsn.dashboard') }}">HAI Detection</a>
+            {% elif is_au_ar %}
+            <a href="{{ url_for('au_ar.dashboard') }}">AU/AR Reporting</a>
             {% else %}
             <a href="{{ url_for('views.index') }}">{{ app_name }}</a>
             {% endif %}
         </div>
         <div class="nav-links">
             {% if is_nhsn %}
-            <!-- NHSN Navigation -->
+            <!-- NHSN/HAI Navigation -->
             <a href="{{ url_for('nhsn.dashboard') }}" {% if request.endpoint in ['nhsn.dashboard', 'nhsn.candidate_detail'] %}class="active"{% endif %}>Dashboard</a>
             <a href="{{ url_for('nhsn.history') }}" {% if request.endpoint == 'nhsn.history' %}class="active"{% endif %}>History</a>
             <a href="{{ url_for('nhsn.reports') }}" {% if request.endpoint == 'nhsn.reports' %}class="active"{% endif %}>Reports</a>
             <a href="{{ url_for('nhsn.submission') }}" {% if request.endpoint == 'nhsn.submission' %}class="active"{% endif %}>Submission</a>
+            <a href="{{ url_for('au_ar.dashboard') }}" class="nav-au-ar">AU/AR</a>
+            <a href="{{ url_for('views.index') }}" class="nav-alerts">Alerts</a>
             <a href="{{ url_for('nhsn.help_page') }}" {% if request.endpoint == 'nhsn.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_au_ar %}
+            <!-- AU/AR Navigation -->
+            <a href="{{ url_for('au_ar.dashboard') }}" {% if request.endpoint == 'au_ar.dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('au_ar.au_detail') }}" {% if request.endpoint == 'au_ar.au_detail' %}class="active"{% endif %}>AU Detail</a>
+            <a href="{{ url_for('au_ar.ar_detail') }}" {% if request.endpoint == 'au_ar.ar_detail' %}class="active"{% endif %}>AR Detail</a>
+            <a href="{{ url_for('au_ar.denominators') }}" {% if request.endpoint == 'au_ar.denominators' %}class="active"{% endif %}>Denominators</a>
+            <a href="{{ url_for('au_ar.submission') }}" {% if request.endpoint == 'au_ar.submission' %}class="active"{% endif %}>Submission</a>
+            <a href="{{ url_for('nhsn.dashboard') }}" class="nav-nhsn">HAI</a>
+            <a href="{{ url_for('views.index') }}" class="nav-alerts">Alerts</a>
             {% else %}
             <!-- Alerts Navigation -->
             <a href="{{ url_for('views.alerts_active') }}" {% if request.endpoint == 'views.alerts_active' %}class="active"{% endif %}>Active Alerts</a>
             <a href="{{ url_for('views.alerts_history') }}" {% if request.endpoint == 'views.alerts_history' %}class="active"{% endif %}>History</a>
             <a href="{{ url_for('views.reports') }}" {% if request.endpoint == 'views.reports' %}class="active"{% endif %}>Reports</a>
+            <a href="{{ url_for('au_ar.dashboard') }}" class="nav-au-ar">AU/AR</a>
+            <a href="{{ url_for('nhsn.dashboard') }}" class="nav-nhsn">HAI</a>
             <a href="{{ url_for('views.help_page') }}" {% if request.endpoint == 'views.help_page' %}class="active"{% endif %}>Help</a>
             {% endif %}
         </div>
     </nav>
-
-    <div class="disclaimer-banner">
-        <strong>Demo Environment:</strong> All patient data displayed is simulated. No real patient data is available through this dashboard.
-    </div>
 
     <main class="container">
         {% if request.args.get('msg') %}
@@ -66,6 +78,10 @@
 
         {% block content %}{% endblock %}
     </main>
+
+    <div class="disclaimer-banner">
+        <strong>Demo Environment:</strong> All patient data displayed is simulated. No real patient data is available through this dashboard.
+    </div>
 
     <footer class="footer">
         <p>ASP Alerts Dashboard &bull; Cincinnati Children's Hospital</p>

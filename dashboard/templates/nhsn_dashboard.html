@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}NHSN Reporting - {{ app_name }}{% endblock %}
+{% block title %}HAI Detection - {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>NHSN HAI Reporting</h1>
+    <h1>HAI Detection</h1>
     <p class="subtitle">Healthcare-Associated Infection Candidate Detection</p>
 </div>
 
@@ -52,6 +52,7 @@
         <a href="{{ url_for('nhsn.history') }}" class="btn btn-secondary">History</a>
         <a href="{{ url_for('nhsn.reports') }}" class="btn btn-success">Reports & Analytics</a>
         <a href="{{ url_for('nhsn.submission') }}" class="btn btn-nhsn">NHSN Submission</a>
+        <a href="{{ url_for('au_ar.dashboard') }}" class="btn btn-au-ar">AU/AR Reporting</a>
         <a href="{{ url_for('nhsn.help_page') }}" class="btn btn-info">Help</a>
     </div>
 </div>
@@ -126,21 +127,27 @@
 
 .stat-card {
     background: white;
-    border-radius: 8px;
+    border-radius: 10px;
     padding: 1.5rem;
     text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
 .stat-card.stat-primary {
-    border-left: 4px solid #6366f1;
-    background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%);
+    border-left: 4px solid #0891B2;
+    background: linear-gradient(135deg, #E0F2FE 0%, #ffffff 100%);
 }
-.stat-card.stat-primary .stat-value { color: #4f46e5; }
-.stat-card.stat-warning { border-left: 4px solid #f59e0b; }
-.stat-card.stat-info { border-left: 4px solid #3b82f6; }
-.stat-card.stat-success { border-left: 4px solid #10b981; }
-.stat-card.stat-critical { border-left: 4px solid #ef4444; }
+.stat-card.stat-primary .stat-value { color: #0E7490; }
+.stat-card.stat-warning { border-left: 4px solid #D97706; }
+.stat-card.stat-info { border-left: 4px solid #0891B2; }
+.stat-card.stat-success { border-left: 4px solid #059669; }
+.stat-card.stat-critical { border-left: 4px solid #DC2626; }
 
 .stat-value {
     font-size: 2rem;
@@ -181,12 +188,17 @@
 }
 
 .btn-info {
-    background: #3b82f6;
+    background: linear-gradient(135deg, #0891B2 0%, #0E7490 100%);
     color: white;
 }
 
 .btn-nhsn {
-    background: #0f766e;
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    color: white;
+}
+
+.btn-au-ar {
+    background: linear-gradient(135deg, #A4367B 0%, #831843 100%);
     color: white;
 }
 
@@ -195,7 +207,7 @@
     padding: 2rem;
     color: #64748b;
     background: #f8fafc;
-    border-radius: 8px;
+    border-radius: 10px;
 }
 
 tr.excluded {
@@ -204,29 +216,29 @@ tr.excluded {
 
 .badge {
     padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+    border-radius: 6px;
     font-size: 0.75rem;
     font-weight: 500;
 }
 
-.badge-success { background: #10b981; color: white; }
-.badge-warning { background: #f59e0b; color: white; }
-.badge-info { background: #3b82f6; color: white; }
-.badge-secondary { background: #64748b; color: white; }
-.badge-danger { background: #ef4444; color: white; }
+.badge-success { background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; }
+.badge-warning { background: linear-gradient(135deg, #D97706 0%, #B45309 100%); color: white; }
+.badge-info { background: linear-gradient(135deg, #0891B2 0%, #0E7490 100%); color: white; }
+.badge-secondary { background: #94A3B8; color: white; }
+.badge-danger { background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); color: white; }
 
 .table-wide { width: 100%; table-layout: auto; }
 .text-center { text-align: center; }
 
 .alert {
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: 10px;
     margin-bottom: 1rem;
 }
 
 .alert-warning {
-    background: #fef3c7;
-    border: 1px solid #f59e0b;
+    background: #FEF3C7;
+    border: 1px solid #D97706;
     color: #92400e;
 }
 </style>
