@@ -40,6 +40,10 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# Synthea and generated data
-tools/
+# Synthea - ignore generated output and JAR, but keep custom modules
+tools/synthea/output/
+tools/synthea/*.jar
 data/synthea/
+
+# SQLite databases
+*.db

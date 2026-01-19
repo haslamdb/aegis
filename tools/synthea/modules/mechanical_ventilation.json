@@ -1,0 +1,252 @@
+{
+  "name": "Mechanical Ventilation",
+  "remarks": [
+    "Custom module for ASP Alerts NHSN testing.",
+    "Places patients on mechanical ventilation (intubation).",
+    "Creates DeviceUseStatement resources for VAE/VAP detection."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Age_Guard"
+    },
+
+    "Age_Guard": {
+      "type": "Guard",
+      "allow": {
+        "condition_type": "Age",
+        "operator": ">=",
+        "quantity": 1,
+        "unit": "months"
+      },
+      "direct_transition": "Chance_of_Respiratory_Failure"
+    },
+
+    "Chance_of_Respiratory_Failure": {
+      "type": "Simple",
+      "remarks": ["15% chance of respiratory failure requiring ventilation"],
+      "distributed_transition": [
+        {"distribution": 0.15, "transition": "Respiratory_Failure_Onset"},
+        {"distribution": 0.85, "transition": "Terminal"}
+      ]
+    },
+
+    "Respiratory_Failure_Onset": {
+      "type": "ConditionOnset",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "65710008",
+          "display": "Acute respiratory failure"
+        }
+      ],
+      "assign_to_attribute": "respiratory_failure",
+      "direct_transition": "ICU_Admission"
+    },
+
+    "ICU_Admission": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "reason": "respiratory_failure",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "305351004",
+          "display": "Admission to intensive care unit"
+        }
+      ],
+      "direct_transition": "Intubation_Procedure"
+    },
+
+    "Intubation_Procedure": {
+      "type": "Procedure",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "112798008",
+          "display": "Insertion of endotracheal tube"
+        }
+      ],
+      "reason": "respiratory_failure",
+      "duration": {
+        "low": 5,
+        "high": 20,
+        "unit": "minutes"
+      },
+      "direct_transition": "Place_ETT"
+    },
+
+    "Place_ETT": {
+      "type": "Device",
+      "code": {
+        "system": "SNOMED-CT",
+        "code": "129121000",
+        "display": "Endotracheal tube"
+      },
+      "assign_to_attribute": "ett_device",
+      "direct_transition": "Start_Mechanical_Ventilation"
+    },
+
+    "Start_Mechanical_Ventilation": {
+      "type": "Device",
+      "code": {
+        "system": "SNOMED-CT",
+        "code": "40617009",
+        "display": "Mechanical ventilator"
+      },
+      "assign_to_attribute": "ventilator_device",
+      "direct_transition": "Ventilator_Duration"
+    },
+
+    "Ventilator_Duration": {
+      "type": "Delay",
+      "remarks": ["Patient on ventilator 2-14 days typically"],
+      "range": {
+        "low": 2,
+        "high": 14,
+        "unit": "days"
+      },
+      "direct_transition": "Weaning_Decision"
+    },
+
+    "Weaning_Decision": {
+      "type": "Simple",
+      "remarks": ["85% successfully extubated, 15% prolonged ventilation or death"],
+      "distributed_transition": [
+        {"distribution": 0.85, "transition": "Extubation"},
+        {"distribution": 0.15, "transition": "Prolonged_Ventilation"}
+      ]
+    },
+
+    "Extubation": {
+      "type": "Procedure",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "271280005",
+          "display": "Removal of endotracheal tube"
+        }
+      ],
+      "direct_transition": "Remove_ETT"
+    },
+
+    "Remove_ETT": {
+      "type": "DeviceEnd",
+      "device": "ett_device",
+      "direct_transition": "Stop_Mechanical_Ventilation"
+    },
+
+    "Stop_Mechanical_Ventilation": {
+      "type": "DeviceEnd",
+      "device": "ventilator_device",
+      "direct_transition": "Post_Extubation_Recovery"
+    },
+
+    "Post_Extubation_Recovery": {
+      "type": "Delay",
+      "range": {
+        "low": 2,
+        "high": 5,
+        "unit": "days"
+      },
+      "direct_transition": "Resolve_Respiratory_Failure"
+    },
+
+    "Resolve_Respiratory_Failure": {
+      "type": "ConditionEnd",
+      "condition_onset": "respiratory_failure",
+      "direct_transition": "Discharge"
+    },
+
+    "Prolonged_Ventilation": {
+      "type": "Delay",
+      "remarks": ["Additional 7-21 days on ventilator"],
+      "range": {
+        "low": 7,
+        "high": 21,
+        "unit": "days"
+      },
+      "direct_transition": "Tracheostomy_Decision"
+    },
+
+    "Tracheostomy_Decision": {
+      "type": "Simple",
+      "distributed_transition": [
+        {"distribution": 0.60, "transition": "Tracheostomy"},
+        {"distribution": 0.40, "transition": "Late_Extubation"}
+      ]
+    },
+
+    "Tracheostomy": {
+      "type": "Procedure",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "48387007",
+          "display": "Tracheostomy"
+        }
+      ],
+      "direct_transition": "Remove_ETT_For_Trach"
+    },
+
+    "Remove_ETT_For_Trach": {
+      "type": "DeviceEnd",
+      "device": "ett_device",
+      "direct_transition": "Place_Trach_Tube"
+    },
+
+    "Place_Trach_Tube": {
+      "type": "Device",
+      "code": {
+        "system": "SNOMED-CT",
+        "code": "129122007",
+        "display": "Tracheostomy tube"
+      },
+      "assign_to_attribute": "trach_device",
+      "direct_transition": "Prolonged_Weaning"
+    },
+
+    "Prolonged_Weaning": {
+      "type": "Delay",
+      "range": {
+        "low": 7,
+        "high": 30,
+        "unit": "days"
+      },
+      "direct_transition": "Stop_Ventilator_Trach"
+    },
+
+    "Stop_Ventilator_Trach": {
+      "type": "DeviceEnd",
+      "device": "ventilator_device",
+      "direct_transition": "Resolve_Respiratory_Failure_Trach"
+    },
+
+    "Resolve_Respiratory_Failure_Trach": {
+      "type": "ConditionEnd",
+      "condition_onset": "respiratory_failure",
+      "direct_transition": "Discharge_With_Trach"
+    },
+
+    "Discharge_With_Trach": {
+      "type": "EncounterEnd",
+      "remarks": ["Discharged with tracheostomy, may go to rehab"],
+      "direct_transition": "Terminal"
+    },
+
+    "Late_Extubation": {
+      "type": "Simple",
+      "direct_transition": "Extubation"
+    },
+
+    "Discharge": {
+      "type": "EncounterEnd",
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

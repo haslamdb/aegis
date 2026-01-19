@@ -318,6 +318,165 @@ python generate_nhsn_test_data.py  # Uploads automatically
 8. **GI Source** - Enterococcus with documented colitis
 9. **MBI-LCBI** - Strep viridans during mucositis (special category)
 
+## Synthetic Patient Data Generation (Synthea)
+
+For realistic synthetic patient data with device information (central lines, urinary catheters, ventilators), use Synthea with our custom modules. This creates FHIR data for real-time HAI detection and syncs to Clarity for denominator calculations.
+
+### Prerequisites
+
+- Java 11+ (for Synthea)
+- Synthea JAR at `../tools/synthea/synthea-with-dependencies.jar`
+- Custom modules in `../tools/synthea/modules/`
+
+### Custom Synthea Modules
+
+We provide three custom modules that generate device data needed for HAI detection:
+
+| Module | Probability | Device Types | Dwell Time |
+|--------|-------------|--------------|------------|
+| `central_line.json` | 30% | CVC, PICC, Tunneled catheter | 3-21 days |
+| `urinary_catheter.json` | 25% | Foley catheter | 2-14 days |
+| `mechanical_ventilation.json` | 15% | ETT, Ventilator, Tracheostomy | 2-14+ days |
+
+### Step 1: Generate Synthea FHIR Data
+
+```bash
+cd ../tools/synthea
+
+# Generate 50 patients from Massachusetts
+java -jar synthea-with-dependencies.jar \
+    -c synthea.properties \
+    -d modules \
+    -p 50 \
+    Massachusetts
+
+# Output goes to ./output/fhir/
+```
+
+**Command Options:**
+- `-c synthea.properties` - Use our custom configuration
+- `-d modules` - Load custom device modules
+- `-p 50` - Generate 50 patients
+- `Massachusetts` - State for demographic data (use any US state)
+
+**Filter by Age:**
+```bash
+# Adults only (18-85)
+java -jar synthea-with-dependencies.jar -c synthea.properties -d modules -p 50 -a 18-85 Massachusetts
+
+# Pediatric (1-17)
+java -jar synthea-with-dependencies.jar -c synthea.properties -d modules -p 50 -a 1-17 Massachusetts
+
+# Neonates (0-1)
+java -jar synthea-with-dependencies.jar -c synthea.properties -d modules -p 20 -a 0-1 Massachusetts
+```
+
+**Filter by Gender:**
+```bash
+java -jar synthea-with-dependencies.jar -c synthea.properties -d modules -p 50 -g F Massachusetts  # Female only
+java -jar synthea-with-dependencies.jar -c synthea.properties -d modules -p 50 -g M Massachusetts  # Male only
+```
+
+### Step 2: Sync to Clarity Database
+
+After generating FHIR data, sync to the mock Clarity database to enable denominator calculations with matching patient MRNs:
+
+```bash
+cd nhsn-reporting
+
+# Sync Synthea output to Clarity
+python scripts/synthea_to_clarity.py \
+    --fhir-dir ../tools/synthea/output/fhir \
+    --db-path mock_clarity.db
+
+# Clear existing and re-import
+python scripts/synthea_to_clarity.py \
+    --fhir-dir ../tools/synthea/output/fhir \
+    --db-path mock_clarity.db \
+    --clear-existing
+```
+
+**What the sync does:**
+1. Reads all FHIR bundles from Synthea output
+2. Extracts patient MRNs, encounters, and device placements
+3. Maps SNOMED device codes to Clarity flowsheet IDs
+4. Creates daily flowsheet measurements for device presence
+5. Assigns encounters to NHSN locations based on encounter type
+
+### Step 3: Load FHIR Data to Server
+
+Load the generated FHIR bundles to your FHIR server for real-time HAI detection:
+
+```bash
+# Load to local HAPI FHIR
+for f in ../tools/synthea/output/fhir/*.json; do
+    curl -X POST "http://localhost:8081/fhir" \
+        -H "Content-Type: application/fhir+json" \
+        -d @"$f"
+done
+```
+
+### Architecture: FHIR + Clarity Integration
+
+The hybrid approach uses:
+- **FHIR** for real-time HAI detection (blood cultures, device data, clinical notes)
+- **Clarity** for aggregate denominator calculations (line days, patient days by unit)
+
+```
+                    Synthea Generator
+                           │
+                           ▼
+                    FHIR Bundles (.json)
+                     ┌─────┴─────┐
+                     │           │
+                     ▼           ▼
+              FHIR Server    synthea_to_clarity.py
+                     │           │
+                     ▼           ▼
+            Real-time HAI   Clarity Database
+             Detection     (Denominators)
+                     │           │
+                     └─────┬─────┘
+                           │
+                           ▼
+                    NHSN Rate Calculation
+                    (HAI count / device days)
+```
+
+**Key benefit:** Patient MRNs match between FHIR and Clarity, allowing correlation of detected HAIs with denominator data for rate calculations.
+
+### Example: Full Workflow
+
+```bash
+# 1. Generate patients
+cd ../tools/synthea
+java -jar synthea-with-dependencies.jar -c synthea.properties -d modules -p 100 Massachusetts
+
+# 2. Sync to Clarity
+cd ../nhsn-reporting
+python scripts/synthea_to_clarity.py \
+    --fhir-dir ../tools/synthea/output/fhir \
+    --db-path mock_clarity.db \
+    --clear-existing
+
+# 3. Load to FHIR server
+for f in ../tools/synthea/output/fhir/*.json; do
+    curl -X POST "http://localhost:8081/fhir" \
+        -H "Content-Type: application/fhir+json" \
+        -d @"$f" 2>/dev/null
+done
+
+# 4. Run HAI detection
+python -m src.runner --once
+
+# 5. Calculate rates
+python -c "
+from src.data.denominator import DenominatorCalculator
+calc = DenominatorCalculator('mock_clarity.db')
+print(calc.get_denominator_summary('2024-01-01', '2024-12-31'))
+"
+```
+
 ## NHSN Submission
 
 The module supports two methods for submitting confirmed HAI events to NHSN:

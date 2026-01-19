@@ -1,0 +1,254 @@
+{
+  "name": "Broad Spectrum Antibiotic Therapy",
+  "remarks": [
+    "Custom module for ASP Alerts testing.",
+    "Simulates inpatient scenarios requiring vancomycin and/or meropenem.",
+    "Generates patients with varying durations for threshold testing."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Age_Guard"
+    },
+
+    "Age_Guard": {
+      "type": "Guard",
+      "allow": {
+        "condition_type": "Age",
+        "operator": ">=",
+        "quantity": 1,
+        "unit": "months"
+      },
+      "direct_transition": "Chance_of_Serious_Infection"
+    },
+
+    "Chance_of_Serious_Infection": {
+      "type": "Simple",
+      "remarks": ["30% chance of developing a serious infection requiring broad-spectrum antibiotics"],
+      "distributed_transition": [
+        {"distribution": 0.30, "transition": "Serious_Bacterial_Infection"},
+        {"distribution": 0.70, "transition": "Terminal"}
+      ]
+    },
+
+    "Serious_Bacterial_Infection": {
+      "type": "ConditionOnset",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "10001005",
+          "display": "Bacterial sepsis"
+        }
+      ],
+      "assign_to_attribute": "serious_infection",
+      "direct_transition": "Hospital_Admission"
+    },
+
+    "Hospital_Admission": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "reason": "serious_infection",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Choose_Antibiotic_Regimen"
+    },
+
+    "Choose_Antibiotic_Regimen": {
+      "type": "Simple",
+      "remarks": ["Distribute across different antibiotic regimens"],
+      "distributed_transition": [
+        {"distribution": 0.30, "transition": "Vancomycin_Only"},
+        {"distribution": 0.30, "transition": "Meropenem_Only"},
+        {"distribution": 0.25, "transition": "Dual_Therapy"},
+        {"distribution": 0.15, "transition": "Short_Course_Therapy"}
+      ]
+    },
+
+    "Vancomycin_Only": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "11124",
+          "display": "Vancomycin"
+        }
+      ],
+      "reason": "serious_infection",
+      "assign_to_attribute": "vancomycin_order",
+      "direct_transition": "Vancomycin_Duration"
+    },
+
+    "Vancomycin_Duration": {
+      "type": "Simple",
+      "distributed_transition": [
+        {"distribution": 0.40, "transition": "Vancomycin_Short"},
+        {"distribution": 0.35, "transition": "Vancomycin_Over_Threshold"},
+        {"distribution": 0.25, "transition": "Vancomycin_Critical"}
+      ]
+    },
+
+    "Vancomycin_Short": {
+      "type": "Delay",
+      "range": {"low": 24, "high": 70, "unit": "hours"},
+      "direct_transition": "End_Vancomycin"
+    },
+
+    "Vancomycin_Over_Threshold": {
+      "type": "Delay",
+      "range": {"low": 73, "high": 120, "unit": "hours"},
+      "direct_transition": "End_Vancomycin"
+    },
+
+    "Vancomycin_Critical": {
+      "type": "Delay",
+      "range": {"low": 145, "high": 240, "unit": "hours"},
+      "direct_transition": "End_Vancomycin"
+    },
+
+    "End_Vancomycin": {
+      "type": "MedicationEnd",
+      "medication_order": "vancomycin_order",
+      "direct_transition": "Discharge"
+    },
+
+    "Meropenem_Only": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "29561",
+          "display": "Meropenem"
+        }
+      ],
+      "reason": "serious_infection",
+      "assign_to_attribute": "meropenem_order",
+      "direct_transition": "Meropenem_Duration"
+    },
+
+    "Meropenem_Duration": {
+      "type": "Simple",
+      "distributed_transition": [
+        {"distribution": 0.40, "transition": "Meropenem_Short"},
+        {"distribution": 0.35, "transition": "Meropenem_Over_Threshold"},
+        {"distribution": 0.25, "transition": "Meropenem_Critical"}
+      ]
+    },
+
+    "Meropenem_Short": {
+      "type": "Delay",
+      "range": {"low": 24, "high": 70, "unit": "hours"},
+      "direct_transition": "End_Meropenem"
+    },
+
+    "Meropenem_Over_Threshold": {
+      "type": "Delay",
+      "range": {"low": 73, "high": 120, "unit": "hours"},
+      "direct_transition": "End_Meropenem"
+    },
+
+    "Meropenem_Critical": {
+      "type": "Delay",
+      "range": {"low": 145, "high": 240, "unit": "hours"},
+      "direct_transition": "End_Meropenem"
+    },
+
+    "End_Meropenem": {
+      "type": "MedicationEnd",
+      "medication_order": "meropenem_order",
+      "direct_transition": "Discharge"
+    },
+
+    "Dual_Therapy": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "11124",
+          "display": "Vancomycin"
+        }
+      ],
+      "reason": "serious_infection",
+      "assign_to_attribute": "vancomycin_order",
+      "direct_transition": "Dual_Therapy_Meropenem"
+    },
+
+    "Dual_Therapy_Meropenem": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "29561",
+          "display": "Meropenem"
+        }
+      ],
+      "reason": "serious_infection",
+      "assign_to_attribute": "meropenem_order",
+      "direct_transition": "Dual_Therapy_Duration"
+    },
+
+    "Dual_Therapy_Duration": {
+      "type": "Delay",
+      "range": {"low": 80, "high": 168, "unit": "hours"},
+      "direct_transition": "End_Dual_Vancomycin"
+    },
+
+    "End_Dual_Vancomycin": {
+      "type": "MedicationEnd",
+      "medication_order": "vancomycin_order",
+      "direct_transition": "End_Dual_Meropenem"
+    },
+
+    "End_Dual_Meropenem": {
+      "type": "MedicationEnd",
+      "medication_order": "meropenem_order",
+      "direct_transition": "Discharge"
+    },
+
+    "Short_Course_Therapy": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "11124",
+          "display": "Vancomycin"
+        }
+      ],
+      "reason": "serious_infection",
+      "assign_to_attribute": "vancomycin_order",
+      "direct_transition": "Short_Course_Duration"
+    },
+
+    "Short_Course_Duration": {
+      "type": "Delay",
+      "range": {"low": 12, "high": 48, "unit": "hours"},
+      "direct_transition": "End_Short_Course"
+    },
+
+    "End_Short_Course": {
+      "type": "MedicationEnd",
+      "medication_order": "vancomycin_order",
+      "direct_transition": "Discharge"
+    },
+
+    "Discharge": {
+      "type": "EncounterEnd",
+      "direct_transition": "Resolve_Infection"
+    },
+
+    "Resolve_Infection": {
+      "type": "ConditionEnd",
+      "condition_onset": "Serious_Bacterial_Infection",
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

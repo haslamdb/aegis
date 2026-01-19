@@ -1,0 +1,543 @@
+{
+  "name": "Bacteremia",
+  "remarks": [
+    "Custom module for ASP Alerts testing.",
+    "Simulates positive blood cultures with various organisms.",
+    "Some patients receive appropriate antibiotics, others do not."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Age_Guard"
+    },
+
+    "Age_Guard": {
+      "type": "Guard",
+      "allow": {
+        "condition_type": "Age",
+        "operator": ">=",
+        "quantity": 1,
+        "unit": "months"
+      },
+      "direct_transition": "Chance_of_Bacteremia"
+    },
+
+    "Chance_of_Bacteremia": {
+      "type": "Simple",
+      "remarks": ["25% chance of developing bacteremia"],
+      "distributed_transition": [
+        {"distribution": 0.25, "transition": "Select_Organism"},
+        {"distribution": 0.75, "transition": "Terminal"}
+      ]
+    },
+
+    "Select_Organism": {
+      "type": "Simple",
+      "distributed_transition": [
+        {"distribution": 0.25, "transition": "MRSA_Infection"},
+        {"distribution": 0.20, "transition": "Ecoli_Infection"},
+        {"distribution": 0.15, "transition": "Pseudomonas_Infection"},
+        {"distribution": 0.15, "transition": "Klebsiella_Infection"},
+        {"distribution": 0.10, "transition": "Staph_Aureus_MSSA"},
+        {"distribution": 0.10, "transition": "Enterococcus_Infection"},
+        {"distribution": 0.05, "transition": "Candida_Infection"}
+      ]
+    },
+
+    "MRSA_Infection": {
+      "type": "ConditionOnset",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "266096002",
+          "display": "Methicillin resistant Staphylococcus aureus infection"
+        }
+      ],
+      "assign_to_attribute": "bacteremia",
+      "direct_transition": "Hospital_Admission_MRSA"
+    },
+
+    "Hospital_Admission_MRSA": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "reason": "bacteremia",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Blood_Culture_Observation_MRSA"
+    },
+
+    "Blood_Culture_Observation_MRSA": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "600-7",
+          "display": "Bacteria identified in Blood by Culture"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "115329001",
+        "display": "Methicillin resistant Staphylococcus aureus"
+      },
+      "direct_transition": "MRSA_Treatment_Decision"
+    },
+
+    "MRSA_Treatment_Decision": {
+      "type": "Simple",
+      "distributed_transition": [
+        {"distribution": 0.70, "transition": "MRSA_Appropriate_Treatment"},
+        {"distribution": 0.30, "transition": "MRSA_Inadequate_Treatment"}
+      ]
+    },
+
+    "MRSA_Appropriate_Treatment": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "11124",
+          "display": "Vancomycin"
+        }
+      ],
+      "reason": "bacteremia",
+      "assign_to_attribute": "antibiotic_order",
+      "direct_transition": "Treatment_Duration"
+    },
+
+    "MRSA_Inadequate_Treatment": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "309090",
+          "display": "Cefazolin"
+        }
+      ],
+      "reason": "bacteremia",
+      "remarks": ["Cefazolin does not cover MRSA - should trigger alert"],
+      "assign_to_attribute": "antibiotic_order",
+      "direct_transition": "Treatment_Duration"
+    },
+
+    "Ecoli_Infection": {
+      "type": "ConditionOnset",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "112283007",
+          "display": "Escherichia coli infection"
+        }
+      ],
+      "assign_to_attribute": "bacteremia",
+      "direct_transition": "Hospital_Admission_Ecoli"
+    },
+
+    "Hospital_Admission_Ecoli": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "reason": "bacteremia",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Blood_Culture_Observation_Ecoli"
+    },
+
+    "Blood_Culture_Observation_Ecoli": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "600-7",
+          "display": "Bacteria identified in Blood by Culture"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "112283007",
+        "display": "Escherichia coli"
+      },
+      "direct_transition": "GNR_Treatment"
+    },
+
+    "GNR_Treatment": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "29561",
+          "display": "Meropenem"
+        }
+      ],
+      "reason": "bacteremia",
+      "assign_to_attribute": "antibiotic_order",
+      "direct_transition": "Treatment_Duration"
+    },
+
+    "Pseudomonas_Infection": {
+      "type": "ConditionOnset",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "52499004",
+          "display": "Pseudomonas aeruginosa infection"
+        }
+      ],
+      "assign_to_attribute": "bacteremia",
+      "direct_transition": "Hospital_Admission_Pseudomonas"
+    },
+
+    "Hospital_Admission_Pseudomonas": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "reason": "bacteremia",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Blood_Culture_Observation_Pseudomonas"
+    },
+
+    "Blood_Culture_Observation_Pseudomonas": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "600-7",
+          "display": "Bacteria identified in Blood by Culture"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "52499004",
+        "display": "Pseudomonas aeruginosa"
+      },
+      "direct_transition": "Pseudomonas_Treatment_Decision"
+    },
+
+    "Pseudomonas_Treatment_Decision": {
+      "type": "Simple",
+      "distributed_transition": [
+        {"distribution": 0.60, "transition": "Pseudomonas_Appropriate_Treatment"},
+        {"distribution": 0.40, "transition": "Pseudomonas_Inadequate_Treatment"}
+      ]
+    },
+
+    "Pseudomonas_Appropriate_Treatment": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "29561",
+          "display": "Meropenem"
+        }
+      ],
+      "reason": "bacteremia",
+      "assign_to_attribute": "antibiotic_order",
+      "direct_transition": "Treatment_Duration"
+    },
+
+    "Pseudomonas_Inadequate_Treatment": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "309090",
+          "display": "Cefazolin"
+        }
+      ],
+      "reason": "bacteremia",
+      "remarks": ["Cefazolin does not cover Pseudomonas - should trigger alert"],
+      "assign_to_attribute": "antibiotic_order",
+      "direct_transition": "Treatment_Duration"
+    },
+
+    "Klebsiella_Infection": {
+      "type": "ConditionOnset",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "56415008",
+          "display": "Klebsiella infection"
+        }
+      ],
+      "assign_to_attribute": "bacteremia",
+      "direct_transition": "Hospital_Admission_Klebsiella"
+    },
+
+    "Hospital_Admission_Klebsiella": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "reason": "bacteremia",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Blood_Culture_Observation_Klebsiella"
+    },
+
+    "Blood_Culture_Observation_Klebsiella": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "600-7",
+          "display": "Bacteria identified in Blood by Culture"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "56415008",
+        "display": "Klebsiella pneumoniae"
+      },
+      "direct_transition": "GNR_Treatment"
+    },
+
+    "Staph_Aureus_MSSA": {
+      "type": "ConditionOnset",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "3092008",
+          "display": "Staphylococcus aureus infection"
+        }
+      ],
+      "assign_to_attribute": "bacteremia",
+      "direct_transition": "Hospital_Admission_MSSA"
+    },
+
+    "Hospital_Admission_MSSA": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "reason": "bacteremia",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Blood_Culture_Observation_MSSA"
+    },
+
+    "Blood_Culture_Observation_MSSA": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "600-7",
+          "display": "Bacteria identified in Blood by Culture"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "3092008",
+        "display": "Staphylococcus aureus"
+      },
+      "direct_transition": "MSSA_Treatment"
+    },
+
+    "MSSA_Treatment": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "309090",
+          "display": "Cefazolin"
+        }
+      ],
+      "reason": "bacteremia",
+      "assign_to_attribute": "antibiotic_order",
+      "direct_transition": "Treatment_Duration"
+    },
+
+    "Enterococcus_Infection": {
+      "type": "ConditionOnset",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "78065002",
+          "display": "Enterococcus infection"
+        }
+      ],
+      "assign_to_attribute": "bacteremia",
+      "direct_transition": "Hospital_Admission_Enterococcus"
+    },
+
+    "Hospital_Admission_Enterococcus": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "reason": "bacteremia",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Blood_Culture_Observation_Enterococcus"
+    },
+
+    "Blood_Culture_Observation_Enterococcus": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "600-7",
+          "display": "Bacteria identified in Blood by Culture"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "78065002",
+        "display": "Enterococcus faecalis"
+      },
+      "direct_transition": "Enterococcus_Treatment"
+    },
+
+    "Enterococcus_Treatment": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "11124",
+          "display": "Vancomycin"
+        }
+      ],
+      "reason": "bacteremia",
+      "assign_to_attribute": "antibiotic_order",
+      "direct_transition": "Treatment_Duration"
+    },
+
+    "Candida_Infection": {
+      "type": "ConditionOnset",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "78048006",
+          "display": "Candida infection"
+        }
+      ],
+      "assign_to_attribute": "bacteremia",
+      "direct_transition": "Hospital_Admission_Candida"
+    },
+
+    "Hospital_Admission_Candida": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "reason": "bacteremia",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Blood_Culture_Observation_Candida"
+    },
+
+    "Blood_Culture_Observation_Candida": {
+      "type": "Observation",
+      "category": "laboratory",
+      "codes": [
+        {
+          "system": "LOINC",
+          "code": "600-7",
+          "display": "Bacteria identified in Blood by Culture"
+        }
+      ],
+      "value_code": {
+        "system": "SNOMED-CT",
+        "code": "78048006",
+        "display": "Candida albicans"
+      },
+      "direct_transition": "Candida_Treatment_Decision"
+    },
+
+    "Candida_Treatment_Decision": {
+      "type": "Simple",
+      "distributed_transition": [
+        {"distribution": 0.50, "transition": "Candida_Appropriate_Treatment"},
+        {"distribution": 0.50, "transition": "Candida_No_Antifungal"}
+      ]
+    },
+
+    "Candida_Appropriate_Treatment": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "121243",
+          "display": "Micafungin"
+        }
+      ],
+      "reason": "bacteremia",
+      "assign_to_attribute": "antibiotic_order",
+      "direct_transition": "Treatment_Duration"
+    },
+
+    "Candida_No_Antifungal": {
+      "type": "MedicationOrder",
+      "codes": [
+        {
+          "system": "RxNorm",
+          "code": "309090",
+          "display": "Cefazolin"
+        }
+      ],
+      "reason": "bacteremia",
+      "remarks": ["No antifungal for Candida - should trigger alert"],
+      "assign_to_attribute": "antibiotic_order",
+      "direct_transition": "Treatment_Duration"
+    },
+
+    "Treatment_Duration": {
+      "type": "Delay",
+      "range": {"low": 72, "high": 168, "unit": "hours"},
+      "direct_transition": "End_Treatment"
+    },
+
+    "End_Treatment": {
+      "type": "MedicationEnd",
+      "medication_order": "antibiotic_order",
+      "direct_transition": "Discharge"
+    },
+
+    "Discharge": {
+      "type": "EncounterEnd",
+      "direct_transition": "Resolve_Infection"
+    },
+
+    "Resolve_Infection": {
+      "type": "ConditionEnd",
+      "condition_onset": "bacteremia",
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}

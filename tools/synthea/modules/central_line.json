@@ -1,0 +1,212 @@
+{
+  "name": "Central Line",
+  "remarks": [
+    "Custom module for ASP Alerts NHSN testing.",
+    "Places central venous catheters in hospitalized patients.",
+    "Creates DeviceUseStatement resources for CLABSI detection.",
+    "Coordinates with bacteremia module for realistic CLABSI scenarios."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Age_Guard"
+    },
+
+    "Age_Guard": {
+      "type": "Guard",
+      "allow": {
+        "condition_type": "Age",
+        "operator": ">=",
+        "quantity": 1,
+        "unit": "months"
+      },
+      "direct_transition": "Chance_of_Hospitalization_Requiring_Line"
+    },
+
+    "Chance_of_Hospitalization_Requiring_Line": {
+      "type": "Simple",
+      "remarks": ["30% chance of hospitalization requiring central line"],
+      "distributed_transition": [
+        {"distribution": 0.30, "transition": "Select_Line_Type"},
+        {"distribution": 0.70, "transition": "Terminal"}
+      ]
+    },
+
+    "Select_Line_Type": {
+      "type": "Simple",
+      "remarks": ["Select type of central line"],
+      "distributed_transition": [
+        {"distribution": 0.40, "transition": "CVC_Path"},
+        {"distribution": 0.35, "transition": "PICC_Path"},
+        {"distribution": 0.25, "transition": "Tunneled_CVC_Path"}
+      ]
+    },
+
+    "CVC_Path": {
+      "type": "SetAttribute",
+      "attribute": "central_line_type",
+      "value": "CVC",
+      "direct_transition": "Select_CVC_Site"
+    },
+
+    "Select_CVC_Site": {
+      "type": "Simple",
+      "distributed_transition": [
+        {"distribution": 0.35, "transition": "Site_Right_Subclavian"},
+        {"distribution": 0.25, "transition": "Site_Right_IJ"},
+        {"distribution": 0.20, "transition": "Site_Left_Subclavian"},
+        {"distribution": 0.15, "transition": "Site_Left_IJ"},
+        {"distribution": 0.05, "transition": "Site_Femoral"}
+      ]
+    },
+
+    "PICC_Path": {
+      "type": "SetAttribute",
+      "attribute": "central_line_type",
+      "value": "PICC",
+      "direct_transition": "Site_Basilic"
+    },
+
+    "Tunneled_CVC_Path": {
+      "type": "SetAttribute",
+      "attribute": "central_line_type",
+      "value": "Tunneled",
+      "direct_transition": "Site_Right_Subclavian"
+    },
+
+    "Site_Right_Subclavian": {
+      "type": "SetAttribute",
+      "attribute": "central_line_site",
+      "value": "Right subclavian vein",
+      "direct_transition": "Hospital_Admission"
+    },
+
+    "Site_Left_Subclavian": {
+      "type": "SetAttribute",
+      "attribute": "central_line_site",
+      "value": "Left subclavian vein",
+      "direct_transition": "Hospital_Admission"
+    },
+
+    "Site_Right_IJ": {
+      "type": "SetAttribute",
+      "attribute": "central_line_site",
+      "value": "Right internal jugular vein",
+      "direct_transition": "Hospital_Admission"
+    },
+
+    "Site_Left_IJ": {
+      "type": "SetAttribute",
+      "attribute": "central_line_site",
+      "value": "Left internal jugular vein",
+      "direct_transition": "Hospital_Admission"
+    },
+
+    "Site_Femoral": {
+      "type": "SetAttribute",
+      "attribute": "central_line_site",
+      "value": "Right femoral vein",
+      "direct_transition": "Hospital_Admission"
+    },
+
+    "Site_Basilic": {
+      "type": "SetAttribute",
+      "attribute": "central_line_site",
+      "value": "Right basilic vein",
+      "direct_transition": "Hospital_Admission"
+    },
+
+    "Hospital_Admission": {
+      "type": "Encounter",
+      "encounter_class": "inpatient",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "32485007",
+          "display": "Hospital admission"
+        }
+      ],
+      "direct_transition": "Central_Line_Insertion_Procedure"
+    },
+
+    "Central_Line_Insertion_Procedure": {
+      "type": "Procedure",
+      "codes": [
+        {
+          "system": "SNOMED-CT",
+          "code": "233527006",
+          "display": "Central venous catheter insertion"
+        }
+      ],
+      "duration": {
+        "low": 30,
+        "high": 60,
+        "unit": "minutes"
+      },
+      "direct_transition": "Place_Central_Line_CVC"
+    },
+
+    "Place_Central_Line_CVC": {
+      "type": "Device",
+      "code": {
+        "system": "SNOMED-CT",
+        "code": "52124006",
+        "display": "Central venous catheter"
+      },
+      "assign_to_attribute": "central_line_device",
+      "direct_transition": "Central_Line_Dwell_Time"
+    },
+
+    "Central_Line_Dwell_Time": {
+      "type": "Delay",
+      "remarks": ["Central line remains in place 3-21 days"],
+      "range": {
+        "low": 3,
+        "high": 21,
+        "unit": "days"
+      },
+      "direct_transition": "Line_Removal_Decision"
+    },
+
+    "Line_Removal_Decision": {
+      "type": "Simple",
+      "remarks": ["80% chance line is removed, 20% stays (ongoing need)"],
+      "distributed_transition": [
+        {"distribution": 0.80, "transition": "Remove_Central_Line"},
+        {"distribution": 0.20, "transition": "Discharge_With_Line"}
+      ]
+    },
+
+    "Remove_Central_Line": {
+      "type": "DeviceEnd",
+      "device": "central_line_device",
+      "direct_transition": "Post_Removal_Delay"
+    },
+
+    "Post_Removal_Delay": {
+      "type": "Delay",
+      "range": {
+        "low": 1,
+        "high": 3,
+        "unit": "days"
+      },
+      "direct_transition": "Discharge"
+    },
+
+    "Discharge_With_Line": {
+      "type": "Simple",
+      "remarks": ["Patient discharged with line in place (e.g., for home TPN)"],
+      "direct_transition": "Discharge"
+    },
+
+    "Discharge": {
+      "type": "EncounterEnd",
+      "direct_transition": "Terminal"
+    },
+
+    "Terminal": {
+      "type": "Terminal"
+    }
+  },
+  "gmf_version": 2
+}
