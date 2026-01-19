@@ -17,7 +17,9 @@ Our vision is to shift infection prevention from reactive detection to proactive
 
 ## Live Demo
 
-**Dashboard:** [https://alerts.asp-ai-agent.com:8444](https://alerts.asp-ai-agent.com:8444)
+**ASP Alerts Dashboard:** [https://alerts.asp-ai-agent.com:8444](https://alerts.asp-ai-agent.com:8444)
+
+**NHSN/HAI Dashboard:** [https://nhsn.asp-ai-agent.com:8444/nhsn/](https://nhsn.asp-ai-agent.com:8444/nhsn/)
 
 The demo environment includes synthetic patient data for testing alert and HAI detection workflows.
 
