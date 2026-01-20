@@ -166,23 +166,34 @@ def create_encounter(patient_id: str) -> dict:
     }
 
 
-def create_blood_culture_observation(
+def create_blood_culture_report(
     patient_id: str, organism_key: str, hours_ago: float = 2
 ) -> dict:
-    """Create a positive blood culture Observation FHIR resource."""
+    """Create a positive blood culture DiagnosticReport FHIR resource.
+
+    This matches Epic's FHIR structure where blood cultures are returned
+    as DiagnosticReport resources with organism info in conclusion/conclusionCode.
+    """
     organism = ORGANISMS[organism_key]
     collected_time = datetime.now(timezone.utc) - timedelta(hours=hours_ago)
+    resulted_time = datetime.now(timezone.utc) - timedelta(hours=max(0, hours_ago - 1))
 
     return {
-        "resourceType": "Observation",
+        "resourceType": "DiagnosticReport",
         "id": str(uuid.uuid4()),
         "status": "final",
         "category": [
             {
                 "coding": [
                     {
-                        "system": "http://terminology.hl7.org/CodeSystem/observation-category",
-                        "code": "laboratory",
+                        "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                        "code": "LAB",
+                        "display": "Laboratory",
+                    },
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/v2-0074",
+                        "code": "MB",
+                        "display": "Microbiology",
                     }
                 ]
             }
@@ -199,16 +210,20 @@ def create_blood_culture_observation(
         },
         "subject": {"reference": f"Patient/{patient_id}"},
         "effectiveDateTime": collected_time.isoformat(),
-        "valueCodeableConcept": {
-            "coding": [
-                {
-                    "system": "http://snomed.info/sct",
-                    "code": organism["code"],
-                    "display": organism["display"],
-                }
-            ],
-            "text": organism["display"],
-        },
+        "issued": resulted_time.isoformat(),
+        "conclusion": organism["display"],
+        "conclusionCode": [
+            {
+                "coding": [
+                    {
+                        "system": "http://snomed.info/sct",
+                        "code": organism["code"],
+                        "display": organism["display"],
+                    }
+                ],
+                "text": organism["display"],
+            }
+        ],
     }
 
 
@@ -372,7 +387,7 @@ def main():
     patient_name = f"{patient['name'][0]['given'][0]} {patient['name'][0]['family']}"
 
     encounter = create_encounter(patient_id)
-    observation = create_blood_culture_observation(patient_id, organism_key, args.culture_hours)
+    diagnostic_report = create_blood_culture_report(patient_id, organism_key, args.culture_hours)
 
     medication = None
     if antibiotic_key:
@@ -397,7 +412,7 @@ def main():
     if args.dry_run:
         print("Dry run - resources not uploaded\n")
         print("Patient:", json.dumps(patient, indent=2)[:500], "...\n")
-        print("Observation:", json.dumps(observation, indent=2)[:500], "...\n")
+        print("DiagnosticReport:", json.dumps(diagnostic_report, indent=2)[:500], "...\n")
         if medication:
             print("Medication:", json.dumps(medication, indent=2)[:500], "...\n")
         return 0
@@ -411,7 +426,7 @@ def main():
         print(f"Error: Cannot connect to FHIR server: {e}")
         return 1
 
-    resources = [patient, encounter, observation]
+    resources = [patient, encounter, diagnostic_report]
     if medication:
         resources.append(medication)
 
