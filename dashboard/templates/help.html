@@ -22,7 +22,7 @@
 
         <h3>1. Generate a Blood Culture Alert</h3>
         <p>Create a patient with a positive blood culture (MRSA) without appropriate coverage:</p>
-        <pre><code>cd /home/david/projects/asp-alerts
+        <pre><code>cd /home/david/projects/aegis
 python scripts/demo_blood_culture.py --organism mrsa</code></pre>
 
         <p>Then run the bacteremia monitor to detect and alert:</p>
@@ -31,7 +31,7 @@ python -m src.monitor</code></pre>
 
         <h3>2. Generate an Antimicrobial Usage Alert</h3>
         <p>Create a patient on meropenem for 5 days (exceeds 72h threshold):</p>
-        <pre><code>cd /home/david/projects/asp-alerts
+        <pre><code>cd /home/david/projects/aegis
 python scripts/demo_antimicrobial_usage.py --antibiotic meropenem --days 5</code></pre>
 
         <p>Then run the usage monitor:</p>

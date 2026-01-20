@@ -26,7 +26,7 @@
         <h3>1. Generate Mock Clarity Data</h3>
         <p>Create demo patients with antibiotic orders and culture results:</p>
         <pre><code># Navigate to nhsn-reporting module
-cd /home/david/projects/asp-alerts/nhsn-reporting
+cd /home/david/projects/aegis/nhsn-reporting
 
 # Generate patients with AU/AR data
 python -m mock_clarity.generate_data \
@@ -391,7 +391,7 @@ python -m mock_clarity.generate_data --au-ar</code></pre>
 echo $CLARITY_DB_URL
 
 # For demo, use SQLite:
-export CLARITY_DB_URL="sqlite:////home/david/projects/asp-alerts/nhsn-reporting/mock_clarity.db"</code></pre>
+export CLARITY_DB_URL="sqlite:////home/david/projects/aegis/nhsn-reporting/mock_clarity.db"</code></pre>
 
         <h3>NHSN mapping missing</h3>
         <pre><code># Check antimicrobial mappings

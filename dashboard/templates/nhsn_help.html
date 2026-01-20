@@ -30,7 +30,7 @@
         <h3>Create CLABSI Candidates</h3>
         <p>Generate demo patients with CLABSI scenarios for testing:</p>
         <pre><code># Create one CLABSI + one Not CLABSI (random type)
-cd /home/david/projects/asp-alerts
+cd /home/david/projects/aegis
 python scripts/demo_clabsi.py
 
 # Create all scenario types
@@ -44,7 +44,7 @@ python scripts/demo_clabsi.py --scenario secondary-pneumonia</code></pre>
 
         <h3>Run the Full Pipeline</h3>
         <p>After creating demo data, run the NHSN monitor to detect and classify candidates:</p>
-        <pre><code>cd /home/david/projects/asp-alerts/nhsn-reporting
+        <pre><code>cd /home/david/projects/aegis/nhsn-reporting
 python -m src.runner --full</code></pre>
 
         <p>This will:</p>
