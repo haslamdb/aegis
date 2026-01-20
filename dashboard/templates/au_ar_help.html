@@ -349,8 +349,8 @@ sqlite3 ./mock_clarity.db "SELECT * FROM NHSN_PHENOTYPE_MAP;"</code></pre>
 pkill -f "gunicorn.*dashboard"
 
 # Restart
-cd /home/david/projects/asp-alerts/dashboard
-gunicorn -w 2 -b 0.0.0.0:8444 app:app</code></pre>
+cd /home/david/projects/aegis/dashboard
+gunicorn -w 2 -b 0.0.0.0:8082 app:app</code></pre>
     </div>
 
     <div class="help-card">
