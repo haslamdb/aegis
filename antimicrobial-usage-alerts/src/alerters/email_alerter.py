@@ -22,16 +22,17 @@ class EmailAlerter:
                 from_address=config.ALERT_EMAIL_FROM,
                 to_addresses=config.ALERT_EMAIL_TO,
             )
+        self.dashboard_base_url = config.DASHBOARD_BASE_URL
 
     def is_configured(self) -> bool:
         """Check if email alerting is configured."""
         return self.channel.is_configured()
 
-    def send_alert(self, assessment: UsageAssessment) -> bool:
+    def send_alert(self, assessment: UsageAssessment, alert_id: str | None = None) -> bool:
         """Send an email alert for a usage assessment."""
         subject = self._build_subject(assessment)
-        text_body = self._build_text_body(assessment)
-        html_body = self._build_html_body(assessment)
+        text_body = self._build_text_body(assessment, alert_id)
+        html_body = self._build_html_body(assessment, alert_id)
 
         message = EmailMessage(
             subject=subject,
@@ -68,7 +69,7 @@ class EmailAlerter:
             f"> {assessment.threshold_hours}h - {assessment.patient.name}"
         )
 
-    def _build_text_body(self, assessment: UsageAssessment) -> str:
+    def _build_text_body(self, assessment: UsageAssessment, alert_id: str | None = None) -> str:
         """Build plain text email body."""
         p = assessment.patient
         m = assessment.medication
@@ -104,6 +105,17 @@ class EmailAlerter:
             "",
             "RECOMMENDATION:",
             assessment.recommendation,
+        ])
+
+        # Add dashboard link if available
+        if alert_id and self.dashboard_base_url:
+            alert_url = f"{self.dashboard_base_url}/asp-alerts/alerts/{alert_id}"
+            lines.extend([
+                "",
+                f"View in Dashboard: {alert_url}",
+            ])
+
+        lines.extend([
             "",
             "---",
             "ASP Antimicrobial Usage Alerts",
@@ -112,7 +124,7 @@ class EmailAlerter:
 
         return "\n".join(lines)
 
-    def _build_html_body(self, assessment: UsageAssessment) -> str:
+    def _build_html_body(self, assessment: UsageAssessment, alert_id: str | None = None) -> str:
         """Build HTML email body."""
         p = assessment.patient
         m = assessment.medication
@@ -135,6 +147,12 @@ class EmailAlerter:
             dose_html += f"<tr><td><strong>Dose:</strong></td><td>{m.dose}</td></tr>"
         if m.route:
             dose_html += f"<tr><td><strong>Route:</strong></td><td>{m.route}</td></tr>"
+
+        # Build dashboard link button if available
+        dashboard_button = ""
+        if alert_id and self.dashboard_base_url:
+            alert_url = f"{self.dashboard_base_url}/asp-alerts/alerts/{alert_id}"
+            dashboard_button = f'<a href="{alert_url}" style="display: inline-block; background-color: #1976d2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin: 15px 0;">View Alert in Dashboard</a>'
 
         return f"""
         <html>
@@ -165,6 +183,8 @@ class EmailAlerter:
                     <p style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid {color};">
                         {assessment.recommendation}
                     </p>
+
+                    {dashboard_button}
 
                     <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
                     <p style="color: #888; font-size: 12px; margin: 0;">
