@@ -23,16 +23,16 @@ Our vision is to shift infection prevention from reactive detection to proactive
 
 ## Live Demo
 
-**AEGIS Landing Page:** [https://aegis-asp.com:8444](https://aegis-asp.com:8444)
+**AEGIS Landing Page:** [https://aegis-asp.com](https://aegis-asp.com)
 
 The landing page provides access to four main sections:
 
 | Section | URL | Description |
 |---------|-----|-------------|
-| **ASP Alerts** | [/asp-alerts/](https://aegis-asp.com:8444/asp-alerts/) | Antimicrobial stewardship alerts (bacteremia, usage monitoring) |
-| **HAI Detection** | [/hai-detection/](https://aegis-asp.com:8444/hai-detection/) | CLABSI candidate screening and IP review workflow |
-| **NHSN Reporting** | [/nhsn-reporting/](https://aegis-asp.com:8444/nhsn-reporting/) | AU, AR, and HAI data aggregation with NHSN submission |
-| **Dashboards** | [/dashboards/](https://aegis-asp.com:8444/dashboards/) | Analytics dashboards (coming soon) |
+| **ASP Alerts** | [/asp-alerts/](https://aegis-asp.com/asp-alerts/) | Antimicrobial stewardship alerts (bacteremia, usage monitoring) |
+| **HAI Detection** | [/hai-detection/](https://aegis-asp.com/hai-detection/) | CLABSI candidate screening and IP review workflow |
+| **NHSN Reporting** | [/nhsn-reporting/](https://aegis-asp.com/nhsn-reporting/) | AU, AR, and HAI data aggregation with NHSN submission |
+| **Dashboards** | [/dashboards/](https://aegis-asp.com/dashboards/) | Analytics dashboards (coming soon) |
 
 The demo environment includes synthetic patient data for testing alert, HAI detection, and AU/AR reporting workflows.
 

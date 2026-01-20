@@ -85,7 +85,7 @@ sudo cp dashboard/static/style.css /var/www/aegis/static/
 
 ## Access URLs
 
-- Landing: `https://aegis-asp.com:8444/`
-- NHSN Reporting: `https://aegis-asp.com:8444/nhsn-reporting/`
-- HAI Detection: `https://aegis-asp.com:8444/hai-detection/`
-- ASP Alerts: `https://aegis-asp.com:8444/asp-alerts/`
+- Landing: `https://aegis-asp.com/`
+- NHSN Reporting: `https://aegis-asp.com/nhsn-reporting/`
+- HAI Detection: `https://aegis-asp.com/hai-detection/`
+- ASP Alerts: `https://aegis-asp.com/asp-alerts/`

@@ -6,7 +6,7 @@ Web-based dashboard for the AEGIS (Automated Evaluation and Guidance for Infecti
 
 ## Live Demo
 
-**URL:** [https://aegis-asp.com:8444](https://aegis-asp.com:8444)
+**URL:** [https://aegis-asp.com](https://aegis-asp.com)
 
 ## Dashboard Structure
 
@@ -142,7 +142,7 @@ FLASK_SECRET_KEY=your-secret-key
 PORT=8082
 
 # Dashboard URL (for Teams button callbacks)
-DASHBOARD_BASE_URL=https://aegis-asp.com:8444
+DASHBOARD_BASE_URL=https://aegis-asp.com
 
 # Alert database (shared with monitors)
 ALERT_DB_PATH=~/.aegis/alerts.db

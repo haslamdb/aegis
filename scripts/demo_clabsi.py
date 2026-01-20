@@ -613,7 +613,7 @@ def main():
     if not args.dry_run:
         print("\nDemo data created. To see the candidates:")
         print("  1. Run the NHSN monitor: cd nhsn-reporting && python -m src.runner --once")
-        print("  2. View in dashboard: https://aegis-asp.com:8444/hai-detection/")
+        print("  2. View in dashboard: https://aegis-asp.com/hai-detection/")
     print()
 
     return 0

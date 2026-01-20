@@ -92,7 +92,7 @@ POLL_INTERVAL=300
 
 ```bash
 # Dashboard URL for Teams action buttons
-DASHBOARD_BASE_URL=https://aegis-asp.com:8444
+DASHBOARD_BASE_URL=https://aegis-asp.com
 
 # API key for secure callbacks
 DASHBOARD_API_KEY=your-secret-key

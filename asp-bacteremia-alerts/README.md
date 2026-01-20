@@ -116,13 +116,13 @@ TEAMS_WEBHOOK_URL=https://prod-XX.westus.logic.azure.com/...
 
 Alerts are stored in a shared SQLite database and displayed in the web dashboard:
 
-- **View alerts** at [https://aegis-asp.com:8444](https://aegis-asp.com:8444)
+- **View alerts** at [https://aegis-asp.com](https://aegis-asp.com)
 - **Teams buttons** link to dashboard for acknowledge/resolve actions
 - **Audit trail** tracks all alert lifecycle events
 
 Configure dashboard integration in `.env`:
 ```bash
-DASHBOARD_BASE_URL=https://aegis-asp.com:8444
+DASHBOARD_BASE_URL=https://aegis-asp.com
 ALERT_DB_PATH=~/.aegis/alerts.db
 ```
 

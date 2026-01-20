@@ -1,6 +1,6 @@
 # AEGIS Dashboard - Deployment Guide
 
-Deploy the dashboard at `https://aegis-asp.com:8444`
+Deploy the dashboard at `https://aegis-asp.com`
 
 ## Prerequisites
 
@@ -157,10 +157,10 @@ sudo systemctl status nginx
 curl -I http://localhost:8082/
 
 # Test externally (from another machine or use curl with host header)
-curl -I https://aegis-asp.com:8444/
+curl -I https://aegis-asp.com/
 ```
 
-Open in browser: **https://aegis-asp.com:8444/**
+Open in browser: **https://aegis-asp.com/**
 
 ---
 

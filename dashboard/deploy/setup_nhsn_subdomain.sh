@@ -3,8 +3,8 @@
 #
 # NOTE: The nhsn subdomain is DEPRECATED. This script sets up redirects
 # to the main domain at aegis-asp.com. The NHSN functionality is now at:
-# - https://aegis-asp.com:8444/hai-detection/ (candidate review)
-# - https://aegis-asp.com:8444/nhsn-reporting/ (data submission)
+# - https://aegis-asp.com/hai-detection/ (candidate review)
+# - https://aegis-asp.com/nhsn-reporting/ (data submission)
 #
 # Prerequisites:
 # 1. DNS A record for nhsn.aegis-asp.com pointing to this server
