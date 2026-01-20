@@ -69,7 +69,7 @@ def run_once(monitor: BroadSpectrumMonitor, dry_run: bool = False) -> int:
 
         # Send via all configured channels
         if email_alerter.is_configured():
-            if email_alerter.send_alert(assessment):
+            if email_alerter.send_alert(assessment, alert_id=alert_id):
                 sent_via_channel = True
 
         if teams_alerter.is_configured():
