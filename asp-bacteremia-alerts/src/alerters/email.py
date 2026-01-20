@@ -45,6 +45,7 @@ class EmailAlerter(BaseAlerter):
             use_tls=use_tls,
         ) if server else None
 
+        self.dashboard_base_url = config.DASHBOARD_BASE_URL
         self.alert_count = 0
         self.alerts: list[dict] = []
 
@@ -55,10 +56,16 @@ class EmailAlerter(BaseAlerter):
             organism = organism[:37] + "..."
         return f"[ASP Alert] Bacteremia Coverage - {assessment.patient.mrn} - {organism}"
 
-    def _format_html_body(self, assessment: CoverageAssessment) -> str:
+    def _format_html_body(self, assessment: CoverageAssessment, alert_id: str | None = None) -> str:
         """Format email body as HTML."""
         current_abx = [a.medication_name for a in assessment.current_antibiotics]
         abx_list = ", ".join(current_abx) if current_abx else "<em>None</em>"
+
+        # Build alert link if we have an alert_id and dashboard URL
+        alert_link = ""
+        if alert_id and self.dashboard_base_url:
+            alert_url = f"{self.dashboard_base_url}/asp-alerts/alerts/{alert_id}"
+            alert_link = f'<a href="{alert_url}" style="display: inline-block; background-color: #1976d2; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; margin-top: 15px;">View Alert in Dashboard</a>'
 
         html = f"""
         <html>
@@ -132,6 +139,8 @@ class EmailAlerter(BaseAlerter):
                     {assessment.recommendation}
                 </div>
 
+                {alert_link}
+
                 <div class="footer">
                     Alert generated at {assessment.assessed_at.strftime('%Y-%m-%d %H:%M:%S')}<br>
                     Culture ID: {assessment.culture.fhir_id}<br>
@@ -143,10 +152,16 @@ class EmailAlerter(BaseAlerter):
         """
         return html
 
-    def _format_text_body(self, assessment: CoverageAssessment) -> str:
+    def _format_text_body(self, assessment: CoverageAssessment, alert_id: str | None = None) -> str:
         """Format email body as plain text."""
         current_abx = [a.medication_name for a in assessment.current_antibiotics]
         abx_list = ", ".join(current_abx) if current_abx else "None"
+
+        # Build alert link if we have an alert_id and dashboard URL
+        alert_link = ""
+        if alert_id and self.dashboard_base_url:
+            alert_url = f"{self.dashboard_base_url}/asp-alerts/alerts/{alert_id}"
+            alert_link = f"\nView in Dashboard: {alert_url}\n"
 
         text = f"""
 BACTEREMIA COVERAGE ALERT
@@ -161,7 +176,7 @@ Status:      {assessment.coverage_status.value.upper()}
 
 RECOMMENDATION:
 {assessment.recommendation}
-
+{alert_link}
 {'=' * 50}
 Alert generated at {assessment.assessed_at.strftime('%Y-%m-%d %H:%M:%S')}
 Culture ID: {assessment.culture.fhir_id}
@@ -181,8 +196,8 @@ This is an automated alert from ASP Bacteremia Monitor
 
         message = EmailMessage(
             subject=self._format_subject(assessment),
-            text_body=self._format_text_body(assessment),
-            html_body=self._format_html_body(assessment),
+            text_body=self._format_text_body(assessment, alert_id),
+            html_body=self._format_html_body(assessment, alert_id),
         )
 
         if self.channel.send(message):
