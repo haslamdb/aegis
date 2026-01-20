@@ -310,7 +310,7 @@ def build_teams_actions(
         ),
         TeamsAction(
             title="View / Resolve",
-            url=f"{base_url}/alerts/{alert_id}",
+            url=f"{base_url}/asp-alerts/alerts/{alert_id}",
             style="default",
         ),
     ]
@@ -374,7 +374,7 @@ def build_resolve_actions(
         ),
         TeamsAction(
             title="View Details",
-            url=f"{base_url}/alerts/{alert_id}",
+            url=f"{base_url}/asp-alerts/alerts/{alert_id}",
             style="default",
         ),
     ]
