@@ -1,20 +1,21 @@
 {% extends "base.html" %}
 
-{% block title %}AU/AR Help - {{ app_name }}{% endblock %}
+{% block title %}NHSN Reporting Help - {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>AU/AR Reporting - Demo & Help</h1>
+    <h1>NHSN Reporting - Demo & Help</h1>
     <a href="{{ url_for('nhsn_reporting.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
 </div>
 
 <div class="help-content">
     <div class="help-card">
         <h2>Overview</h2>
-        <p>The AU/AR Reporting module helps Antimicrobial Stewardship Programs track and report:</p>
+        <p>The NHSN Reporting module helps Antimicrobial Stewardship and Infection Prevention teams track and report:</p>
         <ul>
             <li><strong>AU (Antibiotic Usage)</strong> - Days of Therapy (DOT) and Defined Daily Doses (DDD) by antimicrobial and location</li>
             <li><strong>AR (Antimicrobial Resistance)</strong> - Resistance rates and phenotype tracking (MRSA, VRE, CRE, etc.)</li>
+            <li><strong>HAI (Healthcare-Associated Infections)</strong> - Confirmed HAI events (CLABSI, CAUTI, etc.) for NHSN submission</li>
         </ul>
         <p>Data is extracted from the hospital EHR (Epic Clarity) and formatted for NHSN submission.</p>
     </div>
@@ -178,6 +179,61 @@ python -m mock_clarity.generate_data \
                 </tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="help-card">
+        <h2>HAI (Healthcare-Associated Infection) Reporting</h2>
+        <p>The NHSN Reporting module also includes confirmed HAI events from the HAI Detection workflow.</p>
+
+        <h3>HAI Types</h3>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>HAI Type</th>
+                    <th>Status</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-danger">CLABSI</span></td>
+                    <td>Implemented</td>
+                    <td>Central Line-Associated Bloodstream Infection</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-warning">CAUTI</span></td>
+                    <td>Planned</td>
+                    <td>Catheter-Associated Urinary Tract Infection</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-info">VAE</span></td>
+                    <td>Planned</td>
+                    <td>Ventilator-Associated Events</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-secondary">SSI</span></td>
+                    <td>Planned</td>
+                    <td>Surgical Site Infection</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>HAI Workflow</h3>
+        <ol>
+            <li><strong>Detection</strong> - Rule-based screening identifies HAI candidates (BSI + device + timing)</li>
+            <li><strong>Classification</strong> - LLM extracts facts from notes, rules engine applies NHSN criteria</li>
+            <li><strong>IP Review</strong> - Infection Preventionist makes final determination in <a href="{{ url_for('hai_detection.dashboard') }}">HAI Detection</a></li>
+            <li><strong>Reporting</strong> - Confirmed HAIs appear in <a href="{{ url_for('nhsn_reporting.hai_detail') }}">HAI Detail</a> and <a href="{{ url_for('nhsn_reporting.submission') }}?type=hai">Submission</a></li>
+        </ol>
+
+        <h3>CLABSI Criteria (Quick Reference)</h3>
+        <ul>
+            <li>Central line in place for <strong>&gt;2 calendar days</strong> on the date of event</li>
+            <li>Line was in place at time of BSI OR within 1 day of removal</li>
+            <li>Laboratory-confirmed bloodstream infection (LCBI)</li>
+            <li>BSI is <strong>not secondary</strong> to infection at another site</li>
+        </ul>
+        <p>For detailed HAI detection guidance, see the <a href="{{ url_for('hai_detection.help_page') }}">HAI Detection Help</a> page.</p>
     </div>
 
     <div class="help-card">
