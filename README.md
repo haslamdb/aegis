@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="aegis-logo.png" alt="AEGIS Logo" width="400">
+</p>
+
 # AEGIS
 
 **Automated Evaluation and Guidance for Infection Surveillance**

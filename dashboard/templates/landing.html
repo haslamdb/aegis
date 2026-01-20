@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="landing-header">
-    <h1>AEGIS</h1>
+    <img src="{{ url_for('static', filename='aegis-logo.png') }}" alt="AEGIS" class="landing-logo">
     <p class="landing-subtitle">Antimicrobial &amp; Epidemiological Guidance Intelligence System</p>
 </div>
 
@@ -62,12 +62,10 @@
     padding: 2rem 0;
 }
 
-.landing-header h1 {
-    font-size: 3rem;
-    font-weight: 700;
-    color: var(--color-gray-800);
+.landing-logo {
+    max-width: 320px;
+    height: auto;
     margin-bottom: 0.5rem;
-    letter-spacing: 0.05em;
 }
 
 .landing-subtitle {
