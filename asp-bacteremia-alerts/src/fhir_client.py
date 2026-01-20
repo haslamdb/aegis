@@ -75,11 +75,11 @@ class FHIRClient(ABC):
         hours_back: int = 24,
         status: str | None = None,
     ) -> list[dict]:
-        """Get recent blood culture results."""
+        """Get recent blood culture results (DiagnosticReport resources)."""
         date_from = datetime.now() - timedelta(hours=hours_back)
         params = {
             "code": "http://loinc.org|600-7",  # LOINC for blood culture
-            "date": f"ge{date_from.strftime('%Y-%m-%d')}",
+            "date": f"ge{date_from.strftime('%Y-%m-%dT%H:%M:%S')}",
             "_count": "500",
         }
         if status:
