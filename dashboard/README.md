@@ -1,19 +1,49 @@
-# ASP Alerts Dashboard
+# AEGIS Dashboard
 
-Web-based alert management dashboard for the ASP Alerts system. Provides a unified interface for viewing, acknowledging, and resolving antimicrobial stewardship alerts.
+Web-based dashboard for the AEGIS (Automated Evaluation and Guidance for Infection Surveillance) system. Provides a unified interface for antimicrobial stewardship alerts, HAI detection, and NHSN reporting.
 
 > **Disclaimer:** All patient data displayed is **simulated**. No actual patient data is available through this dashboard.
 
 ## Live Demo
 
-**URL:** [https://alerts.asp-ai-agent.com:8444](https://alerts.asp-ai-agent.com:8444)
+**URL:** [https://alerts.aegis-asp.com:8444](https://alerts.aegis-asp.com:8444)
+
+## Dashboard Structure
+
+The AEGIS dashboard is organized into four main sections accessible from the landing page:
+
+| Section | URL | Description |
+|---------|-----|-------------|
+| **ASP Alerts** | `/asp-alerts/` | Antimicrobial stewardship alerts (bacteremia, usage monitoring) |
+| **HAI Detection** | `/hai-detection/` | CLABSI candidate screening and IP review workflow |
+| **NHSN Reporting** | `/nhsn-reporting/` | AU, AR, and HAI data aggregation with NHSN submission |
+| **Dashboards** | `/dashboards/` | Analytics dashboards (coming soon) |
 
 ## Features
 
-### Alert Management
+### ASP Alerts (`/asp-alerts/`)
 - **Active Alerts** - View pending, sent, acknowledged, and snoozed alerts
 - **History** - Browse resolved alerts with resolution details
 - **Alert Detail** - Full patient and clinical information with action buttons
+- **Reports** - Alert volume, resolution times, resolution breakdown
+
+### HAI Detection (`/hai-detection/`)
+- **Dashboard** - CLABSI candidates awaiting IP review
+- **History** - Resolved candidates (confirmed and rejected)
+- **Reports** - HAI analytics and LLM override stats
+
+### NHSN Reporting (`/nhsn-reporting/`)
+- **Dashboard** - Overview with AU, AR, and HAI summaries
+- **AU Detail** - Days of therapy by location and antimicrobial
+- **AR Detail** - Resistance phenotypes and rates by organism
+- **HAI Detail** - Confirmed HAI events by type and location
+- **Denominators** - Patient days and device days by location
+- **Submission** - Unified page for AU, AR, and HAI NHSN submission
+
+### Dashboards (`/dashboards/`)
+- Coming soon: Interactive analytics for trends, outcomes, and operational insights
+
+## Alert Management
 
 ### Actions
 - **Acknowledge** - Mark alert as seen (remains in active list)
@@ -57,7 +87,7 @@ Track how alerts were handled:
 ### Development
 
 ```bash
-cd asp-alerts/dashboard
+cd aegis/dashboard
 
 # Install dependencies
 pip install -r requirements.txt
@@ -74,7 +104,7 @@ flask run
 
 ### Production Deployment
 
-The dashboard is deployed at `alerts.asp-ai-agent.com:8444` using:
+The dashboard is deployed at `alerts.aegis-asp.com:8444` using:
 - **Gunicorn** - WSGI server
 - **nginx** - Reverse proxy with SSL
 - **systemd** - Service management
@@ -86,16 +116,16 @@ See [deploy/](deploy/) for configuration files.
 
 ```bash
 # Copy static files to web root
-sudo cp static/style.css /var/www/asp-alerts/static/
+sudo cp static/style.css /var/www/aegis/static/
 
 # Restart the service
-sudo systemctl restart asp-alerts
+sudo systemctl restart aegis
 
 # Check status
-sudo systemctl status asp-alerts
+sudo systemctl status aegis
 
 # View logs
-sudo journalctl -u asp-alerts -f
+sudo journalctl -u aegis -f
 ```
 
 ## Configuration
@@ -112,10 +142,10 @@ FLASK_SECRET_KEY=your-secret-key
 PORT=8082
 
 # Dashboard URL (for Teams button callbacks)
-DASHBOARD_BASE_URL=https://alerts.asp-ai-agent.com:8444
+DASHBOARD_BASE_URL=https://alerts.aegis-asp.com:8444
 
 # Alert database (shared with monitors)
-ALERT_DB_PATH=~/.asp-alerts/alerts.db
+ALERT_DB_PATH=~/.aegis/alerts.db
 
 # App display name
 APP_NAME=ASP Alerts
@@ -140,8 +170,8 @@ dashboard/
 ├── static/
 │   └── style.css          # CCHMC-themed styles
 └── deploy/
-    ├── asp-alerts.service # systemd service
-    └── nginx-asp-alerts.conf # nginx config
+    ├── aegis.service      # systemd service
+    └── nginx-aegis.conf   # nginx config
 ```
 
 ## API Endpoints
@@ -163,18 +193,48 @@ dashboard/
 
 ## Pages
 
+### Landing Page
 | Route | Description |
 |-------|-------------|
-| `/` | Redirect to active alerts |
-| `/alerts/active` | Active (non-resolved) alerts |
-| `/alerts/history` | Resolved alerts |
-| `/alerts/<id>` | Single alert detail |
-| `/reports` | Analytics and reports |
-| `/help` | Demo workflow guide |
+| `/` | Landing page with 4 section cards |
+
+### ASP Alerts
+| Route | Description |
+|-------|-------------|
+| `/asp-alerts/` | Active (non-resolved) alerts |
+| `/asp-alerts/history` | Resolved alerts |
+| `/asp-alerts/<id>` | Single alert detail |
+| `/asp-alerts/reports` | Analytics and reports |
+| `/asp-alerts/help` | Demo workflow guide |
+
+### HAI Detection
+| Route | Description |
+|-------|-------------|
+| `/hai-detection/` | CLABSI candidates dashboard |
+| `/hai-detection/candidate/<id>` | Candidate detail with IP review |
+| `/hai-detection/history` | Resolved candidates |
+| `/hai-detection/reports` | HAI analytics |
+| `/hai-detection/help` | Help guide |
+
+### NHSN Reporting
+| Route | Description |
+|-------|-------------|
+| `/nhsn-reporting/` | AU/AR/HAI overview dashboard |
+| `/nhsn-reporting/au` | Antibiotic usage detail |
+| `/nhsn-reporting/ar` | Antimicrobial resistance detail |
+| `/nhsn-reporting/hai` | HAI events detail |
+| `/nhsn-reporting/denominators` | Patient days by location |
+| `/nhsn-reporting/submission` | Unified NHSN submission (AU, AR, HAI) |
+| `/nhsn-reporting/help` | Help guide |
+
+### Dashboards
+| Route | Description |
+|-------|-------------|
+| `/dashboards/` | Analytics dashboards (coming soon) |
 
 ## Related Documentation
 
-- [ASP Alerts Overview](../README.md)
+- [AEGIS Overview](../README.md)
 - [Demo Workflow](../docs/demo-workflow.md)
 - [Bacteremia Alerts](../asp-bacteremia-alerts/README.md)
 - [Antimicrobial Usage Alerts](../antimicrobial-usage-alerts/README.md)

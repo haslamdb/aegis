@@ -7,6 +7,6 @@
     <h1>Alert Not Found</h1>
     <p>The alert with ID <code>{{ alert_id }}</code> could not be found.</p>
     <p>It may have been deleted or the ID is incorrect.</p>
-    <a href="{{ url_for('views.alerts_active') }}" class="btn btn-primary">View Active Alerts</a>
+    <a href="{{ url_for('asp_alerts.alerts_active') }}" class="btn btn-primary">View Active Alerts</a>
 </div>
 {% endblock %}

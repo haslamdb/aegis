@@ -1,17 +1,17 @@
 #!/bin/bash
-# Setup script for NHSN subdomain: nhsn.asp-ai-agent.com
+# Setup script for NHSN subdomain: nhsn.aegis-asp.com
 #
 # Prerequisites:
-# 1. DNS A record for nhsn.asp-ai-agent.com pointing to this server
+# 1. DNS A record for nhsn.aegis-asp.com pointing to this server
 # 2. Port 8444 open in firewall
-# 3. Main asp-alerts dashboard already running on port 8082
+# 3. Main AEGIS dashboard already running on port 8082
 #
 # Usage: sudo ./setup_nhsn_subdomain.sh
 
 set -e
 
-DOMAIN="nhsn.asp-ai-agent.com"
-NGINX_CONF="/etc/nginx/sites-available/nhsn-asp-alerts"
+DOMAIN="nhsn.aegis-asp.com"
+NGINX_CONF="/etc/nginx/sites-available/nhsn-aegis"
 CERTBOT_WEBROOT="/var/www/certbot"
 
 echo "=== NHSN Subdomain Setup ==="
@@ -64,7 +64,7 @@ certbot certonly --webroot \
     -d $DOMAIN \
     --non-interactive \
     --agree-tos \
-    --email admin@asp-ai-agent.com \
+    --email admin@aegis-asp.com \
     || {
         echo "Certbot failed. You may need to run manually:"
         echo "  sudo certbot certonly --webroot -w $CERTBOT_WEBROOT -d $DOMAIN"
@@ -75,7 +75,7 @@ certbot certonly --webroot \
 echo "[5/5] Enabling production configuration..."
 rm -f /etc/nginx/sites-enabled/nhsn-temp
 rm -f /etc/nginx/sites-available/nhsn-temp
-ln -sf $NGINX_CONF /etc/nginx/sites-enabled/nhsn-asp-alerts
+ln -sf $NGINX_CONF /etc/nginx/sites-enabled/nhsn-aegis
 
 # Test and reload
 nginx -t && systemctl reload nginx

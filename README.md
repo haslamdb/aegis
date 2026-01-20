@@ -19,18 +19,23 @@ Our vision is to shift infection prevention from reactive detection to proactive
 
 ## Live Demo
 
-**ASP Alerts Dashboard:** [https://alerts.asp-ai-agent.com:8444](https://alerts.asp-ai-agent.com:8444)
+**AEGIS Landing Page:** [https://alerts.aegis-asp.com:8444](https://alerts.aegis-asp.com:8444)
 
-**NHSN/HAI Dashboard:** [https://alerts.asp-ai-agent.com:8444/nhsn/](https://alerts.asp-ai-agent.com:8444/nhsn/)
+The landing page provides access to four main sections:
 
-**AU/AR Reporting Dashboard:** [https://alerts.asp-ai-agent.com:8444/au-ar/](https://alerts.asp-ai-agent.com:8444/au-ar/)
+| Section | URL | Description |
+|---------|-----|-------------|
+| **ASP Alerts** | [/asp-alerts/](https://alerts.aegis-asp.com:8444/asp-alerts/) | Antimicrobial stewardship alerts (bacteremia, usage monitoring) |
+| **HAI Detection** | [/hai-detection/](https://alerts.aegis-asp.com:8444/hai-detection/) | CLABSI candidate screening and IP review workflow |
+| **NHSN Reporting** | [/nhsn-reporting/](https://alerts.aegis-asp.com:8444/nhsn-reporting/) | AU, AR, and HAI data aggregation with NHSN submission |
+| **Dashboards** | [/dashboards/](https://alerts.aegis-asp.com:8444/dashboards/) | Analytics dashboards (coming soon) |
 
 The demo environment includes synthetic patient data for testing alert, HAI detection, and AU/AR reporting workflows.
 
 ## Architecture
 
 ```
-asp-alerts/
+aegis/
 ├── common/                         # Shared infrastructure
 │   ├── channels/                   # Email, Teams webhooks
 │   └── alert_store/                # Persistent alert tracking (SQLite)
@@ -92,15 +97,21 @@ Automated NHSN Healthcare-Associated Infection (HAI) detection and classificatio
 
 ### dashboard
 
-Web-based alert management dashboard for viewing, acknowledging, and resolving alerts. Includes integrated HAI detection and AU/AR reporting modules.
+Web-based dashboard providing a unified interface for all AEGIS modules. The landing page at `/` provides navigation to four main sections:
+
+**Sections:**
+- **ASP Alerts** (`/asp-alerts/`) - Antimicrobial stewardship alert management
+- **HAI Detection** (`/hai-detection/`) - CLABSI candidate screening and IP review workflow
+- **NHSN Reporting** (`/nhsn-reporting/`) - AU, AR, and HAI data aggregation with NHSN submission
+- **Dashboards** (`/dashboards/`) - Analytics dashboards (coming soon)
 
 **Features:**
 - Active and historical alert views with filtering
 - Acknowledge, snooze, and resolve actions
 - Resolution tracking with reasons and notes
 - **Reports & Analytics** - Alert volume, resolution times, resolution breakdown
-- **HAI Detection** - IP review workflow at `/nhsn/`
-- **AU/AR Reporting** - Antibiotic usage and resistance at `/au-ar/`
+- **HAI Detection** - IP review workflow with LLM-assisted classification
+- **NHSN Reporting** - Unified submission page for AU, AR, and HAI data
 - **Help pages** - Interactive guides for each module
 - Audit trail for compliance
 - Teams button callbacks
@@ -227,15 +238,16 @@ Tracks resistance patterns using the **first-isolate rule**:
 
 ### Dashboard
 
-Access AU/AR reporting at `/au-ar/`:
+Access NHSN Reporting at `/nhsn-reporting/`:
 
 | Page | Description |
 |------|-------------|
-| **Dashboard** | Overview with AU, AR, and denominator summaries |
+| **Dashboard** | Overview with AU, AR, and HAI summaries for current period |
 | **AU Detail** | DOT by location and antimicrobial with drill-down |
 | **AR Detail** | Resistance phenotypes and rates by organism |
+| **HAI Detail** | Confirmed HAI events by type and location |
 | **Denominators** | Patient days and device days by location |
-| **Submission** | NHSN export (CSV or CDA) |
+| **Submission** | Unified NHSN submission for AU, AR, and HAI data |
 | **Help** | Documentation and demo data guide |
 
 ### Demo Data
@@ -248,7 +260,7 @@ python scripts/generate_demo_data.py
 
 # View in dashboard
 cd ../dashboard && flask run
-# Visit http://localhost:5000/au-ar/
+# Visit http://localhost:5000/nhsn-reporting/
 ```
 
 See [nhsn-reporting/README.md](nhsn-reporting/README.md#auar-reporting-module) for complete AU/AR documentation.
@@ -276,8 +288,8 @@ SQLite-backed persistent storage for alert lifecycle management:
 
 ```bash
 # Clone the repo
-git clone https://github.com/haslamdb/asp-alerts.git
-cd asp-alerts
+git clone https://github.com/haslamdb/aegis.git
+cd aegis
 
 # Set up a Python virtual environment
 python -m venv venv
@@ -348,7 +360,7 @@ Each module uses environment variables for configuration. Copy `.env.template` t
 | `SMTP_SERVER` | SMTP server for email alerts |
 | `DASHBOARD_BASE_URL` | URL for dashboard (used in Teams buttons) |
 | `DASHBOARD_API_KEY` | API key for dashboard authentication |
-| `ALERT_DB_PATH` | Path to SQLite database (default: ~/.asp-alerts/alerts.db) |
+| `ALERT_DB_PATH` | Path to SQLite database (default: ~/.aegis/alerts.db) |
 
 ## Future Modules (Roadmap)
 
@@ -393,7 +405,7 @@ flask run
 ### Project Structure
 
 ```
-asp-alerts/
+aegis/
 ├── common/
 │   ├── channels/              # Notification channels
 │   │   ├── email.py

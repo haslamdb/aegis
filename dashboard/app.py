@@ -1,4 +1,4 @@
-"""Flask application factory for ASP Alerts Dashboard."""
+"""Flask application factory for AEGIS Dashboard."""
 
 import os
 import sys
@@ -35,21 +35,25 @@ def create_app(config=None):
     app.alert_store = AlertStore(db_path=app.config.get("ALERT_DB_PATH"))
 
     # Register blueprints
-    from .routes.views import views_bp
+    from .routes.main import main_bp
+    from .routes.views import asp_alerts_bp
     from .routes.api import api_bp
-    from .routes.nhsn import nhsn_bp
-    from .routes.au_ar import au_ar_bp
+    from .routes.nhsn import hai_detection_bp
+    from .routes.au_ar import nhsn_reporting_bp
+    from .routes.dashboards import dashboards_bp
 
-    app.register_blueprint(views_bp)
+    app.register_blueprint(main_bp)  # Landing page at /
+    app.register_blueprint(asp_alerts_bp)  # ASP Alerts at /asp-alerts
     app.register_blueprint(api_bp, url_prefix="/api")
-    app.register_blueprint(nhsn_bp)
-    app.register_blueprint(au_ar_bp)
+    app.register_blueprint(hai_detection_bp)  # HAI Detection at /hai-detection
+    app.register_blueprint(nhsn_reporting_bp)  # NHSN Reporting at /nhsn-reporting
+    app.register_blueprint(dashboards_bp)  # Dashboards at /dashboards
 
     # Context processor for templates
     @app.context_processor
     def inject_globals():
         return {
-            "app_name": "ASP Alerts",
+            "app_name": "AEGIS",
             "base_url": app.config.get("DASHBOARD_BASE_URL", ""),
         }
 

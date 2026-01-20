@@ -16,10 +16,10 @@
 
 <!-- Submission Type Toggle -->
 <div class="submission-toggle">
-    <a href="{{ url_for('au_ar.submission', type='au') }}" class="toggle-btn {% if submission_type == 'au' %}active{% endif %}">
+    <a href="{{ url_for('nhsn_reporting.submission', type='au') }}" class="toggle-btn {% if submission_type == 'au' %}active{% endif %}">
         Antibiotic Usage (AU)
     </a>
-    <a href="{{ url_for('au_ar.submission', type='ar') }}" class="toggle-btn {% if submission_type == 'ar' %}active{% endif %}">
+    <a href="{{ url_for('nhsn_reporting.submission', type='ar') }}" class="toggle-btn {% if submission_type == 'ar' %}active{% endif %}">
         Antimicrobial Resistance (AR)
     </a>
 </div>
@@ -103,10 +103,10 @@
     <div class="export-actions">
         <h3>Export Options</h3>
         <div class="action-buttons">
-            <a href="{{ url_for('au_ar.api_au_export', from_date=from_date, to_date=to_date) }}" class="btn btn-primary btn-lg">
+            <a href="{{ url_for('nhsn_reporting.api_au_export', from_date=from_date, to_date=to_date) }}" class="btn btn-primary btn-lg">
                 Download CSV for NHSN
             </a>
-            <a href="{{ url_for('au_ar.au_detail', from_date=from_date, to_date=to_date) }}" class="btn btn-secondary">
+            <a href="{{ url_for('nhsn_reporting.au_detail', from_date=from_date, to_date=to_date) }}" class="btn btn-secondary">
                 View Detailed Report
             </a>
         </div>
@@ -211,10 +211,10 @@
     <div class="export-actions">
         <h3>Export Options</h3>
         <div class="action-buttons">
-            <a href="{{ url_for('au_ar.api_ar_export', year=year, quarter=quarter) }}" class="btn btn-primary btn-lg">
+            <a href="{{ url_for('nhsn_reporting.api_ar_export', year=year, quarter=quarter) }}" class="btn btn-primary btn-lg">
                 Download CSV for NHSN
             </a>
-            <a href="{{ url_for('au_ar.ar_detail', year=year, quarter=quarter) }}" class="btn btn-secondary">
+            <a href="{{ url_for('nhsn_reporting.ar_detail', year=year, quarter=quarter) }}" class="btn btn-secondary">
                 View Detailed Report
             </a>
         </div>
@@ -233,8 +233,8 @@
 <!-- Quick Links -->
 <div class="section">
     <div class="quick-links">
-        <a href="{{ url_for('au_ar.dashboard') }}" class="btn btn-outline">AU/AR Dashboard</a>
-        <a href="{{ url_for('nhsn.submission') }}" class="btn btn-outline">HAI Submission</a>
+        <a href="{{ url_for('nhsn_reporting.dashboard') }}" class="btn btn-outline">AU/AR Dashboard</a>
+        <a href="{{ url_for('hai_detection.submission') }}" class="btn btn-outline">HAI Submission</a>
     </div>
 </div>
 

@@ -17,7 +17,7 @@ class Config:
     # Alert Store
     ALERT_DB_PATH = os.environ.get(
         "ALERT_DB_PATH",
-        os.path.expanduser("~/.asp-alerts/alerts.db")
+        os.path.expanduser("~/.aegis/alerts.db")
     )
 
     # Pagination
@@ -28,8 +28,8 @@ class Config:
     SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
     SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
     SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-    SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "asp-alerts@example.com")
-    SENDER_NAME = os.environ.get("SENDER_NAME", "ASP Alerts")
+    SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "aegis@example.com")
+    SENDER_NAME = os.environ.get("SENDER_NAME", "AEGIS")
 
     # NHSN Module
     NHSN_NOTIFICATION_EMAIL = os.environ.get("NHSN_NOTIFICATION_EMAIL", "")

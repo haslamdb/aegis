@@ -1,10 +1,10 @@
-# ASP Alerts Dashboard - Deployment Guide
+# AEGIS Dashboard - Deployment Guide
 
-Deploy the dashboard at `https://alerts.asp-ai-agent.com`
+Deploy the dashboard at `https://alerts.aegis-asp.com`
 
 ## Prerequisites
 
-- This machine already runs `asp-ai-agent.com` with nginx
+- This machine already runs `aegis-asp.com` with nginx
 - Port 8082 is free (dashboard Flask app)
 - You have access to your DNS provider
 - You have access to Unifi controller
@@ -21,11 +21,11 @@ Add an A record for the subdomain pointing to your external IP.
 |------|------|-------|-----|
 | A | alerts | 50.5.30.133 | Auto |
 
-This creates `alerts.asp-ai-agent.com` → `50.5.30.133`
+This creates `alerts.aegis-asp.com` → `50.5.30.133`
 
 **Verify DNS (may take a few minutes to propagate):**
 ```bash
-dig alerts.asp-ai-agent.com +short
+dig alerts.aegis-asp.com +short
 # Should return: 50.5.30.133
 ```
 
@@ -33,7 +33,7 @@ dig alerts.asp-ai-agent.com +short
 
 ## Step 2: Unifi Port Forwarding
 
-Since asp-ai-agent already uses ports 80/443, we need to ensure traffic for the subdomain reaches this server. If both domains use the same external IP and ports, nginx will route based on the hostname.
+Since aegis-asp already uses ports 80/443, we need to ensure traffic for the subdomain reaches this server. If both domains use the same external IP and ports, nginx will route based on the hostname.
 
 **If ports 80/443 are already forwarded (likely):**
 - No additional port forwarding needed
@@ -62,7 +62,7 @@ hostname -I | awk '{print $1}'
 ## Step 3: Install the Dashboard Service
 
 ```bash
-cd ~/projects/asp-alerts/dashboard
+cd ~/projects/aegis/dashboard
 
 # Create logs directory
 mkdir -p logs
@@ -72,13 +72,13 @@ cp .env.template .env
 # Edit .env if needed: nano .env
 
 # Install systemd service
-sudo cp deploy/asp-alerts.service /etc/systemd/system/
+sudo cp deploy/aegis.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable asp-alerts
-sudo systemctl start asp-alerts
+sudo systemctl enable aegis
+sudo systemctl start aegis
 
 # Verify it's running
-sudo systemctl status asp-alerts
+sudo systemctl status aegis
 curl http://localhost:8082/  # Should return HTML
 ```
 
@@ -91,10 +91,10 @@ curl http://localhost:8082/  # Should return HTML
 First, install the nginx config without SSL to allow the challenge:
 ```bash
 # Temporary config for cert generation
-cat << 'EOF' | sudo tee /etc/nginx/sites-available/asp-alerts
+cat << 'EOF' | sudo tee /etc/nginx/sites-available/aegis
 server {
     listen 80;
-    server_name alerts.asp-ai-agent.com;
+    server_name alerts.aegis-asp.com;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -107,7 +107,7 @@ server {
 }
 EOF
 
-sudo ln -sf /etc/nginx/sites-available/asp-alerts /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/aegis /etc/nginx/sites-enabled/
 sudo mkdir -p /var/www/certbot
 sudo nginx -t && sudo systemctl reload nginx
 ```
@@ -120,7 +120,7 @@ sudo certbot certonly \
     --email dbhaslam@gmail.com \
     --agree-tos \
     --no-eff-email \
-    -d alerts.asp-ai-agent.com
+    -d alerts.aegis-asp.com
 ```
 
 **Option B: DNS-01 Challenge (if port 80 is blocked)**
@@ -131,7 +131,7 @@ sudo certbot certonly \
     --email dbhaslam@gmail.com \
     --agree-tos \
     --no-eff-email \
-    -d alerts.asp-ai-agent.com
+    -d alerts.aegis-asp.com
 ```
 Follow the prompts to add a TXT record to your DNS.
 
@@ -141,8 +141,8 @@ Follow the prompts to add a TXT record to your DNS.
 
 ```bash
 # Copy the production nginx config
-sudo cp ~/projects/asp-alerts/dashboard/deploy/nginx-asp-alerts.conf \
-    /etc/nginx/sites-available/asp-alerts
+sudo cp ~/projects/aegis/dashboard/deploy/nginx-aegis.conf \
+    /etc/nginx/sites-available/aegis
 
 # Test and reload
 sudo nginx -t
@@ -155,17 +155,17 @@ sudo systemctl reload nginx
 
 ```bash
 # Check services
-sudo systemctl status asp-alerts
+sudo systemctl status aegis
 sudo systemctl status nginx
 
 # Test locally
 curl -I http://localhost:8082/
 
 # Test externally (from another machine or use curl with host header)
-curl -I https://alerts.asp-ai-agent.com/
+curl -I https://alerts.aegis-asp.com/
 ```
 
-Open in browser: **https://alerts.asp-ai-agent.com/**
+Open in browser: **https://alerts.aegis-asp.com/**
 
 ---
 
@@ -173,23 +173,23 @@ Open in browser: **https://alerts.asp-ai-agent.com/**
 
 **Service Management:**
 ```bash
-sudo systemctl status asp-alerts     # Check status
-sudo systemctl restart asp-alerts    # Restart Flask
-sudo systemctl reload nginx          # Reload nginx config
+sudo systemctl status aegis     # Check status
+sudo systemctl restart aegis    # Restart Flask
+sudo systemctl reload nginx     # Reload nginx config
 ```
 
 **Logs:**
 ```bash
 # Application logs
-tail -f ~/projects/asp-alerts/dashboard/logs/asp-alerts.log
-tail -f ~/projects/asp-alerts/dashboard/logs/asp-alerts-error.log
+tail -f ~/projects/aegis/dashboard/logs/aegis.log
+tail -f ~/projects/aegis/dashboard/logs/aegis-error.log
 
 # Nginx logs
-sudo tail -f /var/log/nginx/asp-alerts-access.log
-sudo tail -f /var/log/nginx/asp-alerts-error.log
+sudo tail -f /var/log/nginx/aegis-access.log
+sudo tail -f /var/log/nginx/aegis-error.log
 
 # Systemd journal
-sudo journalctl -u asp-alerts -f
+sudo journalctl -u aegis -f
 ```
 
 **SSL Certificate Renewal:**
@@ -208,8 +208,8 @@ sudo certbot renew
 ### "Connection refused" on port 8082
 ```bash
 # Check if Flask is running
-sudo systemctl status asp-alerts
-sudo journalctl -u asp-alerts -n 50
+sudo systemctl status aegis
+sudo journalctl -u aegis -n 50
 
 # Check port
 ss -tlnp | grep 8082
@@ -218,7 +218,7 @@ ss -tlnp | grep 8082
 ### SSL certificate errors
 ```bash
 # Check cert exists
-sudo ls -la /etc/letsencrypt/live/alerts.asp-ai-agent.com/
+sudo ls -la /etc/letsencrypt/live/alerts.aegis-asp.com/
 
 # Check cert expiry
 sudo certbot certificates
@@ -228,14 +228,14 @@ sudo certbot certificates
 ```bash
 # Flask not running or wrong port
 curl http://127.0.0.1:8082/
-sudo systemctl restart asp-alerts
+sudo systemctl restart aegis
 ```
 
 ### DNS not resolving
 ```bash
 # Check propagation
-dig alerts.asp-ai-agent.com +short
-nslookup alerts.asp-ai-agent.com
+dig alerts.aegis-asp.com +short
+nslookup alerts.aegis-asp.com
 
 # May need to wait or flush DNS cache
 ```

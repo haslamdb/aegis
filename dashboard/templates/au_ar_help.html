@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-header">
     <h1>AU/AR Reporting - Demo & Help</h1>
-    <a href="{{ url_for('au_ar.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    <a href="{{ url_for('nhsn_reporting.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
 </div>
 
 <div class="help-content">
@@ -46,9 +46,9 @@ python -m mock_clarity.generate_data \
         <h3>2. View the Data</h3>
         <p>After generating data, visit the dashboards:</p>
         <ul>
-            <li><a href="{{ url_for('au_ar.dashboard') }}">AU/AR Dashboard</a> - Overview of usage and resistance</li>
-            <li><a href="{{ url_for('au_ar.au_detail') }}">AU Detail</a> - Detailed antibiotic usage by drug and location</li>
-            <li><a href="{{ url_for('au_ar.ar_detail') }}">AR Detail</a> - Resistance rates and phenotype prevalence</li>
+            <li><a href="{{ url_for('nhsn_reporting.dashboard') }}">AU/AR Dashboard</a> - Overview of usage and resistance</li>
+            <li><a href="{{ url_for('nhsn_reporting.au_detail') }}">AU Detail</a> - Detailed antibiotic usage by drug and location</li>
+            <li><a href="{{ url_for('nhsn_reporting.ar_detail') }}">AR Detail</a> - Resistance rates and phenotype prevalence</li>
         </ul>
     </div>
 
@@ -216,7 +216,7 @@ python -m mock_clarity.generate_data \
             </tbody>
         </table>
 
-        <p>View and verify denominators on the <a href="{{ url_for('au_ar.denominators') }}">Denominators</a> page.</p>
+        <p>View and verify denominators on the <a href="{{ url_for('nhsn_reporting.denominators') }}">Denominators</a> page.</p>
     </div>
 
     <div class="help-card">
@@ -224,7 +224,7 @@ python -m mock_clarity.generate_data \
 
         <h3>AU Submission (Monthly)</h3>
         <ol>
-            <li>Go to <a href="{{ url_for('au_ar.submission') }}?type=au">Submission</a> page</li>
+            <li>Go to <a href="{{ url_for('nhsn_reporting.submission') }}?type=au">Submission</a> page</li>
             <li>Select the reporting month</li>
             <li>Review the data summary by location and drug</li>
             <li>Click "Export CSV" to download the NHSN-formatted file</li>
@@ -233,7 +233,7 @@ python -m mock_clarity.generate_data \
 
         <h3>AR Submission (Quarterly)</h3>
         <ol>
-            <li>Go to <a href="{{ url_for('au_ar.submission') }}?type=ar">Submission</a> page</li>
+            <li>Go to <a href="{{ url_for('nhsn_reporting.submission') }}?type=ar">Submission</a> page</li>
             <li>Select the reporting quarter</li>
             <li>Review first isolates, resistance rates, and phenotype counts</li>
             <li>Click "Export CSV" to download the NHSN-formatted file</li>
@@ -356,13 +356,13 @@ gunicorn -w 2 -b 0.0.0.0:8444 app:app</code></pre>
     <div class="help-card">
         <h2>Links</h2>
         <ul>
-            <li><a href="{{ url_for('au_ar.dashboard') }}">AU/AR Dashboard</a> - Overview of usage and resistance</li>
-            <li><a href="{{ url_for('au_ar.au_detail') }}">AU Detail</a> - Detailed antibiotic usage analysis</li>
-            <li><a href="{{ url_for('au_ar.ar_detail') }}">AR Detail</a> - Resistance rates and phenotypes</li>
-            <li><a href="{{ url_for('au_ar.denominators') }}">Denominators</a> - Patient-days and device-days</li>
-            <li><a href="{{ url_for('au_ar.submission') }}">NHSN Submission</a> - Export data for NHSN upload</li>
-            <li><a href="{{ url_for('nhsn.help_page') }}">HAI Detection Help</a> - Help for CLABSI/HAI detection</li>
-            <li><a href="{{ url_for('views.help_page') }}">ASP Alerts Help</a> - Help for bacteremia and usage alerts</li>
+            <li><a href="{{ url_for('nhsn_reporting.dashboard') }}">AU/AR Dashboard</a> - Overview of usage and resistance</li>
+            <li><a href="{{ url_for('nhsn_reporting.au_detail') }}">AU Detail</a> - Detailed antibiotic usage analysis</li>
+            <li><a href="{{ url_for('nhsn_reporting.ar_detail') }}">AR Detail</a> - Resistance rates and phenotypes</li>
+            <li><a href="{{ url_for('nhsn_reporting.denominators') }}">Denominators</a> - Patient-days and device-days</li>
+            <li><a href="{{ url_for('nhsn_reporting.submission') }}">NHSN Submission</a> - Export data for NHSN upload</li>
+            <li><a href="{{ url_for('hai_detection.help_page') }}">HAI Detection Help</a> - Help for CLABSI/HAI detection</li>
+            <li><a href="{{ url_for('asp_alerts.help_page') }}">ASP Alerts Help</a> - Help for bacteremia and usage alerts</li>
         </ul>
     </div>
 </div>

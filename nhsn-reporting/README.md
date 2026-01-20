@@ -1,6 +1,6 @@
 # NHSN HAI Reporting Module
 
-Automated NHSN Healthcare-Associated Infection (HAI) detection and classification for asp-alerts. This module uses rule-based screening combined with LLM-assisted extraction and deterministic NHSN rules to identify CLABSI (Central Line-Associated Bloodstream Infection) candidates and route them through an IP review workflow.
+Automated NHSN Healthcare-Associated Infection (HAI) detection and classification for AEGIS. This module uses rule-based screening combined with LLM-assisted extraction and deterministic NHSN rules to identify CLABSI (Central Line-Associated Bloodstream Infection) candidates and route them through an IP review workflow.
 
 ## Overview
 
@@ -115,11 +115,11 @@ python -m src.runner
 
 ### Viewing Results
 
-Results appear in the main ASP Alerts dashboard:
+Results appear in the AEGIS dashboard:
 
 1. Start the dashboard: `cd ../dashboard && flask run`
-2. Visit http://localhost:5000/nhsn
-3. View candidates, classifications, and pending reviews
+2. Visit http://localhost:5000/hai-detection for candidate review workflow
+3. Visit http://localhost:5000/nhsn-reporting for AU/AR/HAI data aggregation and submission
 
 ## Architecture
 
@@ -276,21 +276,34 @@ When IP submits a final decision (Confirmed HAI or Confirmed Not HAI), any prior
 
 ## Dashboard Integration
 
-The module integrates with the ASP Alerts dashboard at `/nhsn`:
+The module integrates with the AEGIS dashboard through two sections:
+
+### HAI Detection (`/hai-detection/`)
+
+IP review workflow for CLABSI candidates:
 
 **Dashboard Stats:**
 - **Pending Review** (primary) - Cases awaiting IP decision
 - **Confirmed HAI** - CLABSI cases confirmed by IP
 - **Confirmed Not HAI** - Cases rejected by IP (secondary source, MBI-LCBI, etc.)
-- **NHSN Events** - Events ready for NHSN submission
 
 **Pages:**
-- `/nhsn` - Overview with stats and recent activity
-- `/nhsn/reviews` - IP Review Queue (primary workflow)
-- `/nhsn/candidates` - All active candidates
-- `/nhsn/history` - Resolved cases (confirmed and rejected)
-- `/nhsn/reports` - Analytics and LLM quality metrics
-- `/nhsn/submission` - NHSN reporting (CSV export or DIRECT protocol)
+- `/hai-detection/` - Dashboard with pending candidates
+- `/hai-detection/candidate/<id>` - Candidate detail with IP review actions
+- `/hai-detection/history` - Resolved cases (confirmed and rejected)
+- `/hai-detection/reports` - Analytics and LLM quality metrics
+
+### NHSN Reporting (`/nhsn-reporting/`)
+
+Data aggregation and NHSN submission for AU, AR, and HAI:
+
+**Pages:**
+- `/nhsn-reporting/` - Overview with AU, AR, and HAI summaries
+- `/nhsn-reporting/au` - Antibiotic usage detail by location
+- `/nhsn-reporting/ar` - Antimicrobial resistance phenotypes
+- `/nhsn-reporting/hai` - Confirmed HAI events by type and location
+- `/nhsn-reporting/denominators` - Patient days and device days
+- `/nhsn-reporting/submission` - **Unified submission page** for AU, AR, and HAI data (CSV export or DIRECT protocol)
 
 ## Test Data Generation
 
@@ -479,17 +492,20 @@ print(calc.get_denominator_summary('2024-01-01', '2024-12-31'))
 
 ## NHSN Submission
 
-The module supports two methods for submitting confirmed HAI events to NHSN:
+The unified submission page at `/nhsn-reporting/submission` supports submission of AU, AR, and HAI data. Use the tabs to switch between data types.
 
-### 1. CSV Export (Manual Entry)
+### Submission Methods
 
-Export confirmed events as a CSV file for manual entry into the NHSN web application or CSV import:
+#### 1. CSV Export (Manual Entry)
 
-1. Navigate to `/nhsn/submission` in the dashboard
-2. Select the date range (quarterly reporting periods)
-3. Click "Export CSV" to download the data
-4. Enter events manually into NHSN or use CSV import
-5. Click "Mark as Submitted" to update the audit trail
+Export data as a CSV file for manual entry into the NHSN web application or CSV import:
+
+1. Navigate to `/nhsn-reporting/submission` in the dashboard
+2. Select the data type tab (AU, AR, or HAI)
+3. Select the date range (monthly for AU, quarterly for AR/HAI)
+4. Click "Export CSV" to download the data
+5. Enter data manually into NHSN or use CSV import
+6. Click "Mark as Submitted" to update the audit trail
 
 ### 2. DIRECT Protocol (Automated Submission)
 
@@ -529,7 +545,7 @@ NHSN_SENDER_KEY_PATH=/path/to/your-key.pem
 
 Restart the service for changes to take effect:
 ```bash
-sudo systemctl restart asp-alerts
+sudo systemctl restart aegis
 ```
 
 ### CDA Document Generation
@@ -551,7 +567,7 @@ All submissions (CSV exports, DIRECT submissions, manual marking) are logged wit
 - Number of events
 - Submission method and notes
 
-View the audit log on the submission page at `/nhsn/submission`.
+View the audit log on the submission page at `/nhsn-reporting/submission`.
 
 ## AU/AR Reporting Module
 
@@ -559,16 +575,17 @@ The NHSN Antibiotic Use (AU) and Antimicrobial Resistance (AR) module provides a
 
 ### Dashboard
 
-Access the AU/AR dashboard at `/au-ar/` with the following pages:
+Access AU/AR data through the NHSN Reporting dashboard at `/nhsn-reporting/`:
 
 | Page | URL | Description |
 |------|-----|-------------|
-| **Dashboard** | `/au-ar/` | Overview with AU, AR, and denominator summaries |
-| **AU Detail** | `/au-ar/au` | Days of therapy by location and antimicrobial |
-| **AR Detail** | `/au-ar/ar` | Resistance phenotypes and rates by organism |
-| **Denominators** | `/au-ar/denominators` | Patient days and device days by location |
-| **Submission** | `/au-ar/submission` | NHSN export (CSV or CDA) |
-| **Help** | `/au-ar/help` | Documentation and demo guide |
+| **Dashboard** | `/nhsn-reporting/` | Overview with AU, AR, and HAI summaries |
+| **AU Detail** | `/nhsn-reporting/au` | Days of therapy by location and antimicrobial |
+| **AR Detail** | `/nhsn-reporting/ar` | Resistance phenotypes and rates by organism |
+| **HAI Detail** | `/nhsn-reporting/hai` | Confirmed HAI events by type and location |
+| **Denominators** | `/nhsn-reporting/denominators` | Patient days and device days by location |
+| **Submission** | `/nhsn-reporting/submission` | Unified NHSN submission (AU, AR, HAI) |
+| **Help** | `/nhsn-reporting/help` | Documentation and demo guide |
 
 ### Antibiotic Usage (AU)
 
@@ -623,7 +640,7 @@ python scripts/generate_demo_data.py
 
 # View in dashboard
 cd ../dashboard && flask run
-# Visit http://localhost:5000/au-ar/
+# Visit http://localhost:5000/nhsn-reporting/
 ```
 
 The demo data generator creates:
@@ -634,12 +651,12 @@ The demo data generator creates:
 
 ### NHSN Submission
 
-Export AU/AR data for NHSN submission:
+Export AU/AR data for NHSN submission via the unified submission page:
 
 1. **CSV Export**: Download monthly data for manual entry
 2. **CDA Generation**: HL7 CDA documents for automated submission
 
-Navigate to `/au-ar/submission` to access export options.
+Navigate to `/nhsn-reporting/submission` and select the AU or AR tab to access export options.
 
 ## Roadmap
 
@@ -662,7 +679,7 @@ Navigate to `/au-ar/submission` to access export options.
 
 ## Future Work
 
-### CLABSI Rate Denominator ([#1](https://github.com/haslamdb/asp-alerts/issues/1))
+### CLABSI Rate Denominator ([#1](https://github.com/haslamdb/aegis/issues/1))
 
 Central line days aggregation needed for CLABSI rate calculation:
 - **Formula**: CLABSI Rate = (CLABSI count / central line days) × 1,000
@@ -688,5 +705,5 @@ See **AU/AR Reporting** section below. The AU/AR module is now fully implemented
 - [CDC/NHSN CLABSI Protocol](https://www.cdc.gov/nhsn/pdfs/pscmanual/4psc_clabscurrent.pdf)
 - [NHSN CDA Submission Support Portal](https://www.cdc.gov/nhsn/cdaportal/importingdata.html)
 - [HL7 CDA HAI Implementation Guide](https://www.hl7.org/implement/standards/product_brief.cfm?product_id=20)
-- [asp-alerts Main Documentation](../README.md)
+- [AEGIS Main Documentation](../README.md)
 - [Dashboard Documentation](../dashboard/README.md)

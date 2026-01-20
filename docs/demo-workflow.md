@@ -1,6 +1,6 @@
-# ASP Alerts Demo Workflow
+# AEGIS Demo Workflow
 
-This guide walks through a complete demonstration of the ASP Alerts system, showing how real-time clinical alerts are triggered when new patient data arrives.
+This guide walks through a complete demonstration of the AEGIS system, showing how real-time clinical alerts are triggered when new patient data arrives.
 
 > **Disclaimer:** All patient data used in this demo is simulated. No actual patient data exists in this repository.
 
@@ -24,7 +24,7 @@ The demo shows two alert scenarios:
 The HAPI FHIR server stores patient data and serves as the data source for our monitors.
 
 ```bash
-cd asp-alerts/asp-bacteremia-alerts
+cd aegis/asp-bacteremia-alerts
 docker-compose up -d
 ```
 
@@ -43,7 +43,7 @@ The dashboard displays alerts and allows acknowledgment/resolution.
 
 **Terminal 1:**
 ```bash
-cd asp-alerts/dashboard
+cd aegis/dashboard
 
 # Install dependencies (first time only)
 pip install -r requirements.txt
@@ -64,12 +64,12 @@ Ensure both monitors are configured to use the local FHIR server.
 
 ```bash
 # For bacteremia monitor
-cd asp-alerts/asp-bacteremia-alerts
+cd aegis/asp-bacteremia-alerts
 cp .env.template .env
 # Edit .env: FHIR_BASE_URL=http://localhost:8081/fhir
 
 # For antimicrobial usage monitor
-cd asp-alerts/antimicrobial-usage-alerts
+cd aegis/antimicrobial-usage-alerts
 cp .env.template .env
 # Edit .env: FHIR_BASE_URL=http://localhost:8081/fhir
 ```
@@ -82,12 +82,12 @@ If you have previous demo data, clear it:
 
 ```bash
 # Clear FHIR server data (restart container)
-cd asp-alerts/asp-bacteremia-alerts
+cd aegis/asp-bacteremia-alerts
 docker-compose down
 docker-compose up -d
 
 # Clear alert database
-rm -f ~/.asp-alerts/alerts.db
+rm -f ~/.aegis/alerts.db
 ```
 
 Refresh the dashboard - it should show no alerts.
@@ -100,14 +100,14 @@ Open two additional terminal windows to run the monitors.
 
 **Terminal 2 - Bacteremia Monitor:**
 ```bash
-cd asp-alerts/asp-bacteremia-alerts
+cd aegis/asp-bacteremia-alerts
 source venv/bin/activate  # if using virtualenv
 python -m src.monitor
 ```
 
 **Terminal 3 - Antimicrobial Usage Monitor:**
 ```bash
-cd asp-alerts/antimicrobial-usage-alerts
+cd aegis/antimicrobial-usage-alerts
 source venv/bin/activate  # if using virtualenv
 python -m src.runner --once --verbose
 ```
@@ -122,7 +122,7 @@ The NHSN module uses LLM-assisted classification to identify CLABSI candidates. 
 
 **Terminal 4:**
 ```bash
-cd asp-alerts
+cd aegis
 
 # Create one CLABSI + one random Not CLABSI scenario
 python scripts/demo_clabsi.py
@@ -143,7 +143,7 @@ cd nhsn-reporting
 python -m src.runner --once
 ```
 
-**View in dashboard:** https://nhsn.asp-ai-agent.com:8444/nhsn/candidates
+**View in dashboard:** https://nhsn.aegis-asp.com:8444/nhsn/candidates
 
 ### CLABSI Demo Scenarios
 
@@ -170,7 +170,7 @@ Now we'll add a patient with MRSA bacteremia but no vancomycin coverage.
 
 **Terminal 4:**
 ```bash
-cd asp-alerts
+cd aegis
 
 # Create patient with MRSA blood culture, no appropriate antibiotic
 python scripts/demo_blood_culture.py --organism mrsa
@@ -366,7 +366,7 @@ For a proper demo accessible from anywhere, deploy with nginx and SSL.
 
 **1. Run the setup script:**
 ```bash
-cd asp-alerts/dashboard/deploy
+cd aegis/dashboard/deploy
 ./setup_production.sh your-domain.com
 ```
 
@@ -387,18 +387,18 @@ cd asp-alerts/dashboard/deploy
 - Add an A record pointing your domain to your external IP
 
 **Deployment files:**
-- `dashboard/deploy/asp-alerts.service` - Systemd service (runs on port 8082)
-- `dashboard/deploy/nginx-asp-alerts-local.conf` - Local/internal nginx config
-- `dashboard/deploy/nginx-asp-alerts-external.conf` - External nginx config with SSL
+- `dashboard/deploy/aegis.service` - Systemd service (runs on port 8082)
+- `dashboard/deploy/nginx-aegis-local.conf` - Local/internal nginx config
+- `dashboard/deploy/nginx-aegis-external.conf` - External nginx config with SSL
 - `dashboard/deploy/setup_production.sh` - Automated setup script
 - `dashboard/deploy/setup_ssl.sh` - Let's Encrypt setup (HTTP challenge)
 - `dashboard/deploy/setup_ssl_dns.sh` - Let's Encrypt setup (DNS challenge)
 
 **Service management:**
 ```bash
-sudo systemctl status asp-alerts    # Check status
-sudo systemctl restart asp-alerts   # Restart
-sudo journalctl -u asp-alerts -f    # View logs
+sudo systemctl status aegis    # Check status
+sudo systemctl restart aegis   # Restart
+sudo journalctl -u aegis -f    # View logs
 ```
 
 ---
@@ -413,7 +413,7 @@ cd asp-bacteremia-alerts
 docker-compose down
 
 # Clear alert database
-rm -f ~/.asp-alerts/alerts.db
+rm -f ~/.aegis/alerts.db
 
 # Stop Flask (Ctrl+C in Terminal 1)
 ```

@@ -7,18 +7,18 @@
 <div class="alert alert-danger">
     <strong>Error:</strong> {{ error }}
 </div>
-<a href="{{ url_for('nhsn.dashboard') }}" class="btn">&larr; Back to Dashboard</a>
+<a href="{{ url_for('hai_detection.dashboard') }}" class="btn">&larr; Back to Dashboard</a>
 {% elif not candidate %}
 <div class="empty-state">
     <h2>Candidate Not Found</h2>
     <p>The requested candidate could not be found.</p>
-    <a href="{{ url_for('nhsn.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+    <a href="{{ url_for('hai_detection.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
 </div>
 {% else %}
 
 <div class="page-header">
     <h1>CLABSI Candidate</h1>
-    <a href="{{ url_for('nhsn.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    <a href="{{ url_for('hai_detection.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
 </div>
 
 <div class="alert-detail-layout">

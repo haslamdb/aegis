@@ -18,12 +18,12 @@
 <!-- Quick Links -->
 <div class="section">
     <div class="quick-links">
-        <a href="{{ url_for('au_ar.au_detail') }}" class="btn btn-primary">AU Detail</a>
-        <a href="{{ url_for('au_ar.ar_detail') }}" class="btn btn-secondary">AR Detail</a>
-        <a href="{{ url_for('au_ar.denominators') }}" class="btn btn-info">Denominators</a>
-        <a href="{{ url_for('au_ar.submission') }}" class="btn btn-nhsn">NHSN Submission</a>
-        <a href="{{ url_for('nhsn.dashboard') }}" class="btn btn-hai">HAI Dashboard</a>
-        <a href="{{ url_for('au_ar.help_page') }}" class="btn btn-help">Help</a>
+        <a href="{{ url_for('nhsn_reporting.au_detail') }}" class="btn btn-primary">AU Detail</a>
+        <a href="{{ url_for('nhsn_reporting.ar_detail') }}" class="btn btn-secondary">AR Detail</a>
+        <a href="{{ url_for('nhsn_reporting.denominators') }}" class="btn btn-info">Denominators</a>
+        <a href="{{ url_for('nhsn_reporting.submission') }}" class="btn btn-nhsn">NHSN Submission</a>
+        <a href="{{ url_for('hai_detection.dashboard') }}" class="btn btn-hai">HAI Dashboard</a>
+        <a href="{{ url_for('nhsn_reporting.help_page') }}" class="btn btn-help">Help</a>
     </div>
 </div>
 
@@ -84,7 +84,7 @@
         </tfoot>
     </table>
     {% else %}
-    <p class="empty-state">No antibiotic usage data available for the current period. <a href="{{ url_for('au_ar.au_detail') }}">View detailed AU report</a></p>
+    <p class="empty-state">No antibiotic usage data available for the current period. <a href="{{ url_for('nhsn_reporting.au_detail') }}">View detailed AU report</a></p>
     {% endif %}
 </div>
 
@@ -146,7 +146,7 @@
         </tbody>
     </table>
     {% else %}
-    <p class="empty-state">No antimicrobial resistance data available for the current quarter. <a href="{{ url_for('au_ar.ar_detail') }}">View detailed AR report</a></p>
+    <p class="empty-state">No antimicrobial resistance data available for the current quarter. <a href="{{ url_for('nhsn_reporting.ar_detail') }}">View detailed AR report</a></p>
     {% endif %}
 </div>
 
@@ -177,7 +177,7 @@
         </tbody>
     </table>
     {% else %}
-    <p class="empty-state">No denominator data available. <a href="{{ url_for('au_ar.denominators') }}">View denominator details</a></p>
+    <p class="empty-state">No denominator data available. <a href="{{ url_for('nhsn_reporting.denominators') }}">View denominator details</a></p>
     {% endif %}
 </div>
 

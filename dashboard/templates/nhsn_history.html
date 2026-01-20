@@ -98,7 +98,7 @@
                 <span data-timestamp="{{ c.created_at.isoformat() }}">{{ c.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
             </td>
             <td>
-                <a href="{{ url_for('nhsn.candidate_detail', candidate_id=c.id) }}" class="btn btn-sm">View</a>
+                <a href="{{ url_for('hai_detection.candidate_detail', candidate_id=c.id) }}" class="btn btn-sm">View</a>
             </td>
         </tr>
         {% endfor %}
@@ -116,13 +116,13 @@
         {% endif %}
     </p>
     <p>
-        <a href="{{ url_for('nhsn.dashboard') }}" class="btn btn-primary">View Active Cases</a>
+        <a href="{{ url_for('hai_detection.dashboard') }}" class="btn btn-primary">View Active Cases</a>
     </p>
 </div>
 {% endif %}
 
 <div class="page-actions">
-    <a href="{{ url_for('nhsn.dashboard') }}" class="btn">&larr; Back to Dashboard</a>
+    <a href="{{ url_for('hai_detection.dashboard') }}" class="btn">&larr; Back to Dashboard</a>
 </div>
 
 <style>

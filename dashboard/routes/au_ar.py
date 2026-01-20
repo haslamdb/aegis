@@ -11,7 +11,17 @@ nhsn_path = Path(__file__).parent.parent.parent / "nhsn-reporting"
 if str(nhsn_path) not in sys.path:
     sys.path.insert(0, str(nhsn_path))
 
-au_ar_bp = Blueprint("au_ar", __name__, url_prefix="/au-ar")
+nhsn_reporting_bp = Blueprint("nhsn_reporting", __name__, url_prefix="/nhsn-reporting")
+
+
+def get_nhsn_db():
+    """Get or create NHSN database instance for HAI data."""
+    if not hasattr(current_app, "nhsn_db"):
+        from src.db import NHSNDatabase
+        from src.config import Config
+
+        current_app.nhsn_db = NHSNDatabase(Config.NHSN_DB_PATH)
+    return current_app.nhsn_db
 
 
 def get_au_extractor():
@@ -38,7 +48,7 @@ def get_denominator_calculator():
     return current_app.denominator_calc
 
 
-@au_ar_bp.route("/")
+@nhsn_reporting_bp.route("/")
 def dashboard():
     """AU/AR reporting dashboard overview."""
     try:
@@ -125,7 +135,7 @@ def dashboard():
         )
 
 
-@au_ar_bp.route("/au")
+@nhsn_reporting_bp.route("/au")
 def au_detail():
     """Detailed Antibiotic Usage reporting page."""
     try:
@@ -195,7 +205,7 @@ def au_detail():
         )
 
 
-@au_ar_bp.route("/ar")
+@nhsn_reporting_bp.route("/ar")
 def ar_detail():
     """Detailed Antimicrobial Resistance reporting page."""
     try:
@@ -278,7 +288,116 @@ def ar_detail():
         )
 
 
-@au_ar_bp.route("/denominators")
+@nhsn_reporting_bp.route("/hai")
+def hai_detail():
+    """HAI events summary for NHSN reporting period."""
+    try:
+        db = get_nhsn_db()
+
+        # Get date range parameters
+        from_date_str = request.args.get("from_date")
+        to_date_str = request.args.get("to_date")
+        hai_type_filter = request.args.get("type")
+
+        # Default to current quarter
+        today = date.today()
+        if not from_date_str or not to_date_str:
+            quarter = (today.month - 1) // 3
+            quarter_start_month = quarter * 3 + 1
+            from_date = datetime(today.year, quarter_start_month, 1)
+            if quarter == 3:
+                to_date = datetime(today.year, 12, 31)
+            else:
+                to_date = datetime(today.year, quarter_start_month + 3, 1) - timedelta(days=1)
+        else:
+            from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+            to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+
+        # Get summary stats
+        stats = db.get_summary_stats()
+
+        # Get confirmed HAI events in date range
+        from src.models import HAIType
+        hai_type = HAIType(hai_type_filter) if hai_type_filter else None
+        confirmed_events = db.get_confirmed_hai_in_date_range(from_date, to_date)
+
+        # Filter by type if specified
+        if hai_type:
+            confirmed_events = [e for e in confirmed_events if e.hai_type == hai_type]
+
+        # Calculate summary by type
+        by_type = {}
+        by_location = {}
+        for event in confirmed_events:
+            # By type
+            type_key = event.hai_type.value.upper()
+            if type_key not in by_type:
+                by_type[type_key] = {"count": 0, "organisms": set()}
+            by_type[type_key]["count"] += 1
+            if event.culture and event.culture.organism:
+                by_type[type_key]["organisms"].add(event.culture.organism)
+
+            # By location
+            loc = getattr(event, 'location_code', None) or 'Unknown'
+            if loc not in by_location:
+                by_location[loc] = {"count": 0, "types": set()}
+            by_location[loc]["count"] += 1
+            by_location[loc]["types"].add(type_key)
+
+        # Convert sets to counts for template
+        type_summary = [
+            {"type": t, "count": d["count"], "organisms": len(d["organisms"])}
+            for t, d in sorted(by_type.items())
+        ]
+        location_summary = [
+            {"location": loc, "count": d["count"], "types": ", ".join(sorted(d["types"]))}
+            for loc, d in sorted(by_location.items(), key=lambda x: -x[1]["count"])
+        ]
+
+        # Get last submission info
+        last_submission = db.get_last_submission()
+
+        # Quarter info for display
+        quarter_num = (from_date.month - 1) // 3 + 1
+        quarter_label = f"Q{quarter_num} {from_date.year}"
+
+        return render_template(
+            "hai_detail.html",
+            confirmed_events=confirmed_events,
+            type_summary=type_summary,
+            location_summary=location_summary,
+            total_confirmed=len(confirmed_events),
+            stats=stats,
+            from_date=from_date.strftime("%Y-%m-%d"),
+            to_date=to_date.strftime("%Y-%m-%d"),
+            quarter_label=quarter_label,
+            current_type=hai_type_filter or "",
+            last_submission=last_submission,
+        )
+
+    except Exception as e:
+        current_app.logger.error(f"Error loading HAI detail: {e}")
+        today = date.today()
+        quarter = (today.month - 1) // 3
+        quarter_start_month = quarter * 3 + 1
+        from_date = datetime(today.year, quarter_start_month, 1)
+        return render_template(
+            "hai_detail.html",
+            confirmed_events=[],
+            type_summary=[],
+            location_summary=[],
+            total_confirmed=0,
+            stats={},
+            from_date=from_date.strftime("%Y-%m-%d"),
+            to_date=today.strftime("%Y-%m-%d"),
+            quarter_label=f"Q{quarter + 1} {today.year}",
+            current_type="",
+            last_submission=None,
+            error=str(e),
+        )
+
+
+@nhsn_reporting_bp.route("/denominators")
 def denominators():
     """Denominator data reporting page (device-days, patient-days)."""
     try:
@@ -360,7 +479,7 @@ def denominators():
 
 # API Endpoints
 
-@au_ar_bp.route("/api/au/summary")
+@nhsn_reporting_bp.route("/api/au/summary")
 def api_au_summary():
     """Get AU summary as JSON."""
     try:
@@ -380,7 +499,7 @@ def api_au_summary():
         return jsonify({"error": str(e)}), 500
 
 
-@au_ar_bp.route("/api/ar/summary")
+@nhsn_reporting_bp.route("/api/ar/summary")
 def api_ar_summary():
     """Get AR summary as JSON."""
     try:
@@ -398,7 +517,7 @@ def api_ar_summary():
         return jsonify({"error": str(e)}), 500
 
 
-@au_ar_bp.route("/api/denominators")
+@nhsn_reporting_bp.route("/api/denominators")
 def api_denominators():
     """Get denominator data as JSON."""
     try:
@@ -418,7 +537,7 @@ def api_denominators():
         return jsonify({"error": str(e)}), 500
 
 
-@au_ar_bp.route("/api/au/export")
+@nhsn_reporting_bp.route("/api/au/export")
 def api_au_export():
     """Export AU data as CSV for NHSN submission."""
     try:
@@ -454,7 +573,7 @@ def api_au_export():
         return jsonify({"error": str(e)}), 500
 
 
-@au_ar_bp.route("/api/ar/export")
+@nhsn_reporting_bp.route("/api/ar/export")
 def api_ar_export():
     """Export AR data as CSV for NHSN submission."""
     try:
@@ -492,31 +611,27 @@ def api_ar_export():
         return jsonify({"error": str(e)}), 500
 
 
-@au_ar_bp.route("/help")
+@nhsn_reporting_bp.route("/help")
 def help_page():
     """AU/AR Help and Demo Guide."""
     return render_template("au_ar_help.html")
 
 
-@au_ar_bp.route("/submission")
+@nhsn_reporting_bp.route("/submission")
 def submission():
-    """AU/AR NHSN submission page."""
+    """Unified NHSN submission page for AU, AR, and HAI data."""
     try:
-        au_extractor = get_au_extractor()
-        ar_extractor = get_ar_extractor()
-
         # Get parameters
-        submission_type = request.args.get("type", "au")  # 'au' or 'ar'
-
+        submission_type = request.args.get("type", "au")  # 'au', 'ar', or 'hai'
         today = date.today()
 
         if submission_type == "au":
             # AU is monthly
+            au_extractor = get_au_extractor()
             from_date_str = request.args.get("from_date")
             to_date_str = request.args.get("to_date")
 
             if not from_date_str:
-                # Default to previous month
                 prev_month = today.replace(day=1) - timedelta(days=1)
                 from_date = prev_month.replace(day=1)
             else:
@@ -530,23 +645,29 @@ def submission():
             au_summary = au_extractor.get_monthly_summary(start_date=from_date, end_date=to_date)
 
             return render_template(
-                "au_ar_submission.html",
+                "nhsn_submission_unified.html",
                 submission_type="au",
                 au_summary=au_summary,
                 ar_summary=None,
+                hai_events=None,
                 from_date=from_date.strftime("%Y-%m-%d"),
                 to_date=to_date.strftime("%Y-%m-%d"),
                 year=None,
                 quarter=None,
+                preparer_name=request.args.get("preparer_name", ""),
+                last_submission=None,
+                direct_configured=False,
+                direct_config=None,
+                audit_log=None,
             )
 
-        else:
+        elif submission_type == "ar":
             # AR is quarterly
+            ar_extractor = get_ar_extractor()
             year = request.args.get("year", type=int) or today.year
             quarter = request.args.get("quarter", type=int)
 
             if not quarter:
-                # Default to previous quarter
                 current_quarter = (today.month - 1) // 3 + 1
                 if current_quarter == 1:
                     year -= 1
@@ -557,27 +678,352 @@ def submission():
             ar_summary = ar_extractor.get_quarterly_summary(year=year, quarter=quarter)
 
             return render_template(
-                "au_ar_submission.html",
+                "nhsn_submission_unified.html",
                 submission_type="ar",
                 au_summary=None,
                 ar_summary=ar_summary,
+                hai_events=None,
                 from_date=None,
                 to_date=None,
                 year=year,
                 quarter=quarter,
+                preparer_name=request.args.get("preparer_name", ""),
+                last_submission=None,
+                direct_configured=False,
+                direct_config=None,
+                audit_log=None,
+            )
+
+        else:
+            # HAI submission (type='hai')
+            db = get_nhsn_db()
+            from_date_str = request.args.get("from_date")
+            to_date_str = request.args.get("to_date")
+            preparer_name = request.args.get("preparer_name", "")
+
+            # Default to current quarter
+            if not from_date_str or not to_date_str:
+                quarter = (today.month - 1) // 3
+                quarter_start_month = quarter * 3 + 1
+                from_date = datetime(today.year, quarter_start_month, 1)
+                if quarter == 3:
+                    to_date = datetime(today.year, 12, 31)
+                else:
+                    to_date = datetime(today.year, quarter_start_month + 3, 1) - timedelta(days=1)
+            else:
+                from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+                to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+
+            # Get confirmed HAI events in date range (always load with default dates)
+            events = db.get_confirmed_hai_in_date_range(from_date, to_date)
+
+            # Get audit log and last submission
+            audit_log = db.get_submission_audit_log(limit=10)
+            last_submission = db.get_last_submission()
+
+            # Check DIRECT configuration
+            from src.config import Config
+            direct_configured = Config.is_direct_configured()
+            direct_config = None
+            if direct_configured:
+                direct_config = {
+                    "facility_id": Config.NHSN_FACILITY_ID,
+                    "facility_name": Config.NHSN_FACILITY_NAME,
+                    "sender_address": Config.NHSN_SENDER_DIRECT_ADDRESS,
+                    "nhsn_address": Config.NHSN_DIRECT_ADDRESS,
+                }
+
+            return render_template(
+                "nhsn_submission_unified.html",
+                submission_type="hai",
+                au_summary=None,
+                ar_summary=None,
+                hai_events=events,
+                from_date=from_date.strftime("%Y-%m-%d"),
+                to_date=to_date.strftime("%Y-%m-%d"),
+                year=None,
+                quarter=None,
+                preparer_name=preparer_name,
+                last_submission=last_submission,
+                direct_configured=direct_configured,
+                direct_config=direct_config,
+                audit_log=audit_log,
             )
 
     except Exception as e:
-        current_app.logger.error(f"Error loading AU/AR submission: {e}")
+        current_app.logger.error(f"Error loading NHSN submission: {e}")
         today = date.today()
         return render_template(
-            "au_ar_submission.html",
+            "nhsn_submission_unified.html",
             submission_type=request.args.get("type", "au"),
             au_summary=None,
             ar_summary=None,
+            hai_events=None,
             from_date=(today.replace(day=1) - timedelta(days=1)).replace(day=1).strftime("%Y-%m-%d"),
             to_date=(today.replace(day=1) - timedelta(days=1)).strftime("%Y-%m-%d"),
             year=today.year,
             quarter=(today.month - 1) // 3 + 1,
+            preparer_name="",
+            last_submission=None,
+            direct_configured=False,
+            direct_config=None,
+            audit_log=None,
             error=str(e),
         )
+
+
+# HAI Submission Routes
+
+@nhsn_reporting_bp.route("/submission/hai/export", methods=["POST"])
+def hai_export_submission():
+    """Export HAI submission data as CSV or PDF."""
+    try:
+        db = get_nhsn_db()
+        import csv
+        import io
+
+        from_date_str = request.form.get("from_date")
+        to_date_str = request.form.get("to_date")
+        preparer_name = request.form.get("preparer_name", "Unknown")
+        export_format = request.form.get("format", "csv")
+
+        from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+        to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+
+        events = db.get_confirmed_hai_in_date_range(from_date, to_date)
+
+        # Log the export
+        db.log_submission_action(
+            action="exported",
+            user_name=preparer_name,
+            period_start=from_date_str,
+            period_end=to_date_str,
+            event_count=len(events),
+            notes=f"Exported as {export_format.upper()}",
+        )
+
+        if export_format == "csv":
+            output = io.StringIO()
+            writer = csv.writer(output)
+
+            writer.writerow([
+                "Event_Date", "Patient_ID", "Patient_Name", "DOB", "Gender",
+                "HAI_Type", "Event_Type", "Organism", "Device_Days",
+                "Location_Code", "Central_Line_Type", "Notes",
+            ])
+
+            for event in events:
+                writer.writerow([
+                    event.culture.collection_date.strftime("%Y-%m-%d"),
+                    event.patient.mrn,
+                    event.patient.name or "",
+                    event.patient.dob.strftime("%Y-%m-%d") if hasattr(event.patient, 'dob') and event.patient.dob else "",
+                    event.patient.gender if hasattr(event.patient, 'gender') else "",
+                    event.hai_type.value.upper(),
+                    "BSI" if event.hai_type.value == "clabsi" else event.hai_type.value.upper(),
+                    event.culture.organism or "",
+                    event.device_days_at_culture if event.device_days_at_culture is not None else "",
+                    event.location_code if hasattr(event, 'location_code') else "",
+                    event.central_line_type if hasattr(event, 'central_line_type') else "",
+                    "",
+                ])
+
+            output.seek(0)
+            filename = f"nhsn_hai_export_{from_date_str}_to_{to_date_str}.csv"
+            return Response(
+                output.getvalue(),
+                mimetype="text/csv",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+        else:
+            # Generate text summary
+            content = f"""NHSN HAI Submission Report
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}
+Prepared by: {preparer_name}
+Period: {from_date_str} to {to_date_str}
+
+Total Events: {len(events)}
+
+Event Details:
+"""
+            for i, event in enumerate(events, 1):
+                content += f"""
+{i}. {event.hai_type.value.upper()} - {event.culture.collection_date.strftime('%Y-%m-%d')}
+   Patient: {event.patient.mrn} ({event.patient.name or 'Unknown'})
+   Organism: {event.culture.organism or 'Unknown'}
+   Device Days: {event.device_days_at_culture if event.device_days_at_culture is not None else 'N/A'}
+"""
+            filename = f"nhsn_hai_export_{from_date_str}_to_{to_date_str}.txt"
+            return Response(
+                content,
+                mimetype="text/plain",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+
+    except Exception as e:
+        current_app.logger.error(f"Error exporting HAI data: {e}")
+        from flask import redirect, url_for
+        return redirect(url_for("nhsn_reporting.submission", type="hai", error=str(e)))
+
+
+@nhsn_reporting_bp.route("/submission/hai/mark-submitted", methods=["POST"])
+def hai_mark_submitted():
+    """Mark HAI events as submitted to NHSN."""
+    try:
+        db = get_nhsn_db()
+        from flask import redirect, url_for
+
+        from_date_str = request.form.get("from_date")
+        to_date_str = request.form.get("to_date")
+        preparer_name = request.form.get("preparer_name", "Unknown")
+        notes = request.form.get("notes", "")
+
+        from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+        to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+
+        events = db.get_confirmed_hai_in_date_range(from_date, to_date)
+        event_ids = [e.id for e in events]
+
+        db.mark_events_as_submitted(event_ids)
+
+        db.log_submission_action(
+            action="submitted",
+            user_name=preparer_name,
+            period_start=from_date_str,
+            period_end=to_date_str,
+            event_count=len(events),
+            notes=notes,
+        )
+
+        return redirect(url_for(
+            "nhsn_reporting.submission",
+            type="hai",
+            from_date=from_date_str,
+            to_date=to_date_str,
+            preparer_name=preparer_name,
+            msg=f"Marked {len(events)} events as submitted"
+        ))
+
+    except Exception as e:
+        current_app.logger.error(f"Error marking HAI events as submitted: {e}")
+        from flask import redirect, url_for
+        return redirect(url_for("nhsn_reporting.submission", type="hai", error=str(e)))
+
+
+@nhsn_reporting_bp.route("/submission/hai/direct", methods=["POST"])
+def hai_direct_submission():
+    """Submit HAI events directly to NHSN via DIRECT protocol."""
+    try:
+        db = get_nhsn_db()
+        from flask import redirect, url_for
+
+        from_date_str = request.form.get("from_date")
+        to_date_str = request.form.get("to_date")
+        preparer_name = request.form.get("preparer_name", "Unknown")
+
+        from_date = datetime.strptime(from_date_str, "%Y-%m-%d")
+        to_date = datetime.strptime(to_date_str, "%Y-%m-%d")
+
+        from src.config import Config
+        if not Config.is_direct_configured():
+            return redirect(url_for(
+                "nhsn_reporting.submission",
+                type="hai",
+                from_date=from_date_str,
+                to_date=to_date_str,
+                preparer_name=preparer_name,
+                error="DIRECT protocol not configured"
+            ))
+
+        events = db.get_confirmed_hai_in_date_range(from_date, to_date)
+        if not events:
+            return redirect(url_for(
+                "nhsn_reporting.submission",
+                type="hai",
+                from_date=from_date_str,
+                to_date=to_date_str,
+                preparer_name=preparer_name,
+                error="No events to submit"
+            ))
+
+        from src.cda import CDAGenerator, create_bsi_document_from_candidate
+        from src.direct import DirectClient
+
+        direct_config = Config.get_direct_config()
+        generator = CDAGenerator(
+            facility_id=direct_config.facility_id,
+            facility_name=direct_config.facility_name,
+        )
+
+        cda_documents = []
+        for event in events:
+            bsi_doc = create_bsi_document_from_candidate(
+                event,
+                facility_id=direct_config.facility_id,
+                facility_name=direct_config.facility_name,
+                author_name=preparer_name,
+            )
+            cda_xml = generator.generate_bsi_document(bsi_doc)
+            cda_documents.append(cda_xml)
+
+        client = DirectClient(direct_config)
+        result = client.submit_cda_documents(
+            cda_documents=cda_documents,
+            submission_type="HAI-BSI",
+            preparer_name=preparer_name,
+        )
+
+        if result.success:
+            db.log_submission_action(
+                action="direct_submitted",
+                user_name=preparer_name,
+                period_start=from_date_str,
+                period_end=to_date_str,
+                event_count=len(events),
+                notes=f"DIRECT submission. Message ID: {result.message_id}",
+            )
+            event_ids = [e.id for e in events]
+            db.mark_events_as_submitted(event_ids)
+
+            return redirect(url_for(
+                "nhsn_reporting.submission",
+                type="hai",
+                from_date=from_date_str,
+                to_date=to_date_str,
+                preparer_name=preparer_name,
+                msg=f"Submitted {len(events)} events via DIRECT"
+            ))
+        else:
+            return redirect(url_for(
+                "nhsn_reporting.submission",
+                type="hai",
+                from_date=from_date_str,
+                to_date=to_date_str,
+                preparer_name=preparer_name,
+                error=f"DIRECT submission failed: {result.error_message}"
+            ))
+
+    except Exception as e:
+        current_app.logger.error(f"Error in HAI DIRECT submission: {e}")
+        from flask import redirect, url_for
+        return redirect(url_for("nhsn_reporting.submission", type="hai", error=str(e)))
+
+
+@nhsn_reporting_bp.route("/submission/hai/test-direct", methods=["POST"])
+def hai_test_direct_connection():
+    """Test the DIRECT protocol connection."""
+    try:
+        from src.config import Config
+        from src.direct import DirectClient
+
+        if not Config.is_direct_configured():
+            return jsonify({"success": False, "message": "DIRECT protocol not configured"})
+
+        direct_config = Config.get_direct_config()
+        client = DirectClient(direct_config)
+        success, message = client.test_connection()
+
+        return jsonify({"success": success, "message": message})
+
+    except Exception as e:
+        return jsonify({"success": False, "message": str(e)})
