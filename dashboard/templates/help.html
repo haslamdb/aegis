@@ -136,7 +136,7 @@ python -m src.runner --once --verbose</code></pre>
                 </ul>
             </li>
         </ol>
-        <p>Resolved alerts move to the <a href="{{ url_for('views.alerts_history') }}">History</a> tab with a full audit trail.</p>
+        <p>Resolved alerts move to the <a href="{{ url_for('asp_alerts.alerts_history') }}">History</a> tab with a full audit trail.</p>
     </div>
 
     <div class="help-card">
@@ -166,7 +166,7 @@ cd asp-bacteremia-alerts
 docker-compose down && docker-compose up -d
 
 # Clear alert database
-rm -f ~/.asp-alerts/alerts.db</code></pre>
+rm -f ~/.aegis/alerts.db</code></pre>
 
         <h3>Verify data was uploaded</h3>
         <pre><code>curl "http://localhost:8081/fhir/Patient?_count=5" | python -m json.tool</code></pre>

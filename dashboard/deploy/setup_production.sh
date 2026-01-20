@@ -1,20 +1,20 @@
 #!/bin/bash
-# ASP Alerts Dashboard - Production Setup Script
+# AEGIS Dashboard - Production Setup Script
 #
 # Usage:
 #   ./setup_production.sh [domain]
 #
 # Example:
-#   ./setup_production.sh asp-alerts.example.com
+#   ./setup_production.sh aegis.example.com
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
-DOMAIN="${1:-asp-alerts.local}"
+DOMAIN="${1:-aegis.local}"
 
 echo "=============================================="
-echo "ASP Alerts Dashboard - Production Setup"
+echo "AEGIS Dashboard - Production Setup"
 echo "=============================================="
 echo "Domain: $DOMAIN"
 echo "Project: $PROJECT_DIR"
@@ -38,33 +38,33 @@ fi
 
 # Install systemd service
 echo "Installing systemd service..."
-sudo cp "$SCRIPT_DIR/asp-alerts.service" /etc/systemd/system/
+sudo cp "$SCRIPT_DIR/aegis.service" /etc/systemd/system/
 sudo systemctl daemon-reload
 
 # Determine nginx config to use
-if [ "$DOMAIN" = "asp-alerts.local" ] || [[ "$DOMAIN" =~ ^192\. ]] || [[ "$DOMAIN" =~ ^10\. ]]; then
-    NGINX_CONF="nginx-asp-alerts-local.conf"
+if [ "$DOMAIN" = "aegis.local" ] || [[ "$DOMAIN" =~ ^192\. ]] || [[ "$DOMAIN" =~ ^10\. ]]; then
+    NGINX_CONF="nginx-aegis-local.conf"
     echo "Using local nginx configuration..."
 else
-    NGINX_CONF="nginx-asp-alerts-external.conf"
+    NGINX_CONF="nginx-aegis-external.conf"
     echo "Using external nginx configuration..."
 
     # Replace domain placeholder
-    sed "s/YOUR_DOMAIN/$DOMAIN/g" "$SCRIPT_DIR/$NGINX_CONF" > "/tmp/asp-alerts-nginx.conf"
-    NGINX_CONF="/tmp/asp-alerts-nginx.conf"
+    sed "s/YOUR_DOMAIN/$DOMAIN/g" "$SCRIPT_DIR/$NGINX_CONF" > "/tmp/aegis-nginx.conf"
+    NGINX_CONF="/tmp/aegis-nginx.conf"
 fi
 
 # Install nginx configuration
 echo "Installing nginx configuration..."
-if [ -f "/tmp/asp-alerts-nginx.conf" ]; then
-    sudo cp "/tmp/asp-alerts-nginx.conf" /etc/nginx/sites-available/asp-alerts
+if [ -f "/tmp/aegis-nginx.conf" ]; then
+    sudo cp "/tmp/aegis-nginx.conf" /etc/nginx/sites-available/aegis
 else
-    sudo cp "$SCRIPT_DIR/$NGINX_CONF" /etc/nginx/sites-available/asp-alerts
+    sudo cp "$SCRIPT_DIR/$NGINX_CONF" /etc/nginx/sites-available/aegis
 fi
 
 # Enable site
-if [ ! -L /etc/nginx/sites-enabled/asp-alerts ]; then
-    sudo ln -s /etc/nginx/sites-available/asp-alerts /etc/nginx/sites-enabled/
+if [ ! -L /etc/nginx/sites-enabled/aegis ]; then
+    sudo ln -s /etc/nginx/sites-available/aegis /etc/nginx/sites-enabled/
 fi
 
 # Test nginx configuration
@@ -73,8 +73,8 @@ sudo nginx -t
 
 # Start/restart services
 echo "Starting services..."
-sudo systemctl enable asp-alerts
-sudo systemctl restart asp-alerts
+sudo systemctl enable aegis
+sudo systemctl restart aegis
 sudo systemctl reload nginx
 
 # Check status
@@ -84,18 +84,18 @@ echo "Setup complete!"
 echo "=============================================="
 echo ""
 echo "Service status:"
-sudo systemctl status asp-alerts --no-pager -l | head -15
+sudo systemctl status aegis --no-pager -l | head -15
 echo ""
 echo "Access URLs:"
-if [ "$DOMAIN" = "asp-alerts.local" ]; then
-    echo "  Local: http://asp-alerts.local/"
+if [ "$DOMAIN" = "aegis.local" ]; then
+    echo "  Local: http://aegis.local/"
     echo "  IP:    http://$(hostname -I | awk '{print $1}')/"
 else
     echo "  https://$DOMAIN/"
 fi
 echo ""
 echo "Useful commands:"
-echo "  sudo systemctl status asp-alerts   # Check service status"
-echo "  sudo systemctl restart asp-alerts  # Restart service"
-echo "  sudo journalctl -u asp-alerts -f   # View live logs"
-echo "  tail -f $PROJECT_DIR/logs/asp-alerts.log"
+echo "  sudo systemctl status aegis   # Check service status"
+echo "  sudo systemctl restart aegis  # Restart service"
+echo "  sudo journalctl -u aegis -f   # View live logs"
+echo "  tail -f $PROJECT_DIR/logs/aegis.log"

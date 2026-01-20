@@ -1,19 +1,19 @@
-"""HTML view routes for the dashboard."""
+"""ASP Alerts routes for blood culture and antimicrobial therapy alerts."""
 
 from flask import Blueprint, render_template, redirect, url_for, current_app, request
 
 from common.alert_store import AlertStatus, AlertType, ResolutionReason
 
-views_bp = Blueprint("views", __name__)
+asp_alerts_bp = Blueprint("asp_alerts", __name__, url_prefix="/asp-alerts")
 
 
-@views_bp.route("/")
+@asp_alerts_bp.route("/")
 def index():
     """Redirect to active alerts."""
-    return redirect(url_for("views.alerts_active"))
+    return redirect(url_for("asp_alerts.alerts_active"))
 
 
-@views_bp.route("/alerts/active")
+@asp_alerts_bp.route("/active")
 def alerts_active():
     """List active (non-resolved) alerts."""
     store = current_app.alert_store
@@ -74,7 +74,7 @@ def alerts_active():
     )
 
 
-@views_bp.route("/alerts/history")
+@asp_alerts_bp.route("/history")
 def alerts_history():
     """List resolved alerts."""
     store = current_app.alert_store
@@ -123,7 +123,7 @@ def alerts_history():
     )
 
 
-@views_bp.route("/alerts/<alert_id>")
+@asp_alerts_bp.route("/alerts/<alert_id>")
 def alert_detail(alert_id):
     """Show single alert details."""
     store = current_app.alert_store
@@ -146,7 +146,7 @@ def alert_detail(alert_id):
     )
 
 
-@views_bp.route("/reports")
+@asp_alerts_bp.route("/reports")
 def reports():
     """Show analytics and reports."""
     store = current_app.alert_store
@@ -189,7 +189,7 @@ def reports():
     )
 
 
-@views_bp.route("/help")
+@asp_alerts_bp.route("/help")
 def help_page():
     """Show help/demo workflow documentation."""
     return render_template("help.html")

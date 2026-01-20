@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+
+{% block title %}HAI Events Detail - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Healthcare-Associated Infections (HAI)</h1>
+    <p class="subtitle">Confirmed HAI Events for NHSN Reporting - {{ quarter_label }}</p>
+</div>
+
+{% if error %}
+<div class="alert alert-warning">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Filters -->
+<div class="filter-section">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="from_date">From Date</label>
+            <input type="date" id="from_date" name="from_date" value="{{ from_date }}">
+        </div>
+        <div class="filter-group">
+            <label for="to_date">To Date</label>
+            <input type="date" id="to_date" name="to_date" value="{{ to_date }}">
+        </div>
+        <div class="filter-group">
+            <label for="type">HAI Type</label>
+            <select id="type" name="type">
+                <option value="">All Types</option>
+                <option value="clabsi" {% if current_type == 'clabsi' %}selected{% endif %}>CLABSI</option>
+                <option value="cauti" {% if current_type == 'cauti' %}selected{% endif %}>CAUTI</option>
+                <option value="ssi" {% if current_type == 'ssi' %}selected{% endif %}>SSI</option>
+                <option value="vae" {% if current_type == 'vae' %}selected{% endif %}>VAE</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Apply Filters</button>
+    </form>
+</div>
+
+<!-- Quick Links -->
+<div class="quick-links">
+    <a href="{{ url_for('nhsn_reporting.dashboard') }}" class="btn btn-outline">Back to Dashboard</a>
+    <a href="{{ url_for('nhsn_reporting.submission', type='hai', from_date=from_date, to_date=to_date) }}" class="btn btn-secondary">Submit to NHSN</a>
+    <a href="{{ url_for('hai_detection.dashboard') }}" class="btn btn-outline">Review Candidates</a>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-value">{{ total_confirmed }}</div>
+        <div class="stat-label">Confirmed HAIs</div>
+    </div>
+    {% for ts in type_summary %}
+    <div class="stat-card stat-{{ 'critical' if ts.type == 'CLABSI' else 'warning' if ts.type == 'CAUTI' else 'info' }}">
+        <div class="stat-value">{{ ts.count }}</div>
+        <div class="stat-label">{{ ts.type }}</div>
+    </div>
+    {% endfor %}
+    {% if stats.pending_review %}
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.pending_review }}</div>
+        <div class="stat-label">Pending Review</div>
+    </div>
+    {% endif %}
+</div>
+
+{% if last_submission %}
+<div class="last-submission-info">
+    <strong>Last NHSN Submission:</strong> {{ last_submission.period_start }} to {{ last_submission.period_end }}
+    ({{ last_submission.event_count }} events on {{ last_submission.created_at.strftime('%Y-%m-%d') }})
+</div>
+{% endif %}
+
+{% if type_summary %}
+<!-- Summary by Type -->
+<div class="section">
+    <h2>Summary by HAI Type</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>HAI Type</th>
+                <th class="text-center">Confirmed Events</th>
+                <th class="text-center">Unique Organisms</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ts in type_summary %}
+            <tr>
+                <td>
+                    <span class="badge badge-hai-{{ ts.type | lower }}">{{ ts.type }}</span>
+                </td>
+                <td class="text-center"><strong>{{ ts.count }}</strong></td>
+                <td class="text-center">{{ ts.organisms }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="total-row">
+                <td><strong>Total</strong></td>
+                <td class="text-center"><strong>{{ total_confirmed }}</strong></td>
+                <td class="text-center">-</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+<!-- Summary by Location -->
+{% if location_summary %}
+<div class="section">
+    <h2>Summary by Location</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Location</th>
+                <th class="text-center">Events</th>
+                <th>HAI Types</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ls in location_summary %}
+            <tr>
+                <td><strong>{{ ls.location }}</strong></td>
+                <td class="text-center">{{ ls.count }}</td>
+                <td>{{ ls.types }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Event Details -->
+<div class="section">
+    <h2>Confirmed HAI Events ({{ total_confirmed }})</h2>
+    {% if confirmed_events %}
+    <table class="table table-compact">
+        <thead>
+            <tr>
+                <th>Event Date</th>
+                <th>Patient ID</th>
+                <th>HAI Type</th>
+                <th>Organism</th>
+                <th class="text-center">Device Days</th>
+                <th>Location</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in confirmed_events %}
+            <tr>
+                <td>{{ event.culture.collection_date.strftime('%Y-%m-%d') }}</td>
+                <td>
+                    <a href="{{ url_for('hai_detection.candidate_detail', candidate_id=event.id) }}">
+                        <strong>{{ event.patient.mrn }}</strong>
+                    </a>
+                </td>
+                <td>
+                    <span class="badge badge-hai-{{ event.hai_type.value }}">{{ event.hai_type.value | upper }}</span>
+                </td>
+                <td>{{ event.culture.organism or 'Unknown' }}</td>
+                <td class="text-center">{{ event.device_days_at_culture if event.device_days_at_culture is not none else '-' }}</td>
+                <td>{{ event.location_code or '-' }}</td>
+                <td>
+                    {% if event.nhsn_reported %}
+                    <span class="badge badge-success">Reported</span>
+                    {% else %}
+                    <span class="badge badge-warning">Pending</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>No confirmed HAI events found for the selected period.</p>
+        <p><a href="{{ url_for('hai_detection.dashboard') }}">Review pending candidates</a> to confirm HAI events.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+<div class="empty-state">
+    <h3>No Confirmed HAI Events</h3>
+    <p>No confirmed HAI events found for {{ quarter_label }}.</p>
+    <p><a href="{{ url_for('hai_detection.dashboard') }}">Review pending candidates</a> to confirm HAI events for NHSN reporting.</p>
+</div>
+{% endif %}
+
+<style>
+.filter-section {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.filter-form {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.filter-group input, .filter-group select {
+    padding: 0.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+}
+
+.quick-links {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn-outline {
+    background: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-card.stat-primary { border-left: 4px solid #6366f1; }
+.stat-card.stat-critical { border-left: 4px solid #dc2626; }
+.stat-card.stat-warning { border-left: 4px solid #f59e0b; }
+.stat-card.stat-info { border-left: 4px solid #3b82f6; }
+
+.stat-value {
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.stat-label {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.last-submission-info {
+    background: #f0fdf4;
+    border: 1px solid #22c55e;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    color: #166534;
+    font-size: 0.9rem;
+}
+
+.section {
+    margin-bottom: 2rem;
+}
+
+.section h2 {
+    color: #1e293b;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.5rem;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.table th, .table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    text-align: left;
+}
+
+.table th {
+    background: #f8fafc;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.table-compact th, .table-compact td {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.total-row {
+    background: #f1f5f9;
+}
+
+.total-row td {
+    border-top: 2px solid #cbd5e1;
+}
+
+.text-center { text-align: center; }
+
+.badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-success { background: #059669; color: white; }
+.badge-warning { background: #D97706; color: white; }
+.badge-hai-clabsi { background: #dc2626; color: white; }
+.badge-hai-cauti { background: #f59e0b; color: white; }
+.badge-hai-ssi { background: #8b5cf6; color: white; }
+.badge-hai-vae { background: #3b82f6; color: white; }
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #64748b;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.empty-state h3 {
+    color: #475569;
+    margin-bottom: 0.5rem;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert-warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    color: #92400e;
+}
+</style>
+{% endblock %}

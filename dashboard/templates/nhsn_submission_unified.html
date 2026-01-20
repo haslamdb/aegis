@@ -1,0 +1,947 @@
+{% extends "base.html" %}
+
+{% block title %}NHSN Submission - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>NHSN Data Submission</h1>
+    <p class="subtitle">Prepare and export data for NHSN submission</p>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{% if request.args.get('msg') %}
+<div class="alert alert-success">
+    {{ request.args.get('msg') }}
+</div>
+{% endif %}
+
+<!-- Submission Type Toggle -->
+<div class="submission-toggle">
+    <a href="{{ url_for('nhsn_reporting.submission', type='au') }}" class="toggle-btn {% if submission_type == 'au' %}active{% endif %}">
+        Antibiotic Usage (AU)
+    </a>
+    <a href="{{ url_for('nhsn_reporting.submission', type='ar') }}" class="toggle-btn {% if submission_type == 'ar' %}active{% endif %}">
+        Antimicrobial Resistance (AR)
+    </a>
+    <a href="{{ url_for('nhsn_reporting.submission', type='hai') }}" class="toggle-btn {% if submission_type == 'hai' %}active{% endif %}">
+        HAI Events
+    </a>
+</div>
+
+{% if submission_type == 'au' %}
+<!-- AU Submission Section -->
+<div class="submission-section">
+    <h2>Antibiotic Usage (AU) - Monthly Report</h2>
+    <p class="section-desc">AU data is reported monthly to NHSN.</p>
+
+    <form method="get" class="period-form">
+        <input type="hidden" name="type" value="au">
+        <div class="filter-group">
+            <label for="from_date">From Date</label>
+            <input type="date" id="from_date" name="from_date" value="{{ from_date }}">
+        </div>
+        <div class="filter-group">
+            <label for="to_date">To Date</label>
+            <input type="date" id="to_date" name="to_date" value="{{ to_date }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Load Data</button>
+    </form>
+
+    {% if au_summary %}
+    <div class="summary-box">
+        <h3>Period Summary: {{ au_summary.date_range.start }} to {{ au_summary.date_range.end }}</h3>
+        <div class="summary-stats">
+            <div class="summary-stat">
+                <span class="value">{{ au_summary.overall_totals.total_dot }}</span>
+                <span class="label">Total DOT</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ au_summary.overall_totals.total_patient_days }}</span>
+                <span class="label">Patient Days</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ au_summary.overall_totals.dot_per_1000_pd }}</span>
+                <span class="label">DOT/1000 PD</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ au_summary.locations | length }}</span>
+                <span class="label">Locations</span>
+            </div>
+        </div>
+    </div>
+
+    {% if au_summary.locations %}
+    <div class="data-preview">
+        <h3>Data Preview</h3>
+        <table class="table table-compact">
+            <thead>
+                <tr>
+                    <th>Location</th>
+                    <th>Month</th>
+                    <th class="text-right">Patient Days</th>
+                    <th class="text-right">Total DOT</th>
+                    <th class="text-right">Antimicrobials</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loc in au_summary.locations %}
+                {% for month in loc.months %}
+                <tr>
+                    <td>{{ loc.nhsn_location_code }}</td>
+                    <td>{{ month.month }}</td>
+                    <td class="text-right">{{ month.patient_days }}</td>
+                    <td class="text-right">{{ month.total_dot }}</td>
+                    <td class="text-right">{{ month.antimicrobials | length }}</td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="export-actions">
+        <h3>Export Options</h3>
+        <div class="action-buttons">
+            <a href="{{ url_for('nhsn_reporting.api_au_export', from_date=from_date, to_date=to_date) }}" class="btn btn-primary btn-lg">
+                Download CSV for NHSN
+            </a>
+            <a href="{{ url_for('nhsn_reporting.au_detail', from_date=from_date, to_date=to_date) }}" class="btn btn-secondary">
+                View Detailed Report
+            </a>
+        </div>
+        <p class="export-note">The CSV export is formatted for NHSN AU module import.</p>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Select a date range and click "Load Data" to preview AU data for submission.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% elif submission_type == 'ar' %}
+<!-- AR Submission Section -->
+<div class="submission-section">
+    <h2>Antimicrobial Resistance (AR) - Quarterly Report</h2>
+    <p class="section-desc">AR data is reported quarterly to NHSN.</p>
+
+    <form method="get" class="period-form">
+        <input type="hidden" name="type" value="ar">
+        <div class="filter-group">
+            <label for="year">Year</label>
+            <select id="year" name="year">
+                {% for y in range(2024, 2027) %}
+                <option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="quarter">Quarter</label>
+            <select id="quarter" name="quarter">
+                <option value="1" {% if quarter == 1 %}selected{% endif %}>Q1 (Jan-Mar)</option>
+                <option value="2" {% if quarter == 2 %}selected{% endif %}>Q2 (Apr-Jun)</option>
+                <option value="3" {% if quarter == 3 %}selected{% endif %}>Q3 (Jul-Sep)</option>
+                <option value="4" {% if quarter == 4 %}selected{% endif %}>Q4 (Oct-Dec)</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Load Data</button>
+    </form>
+
+    {% if ar_summary %}
+    <div class="summary-box">
+        <h3>Quarter Summary: {{ ar_summary.period.quarter_string }}</h3>
+        <div class="summary-stats">
+            <div class="summary-stat">
+                <span class="value">{{ ar_summary.overall_totals.total_cultures }}</span>
+                <span class="label">Total Cultures</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ ar_summary.overall_totals.first_isolates }}</span>
+                <span class="label">First Isolates</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ ar_summary.overall_totals.unique_organisms }}</span>
+                <span class="label">Unique Organisms</span>
+            </div>
+            <div class="summary-stat">
+                <span class="value">{{ ar_summary.locations | length }}</span>
+                <span class="label">Locations</span>
+            </div>
+        </div>
+    </div>
+
+    {% if ar_summary.phenotypes %}
+    <div class="data-preview">
+        <h3>Resistance Phenotype Summary</h3>
+        <table class="table table-compact">
+            <thead>
+                <tr>
+                    <th>Phenotype</th>
+                    <th>Location</th>
+                    <th class="text-right">Eligible</th>
+                    <th class="text-right">Positive</th>
+                    <th class="text-right">% Positive</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pheno in ar_summary.phenotypes %}
+                <tr>
+                    <td><strong>{{ pheno.phenotype_code }}</strong></td>
+                    <td>{{ pheno.nhsn_location_code }}</td>
+                    <td class="text-right">{{ pheno.eligible_isolates }}</td>
+                    <td class="text-right">{{ pheno.phenotype_isolates }}</td>
+                    <td class="text-right">
+                        <span class="badge badge-{{ 'danger' if pheno.percent_positive > 30 else 'warning' if pheno.percent_positive > 15 else 'success' }}">
+                            {{ pheno.percent_positive }}%
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="export-actions">
+        <h3>Export Options</h3>
+        <div class="action-buttons">
+            <a href="{{ url_for('nhsn_reporting.api_ar_export', year=year, quarter=quarter) }}" class="btn btn-primary btn-lg">
+                Download CSV for NHSN
+            </a>
+            <a href="{{ url_for('nhsn_reporting.ar_detail', year=year, quarter=quarter) }}" class="btn btn-secondary">
+                View Detailed Report
+            </a>
+        </div>
+        <p class="export-note">The CSV export includes isolate data and susceptibilities with first-isolate rule applied.</p>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>Select a year and quarter, then click "Load Data" to preview AR data for submission.</p>
+    </div>
+    {% endif %}
+</div>
+
+{% else %}
+<!-- HAI Submission Section -->
+<div class="submission-section">
+    <h2>Healthcare-Associated Infection (HAI) Events</h2>
+    <p class="section-desc">Submit confirmed HAI events (CLABSI, CAUTI, SSI, VAE) to NHSN.</p>
+
+    {% if last_submission %}
+    <div class="last-submission-card">
+        <div class="last-submission-header">
+            <span class="last-submission-icon">&#10003;</span>
+            <strong>Last HAI Submission</strong>
+        </div>
+        <div class="last-submission-details">
+            <div class="last-submission-item">
+                <span class="label">Period:</span>
+                <span class="value">{{ last_submission.period_start }} to {{ last_submission.period_end }}</span>
+            </div>
+            <div class="last-submission-item">
+                <span class="label">Submitted:</span>
+                <span class="value">{{ last_submission.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+            </div>
+            <div class="last-submission-item">
+                <span class="label">Events:</span>
+                <span class="value">{{ last_submission.event_count }}</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="get" class="period-form" id="haiForm">
+        <input type="hidden" name="type" value="hai">
+        <div class="filter-group">
+            <label for="from_date">From Date</label>
+            <input type="date" id="from_date" name="from_date" value="{{ from_date }}" required>
+        </div>
+        <div class="filter-group">
+            <label for="to_date">To Date</label>
+            <input type="date" id="to_date" name="to_date" value="{{ to_date }}" required>
+        </div>
+        <div class="filter-group">
+            <label for="preparer_name">Preparer Name</label>
+            <input type="text" id="preparer_name" name="preparer_name" value="{{ preparer_name }}" placeholder="Your name">
+        </div>
+        <button type="submit" class="btn btn-primary">Generate Report</button>
+    </form>
+
+    <div class="quick-dates">
+        <span>Quick select:</span>
+        <button type="button" class="btn btn-sm" onclick="setQuarter('Q1')">Q1</button>
+        <button type="button" class="btn btn-sm" onclick="setQuarter('Q2')">Q2</button>
+        <button type="button" class="btn btn-sm" onclick="setQuarter('Q3')">Q3</button>
+        <button type="button" class="btn btn-sm" onclick="setQuarter('Q4')">Q4</button>
+    </div>
+
+    {% if hai_events %}
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card stat-success">
+            <div class="stat-value">{{ hai_events | length }}</div>
+            <div class="stat-label">Total HAI Events</div>
+        </div>
+        <div class="stat-card stat-critical">
+            <div class="stat-value">{{ hai_events | selectattr('hai_type.value', 'equalto', 'clabsi') | list | length }}</div>
+            <div class="stat-label">CLABSI</div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-value">{{ hai_events | selectattr('hai_type.value', 'equalto', 'cauti') | list | length }}</div>
+            <div class="stat-label">CAUTI</div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-value">{{ hai_events | selectattr('hai_type.value', 'equalto', 'ssi') | list | length }}</div>
+            <div class="stat-label">SSI</div>
+        </div>
+    </div>
+
+    <!-- Events Table -->
+    <div class="data-preview">
+        <div class="section-header">
+            <h3>Confirmed HAI Events</h3>
+            <div class="export-buttons">
+                <form method="post" action="{{ url_for('nhsn_reporting.hai_export_submission') }}" style="display: inline;">
+                    <input type="hidden" name="from_date" value="{{ from_date }}">
+                    <input type="hidden" name="to_date" value="{{ to_date }}">
+                    <input type="hidden" name="preparer_name" value="{{ preparer_name }}">
+                    <input type="hidden" name="format" value="csv">
+                    <button type="submit" class="btn btn-success btn-sm">Export CSV</button>
+                </form>
+                <form method="post" action="{{ url_for('nhsn_reporting.hai_export_submission') }}" style="display: inline;">
+                    <input type="hidden" name="from_date" value="{{ from_date }}">
+                    <input type="hidden" name="to_date" value="{{ to_date }}">
+                    <input type="hidden" name="preparer_name" value="{{ preparer_name }}">
+                    <input type="hidden" name="format" value="pdf">
+                    <button type="submit" class="btn btn-info btn-sm">Export Summary</button>
+                </form>
+            </div>
+        </div>
+
+        <table class="table table-compact">
+            <thead>
+                <tr>
+                    <th>Event Date</th>
+                    <th>Patient ID</th>
+                    <th>HAI Type</th>
+                    <th>Organism</th>
+                    <th>Device Days</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in hai_events %}
+                <tr>
+                    <td>{{ event.culture.collection_date.strftime('%Y-%m-%d') }}</td>
+                    <td><strong>{{ event.patient.mrn }}</strong></td>
+                    <td>
+                        <span class="badge badge-hai-{{ event.hai_type.value }}">
+                            {{ event.hai_type.value | upper }}
+                        </span>
+                    </td>
+                    <td>{{ event.culture.organism or 'Unknown' }}</td>
+                    <td>{{ event.device_days_at_culture if event.device_days_at_culture is not none else '-' }}</td>
+                    <td>
+                        {% if event.nhsn_reported %}
+                        <span class="badge badge-success">Reported</span>
+                        {% else %}
+                        <span class="badge badge-warning">Pending</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- DIRECT Submission -->
+    {% if direct_configured %}
+    <div class="direct-submission-card">
+        <h3>Direct NHSN Submission (via DIRECT Protocol)</h3>
+        <div class="direct-status direct-status-configured">
+            <span class="status-icon">&#10003;</span>
+            <div class="status-details">
+                <strong>DIRECT Protocol Configured</strong>
+                <div class="config-info">
+                    <span><strong>Facility:</strong> {{ direct_config.facility_name }}</span>
+                </div>
+            </div>
+        </div>
+        <form method="post" action="{{ url_for('nhsn_reporting.hai_direct_submission') }}">
+            <input type="hidden" name="from_date" value="{{ from_date }}">
+            <input type="hidden" name="to_date" value="{{ to_date }}">
+            <input type="hidden" name="preparer_name" value="{{ preparer_name }}">
+            <div class="direct-buttons">
+                <button type="submit" class="btn btn-direct"
+                        onclick="return confirm('Submit {{ hai_events | length }} events via DIRECT?');">
+                    Submit {{ hai_events | length }} Events via DIRECT
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="testDirectConnection()">
+                    Test Connection
+                </button>
+            </div>
+        </form>
+        <div id="directTestResult" class="direct-test-result" style="display: none;"></div>
+    </div>
+    {% endif %}
+
+    <!-- Manual Submission -->
+    <div class="submission-action-card">
+        <h3>Manual Submission (Mark as Submitted)</h3>
+        <p>After manually entering events in NHSN, click below to mark them as reported.</p>
+        <form method="post" action="{{ url_for('nhsn_reporting.hai_mark_submitted') }}">
+            <input type="hidden" name="from_date" value="{{ from_date }}">
+            <input type="hidden" name="to_date" value="{{ to_date }}">
+            <input type="hidden" name="preparer_name" value="{{ preparer_name }}">
+            <div class="form-group">
+                <label for="notes">Submission Notes (optional)</label>
+                <textarea id="notes" name="notes" rows="2" placeholder="e.g., Confirmation #12345"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary"
+                    onclick="return confirm('Mark {{ hai_events | length }} events as submitted?');">
+                Mark {{ hai_events | length }} Events as Submitted
+            </button>
+        </form>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <h3>No HAI Events Found</h3>
+        <p>Select a date range and click "Generate Report" to load confirmed HAI events.</p>
+        <p><a href="{{ url_for('hai_detection.dashboard') }}">Go to HAI Detection</a> to review candidates.</p>
+    </div>
+    {% endif %}
+
+    {% if audit_log %}
+    <div class="audit-section">
+        <h3>Submission Audit Log</h3>
+        <table class="table table-compact">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Action</th>
+                    <th>User</th>
+                    <th>Period</th>
+                    <th>Events</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in audit_log %}
+                <tr>
+                    <td>{{ entry.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    <td>
+                        <span class="badge badge-{{ 'success' if entry.action == 'submitted' else 'nhsn' if entry.action == 'direct_submitted' else 'info' }}">
+                            {{ entry.action | replace('_', ' ') | title }}
+                        </span>
+                    </td>
+                    <td>{{ entry.user_name }}</td>
+                    <td>{{ entry.period_start }} to {{ entry.period_end }}</td>
+                    <td>{{ entry.event_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+.submission-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 2rem;
+    background: #F1F5F9;
+    border-radius: 10px;
+    padding: 0.25rem;
+    width: fit-content;
+}
+
+.toggle-btn {
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #64748b;
+    font-weight: 500;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.toggle-btn:hover { color: #1e293b; }
+
+.toggle-btn.active {
+    background: white;
+    color: #0E7490;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.submission-section {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.submission-section h2 {
+    color: #0E7490;
+    margin-bottom: 0.5rem;
+}
+
+.section-desc {
+    color: #64748b;
+    margin-bottom: 1.5rem;
+}
+
+.period-form {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #E2E8F0;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.filter-group input, .filter-group select, .filter-group textarea {
+    padding: 0.5rem;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+}
+
+.filter-group input:focus, .filter-group select:focus {
+    outline: none;
+    border-color: #0891B2;
+    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+}
+
+.summary-box {
+    background: linear-gradient(135deg, #E0F2FE 0%, #F8FAFC 100%);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #0891B2;
+}
+
+.summary-box h3 {
+    color: #0E7490;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.summary-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+}
+
+.summary-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.summary-stat .value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #0E7490;
+}
+
+.summary-stat .label {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.data-preview { margin-bottom: 1.5rem; }
+
+.data-preview h3, .section-header h3 {
+    color: #334155;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.export-buttons { display: flex; gap: 0.5rem; }
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    padding: 0.6rem;
+    border-bottom: 1px solid #E2E8F0;
+    text-align: left;
+}
+
+.table th {
+    background: #F8FAFC;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+.table-compact th, .table-compact td {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.text-right { text-align: right; }
+
+.badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.badge-success { background: #059669; color: white; }
+.badge-warning { background: #D97706; color: white; }
+.badge-danger { background: #DC2626; color: white; }
+.badge-info { background: #0284C7; color: white; }
+.badge-nhsn { background: #0f766e; color: white; }
+
+.badge-hai-clabsi { background: #dc2626; color: white; }
+.badge-hai-cauti { background: #f59e0b; color: white; }
+.badge-hai-ssi { background: #8b5cf6; color: white; }
+.badge-hai-vae { background: #3b82f6; color: white; }
+
+.export-actions {
+    background: linear-gradient(135deg, #D1FAE5 0%, #F0FDF4 100%);
+    border-radius: 10px;
+    padding: 1.25rem;
+    border: 1px solid #34D399;
+}
+
+.export-actions h3 {
+    color: #047857;
+    margin-bottom: 1rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.btn-lg { padding: 0.75rem 1.5rem; }
+
+.export-note {
+    color: #047857;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #64748b;
+    background: #F8FAFC;
+    border-radius: 10px;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.stat-card.stat-success { border-left: 4px solid #10b981; }
+.stat-card.stat-critical { border-left: 4px solid #dc2626; }
+.stat-card.stat-warning { border-left: 4px solid #f59e0b; }
+.stat-card.stat-info { border-left: 4px solid #3b82f6; }
+
+.stat-card .stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #1e293b;
+}
+
+.stat-card .stat-label {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.last-submission-card {
+    background: #f0fdf4;
+    border: 1px solid #22c55e;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.last-submission-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #166534;
+    margin-bottom: 0.5rem;
+}
+
+.last-submission-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: #22c55e;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.8rem;
+}
+
+.last-submission-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.last-submission-item {
+    display: flex;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+}
+
+.last-submission-item .label { color: #166534; }
+.last-submission-item .value { color: #15803d; }
+
+.quick-dates {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    padding: 0.5rem;
+    background: #f8fafc;
+    border-radius: 6px;
+}
+
+.quick-dates span {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.direct-submission-card {
+    background: white;
+    border: 1px solid #0f766e;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+}
+
+.direct-submission-card h3 {
+    margin: 0 0 1rem 0;
+    color: #0f766e;
+    font-size: 1rem;
+}
+
+.direct-status {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+}
+
+.direct-status-configured {
+    background: #f0fdf4;
+    border: 1px solid #22c55e;
+}
+
+.direct-status .status-icon { font-size: 1.25rem; color: #22c55e; }
+.direct-status .status-details { flex: 1; }
+.direct-status .config-info { font-size: 0.85rem; color: #166534; }
+
+.direct-buttons {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.btn-direct {
+    background: #0f766e;
+    color: white;
+    padding: 0.6rem 1.25rem;
+}
+
+.btn-direct:hover { background: #0d6b63; }
+
+.direct-test-result {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.direct-test-result.success {
+    background: #f0fdf4;
+    border: 1px solid #22c55e;
+    color: #166534;
+}
+
+.direct-test-result.error {
+    background: #fef2f2;
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
+.submission-action-card {
+    background: #f0fdf4;
+    border: 1px solid #22c55e;
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1.5rem 0;
+}
+
+.submission-action-card h3 {
+    margin: 0 0 0.5rem 0;
+    color: #166534;
+    font-size: 1rem;
+}
+
+.submission-action-card p {
+    margin-bottom: 1rem;
+    color: #166534;
+    font-size: 0.9rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    color: #374151;
+    font-size: 0.9rem;
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+}
+
+.audit-section {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #E2E8F0;
+}
+
+.audit-section h3 {
+    color: #334155;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert-danger {
+    background: #FEE2E2;
+    border: 1px solid #DC2626;
+    color: #991b1b;
+}
+
+.alert-success {
+    background: #D1FAE5;
+    border: 1px solid #10B981;
+    color: #065f46;
+}
+</style>
+
+<script>
+function setQuarter(q) {
+    const today = new Date();
+    let year = today.getFullYear();
+    let startMonth, endMonth;
+
+    switch(q) {
+        case 'Q1': startMonth = 0; endMonth = 2; break;
+        case 'Q2': startMonth = 3; endMonth = 5; break;
+        case 'Q3': startMonth = 6; endMonth = 8; break;
+        case 'Q4': startMonth = 9; endMonth = 11; break;
+    }
+
+    const currentQuarter = Math.floor(today.getMonth() / 3) + 1;
+    const selectedQuarter = parseInt(q.substring(1));
+    if (selectedQuarter > currentQuarter) {
+        year--;
+    }
+
+    const startDate = new Date(year, startMonth, 1);
+    const endDate = new Date(year, endMonth + 1, 0);
+
+    document.getElementById('from_date').value = formatDate(startDate);
+    document.getElementById('to_date').value = formatDate(endDate);
+}
+
+function formatDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+function testDirectConnection() {
+    const resultDiv = document.getElementById('directTestResult');
+    resultDiv.style.display = 'block';
+    resultDiv.className = 'direct-test-result';
+    resultDiv.innerHTML = 'Testing connection...';
+
+    fetch('{{ url_for("nhsn_reporting.hai_test_direct_connection") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resultDiv.className = 'direct-test-result success';
+            resultDiv.innerHTML = '<strong>Success:</strong> ' + data.message;
+        } else {
+            resultDiv.className = 'direct-test-result error';
+            resultDiv.innerHTML = '<strong>Error:</strong> ' + data.message;
+        }
+    })
+    .catch(error => {
+        resultDiv.className = 'direct-test-result error';
+        resultDiv.innerHTML = '<strong>Error:</strong> ' + error;
+    });
+}
+</script>
+{% endblock %}

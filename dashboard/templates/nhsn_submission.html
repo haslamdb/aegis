@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-header">
     <h1>NHSN Data Submission</h1>
-    <a href="{{ url_for('nhsn.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    <a href="{{ url_for('hai_detection.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
 </div>
 
 {% if error %}
@@ -125,7 +125,7 @@
     <div class="section-header">
         <h2>Confirmed HAI Events for NHSN Submission</h2>
         <div class="export-buttons">
-            <form method="post" action="{{ url_for('nhsn.export_submission') }}" style="display: inline;">
+            <form method="post" action="{{ url_for('hai_detection.export_submission') }}" style="display: inline;">
                 <input type="hidden" name="from_date" value="{{ from_date }}">
                 <input type="hidden" name="to_date" value="{{ to_date }}">
                 <input type="hidden" name="preparer_name" value="{{ preparer_name }}">
@@ -134,7 +134,7 @@
                     <span class="icon">📥</span> Export CSV
                 </button>
             </form>
-            <form method="post" action="{{ url_for('nhsn.export_submission') }}" style="display: inline;">
+            <form method="post" action="{{ url_for('hai_detection.export_submission') }}" style="display: inline;">
                 <input type="hidden" name="from_date" value="{{ from_date }}">
                 <input type="hidden" name="to_date" value="{{ to_date }}">
                 <input type="hidden" name="preparer_name" value="{{ preparer_name }}">
@@ -206,7 +206,7 @@
         </div>
     </div>
     <p>Submit HAI events directly to NHSN using the DIRECT protocol. This generates HL7 CDA documents and sends them securely via your configured HISP.</p>
-    <form method="post" action="{{ url_for('nhsn.direct_submission') }}" id="directSubmitForm">
+    <form method="post" action="{{ url_for('hai_detection.direct_submission') }}" id="directSubmitForm">
         <input type="hidden" name="from_date" value="{{ from_date }}">
         <input type="hidden" name="to_date" value="{{ to_date }}">
         <input type="hidden" name="preparer_name" value="{{ preparer_name }}">
@@ -247,7 +247,7 @@
 <div class="submission-action-card">
     <h3>Manual Submission (Mark as Submitted)</h3>
     <p>If you entered events manually into the NHSN web application, click below to mark them as reported in this system.</p>
-    <form method="post" action="{{ url_for('nhsn.mark_submitted') }}" id="markSubmittedForm">
+    <form method="post" action="{{ url_for('hai_detection.mark_submitted') }}" id="markSubmittedForm">
         <input type="hidden" name="from_date" value="{{ from_date }}">
         <input type="hidden" name="to_date" value="{{ to_date }}">
         <input type="hidden" name="preparer_name" value="{{ preparer_name }}">

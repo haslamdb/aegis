@@ -92,15 +92,15 @@ class Config:
     # --- Database ---
     NHSN_DB_PATH: str = os.getenv(
         "NHSN_DB_PATH",
-        str(Path.home() / ".asp-alerts" / "nhsn.db"),
+        str(Path.home() / ".aegis" / "nhsn.db"),
     )
     ALERT_DB_PATH: str = os.getenv(
         "ALERT_DB_PATH",
-        str(Path.home() / ".asp-alerts" / "alerts.db"),
+        str(Path.home() / ".aegis" / "alerts.db"),
     )
     MOCK_CLARITY_DB_PATH: str = os.getenv(
         "MOCK_CLARITY_DB_PATH",
-        str(Path.home() / ".asp-alerts" / "mock_clarity.db"),
+        str(Path.home() / ".aegis" / "mock_clarity.db"),
     )
 
     # --- Monitoring ---
@@ -116,8 +116,8 @@ class Config:
     SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
     SMTP_USERNAME: str | None = os.getenv("SMTP_USERNAME")
     SMTP_PASSWORD: str | None = os.getenv("SMTP_PASSWORD")
-    SENDER_EMAIL: str = os.getenv("SENDER_EMAIL", "nhsn-alerts@example.com")
-    SENDER_NAME: str = os.getenv("SENDER_NAME", "NHSN HAI Alerts")
+    SENDER_EMAIL: str = os.getenv("SENDER_EMAIL", "aegis-nhsn@example.com")
+    SENDER_NAME: str = os.getenv("SENDER_NAME", "AEGIS HAI Alerts")
     NHSN_NOTIFICATION_EMAIL: str | None = os.getenv("NHSN_NOTIFICATION_EMAIL")
 
     # --- Note Processing ---

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboards - AEGIS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboards</h1>
+</div>
+
+<div class="coming-soon-card">
+    <div class="coming-soon-icon">&#x1F4C8;</div>
+    <h2>Analytics Dashboards</h2>
+    <p>Interactive dashboards for trends, outcomes, and operational insights are under development.</p>
+    <div class="planned-features">
+        <h3>Planned Features</h3>
+        <ul>
+            <li>Antimicrobial usage trends over time</li>
+            <li>Resistance pattern visualization</li>
+            <li>HAI rates and benchmarking</li>
+            <li>Alert response time analytics</li>
+            <li>Stewardship intervention outcomes</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.coming-soon-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 3rem;
+    box-shadow: var(--shadow-md);
+    text-align: center;
+    max-width: 600px;
+    margin: 2rem auto;
+}
+
+.coming-soon-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-primary);
+}
+
+.coming-soon-card h2 {
+    font-size: 1.75rem;
+    color: var(--color-gray-800);
+    margin-bottom: 1rem;
+}
+
+.coming-soon-card > p {
+    color: var(--color-gray-600);
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.planned-features {
+    text-align: left;
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+}
+
+.planned-features h3 {
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-gray-600);
+    margin-bottom: 1rem;
+}
+
+.planned-features ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.planned-features li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: var(--color-gray-700);
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.planned-features li:last-child {
+    border-bottom: none;
+}
+
+.planned-features li::before {
+    content: "\\2022";
+    position: absolute;
+    left: 0;
+    color: var(--color-primary);
+    font-weight: bold;
+}
+</style>
+{% endblock %}

@@ -175,6 +175,22 @@ body {
     background: rgba(220, 38, 38, 0.9) !important;
 }
 
+.nav-dashboards {
+    background: rgba(8, 145, 178, 0.7) !important;  /* Teal for Dashboards */
+}
+
+.nav-dashboards:hover {
+    background: rgba(8, 145, 178, 0.9) !important;
+}
+
+.nav-home {
+    background: rgba(100, 116, 139, 0.7) !important;  /* Gray for Home */
+}
+
+.nav-home:hover {
+    background: rgba(100, 116, 139, 0.9) !important;
+}
+
 /* ============================================
    Disclaimer Banner
    ============================================ */

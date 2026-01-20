@@ -29,14 +29,14 @@ class AlertStore:
 
         Args:
             db_path: Path to SQLite database. Defaults to ALERT_DB_PATH env var
-                     or ~/.asp-alerts/alerts.db
+                     or ~/.aegis/alerts.db
         """
         if db_path:
             self.db_path = db_path
         else:
             self.db_path = os.environ.get(
                 "ALERT_DB_PATH",
-                os.path.expanduser("~/.asp-alerts/alerts.db")
+                os.path.expanduser("~/.aegis/alerts.db")
             )
 
         # Ensure directory exists

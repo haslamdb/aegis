@@ -9,45 +9,59 @@
 </head>
 <body>
     <nav class="navbar">
-        {% set is_nhsn = request.endpoint and request.endpoint.startswith('nhsn.') %}
-        {% set is_au_ar = request.endpoint and request.endpoint.startswith('au_ar.') %}
+        {% set is_hai = request.endpoint and request.endpoint.startswith('hai_detection.') %}
+        {% set is_nhsn_reporting = request.endpoint and request.endpoint.startswith('nhsn_reporting.') %}
+        {% set is_dashboards = request.endpoint and request.endpoint.startswith('dashboards.') %}
+        {% set is_asp_alerts = request.endpoint and request.endpoint.startswith('asp_alerts.') %}
+        {% set is_landing = request.endpoint == 'main.landing' %}
         <div class="nav-brand">
-            {% if is_nhsn %}
-            <a href="{{ url_for('nhsn.dashboard') }}">HAI Detection</a>
-            {% elif is_au_ar %}
-            <a href="{{ url_for('au_ar.dashboard') }}">AU/AR Reporting</a>
+            {% if is_hai %}
+            <a href="{{ url_for('hai_detection.dashboard') }}">HAI Detection</a>
+            {% elif is_nhsn_reporting %}
+            <a href="{{ url_for('nhsn_reporting.dashboard') }}">NHSN Reporting</a>
+            {% elif is_dashboards %}
+            <a href="{{ url_for('dashboards.index') }}">Dashboards</a>
+            {% elif is_asp_alerts %}
+            <a href="{{ url_for('asp_alerts.alerts_active') }}">ASP Alerts</a>
             {% else %}
-            <a href="{{ url_for('views.index') }}">{{ app_name }}</a>
+            <a href="{{ url_for('main.landing') }}">AEGIS</a>
             {% endif %}
         </div>
         <div class="nav-links">
-            {% if is_nhsn %}
-            <!-- NHSN/HAI Navigation -->
-            <a href="{{ url_for('nhsn.dashboard') }}" {% if request.endpoint in ['nhsn.dashboard', 'nhsn.candidate_detail'] %}class="active"{% endif %}>Dashboard</a>
-            <a href="{{ url_for('nhsn.history') }}" {% if request.endpoint == 'nhsn.history' %}class="active"{% endif %}>History</a>
-            <a href="{{ url_for('nhsn.reports') }}" {% if request.endpoint == 'nhsn.reports' %}class="active"{% endif %}>Reports</a>
-            <a href="{{ url_for('nhsn.submission') }}" {% if request.endpoint == 'nhsn.submission' %}class="active"{% endif %}>Submission</a>
-            <a href="{{ url_for('au_ar.dashboard') }}" class="nav-au-ar">AU/AR</a>
-            <a href="{{ url_for('views.index') }}" class="nav-alerts">Alerts</a>
-            <a href="{{ url_for('nhsn.help_page') }}" {% if request.endpoint == 'nhsn.help_page' %}class="active"{% endif %}>Help</a>
-            {% elif is_au_ar %}
-            <!-- AU/AR Navigation -->
-            <a href="{{ url_for('au_ar.dashboard') }}" {% if request.endpoint == 'au_ar.dashboard' %}class="active"{% endif %}>Dashboard</a>
-            <a href="{{ url_for('au_ar.au_detail') }}" {% if request.endpoint == 'au_ar.au_detail' %}class="active"{% endif %}>AU Detail</a>
-            <a href="{{ url_for('au_ar.ar_detail') }}" {% if request.endpoint == 'au_ar.ar_detail' %}class="active"{% endif %}>AR Detail</a>
-            <a href="{{ url_for('au_ar.denominators') }}" {% if request.endpoint == 'au_ar.denominators' %}class="active"{% endif %}>Denominators</a>
-            <a href="{{ url_for('au_ar.submission') }}" {% if request.endpoint == 'au_ar.submission' %}class="active"{% endif %}>Submission</a>
-            <a href="{{ url_for('nhsn.dashboard') }}" class="nav-nhsn">HAI</a>
-            <a href="{{ url_for('views.index') }}" class="nav-alerts">Alerts</a>
-            <a href="{{ url_for('au_ar.help_page') }}" {% if request.endpoint == 'au_ar.help_page' %}class="active"{% endif %}>Help</a>
+            {% if is_hai %}
+            <!-- HAI Detection Navigation -->
+            <a href="{{ url_for('hai_detection.dashboard') }}" {% if request.endpoint in ['hai_detection.dashboard', 'hai_detection.candidate_detail'] %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('hai_detection.history') }}" {% if request.endpoint == 'hai_detection.history' %}class="active"{% endif %}>History</a>
+            <a href="{{ url_for('hai_detection.reports') }}" {% if request.endpoint == 'hai_detection.reports' %}class="active"{% endif %}>Reports</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Home</a>
+            <a href="{{ url_for('hai_detection.help_page') }}" {% if request.endpoint == 'hai_detection.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_nhsn_reporting %}
+            <!-- NHSN Reporting Navigation -->
+            <a href="{{ url_for('nhsn_reporting.dashboard') }}" {% if request.endpoint == 'nhsn_reporting.dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('nhsn_reporting.au_detail') }}" {% if request.endpoint == 'nhsn_reporting.au_detail' %}class="active"{% endif %}>AU Detail</a>
+            <a href="{{ url_for('nhsn_reporting.ar_detail') }}" {% if request.endpoint == 'nhsn_reporting.ar_detail' %}class="active"{% endif %}>AR Detail</a>
+            <a href="{{ url_for('nhsn_reporting.hai_detail') }}" {% if request.endpoint == 'nhsn_reporting.hai_detail' %}class="active"{% endif %}>HAI Detail</a>
+            <a href="{{ url_for('nhsn_reporting.denominators') }}" {% if request.endpoint == 'nhsn_reporting.denominators' %}class="active"{% endif %}>Denominators</a>
+            <a href="{{ url_for('nhsn_reporting.submission') }}" {% if request.endpoint == 'nhsn_reporting.submission' %}class="active"{% endif %}>Submission</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Home</a>
+            <a href="{{ url_for('nhsn_reporting.help_page') }}" {% if request.endpoint == 'nhsn_reporting.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_dashboards %}
+            <!-- Dashboards Navigation -->
+            <a href="{{ url_for('dashboards.index') }}" {% if request.endpoint == 'dashboards.index' %}class="active"{% endif %}>Overview</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Home</a>
+            {% elif is_asp_alerts %}
+            <!-- ASP Alerts Navigation -->
+            <a href="{{ url_for('asp_alerts.alerts_active') }}" {% if request.endpoint == 'asp_alerts.alerts_active' %}class="active"{% endif %}>Active Alerts</a>
+            <a href="{{ url_for('asp_alerts.alerts_history') }}" {% if request.endpoint == 'asp_alerts.alerts_history' %}class="active"{% endif %}>History</a>
+            <a href="{{ url_for('asp_alerts.reports') }}" {% if request.endpoint == 'asp_alerts.reports' %}class="active"{% endif %}>Reports</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Home</a>
+            <a href="{{ url_for('asp_alerts.help_page') }}" {% if request.endpoint == 'asp_alerts.help_page' %}class="active"{% endif %}>Help</a>
             {% else %}
-            <!-- Alerts Navigation -->
-            <a href="{{ url_for('views.alerts_active') }}" {% if request.endpoint == 'views.alerts_active' %}class="active"{% endif %}>Active Alerts</a>
-            <a href="{{ url_for('views.alerts_history') }}" {% if request.endpoint == 'views.alerts_history' %}class="active"{% endif %}>History</a>
-            <a href="{{ url_for('views.reports') }}" {% if request.endpoint == 'views.reports' %}class="active"{% endif %}>Reports</a>
-            <a href="{{ url_for('au_ar.dashboard') }}" class="nav-au-ar">AU/AR</a>
-            <a href="{{ url_for('nhsn.dashboard') }}" class="nav-nhsn">HAI</a>
-            <a href="{{ url_for('views.help_page') }}" {% if request.endpoint == 'views.help_page' %}class="active"{% endif %}>Help</a>
+            <!-- Landing Page Navigation -->
+            <a href="{{ url_for('asp_alerts.alerts_active') }}" class="nav-alerts">ASP Alerts</a>
+            <a href="{{ url_for('hai_detection.dashboard') }}" class="nav-nhsn">HAI Detection</a>
+            <a href="{{ url_for('nhsn_reporting.dashboard') }}" class="nav-au-ar">NHSN Reporting</a>
+            <a href="{{ url_for('dashboards.index') }}" class="nav-dashboards">Dashboards</a>
             {% endif %}
         </div>
     </nav>
@@ -85,7 +99,7 @@
     </div>
 
     <footer class="footer">
-        <p>ASP Alerts Dashboard &bull; Cincinnati Children's Hospital</p>
+        <p>AEGIS Dashboard &bull; Cincinnati Children's Hospital</p>
     </footer>
 
     <script>
