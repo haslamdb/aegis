@@ -1,21 +1,29 @@
 #!/bin/bash
-# Setup script for NHSN subdomain: nhsn.aegis-asp.com
+# Setup script for NHSN subdomain redirect: nhsn.aegis-asp.com
+#
+# NOTE: The nhsn subdomain is DEPRECATED. This script sets up redirects
+# to the main domain at aegis-asp.com. The NHSN functionality is now at:
+# - https://aegis-asp.com/hai-detection/ (candidate review)
+# - https://aegis-asp.com/nhsn-reporting/ (data submission)
 #
 # Prerequisites:
 # 1. DNS A record for nhsn.aegis-asp.com pointing to this server
-# 2. Port 8444 open in firewall
-# 3. Main AEGIS dashboard already running on port 8082
+# 2. Main AEGIS dashboard already running at aegis-asp.com
 #
 # Usage: sudo ./setup_nhsn_subdomain.sh
 
 set -e
 
 DOMAIN="nhsn.aegis-asp.com"
+MAIN_DOMAIN="aegis-asp.com"
 NGINX_CONF="/etc/nginx/sites-available/nhsn-aegis"
 CERTBOT_WEBROOT="/var/www/certbot"
 
-echo "=== NHSN Subdomain Setup ==="
+echo "=== NHSN Subdomain Redirect Setup ==="
 echo "Domain: $DOMAIN"
+echo "Redirects to: $MAIN_DOMAIN"
+echo ""
+echo "NOTE: This subdomain is deprecated. All traffic will be redirected."
 echo ""
 
 # Check if running as root
@@ -30,7 +38,7 @@ mkdir -p $CERTBOT_WEBROOT
 
 # Step 2: Copy nginx config
 echo "[2/5] Installing nginx configuration..."
-cp "$(dirname "$0")/nginx-nhsn.conf" $NGINX_CONF
+cp "$(dirname "$0")/nginx-nhsn-aegis.conf" $NGINX_CONF
 
 # Step 3: Create temporary config for SSL certificate
 echo "[3/5] Creating temporary config for SSL..."
@@ -44,8 +52,7 @@ server {
     }
 
     location / {
-        return 200 'Waiting for SSL setup';
-        add_header Content-Type text/plain;
+        return 301 https://$MAIN_DOMAIN\$request_uri;
     }
 }
 EOF
@@ -83,11 +90,9 @@ nginx -t && systemctl reload nginx
 echo ""
 echo "=== Setup Complete ==="
 echo ""
-echo "NHSN Dashboard available at: https://$DOMAIN:8444"
+echo "NHSN subdomain ($DOMAIN) now redirects to https://$MAIN_DOMAIN"
 echo ""
-echo "To verify:"
-echo "  curl -I https://$DOMAIN:8444/nhsn/"
-echo ""
-echo "Don't forget to update your environment:"
-echo "  DASHBOARD_BASE_URL=https://$DOMAIN:8444"
+echo "NHSN functionality is available at:"
+echo "  - https://$MAIN_DOMAIN/hai-detection/ (candidate review)"
+echo "  - https://$MAIN_DOMAIN/nhsn-reporting/ (data submission)"
 echo ""

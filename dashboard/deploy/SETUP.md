@@ -1,10 +1,9 @@
 # AEGIS Dashboard - Deployment Guide
 
-Deploy the dashboard at `https://alerts.aegis-asp.com`
+Deploy the dashboard at `https://aegis-asp.com`
 
 ## Prerequisites
 
-- This machine already runs `aegis-asp.com` with nginx
 - Port 8082 is free (dashboard Flask app)
 - You have access to your DNS provider
 - You have access to Unifi controller
@@ -13,19 +12,19 @@ Deploy the dashboard at `https://alerts.aegis-asp.com`
 
 ## Step 1: DNS Configuration
 
-Add an A record for the subdomain pointing to your external IP.
+Add an A record for the domain pointing to your external IP.
 
 **In your DNS provider (e.g., Cloudflare, Namecheap, etc.):**
 
 | Type | Name | Value | TTL |
 |------|------|-------|-----|
-| A | alerts | 50.5.30.133 | Auto |
+| A | @ | 50.5.30.133 | Auto |
 
-This creates `alerts.aegis-asp.com` → `50.5.30.133`
+This creates `aegis-asp.com` → `50.5.30.133`
 
 **Verify DNS (may take a few minutes to propagate):**
 ```bash
-dig alerts.aegis-asp.com +short
+dig aegis-asp.com +short
 # Should return: 50.5.30.133
 ```
 
@@ -33,13 +32,9 @@ dig alerts.aegis-asp.com +short
 
 ## Step 2: Unifi Port Forwarding
 
-Since aegis-asp already uses ports 80/443, we need to ensure traffic for the subdomain reaches this server. If both domains use the same external IP and ports, nginx will route based on the hostname.
+Ensure ports 80 and 443 are forwarded to this server.
 
-**If ports 80/443 are already forwarded (likely):**
-- No additional port forwarding needed
-- nginx handles routing based on `server_name`
-
-**If you need to add/verify port forwarding:**
+**Verify or add port forwarding in Unifi Controller:**
 
 1. Open Unifi Controller (https://unifi.ui.com or local controller)
 2. Go to **Settings** → **Firewall & Security** → **Port Forwarding**
@@ -94,7 +89,7 @@ First, install the nginx config without SSL to allow the challenge:
 cat << 'EOF' | sudo tee /etc/nginx/sites-available/aegis
 server {
     listen 80;
-    server_name alerts.aegis-asp.com;
+    server_name aegis-asp.com;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -120,7 +115,7 @@ sudo certbot certonly \
     --email dbhaslam@gmail.com \
     --agree-tos \
     --no-eff-email \
-    -d alerts.aegis-asp.com
+    -d aegis-asp.com
 ```
 
 **Option B: DNS-01 Challenge (if port 80 is blocked)**
@@ -131,7 +126,7 @@ sudo certbot certonly \
     --email dbhaslam@gmail.com \
     --agree-tos \
     --no-eff-email \
-    -d alerts.aegis-asp.com
+    -d aegis-asp.com
 ```
 Follow the prompts to add a TXT record to your DNS.
 
@@ -162,10 +157,10 @@ sudo systemctl status nginx
 curl -I http://localhost:8082/
 
 # Test externally (from another machine or use curl with host header)
-curl -I https://alerts.aegis-asp.com/
+curl -I https://aegis-asp.com/
 ```
 
-Open in browser: **https://alerts.aegis-asp.com/**
+Open in browser: **https://aegis-asp.com/**
 
 ---
 
@@ -218,7 +213,7 @@ ss -tlnp | grep 8082
 ### SSL certificate errors
 ```bash
 # Check cert exists
-sudo ls -la /etc/letsencrypt/live/alerts.aegis-asp.com/
+sudo ls -la /etc/letsencrypt/live/aegis-asp.com/
 
 # Check cert expiry
 sudo certbot certificates
@@ -234,8 +229,8 @@ sudo systemctl restart aegis
 ### DNS not resolving
 ```bash
 # Check propagation
-dig alerts.aegis-asp.com +short
-nslookup alerts.aegis-asp.com
+dig aegis-asp.com +short
+nslookup aegis-asp.com
 
 # May need to wait or flush DNS cache
 ```
