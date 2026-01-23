@@ -21,6 +21,8 @@ from .models import (
     DeviceInfo,
     SupportingEvidence,
     LLMAuditEntry,
+    SSICandidate,
+    SurgicalProcedure,
 )
 
 logger = logging.getLogger(__name__)
@@ -82,6 +84,10 @@ class HAIDatabase:
                 ),
             )
             conn.commit()
+
+        # Save SSI-specific data if present
+        if candidate.hai_type == HAIType.SSI and hasattr(candidate, "_ssi_data"):
+            self.save_ssi_data(candidate)
 
     def get_candidate(self, candidate_id: str) -> HAICandidate | None:
         """Get a candidate by ID."""
@@ -235,7 +241,141 @@ class HAIDatabase:
             created_at=datetime.fromisoformat(row["created_at"]),
         )
         candidate.nhsn_reported = nhsn_reported
+
+        # Load SSI-specific data if this is an SSI candidate
+        if candidate.hai_type == HAIType.SSI:
+            ssi_data = self._load_ssi_data(candidate.id)
+            if ssi_data:
+                candidate._ssi_data = ssi_data  # type: ignore
+
         return candidate
+
+    # --- SSI Operations ---
+
+    def save_ssi_data(self, candidate: HAICandidate) -> None:
+        """Save SSI-specific data (procedure and candidate details).
+
+        Args:
+            candidate: HAI candidate with _ssi_data attached
+        """
+        ssi_data: SSICandidate | None = getattr(candidate, "_ssi_data", None)
+        if not ssi_data:
+            return
+
+        with self._get_connection() as conn:
+            # Save procedure first
+            proc = ssi_data.procedure
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO ssi_procedures (
+                    id, patient_id, patient_mrn, procedure_code, procedure_name,
+                    procedure_date, nhsn_category, wound_class, duration_minutes,
+                    asa_score, primary_surgeon, implant_used, implant_type,
+                    fhir_id, encounter_id, location_code, surveillance_end_date
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    proc.id,
+                    candidate.patient.fhir_id,
+                    candidate.patient.mrn,
+                    proc.procedure_code,
+                    proc.procedure_name,
+                    proc.procedure_date.isoformat(),
+                    proc.nhsn_category,
+                    proc.wound_class,
+                    proc.duration_minutes,
+                    proc.asa_score,
+                    proc.primary_surgeon,
+                    proc.implant_used,
+                    proc.implant_type,
+                    proc.fhir_id,
+                    proc.encounter_id,
+                    proc.location_code,
+                    (proc.procedure_date + timedelta(days=proc.get_surveillance_days())).date().isoformat(),
+                ),
+            )
+
+            # Save SSI candidate details
+            import uuid
+            detail_id = str(uuid.uuid4())
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO ssi_candidate_details (
+                    id, candidate_id, procedure_id, days_post_op, ssi_type,
+                    infection_date, wound_culture_organism, wound_culture_date,
+                    readmission_for_ssi, reoperation_for_ssi
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    detail_id,
+                    candidate.id,
+                    proc.id,
+                    ssi_data.days_post_op,
+                    ssi_data.ssi_type,
+                    ssi_data.infection_date.isoformat() if ssi_data.infection_date else None,
+                    ssi_data.wound_culture_organism,
+                    ssi_data.wound_culture_date.isoformat() if ssi_data.wound_culture_date else None,
+                    ssi_data.readmission_for_ssi,
+                    ssi_data.reoperation_for_ssi,
+                ),
+            )
+            conn.commit()
+
+    def _load_ssi_data(self, candidate_id: str) -> SSICandidate | None:
+        """Load SSI-specific data for a candidate.
+
+        Args:
+            candidate_id: The candidate ID
+
+        Returns:
+            SSICandidate with procedure data, or None if not found
+        """
+        with self._get_connection() as conn:
+            # Get SSI details
+            detail_row = conn.execute(
+                """
+                SELECT d.*, p.*
+                FROM ssi_candidate_details d
+                JOIN ssi_procedures p ON d.procedure_id = p.id
+                WHERE d.candidate_id = ?
+                """,
+                (candidate_id,),
+            ).fetchone()
+
+            if not detail_row:
+                return None
+
+            # Build SurgicalProcedure
+            procedure = SurgicalProcedure(
+                id=detail_row["procedure_id"],
+                patient_id=detail_row["patient_id"],
+                procedure_code=detail_row["procedure_code"],
+                procedure_name=detail_row["procedure_name"],
+                procedure_date=datetime.fromisoformat(detail_row["procedure_date"]),
+                nhsn_category=detail_row["nhsn_category"],
+                wound_class=detail_row["wound_class"],
+                duration_minutes=detail_row["duration_minutes"],
+                asa_score=detail_row["asa_score"],
+                primary_surgeon=detail_row["primary_surgeon"],
+                implant_used=bool(detail_row["implant_used"]) if detail_row["implant_used"] is not None else False,
+                implant_type=detail_row["implant_type"],
+                fhir_id=detail_row["fhir_id"],
+                encounter_id=detail_row["encounter_id"],
+                location_code=detail_row["location_code"],
+            )
+
+            # Build SSICandidate
+            return SSICandidate(
+                candidate_id=candidate_id,
+                procedure=procedure,
+                days_post_op=detail_row["days_post_op"],
+                ssi_type=detail_row["ssi_type"],
+                infection_date=datetime.fromisoformat(detail_row["infection_date"]) if detail_row["infection_date"] else None,
+                wound_culture_organism=detail_row["wound_culture_organism"],
+                wound_culture_date=datetime.fromisoformat(detail_row["wound_culture_date"]) if detail_row["wound_culture_date"] else None,
+                readmission_for_ssi=bool(detail_row["readmission_for_ssi"]),
+                reoperation_for_ssi=bool(detail_row["reoperation_for_ssi"]),
+            )
 
     # --- Classification Operations ---
 

@@ -247,6 +247,38 @@
                 <input type="text" name="reviewer" id="reviewer" required placeholder="Enter your name" class="form-control">
             </div>
 
+            {% if candidate.hai_type.value == 'ssi' %}
+            <!-- SSI-specific classification buttons -->
+            <div class="classification-divider">
+                <span>Select SSI Type:</span>
+            </div>
+            <div class="ssi-type-buttons">
+                <button type="button" class="btn btn-ssi-superficial btn-block" data-decision="superficial_ssi">
+                    Superficial SSI
+                </button>
+                <button type="button" class="btn btn-ssi-deep btn-block" data-decision="deep_ssi">
+                    Deep SSI
+                </button>
+                <button type="button" class="btn btn-ssi-organ-space btn-block" data-decision="organ_space_ssi">
+                    Organ/Space SSI
+                </button>
+            </div>
+
+            <div class="classification-divider">
+                <span>Or:</span>
+            </div>
+
+            <div class="secondary-buttons ssi-secondary">
+                <button type="button" class="btn btn-not-clabsi btn-block" data-decision="rejected">
+                    Not SSI
+                </button>
+                <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
+                    Needs More Info
+                </button>
+            </div>
+
+            {% else %}
+            <!-- CLABSI/default classification buttons -->
             <div class="classification-buttons">
                 <button type="button" class="btn btn-clabsi btn-block" data-decision="confirmed">
                     {{ candidate.hai_type.value | upper }}
@@ -271,6 +303,7 @@
                     Needs More Info
                 </button>
             </div>
+            {% endif %}
         </div>
 
         <div class="action-card">
@@ -321,7 +354,7 @@
 </div>
 
 <script>
-document.querySelectorAll('.classification-buttons button, .secondary-buttons button').forEach(btn => {
+document.querySelectorAll('.classification-buttons button, .secondary-buttons button, .ssi-type-buttons button').forEach(btn => {
     btn.addEventListener('click', async function() {
         const decision = this.getAttribute('data-decision');
         const reviewer = document.getElementById('reviewer').value;
@@ -336,7 +369,7 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
         }
 
         // Highlight selected button
-        document.querySelectorAll('.classification-buttons button, .secondary-buttons button').forEach(b => {
+        document.querySelectorAll('.classification-buttons button, .secondary-buttons button, .ssi-type-buttons button').forEach(b => {
             b.classList.remove('selected');
         });
         this.classList.add('selected');
@@ -505,6 +538,60 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
     margin-bottom: 0.75rem;
 }
 
+/* SSI Type Buttons */
+.ssi-type-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.btn-ssi-superficial {
+    background: #dc2626;
+    color: white;
+    border: 2px solid #dc2626;
+    padding: 0.75rem 0.5rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.btn-ssi-superficial:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.btn-ssi-deep {
+    background: #c2410c;
+    color: white;
+    border: 2px solid #c2410c;
+    padding: 0.75rem 0.5rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.btn-ssi-deep:hover {
+    background: #9a3412;
+    border-color: #9a3412;
+}
+
+.btn-ssi-organ-space {
+    background: #7c2d12;
+    color: white;
+    border: 2px solid #7c2d12;
+    padding: 0.75rem 0.5rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.btn-ssi-organ-space:hover {
+    background: #5c1a0d;
+    border-color: #5c1a0d;
+}
+
+.ssi-secondary {
+    grid-template-columns: 1fr 1fr;
+}
+
 .classification-divider {
     margin: 1rem 0;
     text-align: center;
@@ -608,7 +695,8 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
 }
 
 .classification-buttons button.selected,
-.secondary-buttons button.selected {
+.secondary-buttons button.selected,
+.ssi-type-buttons button.selected {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
 }
 
@@ -739,10 +827,19 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
     .secondary-buttons {
         grid-template-columns: 1fr 1fr 1fr;
     }
+    .ssi-type-buttons {
+        grid-template-columns: 1fr;
+    }
+    .ssi-secondary {
+        grid-template-columns: 1fr 1fr;
+    }
 }
 
 @media (max-width: 480px) {
     .secondary-buttons {
+        grid-template-columns: 1fr;
+    }
+    .ssi-secondary {
         grid-template-columns: 1fr;
     }
 }

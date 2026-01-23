@@ -147,6 +147,7 @@ class SSIClassifierV2(BaseHAIClassifier):
         procedure = ssi_data.procedure
 
         return SSIStructuredData(
+            procedure_code=procedure.procedure_code,
             procedure_name=procedure.procedure_name,
             nhsn_category=procedure.nhsn_category or "Unknown",
             procedure_date=procedure.procedure_date,
@@ -155,9 +156,9 @@ class SSIClassifierV2(BaseHAIClassifier):
             implant_type=procedure.implant_type,
             days_post_op=ssi_data.days_post_op,
             surveillance_window_days=procedure.get_surveillance_days(),
+            wound_culture_positive=bool(ssi_data.wound_culture_organism),
             wound_culture_date=ssi_data.wound_culture_date,
             wound_culture_organism=ssi_data.wound_culture_organism,
-            wound_culture_source=ssi_data.wound_culture_source,
         )
 
     def _build_classification(

@@ -141,16 +141,38 @@ def candidate_detail(candidate_id):
 
         classifications = db.get_classifications_for_candidate(candidate_id)
 
+        # Extract SSI-specific data if available
+        ssi_data = None
+        if candidate.hai_type == HAIType.SSI and hasattr(candidate, "_ssi_data"):
+            ssi_candidate = candidate._ssi_data
+            if ssi_candidate and hasattr(ssi_candidate, "procedure"):
+                proc = ssi_candidate.procedure
+                ssi_data = {
+                    "procedure_name": proc.procedure_name,
+                    "procedure_code": proc.procedure_code,
+                    "nhsn_category": proc.nhsn_category or "Unknown",
+                    "procedure_date": proc.procedure_date,
+                    "wound_class": proc.wound_class,
+                    "implant_used": proc.implant_used,
+                    "implant_type": proc.implant_type,
+                    "days_post_op": ssi_candidate.days_post_op,
+                    "surveillance_days": proc.get_surveillance_days(),
+                    "ssi_type": getattr(ssi_candidate, "ssi_type", None),
+                }
+
         return render_template(
             "hai_candidate_detail.html",
             candidate=candidate,
             classifications=classifications,
+            ssi_data=ssi_data,
         )
     except Exception as e:
         current_app.logger.error(f"Error loading candidate {candidate_id}: {e}")
         return render_template(
             "hai_candidate_detail.html",
             candidate=None,
+            classifications=None,
+            ssi_data=None,
             error=str(e),
         ), 500
 
@@ -246,6 +268,10 @@ def api_submit_review(candidate_id):
             "mbi_lcbi": ReviewerDecision.REJECTED,  # MBI-LCBI is Not CLABSI
             "secondary": ReviewerDecision.REJECTED,  # Secondary source is Not CLABSI
             "needs_more_info": ReviewerDecision.NEEDS_MORE_INFO,
+            # SSI-specific type decisions (all confirm as SSI)
+            "superficial_ssi": ReviewerDecision.CONFIRMED,
+            "deep_ssi": ReviewerDecision.CONFIRMED,
+            "organ_space_ssi": ReviewerDecision.CONFIRMED,
         }
 
         if decision not in decision_map:
@@ -271,10 +297,12 @@ def api_submit_review(candidate_id):
 
             # Determine if reviewer is overriding the LLM
             # LLM said HAI but reviewer says not HAI (rejected/mbi_lcbi/secondary)
-            # LLM said not HAI but reviewer says confirmed
-            if llm_decision == "hai_confirmed" and decision in ["rejected", "mbi_lcbi", "secondary"]:
+            # LLM said not HAI but reviewer confirms (confirmed or SSI type)
+            confirm_decisions = ["confirmed", "superficial_ssi", "deep_ssi", "organ_space_ssi"]
+            reject_decisions = ["rejected", "mbi_lcbi", "secondary"]
+            if llm_decision == "hai_confirmed" and decision in reject_decisions:
                 is_override = True
-            elif llm_decision == "not_hai" and decision == "confirmed":
+            elif llm_decision == "not_hai" and decision in confirm_decisions:
                 is_override = True
             # pending_review from LLM is not considered an override either way
 
@@ -285,6 +313,16 @@ def api_submit_review(candidate_id):
                 notes = f"HAI confirmed. {notes}"
             else:
                 notes = "HAI confirmed by IP review."
+        # SSI-specific type confirmations
+        elif decision == "superficial_ssi":
+            new_status = CandidateStatus.CONFIRMED
+            notes = f"SSI confirmed - Superficial Incisional. {notes}" if notes else "SSI confirmed - Superficial Incisional SSI."
+        elif decision == "deep_ssi":
+            new_status = CandidateStatus.CONFIRMED
+            notes = f"SSI confirmed - Deep Incisional. {notes}" if notes else "SSI confirmed - Deep Incisional SSI."
+        elif decision == "organ_space_ssi":
+            new_status = CandidateStatus.CONFIRMED
+            notes = f"SSI confirmed - Organ/Space. {notes}" if notes else "SSI confirmed - Organ/Space SSI."
         elif decision == "mbi_lcbi":
             new_status = CandidateStatus.REJECTED
             notes = f"Not CLABSI - MBI-LCBI. {notes}" if notes else "Not CLABSI - classified as MBI-LCBI."
@@ -305,7 +343,10 @@ def api_submit_review(candidate_id):
             new_status = candidate.status  # Keep current status
 
         # Save the review with override tracking
-        is_final_decision = decision in ["confirmed", "rejected", "mbi_lcbi", "secondary"]
+        is_final_decision = decision in [
+            "confirmed", "rejected", "mbi_lcbi", "secondary",
+            "superficial_ssi", "deep_ssi", "organ_space_ssi"
+        ]
         review_id = db.save_review(
             candidate_id=candidate_id,
             reviewer=reviewer,
@@ -405,6 +446,9 @@ def _send_review_notification(candidate, decision, reviewer, notes):
             "mbi_lcbi": "Not CLABSI - MBI-LCBI",
             "secondary": "Not CLABSI - Secondary",
             "needs_more_info": "Needs More Information",
+            "superficial_ssi": "SSI Confirmed - Superficial Incisional",
+            "deep_ssi": "SSI Confirmed - Deep Incisional",
+            "organ_space_ssi": "SSI Confirmed - Organ/Space",
         }.get(decision, decision)
 
         subject = f"HAI Review Complete: {candidate.patient.mrn} - {decision_text}"
