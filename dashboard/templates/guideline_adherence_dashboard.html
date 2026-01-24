@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Guideline Adherence - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Guideline Adherence</h1>
+    <a href="{{ url_for('guideline_adherence.help_page') }}" class="btn btn-secondary">Help</a>
+</div>
+
+<div class="dashboard-summary">
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-success);">&#x1F4C8;</div>
+        <div class="summary-content">
+            <div class="summary-value">--</div>
+            <div class="summary-label">Overall Compliance</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-primary);">&#x1F4CB;</div>
+        <div class="summary-content">
+            <div class="summary-value">--</div>
+            <div class="summary-label">Guidelines Tracked</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-warning);">&#x1F50D;</div>
+        <div class="summary-content">
+            <div class="summary-value">--</div>
+            <div class="summary-label">Episodes Reviewed</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-danger);">&#x26A0;</div>
+        <div class="summary-content">
+            <div class="summary-value">--</div>
+            <div class="summary-label">Non-Compliant</div>
+        </div>
+    </div>
+</div>
+
+<div class="module-info">
+    <h2>About This Module</h2>
+    <p>The Guideline Adherence module tracks adherence to evidence-based clinical guidelines and care bundles
+       at the population level. Unlike real-time appropriateness alerts, this module generates aggregate metrics
+       for quality improvement and Joint Commission (JC) reporting.</p>
+
+    <h3>Key Difference from Antibiotic Indications</h3>
+    <table class="help-table">
+        <thead>
+            <tr>
+                <th>Aspect</th>
+                <th>Antibiotic Indications</th>
+                <th>Guideline Adherence</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Question</strong></td>
+                <td>"Is this order justified?"</td>
+                <td>"Did we follow the full pathway?"</td>
+            </tr>
+            <tr>
+                <td><strong>Timing</strong></td>
+                <td>Real-time (per order)</td>
+                <td>Retrospective (daily/weekly/monthly)</td>
+            </tr>
+            <tr>
+                <td><strong>Scope</strong></td>
+                <td>Antibiotic orders only</td>
+                <td>Full care bundle (cultures, labs, imaging, consults, antibiotics)</td>
+            </tr>
+            <tr>
+                <td><strong>Output</strong></td>
+                <td>Alert/flag for ASP intervention</td>
+                <td>Compliance % for dashboard/report</td>
+            </tr>
+            <tr>
+                <td><strong>Audience</strong></td>
+                <td>Pharmacist, ordering provider</td>
+                <td>ASP leadership, QI, JC surveyors</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>Available Guidelines</h3>
+    <div class="guideline-cards">
+        <div class="guideline-card">
+            <h4>Pediatric CAP</h4>
+            <p>Community-Acquired Pneumonia bundle with 6 elements</p>
+            <span class="element-count">6 elements</span>
+        </div>
+        <div class="guideline-card">
+            <h4>Febrile Neutropenia</h4>
+            <p>Time to antibiotics, appropriate agent, cultures</p>
+            <span class="element-count">6 elements</span>
+        </div>
+        <div class="guideline-card">
+            <h4>Pediatric Sepsis</h4>
+            <p>Lactate, culture timing, fluid resuscitation</p>
+            <span class="element-count">6 elements</span>
+        </div>
+        <div class="guideline-card">
+            <h4>Surgical Prophylaxis</h4>
+            <p>Timing, agent selection, duration ≤24h</p>
+            <span class="element-count">5 elements</span>
+        </div>
+        <div class="guideline-card">
+            <h4>Pediatric UTI</h4>
+            <p>Culture method, empiric choice, imaging</p>
+            <span class="element-count">8 elements</span>
+        </div>
+        <div class="guideline-card">
+            <h4>SSTI/Cellulitis</h4>
+            <p>MRSA coverage decision, I&D if purulent</p>
+            <span class="element-count">6 elements</span>
+        </div>
+    </div>
+
+    <h3>Bundle Elements Example: Pediatric CAP</h3>
+    <table class="help-table">
+        <thead>
+            <tr>
+                <th>Element</th>
+                <th>Type</th>
+                <th>Required</th>
+                <th>Timing</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Blood culture obtained</td>
+                <td>Culture</td>
+                <td>Recommended</td>
+                <td>Before antibiotics</td>
+            </tr>
+            <tr>
+                <td>Chest X-ray performed</td>
+                <td>Imaging</td>
+                <td>Required</td>
+                <td>Within 24h</td>
+            </tr>
+            <tr>
+                <td>Appropriate empiric antibiotic</td>
+                <td>Antibiotic</td>
+                <td>Required</td>
+                <td>Within 4h</td>
+            </tr>
+            <tr>
+                <td>Narrow-spectrum preferred</td>
+                <td>Antibiotic</td>
+                <td>Recommended</td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td>Duration ≤5 days (uncomplicated)</td>
+                <td>Antibiotic</td>
+                <td>Required</td>
+                <td>At discharge</td>
+            </tr>
+            <tr>
+                <td>Follow-up arranged</td>
+                <td>Process</td>
+                <td>Recommended</td>
+                <td>At discharge</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="coming-soon-notice">
+    <h3>Coming Soon</h3>
+    <p>Aggregate compliance dashboards with trend visualization, unit comparisons, and drill-down to non-compliant encounters.</p>
+</div>
+
+<style>
+.dashboard-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.summary-icon {
+    font-size: 2rem;
+}
+
+.summary-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-gray-800);
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.module-info {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 2rem;
+}
+
+.module-info h2 {
+    margin-bottom: 1rem;
+    color: var(--color-gray-800);
+}
+
+.module-info h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-gray-700);
+}
+
+.guideline-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.guideline-card {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: var(--color-gray-50);
+    border-left: 4px solid #7C3AED;
+}
+
+.guideline-card h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: var(--color-gray-800);
+}
+
+.guideline-card p {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.element-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    background: #7C3AED;
+    color: white;
+}
+
+.coming-soon-notice {
+    background: var(--color-info-light);
+    border: 1px dashed var(--color-primary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.coming-soon-notice h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--color-primary);
+}
+
+.coming-soon-notice p {
+    margin: 0;
+    color: var(--color-gray-600);
+}
+</style>
+{% endblock %}
