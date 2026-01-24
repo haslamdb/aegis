@@ -35,7 +35,9 @@ The module addresses Joint Commission requirements (MM.09.01.01) and SCIP/CMS qu
 10. [Implementation Timeline](#10-implementation-timeline)
 11. [Success Metrics](#11-success-metrics)
 12. [Risks and Mitigations](#12-risks-and-mitigations)
-13. [Appendices](#13-appendices)
+13. [NSQIP Reporting Integration](#13-nsqip-reporting-integration)
+14. [Local CCHMC Guidelines](#14-local-cchmc-guidelines)
+15. [Appendices](#15-appendices)
 
 ---
 
@@ -1315,7 +1317,495 @@ Month 11-12: Deployment
 
 ---
 
-## 13. Appendices
+## 13. NSQIP Reporting Integration
+
+### 13.1 Overview
+
+The American College of Surgeons National Surgical Quality Improvement Program (ACS NSQIP) Pediatric is a nationally validated, risk-adjusted, outcomes-based program to measure and improve the quality of surgical care in children's hospitals. Cincinnati Children's participates in NSQIP Pediatric and reports surgical outcomes including surgical site infections (SSIs).
+
+This module will integrate with NSQIP reporting to:
+1. Auto-populate prophylaxis-related data fields
+2. Track prophylaxis compliance as a process measure
+3. Correlate compliance with SSI outcomes
+4. Generate NSQIP-ready reports
+
+### 13.2 NSQIP Pediatric Data Elements
+
+#### 13.2.1 Prophylaxis-Related Variables
+
+The following NSQIP Pediatric variables relate to surgical prophylaxis:
+
+| Variable | Description | Source in AEGIS |
+|----------|-------------|-----------------|
+| `PROPHYLAXIS` | Was prophylaxis given? (Y/N) | MedicationAdministration |
+| `PROPHMEDS` | Which antibiotic(s)? | MedicationRequest |
+| `PROPTIMING` | Timing relative to incision | Calculated from MAR + Anesthesia |
+| `PROPDURATION` | Duration of prophylaxis | Calculated from MAR |
+| `SSIOCC` | Superficial SSI occurrence | Outcome (from IP data) |
+| `DSSISOCC` | Deep SSI occurrence | Outcome (from IP data) |
+| `ORGANSPCSSI` | Organ/space SSI occurrence | Outcome (from IP data) |
+
+#### 13.2.2 Case Identification Variables
+
+| Variable | Description | Source |
+|----------|-------------|--------|
+| `CPT` | Primary CPT code | OR scheduling |
+| `WORKRVU` | Work RVU | CPT lookup |
+| `OPTIME` | Operation time (minutes) | Anesthesia record |
+| `SURGSPEC` | Surgical specialty | OR scheduling |
+| `WOUND_CLASS` | Wound classification (Clean, Clean-Contaminated, etc.) | Surgical posting |
+
+### 13.3 NSQIP Reporting Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    NSQIP REPORTING INTEGRATION                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐                                                        │
+│  │ AEGIS Surgical  │                                                        │
+│  │ Prophylaxis     │                                                        │
+│  │ Module          │                                                        │
+│  └────────┬────────┘                                                        │
+│           │                                                                  │
+│           │ Nightly export of prophylaxis data                              │
+│           ▼                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ NSQIP DATA STAGING TABLE                                             │   │
+│  │                                                                      │   │
+│  │  Case_ID | CPT | Prophylaxis | Agent | Timing | Duration | SSI_30d  │   │
+│  │  --------|-----|-------------|-------|--------|----------|--------- │   │
+│  │  12345   | 443 | Yes         | Cefa  | 32 min | 18 hr    | No       │   │
+│  │  12346   | 271 | Yes         | Cefa  | 55 min | 48 hr    | Yes      │   │
+│  │  12347   | 421 | No          | -     | -      | -        | No       │   │
+│  │                                                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│           │                                                                  │
+│           │ Merge with NSQIP Surgical Clinical Reviewer (SCR) data         │
+│           ▼                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ NSQIP SCR WORKBENCH                                                  │   │
+│  │                                                                      │   │
+│  │  • Pre-populated prophylaxis fields reduce manual abstraction       │   │
+│  │  • SCR validates/corrects as needed                                 │   │
+│  │  • Final data submitted to ACS NSQIP                                │   │
+│  │                                                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│           │                                                                  │
+│           │ Quarterly                                                        │
+│           ▼                                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │ NSQIP SEMI-ANNUAL REPORT (SAR)                                       │   │
+│  │                                                                      │   │
+│  │  • Risk-adjusted SSI rates                                          │   │
+│  │  • Comparison to other pediatric hospitals                          │   │
+│  │  • Prophylaxis compliance benchmarks                                │   │
+│  │                                                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.4 Auto-Population Logic
+
+The module will auto-populate NSQIP fields to reduce SCR abstraction burden:
+
+```python
+def generate_nsqip_record(case: SurgicalCase, evaluation: ProphylaxisEvaluation) -> Dict:
+    """
+    Generate NSQIP-compatible record for a surgical case.
+    
+    Returns dict with NSQIP variable names as keys.
+    """
+    record = {
+        # Case identification
+        'CASE_ID': case.case_id,
+        'MRN': case.patient_mrn,
+        'DOS': case.actual_incision_time.date().isoformat(),
+        'CPT': case.cpt_codes[0] if case.cpt_codes else None,
+        
+        # Prophylaxis fields
+        'PROPHYLAXIS': 'Yes' if case.prophylaxis_administrations else 'No',
+        'PROPHMEDS': ', '.join([a.medication_name for a in case.prophylaxis_administrations]),
+        
+        # Timing calculation
+        'PROPTIMING_MINUTES': None,
+        'PROPTIMING_COMPLIANT': None,
+        
+        # Duration calculation  
+        'PROPDURATION_HOURS': None,
+        'PROPDURATION_COMPLIANT': None,
+        
+        # From evaluation
+        'AEGIS_BUNDLE_COMPLIANT': evaluation.bundle_compliant,
+        'AEGIS_COMPLIANCE_SCORE': evaluation.compliance_score,
+    }
+    
+    # Calculate timing if prophylaxis was given
+    if case.prophylaxis_administrations and case.actual_incision_time:
+        first_admin = min(a.administration_time for a in case.prophylaxis_administrations)
+        minutes_before = (case.actual_incision_time - first_admin).total_seconds() / 60
+        record['PROPTIMING_MINUTES'] = round(minutes_before)
+        record['PROPTIMING_COMPLIANT'] = 0 < minutes_before <= 60
+    
+    # Calculate duration if surgery end time available
+    if case.prophylaxis_administrations and case.surgery_end_time:
+        last_admin = max(a.administration_time for a in case.prophylaxis_administrations)
+        hours_duration = (last_admin - case.surgery_end_time).total_seconds() / 3600
+        record['PROPDURATION_HOURS'] = round(hours_duration, 1)
+        max_hours = 48 if case.procedure_category == 'cardiac' else 24
+        record['PROPDURATION_COMPLIANT'] = hours_duration <= max_hours
+    
+    return record
+```
+
+### 13.5 NSQIP Reports from AEGIS
+
+#### 13.5.1 Prophylaxis Compliance Report (for NSQIP Committee)
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ NSQIP PROPHYLAXIS COMPLIANCE REPORT                                         │
+│ Period: Q4 2024 (October - December)                                        │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│ SUMMARY                                                                     │
+│ ────────────────────────────────────────────────────────────────────────── │
+│ Total NSQIP-sampled cases:     342                                         │
+│ Prophylaxis indicated:         298 (87%)                                   │
+│ Prophylaxis given:             294 (99% of indicated)                      │
+│                                                                             │
+│ TIMING COMPLIANCE                                                           │
+│ ────────────────────────────────────────────────────────────────────────── │
+│ Within 60 minutes of incision: 268 (91%)                                   │
+│ Mean time before incision:     38 minutes                                  │
+│ Given AFTER incision:          4 cases (1.4%)  ◀── Review these cases     │
+│                                                                             │
+│ DURATION COMPLIANCE                                                         │
+│ ────────────────────────────────────────────────────────────────────────── │
+│ Discontinued ≤24h:             198 (67%)                                   │
+│ 24-48 hours:                   62 (21%)                                    │
+│ >48 hours:                     34 (12%)  ◀── Opportunity for improvement  │
+│                                                                             │
+│ Mean duration (non-cardiac):   22.4 hours                                  │
+│ Mean duration (cardiac):       31.2 hours                                  │
+│                                                                             │
+│ SSI CORRELATION (Preliminary - for QI purposes only)                       │
+│ ────────────────────────────────────────────────────────────────────────── │
+│                          SSI Rate    Cases                                 │
+│ Bundle compliant:          1.2%      (2/167)                               │
+│ Bundle non-compliant:      3.8%      (5/131)                               │
+│                                                                             │
+│ Note: Risk adjustment pending NSQIP SAR. Not for external reporting.       │
+│                                                                             │
+│ CASES FOR REVIEW                                                            │
+│ ────────────────────────────────────────────────────────────────────────── │
+│ • 4 cases with prophylaxis AFTER incision (see Appendix A)                 │
+│ • 34 cases with prophylaxis >48 hours (see Appendix B)                     │
+│ • 2 SSIs in bundle-compliant cases (see Appendix C)                        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 13.5.2 NSQIP Data Export Format
+
+The module will generate exports compatible with NSQIP data submission:
+
+```csv
+CASE_ID,MRN,DOS,CPT,SURGSPEC,WOUND_CLASS,PROPHYLAXIS,PROPHMEDS,PROPTIMING_MIN,PROPDURATION_HR,SSI_30D
+12345,A123456,2024-10-15,44970,PEDSURG,2,Yes,Cefazolin,32,18,No
+12346,A234567,2024-10-15,27130,ORTHO,1,Yes,Cefazolin,55,48,No
+12347,A345678,2024-10-16,42820,ENT,1,No,,,No
+12348,A456789,2024-10-16,33533,CARDIAC,2,Yes,"Cefazolin,Vancomycin",28,42,No
+```
+
+### 13.6 SSI Outcome Tracking
+
+To correlate prophylaxis compliance with outcomes, the module will track SSIs:
+
+```python
+@dataclass
+class SSIOutcome:
+    """Track SSI outcomes for prophylaxis correlation."""
+    case_id: str
+    patient_mrn: str
+    surgery_date: date
+    
+    # SSI occurrence (within 30 days per NSQIP definition)
+    superficial_ssi: bool = False
+    deep_ssi: bool = False
+    organ_space_ssi: bool = False
+    
+    # SSI details if occurred
+    ssi_diagnosis_date: Optional[date] = None
+    ssi_organism: Optional[str] = None
+    ssi_treatment: Optional[str] = None
+    
+    # Link to prophylaxis evaluation
+    prophylaxis_bundle_compliant: bool = False
+    
+    @property
+    def any_ssi(self) -> bool:
+        return self.superficial_ssi or self.deep_ssi or self.organ_space_ssi
+
+
+class SSICorrelationReport:
+    """
+    Generate reports correlating prophylaxis compliance with SSI rates.
+    
+    IMPORTANT: These are internal QI reports only. Risk-adjusted 
+    comparisons should use official NSQIP SAR data.
+    """
+    
+    def calculate_ssi_rates(
+        self,
+        cases: List[Tuple[ProphylaxisEvaluation, SSIOutcome]]
+    ) -> Dict:
+        """Calculate SSI rates by compliance status."""
+        
+        compliant_cases = [(e, o) for e, o in cases if e.bundle_compliant]
+        non_compliant_cases = [(e, o) for e, o in cases if not e.bundle_compliant]
+        
+        def ssi_rate(case_list):
+            if not case_list:
+                return 0.0
+            ssi_count = sum(1 for _, o in case_list if o.any_ssi)
+            return ssi_count / len(case_list) * 100
+        
+        return {
+            'compliant': {
+                'n': len(compliant_cases),
+                'ssi_count': sum(1 for _, o in compliant_cases if o.any_ssi),
+                'ssi_rate': ssi_rate(compliant_cases)
+            },
+            'non_compliant': {
+                'n': len(non_compliant_cases),
+                'ssi_count': sum(1 for _, o in non_compliant_cases if o.any_ssi),
+                'ssi_rate': ssi_rate(non_compliant_cases)
+            },
+            'overall': {
+                'n': len(cases),
+                'ssi_count': sum(1 for _, o in cases if o.any_ssi),
+                'ssi_rate': ssi_rate(cases)
+            }
+        }
+    
+    def ssi_by_element(
+        self,
+        cases: List[Tuple[ProphylaxisEvaluation, SSIOutcome]]
+    ) -> Dict:
+        """
+        Calculate SSI rates stratified by individual element compliance.
+        Helps identify which elements have strongest association with outcomes.
+        """
+        elements = ['timing', 'agent', 'dose', 'duration']
+        results = {}
+        
+        for element in elements:
+            compliant = [(e, o) for e, o in cases 
+                        if getattr(e, f'{element}_appropriate', None) == True]
+            non_compliant = [(e, o) for e, o in cases 
+                            if getattr(e, f'{element}_appropriate', None) == False]
+            
+            results[element] = {
+                'compliant_ssi_rate': self._calc_rate(compliant),
+                'non_compliant_ssi_rate': self._calc_rate(non_compliant),
+                'rate_difference': self._calc_rate(non_compliant) - self._calc_rate(compliant)
+            }
+        
+        return results
+```
+
+### 13.7 NSQIP Committee Dashboard
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ NSQIP Committee Dashboard - Prophylaxis Focus                               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  CURRENT QUARTER vs NSQIP BENCHMARK                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                            CCHMC     NSQIP Avg    Percentile        │   │
+│  │  Prophylaxis compliance    91%       88%          72nd              │   │
+│  │  Timing compliance         87%       82%          68th              │   │
+│  │  Duration ≤24h             67%       71%          42nd   ◀── Below │   │
+│  │  Overall SSI rate          2.1%      2.4%         58th              │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  SSI RATE BY PROPHYLAXIS COMPLIANCE                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │                                                                      │   │
+│  │  Bundle Compliant (n=412)      █░░░░░░░░░░░░░░░░░░░  1.2%           │   │
+│  │  Bundle Non-Compliant (n=186)  ████░░░░░░░░░░░░░░░░  3.8%           │   │
+│  │                                                                      │   │
+│  │  Relative Risk: 3.2x higher SSI risk when bundle not met            │   │
+│  │                                                                      │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  TREND: PROPHYLAXIS DURATION (% ≤24 hours)                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐   │
+│  │  80% ┤                              Target ─────────────────────    │   │
+│  │  70% ┤                    ╭─────╮                                    │   │
+│  │  60% ┤         ╭─────────╯     ╰─────╮                              │   │
+│  │  50% ┤    ╭────╯                     ╰────                          │   │
+│  │  40% ┤────╯                                                          │   │
+│  │      └────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────┴────   │   │
+│  │       Q1   Q2   Q3   Q4   Q1   Q2   Q3   Q4   Q1   Q2   Q3   Q4    │   │
+│  │       -------- 2023 -------|------- 2024 -------|-- 2025 --        │   │
+│  └─────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  [Download NSQIP Export]  [Generate Committee Report]  [View SSI Cases]    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.8 Integration with NSQIP SCR Workflow
+
+To minimize duplicate data entry and improve accuracy:
+
+| Current State | Future State with AEGIS |
+|---------------|-------------------------|
+| SCR manually abstracts prophylaxis from chart | AEGIS pre-populates fields |
+| Timing calculated manually from anesthesia record | Auto-calculated with precision |
+| Duration requires review of MAR | Auto-calculated from MAR data |
+| No real-time feedback | Immediate compliance scoring |
+| Quarterly review of SSI trends | Continuous SSI-prophylaxis correlation |
+
+**Estimated time savings**: 5-10 minutes per case × 50 cases/month = 4-8 hours/month
+
+### 13.9 NSQIP-Specific Configuration
+
+```python
+# NSQIP procedure categories and their prophylaxis requirements
+NSQIP_PROCEDURE_CATEGORIES = {
+    'APPY': {
+        'name': 'Appendectomy',
+        'cpt_codes': ['44950', '44960', '44970'],
+        'prophylaxis_required': True,
+        'wound_class_typical': 2,  # Clean-contaminated
+        'duration_limit_hours': 24
+    },
+    'CHOL': {
+        'name': 'Cholecystectomy',
+        'cpt_codes': ['47562', '47563', '47564', '47600'],
+        'prophylaxis_required': True,  # For open; optional for low-risk lap
+        'wound_class_typical': 2,
+        'duration_limit_hours': 24
+    },
+    'COLO': {
+        'name': 'Colectomy',
+        'cpt_codes': ['44140', '44141', '44143', '44144', '44145', '44146', 
+                      '44147', '44150', '44151', '44160', '44204', '44205',
+                      '44206', '44207', '44208', '44210', '44211', '44212'],
+        'prophylaxis_required': True,
+        'wound_class_typical': 2,
+        'duration_limit_hours': 24,
+        'requires_anaerobic_coverage': True  # Metronidazole
+    },
+    'CRAN': {
+        'name': 'Craniotomy',
+        'cpt_codes': ['61304', '61305', '61312', '61313', '61314', '61315',
+                      '61320', '61321', '61322', '61323'],
+        'prophylaxis_required': True,
+        'wound_class_typical': 1,  # Clean
+        'duration_limit_hours': 24
+    },
+    'FUSE': {
+        'name': 'Spinal Fusion',
+        'cpt_codes': ['22551', '22552', '22554', '22556', '22558', '22585',
+                      '22600', '22610', '22612', '22614', '22630', '22632',
+                      '22633', '22634', '22800', '22802', '22804'],
+        'prophylaxis_required': True,
+        'wound_class_typical': 1,
+        'duration_limit_hours': 24
+    },
+    # ... additional NSQIP categories
+}
+```
+
+---
+
+## 14. Local CCHMC Guidelines
+
+### 14.1 Placeholder for Local Guidelines
+
+> **TODO**: Insert Cincinnati Children's Hospital-specific surgical prophylaxis guidelines here.
+>
+> Local guidelines may include:
+> - Institutional antibiotic preferences
+> - MRSA screening protocols
+> - Transplant-specific protocols
+> - Cardiac surgery protocols (including timing of second dose for cardiopulmonary bypass)
+> - Weight-based dosing thresholds specific to pediatrics
+> - Allergy alternative algorithms
+> - VP shunt protocols (cefazolin ± vancomycin based on local practice)
+
+### 14.2 Expected Local Protocol Documents
+
+Please provide the following documents for incorporation:
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| General surgical prophylaxis protocol | Standard agent selection, timing, duration | ⬜ Pending |
+| Cardiac surgery prophylaxis protocol | May include vancomycin, extended duration | ⬜ Pending |
+| Transplant prophylaxis protocols | Liver, kidney, heart, lung, BMT | ⬜ Pending |
+| Neurosurgery/VP shunt protocol | Shunt procedures, craniotomy | ⬜ Pending |
+| Orthopedic implant protocol | Spine fusion, hardware | ⬜ Pending |
+| MRSA screening protocol | When to add vancomycin | ⬜ Pending |
+| Allergy management protocol | Alternatives for β-lactam allergy | ⬜ Pending |
+| Weight-based dosing guidelines | Pediatric-specific thresholds | ⬜ Pending |
+
+### 14.3 Local Adaptation Configuration
+
+Once local guidelines are provided, they will be encoded here:
+
+```python
+# CCHMC-specific configurations (to be populated)
+CCHMC_LOCAL_PROTOCOLS = {
+    'default_agent': 'cefazolin',
+    'default_dose_mg_per_kg': 30,
+    'default_max_dose_mg': 2000,
+    'high_weight_threshold_kg': 120,
+    'high_weight_dose_mg': 3000,
+    
+    # MRSA considerations
+    'mrsa_screening_required_procedures': [
+        # List procedures requiring MRSA screening
+    ],
+    'mrsa_positive_add_vancomycin': True,
+    
+    # Cardiac surgery
+    'cardiac_duration_limit_hours': 48,
+    'cardiac_vancomycin_routine': False,  # or True based on local practice
+    
+    # VP shunt
+    'vp_shunt_add_vancomycin': True,  # Based on local protocol
+    
+    # Colorectal
+    'colorectal_anaerobic_agent': 'metronidazole',
+    'colorectal_mechanical_bowel_prep': True,  # If used locally
+    
+    # Allergy alternatives
+    'beta_lactam_allergy_alternatives': {
+        'clean_procedures': ['vancomycin', 'clindamycin'],
+        'colorectal': ['clindamycin', 'metronidazole', 'gentamicin'],
+        'urologic': ['ciprofloxacin', 'gentamicin'],
+    }
+}
+```
+
+### 14.4 Validation Process
+
+Once local guidelines are incorporated:
+
+1. **Clinical review**: ASP and surgery review encoded logic
+2. **Test cases**: Validate against 50 historical cases
+3. **Edge cases**: Test allergy scenarios, high-weight patients, complex procedures
+4. **Sign-off**: Formal approval from ASP Medical Director and Surgery representative
+
+---
+
+## 15. Appendices
 
 ### Appendix A: CPT Code Mapping (Partial)
 
