@@ -53,6 +53,28 @@
         </div>
         <div class="coming-soon-badge">Coming soon</div>
     </a>
+
+    <a href="{{ url_for('abx_indications.dashboard') }}" class="section-card section-abx">
+        <div class="section-icon">&#x1F48A;</div>
+        <h2>Antibiotic Indications</h2>
+        <p>ICD-10 based antibiotic appropriateness classification for real-time order assessment.</p>
+        <div class="section-features">
+            <span>ICD-10 Classification</span>
+            <span>Prophylaxis</span>
+            <span>FN Detection</span>
+        </div>
+    </a>
+
+    <a href="{{ url_for('guideline_adherence.dashboard') }}" class="section-card section-guidelines">
+        <div class="section-icon">&#x1F4CB;</div>
+        <h2>Guideline Adherence</h2>
+        <p>Population-level tracking of clinical guideline and care bundle compliance.</p>
+        <div class="section-features">
+            <span>Bundle Tracking</span>
+            <span>Compliance %</span>
+            <span>JC Reporting</span>
+        </div>
+    </a>
 </div>
 
 <style>
@@ -179,6 +201,28 @@
 }
 .section-dashboards .section-icon {
     color: var(--color-primary);
+}
+
+.section-abx {
+    border-left-color: #059669;
+}
+.section-abx:hover {
+    border-left-color: #059669;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(5, 150, 105, 0.1) 100%);
+}
+.section-abx .section-icon {
+    color: #059669;
+}
+
+.section-guidelines {
+    border-left-color: #0891B2;
+}
+.section-guidelines:hover {
+    border-left-color: #0891B2;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(8, 145, 178, 0.1) 100%);
+}
+.section-guidelines .section-icon {
+    color: #0891B2;
 }
 
 .coming-soon-badge {

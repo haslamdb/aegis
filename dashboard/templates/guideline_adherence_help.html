@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block title %}Guideline Adherence Help - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Guideline Adherence - Help</h1>
+    <a href="{{ url_for('guideline_adherence.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<div class="help-content">
+    <div class="help-card">
+        <h2>Overview</h2>
+        <p>The Guideline Adherence module tracks adherence to evidence-based clinical guidelines/bundles at the
+           <strong>population level</strong>. Unlike the Antibiotic Indications module (which assesses individual
+           orders in real-time), this module generates <strong>aggregate metrics over time</strong> for quality
+           improvement and Joint Commission (JC) reporting.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Why Separate from Antibiotic Indications?</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th>Antibiotic Indications</th>
+                    <th>Guideline Adherence</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Question</strong></td>
+                    <td>"Is this order justified?"</td>
+                    <td>"Did we follow the full pathway?"</td>
+                </tr>
+                <tr>
+                    <td><strong>Timing</strong></td>
+                    <td>Real-time (per order)</td>
+                    <td>Retrospective (daily/weekly/monthly)</td>
+                </tr>
+                <tr>
+                    <td><strong>Scope</strong></td>
+                    <td>Antibiotic orders only</td>
+                    <td>Full care bundle (cultures, labs, imaging, consults, antibiotics)</td>
+                </tr>
+                <tr>
+                    <td><strong>Output</strong></td>
+                    <td>Alert/flag for ASP intervention</td>
+                    <td>Compliance % for dashboard/report</td>
+                </tr>
+                <tr>
+                    <td><strong>Audience</strong></td>
+                    <td>Pharmacist, ordering provider</td>
+                    <td>ASP leadership, QI, JC surveyors</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Available Guidelines</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Guideline</th>
+                    <th>Elements</th>
+                    <th>Key Metrics</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Pediatric CAP</strong></td>
+                    <td>6</td>
+                    <td>Blood culture timing, empiric choice, duration</td>
+                </tr>
+                <tr>
+                    <td><strong>Febrile Neutropenia</strong></td>
+                    <td>6</td>
+                    <td>Time to antibiotics, appropriate agent, cultures</td>
+                </tr>
+                <tr>
+                    <td><strong>Pediatric Sepsis</strong></td>
+                    <td>6</td>
+                    <td>Lactate, culture timing, fluid resuscitation</td>
+                </tr>
+                <tr>
+                    <td><strong>Surgical Prophylaxis</strong></td>
+                    <td>5</td>
+                    <td>Timing, agent selection, duration &le;24h</td>
+                </tr>
+                <tr>
+                    <td><strong>Pediatric UTI</strong></td>
+                    <td>8</td>
+                    <td>Culture method, empiric choice, imaging</td>
+                </tr>
+                <tr>
+                    <td><strong>SSTI/Cellulitis</strong></td>
+                    <td>6</td>
+                    <td>MRSA coverage decision, I&D if purulent</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Bundle Elements Include Non-Antibiotic Elements</h2>
+        <p>Guidelines include elements that are essential for quality care beyond antibiotics:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Element Type</th>
+                    <th>Examples</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Cultures</strong></td>
+                    <td>Blood culture before antibiotics, urine culture technique</td>
+                </tr>
+                <tr>
+                    <td><strong>Labs</strong></td>
+                    <td>Lactate for sepsis, procalcitonin, CBC</td>
+                </tr>
+                <tr>
+                    <td><strong>Imaging</strong></td>
+                    <td>Chest X-ray for pneumonia, ultrasound for UTI</td>
+                </tr>
+                <tr>
+                    <td><strong>Antibiotics</strong></td>
+                    <td>Appropriate agent, timing, duration</td>
+                </tr>
+                <tr>
+                    <td><strong>Procedures</strong></td>
+                    <td>I&D for purulent SSTI, source control</td>
+                </tr>
+                <tr>
+                    <td><strong>Process</strong></td>
+                    <td>Consult ordered, follow-up arranged</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Example: Pediatric CAP Bundle</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Element</th>
+                    <th>Type</th>
+                    <th>Required</th>
+                    <th>Timing</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Blood culture obtained</td>
+                    <td>Culture</td>
+                    <td>Recommended</td>
+                    <td>Before antibiotics</td>
+                </tr>
+                <tr>
+                    <td>Chest X-ray performed</td>
+                    <td>Imaging</td>
+                    <td>Required</td>
+                    <td>Within 24h</td>
+                </tr>
+                <tr>
+                    <td>Appropriate empiric antibiotic</td>
+                    <td>Antibiotic</td>
+                    <td>Required</td>
+                    <td>Within 4h</td>
+                </tr>
+                <tr>
+                    <td>Narrow-spectrum preferred</td>
+                    <td>Antibiotic</td>
+                    <td>Recommended</td>
+                    <td>-</td>
+                </tr>
+                <tr>
+                    <td>Duration &le;5 days (uncomplicated)</td>
+                    <td>Antibiotic</td>
+                    <td>Required</td>
+                    <td>At discharge</td>
+                </tr>
+                <tr>
+                    <td>Follow-up arranged</td>
+                    <td>Process</td>
+                    <td>Recommended</td>
+                    <td>At discharge</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Dashboard Features (Coming Soon)</h2>
+        <h3>Aggregate Compliance View</h3>
+        <ul>
+            <li>Overall compliance rate (% of encounters meeting all required elements)</li>
+            <li>Trend over time (weekly/monthly)</li>
+            <li>Comparison by unit, service, or provider</li>
+            <li>Element-level breakdown (which elements are failing?)</li>
+        </ul>
+
+        <h3>Drill-Down Capabilities</h3>
+        <ul>
+            <li>View non-compliant encounters</li>
+            <li>Filter by missing element</li>
+            <li>Identify common failure patterns</li>
+            <li>Provider-level feedback reports</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>Data Requirements</h2>
+        <p>To track guideline adherence, AEGIS needs access to:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Data Type</th>
+                    <th>FHIR Resource</th>
+                    <th>Example Elements</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Diagnoses</td>
+                    <td>Condition</td>
+                    <td>ICD-10 codes for triggering guidelines</td>
+                </tr>
+                <tr>
+                    <td>Antibiotics</td>
+                    <td>MedicationRequest/Administration</td>
+                    <td>Agent, timing, duration</td>
+                </tr>
+                <tr>
+                    <td>Cultures</td>
+                    <td>ServiceRequest, Observation</td>
+                    <td>Blood culture, urine culture, timing</td>
+                </tr>
+                <tr>
+                    <td>Labs</td>
+                    <td>Observation</td>
+                    <td>Lactate, CBC, procalcitonin</td>
+                </tr>
+                <tr>
+                    <td>Imaging</td>
+                    <td>ImagingStudy</td>
+                    <td>CXR, CT, ultrasound</td>
+                </tr>
+                <tr>
+                    <td>Vitals</td>
+                    <td>Observation</td>
+                    <td>Temperature, heart rate, BP</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>References</h2>
+        <ul>
+            <li>Bradley JS, et al. The Management of Community-Acquired Pneumonia in Infants and Children Older Than 3 Months of Age: Clinical Practice Guidelines by PIDS and IDSA. Clin Infect Dis. 2011.</li>
+            <li>Surviving Sepsis Campaign. International Guidelines for Management of Sepsis and Septic Shock. 2021.</li>
+            <li>The Joint Commission. MM.09.01.01 - Antimicrobial Stewardship Standard. Effective January 1, 2023.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

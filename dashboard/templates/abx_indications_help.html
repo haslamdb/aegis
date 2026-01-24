@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}Antibiotic Indications Help - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Antibiotic Indications - Help</h1>
+    <a href="{{ url_for('abx_indications.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<div class="help-content">
+    <div class="help-card">
+        <h2>Overview</h2>
+        <p>The Antibiotic Indications module provides automated classification of antibiotic indication appropriateness.
+           It enables real-time assessment of whether antibiotic orders have documented indications.</p>
+        <p>This module implements <strong>Layer 1</strong> of the three-layer appropriateness model, answering:
+           "Is there ANY indication for antibiotics?"</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Classification Categories</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Code</th>
+                    <th>Meaning</th>
+                    <th>Dashboard Color</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Always</strong></td>
+                    <td>A</td>
+                    <td>Antibiotic indicated - documented bacterial infection</td>
+                    <td><span class="badge badge-success">Green</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Sometimes</strong></td>
+                    <td>S</td>
+                    <td>May need antibiotics - clinical judgment required</td>
+                    <td><span class="badge badge-warning">Yellow</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Never</strong></td>
+                    <td>N</td>
+                    <td>No antibiotic indication - likely inappropriate</td>
+                    <td><span class="badge badge-critical">Red</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Prophylaxis</strong></td>
+                    <td>P</td>
+                    <td>Surgical or medical prophylaxis indication</td>
+                    <td><span class="badge badge-info">Blue</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Febrile Neutropenia</strong></td>
+                    <td>FN</td>
+                    <td>Neutropenia + fever - empiric therapy indicated</td>
+                    <td><span class="badge badge-success">Green</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Data Sources</h2>
+        <p>The classification is based on:</p>
+        <ul>
+            <li><strong>Chua ICD-10 Classification</strong> - 94,249 ICD-10 codes mapped to appropriateness categories</li>
+            <li><strong>Pediatric Inpatient Modifications</strong> - Overrides for inpatient-specific conditions</li>
+            <li><strong>Surgical Prophylaxis Table</strong> - 55+ CPT codes with agent/duration recommendations</li>
+            <li><strong>Febrile Neutropenia Logic</strong> - Automatic detection of neutropenia + fever</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>Pediatric Inpatient Overrides</h2>
+        <p>The base Chua classification is designed for outpatient use. The following modifications are applied for inpatient pediatrics:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Description</th>
+                    <th>Original</th>
+                    <th>Modified</th>
+                    <th>Rationale</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>R78.81</td>
+                    <td>Bacteremia</td>
+                    <td>N</td>
+                    <td><strong>A</strong></td>
+                    <td>Inpatient bacteremia always requires treatment</td>
+                </tr>
+                <tr>
+                    <td>J69.0</td>
+                    <td>Aspiration PNA</td>
+                    <td>N</td>
+                    <td><strong>S</strong></td>
+                    <td>Often requires empiric coverage</td>
+                </tr>
+                <tr>
+                    <td>K65.x</td>
+                    <td>Peritonitis</td>
+                    <td>S</td>
+                    <td><strong>A</strong></td>
+                    <td>Surgical emergency requiring antibiotics</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Febrile Neutropenia Detection</h2>
+        <p>Febrile neutropenia is automatically detected when:</p>
+        <ul>
+            <li>ANY neutropenia code (D70.x) is present, AND</li>
+            <li>Fever code (R50.x) is present OR fever_present=True (temp &ge; 38.0&deg;C)</li>
+        </ul>
+        <p>Result: Category FN with recommendation for empiric antibiotic protocol.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Surgical Prophylaxis</h2>
+        <p>The module includes detailed surgical prophylaxis recommendations organized by specialty:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Specialty</th>
+                    <th>Key Agents</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Cardiac</td><td>Cefazolin, Vancomycin</td></tr>
+                <tr><td>Thoracic</td><td>Cefazolin, Amp-sulbactam</td></tr>
+                <tr><td>Hepatobiliary</td><td>Cefazolin, Pip-tazo</td></tr>
+                <tr><td>Colorectal</td><td>Cefazolin + Metronidazole</td></tr>
+                <tr><td>GU</td><td>Cefazolin</td></tr>
+                <tr><td>Orthopedic</td><td>Cefazolin</td></tr>
+                <tr><td>Neurosurgery</td><td>Cefazolin, Vancomycin</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>References</h2>
+        <ul>
+            <li>Chua KP, Fischer MA, Linder JA. Appropriateness of outpatient antibiotic prescribing among privately insured US patients: ICD-10-CM based cross sectional study. BMJ. 2019;364:k5092.</li>
+            <li>ASHP/IDSA/SHEA/SIS. Clinical Practice Guidelines for Antimicrobial Prophylaxis in Surgery. 2013.</li>
+            <li>The Joint Commission. MM.09.01.01 - Antimicrobial Stewardship Standard. Effective January 1, 2023.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

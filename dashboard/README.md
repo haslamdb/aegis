@@ -10,7 +10,7 @@ Web-based dashboard for the AEGIS (Automated Evaluation and Guidance for Infecti
 
 ## Dashboard Structure
 
-The AEGIS dashboard is organized into four main sections accessible from the landing page:
+The AEGIS dashboard is organized into six main sections accessible from the landing page:
 
 | Section | URL | Description |
 |---------|-----|-------------|
@@ -18,6 +18,8 @@ The AEGIS dashboard is organized into four main sections accessible from the lan
 | **HAI Detection** | `/hai-detection/` | HAI candidate screening (CLABSI, CAUTI, SSI, VAE, CDI) and IP review workflow |
 | **NHSN Reporting** | `/nhsn-reporting/` | AU, AR, and HAI data aggregation with NHSN submission |
 | **Dashboards** | `/dashboards/` | Analytics dashboards (coming soon) |
+| **Antibiotic Indications** | `/abx-indications/` | ICD-10 based antibiotic appropriateness classification |
+| **Guideline Adherence** | `/guideline-adherence/` | Population-level guideline and care bundle compliance tracking |
 
 ## Features
 
@@ -48,6 +50,29 @@ The AEGIS dashboard is organized into four main sections accessible from the lan
 
 ### Dashboards (`/dashboards/`)
 - Coming soon: Interactive analytics for trends, outcomes, and operational insights
+
+### Antibiotic Indications (`/abx-indications/`)
+- **Dashboard** - ICD-10 based antibiotic appropriateness classification
+- **Help** - Classification categories and methodology documentation
+- **Classification Categories**:
+  - Always (A) - Antibiotic indicated (documented bacterial infection)
+  - Sometimes (S) - May need antibiotics (clinical judgment required)
+  - Never (N) - No antibiotic indication (likely inappropriate)
+  - Prophylaxis (P) - Surgical or medical prophylaxis indication
+  - Febrile Neutropenia (FN) - Empiric therapy indicated
+- **Special Logic**: Febrile neutropenia detection, surgical prophylaxis validation (55+ CPT codes)
+
+### Guideline Adherence (`/guideline-adherence/`)
+- **Dashboard** - Population-level guideline compliance tracking
+- **Help** - Bundle elements and methodology documentation
+- **Guidelines Tracked**:
+  - Pediatric CAP (6 elements)
+  - Febrile Neutropenia (6 elements)
+  - Pediatric Sepsis (6 elements)
+  - Surgical Prophylaxis (5 elements)
+  - Pediatric UTI (8 elements)
+  - SSTI/Cellulitis (6 elements)
+- **Output**: Compliance percentages, trend analysis, JC reporting
 
 ## Alert Management
 
@@ -237,6 +262,18 @@ dashboard/
 | Route | Description |
 |-------|-------------|
 | `/dashboards/` | Analytics dashboards (coming soon) |
+
+### Antibiotic Indications
+| Route | Description |
+|-------|-------------|
+| `/abx-indications/` | Antibiotic indications dashboard |
+| `/abx-indications/help` | Help and documentation |
+
+### Guideline Adherence
+| Route | Description |
+|-------|-------------|
+| `/guideline-adherence/` | Guideline adherence dashboard |
+| `/guideline-adherence/help` | Help and documentation |
 
 ## Related Documentation
 

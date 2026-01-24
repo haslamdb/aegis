@@ -41,6 +41,8 @@ def create_app(config=None):
     from .routes.hai import hai_detection_bp
     from .routes.au_ar import nhsn_reporting_bp
     from .routes.dashboards import dashboards_bp
+    from .routes.abx_indications import abx_indications_bp
+    from .routes.guideline_adherence import guideline_adherence_bp
 
     app.register_blueprint(main_bp)  # Landing page at /
     app.register_blueprint(asp_alerts_bp)  # ASP Alerts at /asp-alerts
@@ -48,6 +50,8 @@ def create_app(config=None):
     app.register_blueprint(hai_detection_bp)  # HAI Detection at /hai-detection
     app.register_blueprint(nhsn_reporting_bp)  # NHSN Reporting at /nhsn-reporting
     app.register_blueprint(dashboards_bp)  # Dashboards at /dashboards
+    app.register_blueprint(abx_indications_bp)  # Abx Indications at /abx-indications
+    app.register_blueprint(guideline_adherence_bp)  # Guideline Adherence at /guideline-adherence
 
     # Context processor for templates
     @app.context_processor
