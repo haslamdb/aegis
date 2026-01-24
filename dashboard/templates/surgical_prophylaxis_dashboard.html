@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Surgical Prophylaxis - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Surgical Prophylaxis</h1>
+    <a href="{{ url_for('surgical_prophylaxis.help_page') }}" class="btn btn-secondary">Help</a>
+</div>
+
+<div class="dashboard-summary">
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-success);">&#x2714;</div>
+        <div class="summary-content">
+            <div class="summary-value">--</div>
+            <div class="summary-label">Compliant Cases</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-warning);">&#x23F1;</div>
+        <div class="summary-content">
+            <div class="summary-value">--</div>
+            <div class="summary-label">Duration Alerts</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-danger);">&#x26A0;</div>
+        <div class="summary-content">
+            <div class="summary-value">--</div>
+            <div class="summary-label">Agent Mismatches</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-primary);">&#x1F3E5;</div>
+        <div class="summary-content">
+            <div class="summary-value">--</div>
+            <div class="summary-label">Active OR Cases</div>
+        </div>
+    </div>
+</div>
+
+<div class="module-info">
+    <h2>About This Module</h2>
+    <p>The Surgical Prophylaxis module provides real-time monitoring and validation of surgical antibiotic
+       prophylaxis following ASHP/IDSA/SHEA/SIS guidelines. It ensures appropriate agent selection,
+       timing, and duration for perioperative antibiotics.</p>
+
+    <h3>Validation Checks</h3>
+    <div class="check-cards">
+        <div class="check-card">
+            <h4>&#x1F48A; Agent Selection</h4>
+            <ul>
+                <li>Appropriate antibiotic for procedure</li>
+                <li>Allergy-aware alternatives</li>
+                <li>MRSA coverage when indicated</li>
+            </ul>
+        </div>
+        <div class="check-card">
+            <h4>&#x23F0; Timing</h4>
+            <ul>
+                <li>Within 60 min of incision (standard)</li>
+                <li>Within 120 min (vancomycin/fluoroquinolones)</li>
+                <li>Re-dosing for long procedures</li>
+            </ul>
+        </div>
+        <div class="check-card">
+            <h4>&#x23F1; Duration</h4>
+            <ul>
+                <li>≤24 hours post-op (most procedures)</li>
+                <li>≤48 hours (cardiac surgery)</li>
+                <li>Alert when exceeded</li>
+            </ul>
+        </div>
+        <div class="check-card">
+            <h4>&#x2696; Dosing</h4>
+            <ul>
+                <li>Weight-based (cefazolin ≥120kg: 3g)</li>
+                <li>Pediatric dosing</li>
+                <li>Renal adjustments</li>
+            </ul>
+        </div>
+    </div>
+
+    <h3>Procedure Coverage</h3>
+    <table class="help-table">
+        <thead>
+            <tr>
+                <th>Specialty</th>
+                <th>Example Procedures</th>
+                <th>Primary Agent</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Cardiac</strong></td>
+                <td>VSD repair, valve replacement, CABG, transplant</td>
+                <td>Cefazolin, Vancomycin</td>
+            </tr>
+            <tr>
+                <td><strong>Thoracic</strong></td>
+                <td>Lobectomy, pneumonectomy</td>
+                <td>Cefazolin, Amp-sulbactam</td>
+            </tr>
+            <tr>
+                <td><strong>Hepatobiliary</strong></td>
+                <td>Cholecystectomy, liver transplant</td>
+                <td>Cefazolin, Pip-tazo</td>
+            </tr>
+            <tr>
+                <td><strong>Colorectal</strong></td>
+                <td>Colectomy, appendectomy</td>
+                <td>Cefazolin + Metronidazole</td>
+            </tr>
+            <tr>
+                <td><strong>GU</strong></td>
+                <td>Pyeloplasty, nephrectomy, transplant</td>
+                <td>Cefazolin</td>
+            </tr>
+            <tr>
+                <td><strong>Orthopedic</strong></td>
+                <td>Arthroplasty, spinal fusion, ORIF</td>
+                <td>Cefazolin</td>
+            </tr>
+            <tr>
+                <td><strong>Neurosurgery</strong></td>
+                <td>Craniotomy, VP shunt, laminectomy</td>
+                <td>Cefazolin, Vancomycin</td>
+            </tr>
+            <tr>
+                <td><strong>Vascular</strong></td>
+                <td>Endarterectomy, bypass</td>
+                <td>Cefazolin</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="coming-soon-notice">
+    <h3>Coming Soon</h3>
+    <p>Real-time OR integration with prophylaxis timing validation and duration monitoring alerts.</p>
+</div>
+
+<style>
+.dashboard-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.summary-icon {
+    font-size: 2rem;
+}
+
+.summary-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-gray-800);
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.module-info {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 2rem;
+}
+
+.module-info h2 {
+    margin-bottom: 1rem;
+    color: var(--color-gray-800);
+}
+
+.module-info h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    color: var(--color-gray-700);
+}
+
+.check-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.check-card {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: var(--color-gray-50);
+    border-left: 4px solid #E11D48;
+}
+
+.check-card h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: var(--color-gray-800);
+}
+
+.check-card ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.check-card li {
+    margin: 0.25rem 0;
+}
+
+.coming-soon-notice {
+    background: var(--color-info-light);
+    border: 1px dashed var(--color-primary);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.coming-soon-notice h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--color-primary);
+}
+
+.coming-soon-notice p {
+    margin: 0;
+    color: var(--color-gray-600);
+}
+</style>
+{% endblock %}

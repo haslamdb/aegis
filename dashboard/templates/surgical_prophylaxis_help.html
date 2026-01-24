@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Surgical Prophylaxis Help - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Surgical Prophylaxis - Help</h1>
+    <a href="{{ url_for('surgical_prophylaxis.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<div class="help-content">
+    <div class="help-card">
+        <h2>Overview</h2>
+        <p>The Surgical Prophylaxis module provides real-time monitoring and validation of surgical antibiotic
+           prophylaxis following ASHP/IDSA/SHEA/SIS clinical practice guidelines. The module validates agent
+           selection, timing, duration, and dosing for perioperative antibiotics.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Timing Guidelines</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Antibiotic Class</th>
+                    <th>Recommended Timing</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Standard antibiotics</strong><br>(cefazolin, ampicillin-sulbactam)</td>
+                    <td>Within 60 minutes of incision</td>
+                    <td>Optimal: 30-60 minutes before</td>
+                </tr>
+                <tr>
+                    <td><strong>Vancomycin</strong></td>
+                    <td>Within 120 minutes of incision</td>
+                    <td>Requires slow infusion (1-2 hours)</td>
+                </tr>
+                <tr>
+                    <td><strong>Fluoroquinolones</strong></td>
+                    <td>Within 120 minutes of incision</td>
+                    <td>Longer infusion time required</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Duration Guidelines</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Procedure Type</th>
+                    <th>Maximum Duration</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Most procedures</strong></td>
+                    <td>≤24 hours post-op</td>
+                    <td>Single dose often sufficient for clean procedures</td>
+                </tr>
+                <tr>
+                    <td><strong>Cardiac surgery</strong></td>
+                    <td>≤48 hours post-op</td>
+                    <td>Extended duration acceptable</td>
+                </tr>
+                <tr>
+                    <td><strong>Clean procedures</strong></td>
+                    <td>Single dose</td>
+                    <td>No post-op doses needed</td>
+                </tr>
+            </tbody>
+        </table>
+        <p><strong>Key Principle:</strong> Prophylaxis should be discontinued within 24 hours for most procedures.
+           Extended duration does not reduce SSI risk and increases resistance.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Re-dosing During Surgery</h2>
+        <p>For prolonged procedures, re-dosing is recommended based on antibiotic half-life:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Antibiotic</th>
+                    <th>Re-dose Interval</th>
+                    <th>From First Dose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Cefazolin</td>
+                    <td>Every 4 hours</td>
+                    <td>Re-dose if surgery &gt;4 hours</td>
+                </tr>
+                <tr>
+                    <td>Cefoxitin</td>
+                    <td>Every 2 hours</td>
+                    <td>Re-dose if surgery &gt;2 hours</td>
+                </tr>
+                <tr>
+                    <td>Ampicillin-sulbactam</td>
+                    <td>Every 2 hours</td>
+                    <td>Re-dose if surgery &gt;2 hours</td>
+                </tr>
+                <tr>
+                    <td>Vancomycin</td>
+                    <td>Not typically needed</td>
+                    <td>Long half-life</td>
+                </tr>
+            </tbody>
+        </table>
+        <p>Also re-dose if significant blood loss (&gt;1500 mL) occurs during surgery.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Weight-Based Dosing</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Antibiotic</th>
+                    <th>Standard Dose</th>
+                    <th>Weight-Based Adjustment</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Cefazolin</strong></td>
+                    <td>2g IV</td>
+                    <td>≥120 kg: 3g IV</td>
+                </tr>
+                <tr>
+                    <td><strong>Vancomycin</strong></td>
+                    <td>15 mg/kg IV</td>
+                    <td>Max 2g per dose</td>
+                </tr>
+                <tr>
+                    <td><strong>Gentamicin</strong></td>
+                    <td>5 mg/kg IV</td>
+                    <td>Use adjusted body weight if obese</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Procedure-Specific Recommendations</h2>
+        <h3>Cardiac Surgery</h3>
+        <ul>
+            <li><strong>Primary:</strong> Cefazolin 2g (3g if ≥120kg)</li>
+            <li><strong>MRSA risk/colonized:</strong> Add vancomycin 15 mg/kg</li>
+            <li><strong>Beta-lactam allergy:</strong> Vancomycin + gentamicin</li>
+            <li><strong>Duration:</strong> ≤48 hours</li>
+        </ul>
+
+        <h3>Colorectal Surgery</h3>
+        <ul>
+            <li><strong>Primary:</strong> Cefazolin 2g + Metronidazole 500mg</li>
+            <li><strong>Alternative:</strong> Ertapenem 1g</li>
+            <li><strong>Mechanical bowel prep:</strong> With oral antibiotics if used</li>
+            <li><strong>Duration:</strong> ≤24 hours</li>
+        </ul>
+
+        <h3>Orthopedic Surgery (with implant)</h3>
+        <ul>
+            <li><strong>Primary:</strong> Cefazolin 2g (3g if ≥120kg)</li>
+            <li><strong>MRSA colonized:</strong> Add vancomycin</li>
+            <li><strong>Beta-lactam allergy:</strong> Vancomycin or clindamycin</li>
+            <li><strong>Duration:</strong> ≤24 hours</li>
+        </ul>
+
+        <h3>Neurosurgery</h3>
+        <ul>
+            <li><strong>Craniotomy:</strong> Cefazolin 2g</li>
+            <li><strong>CSF shunt:</strong> Cefazolin 2g (some add vancomycin)</li>
+            <li><strong>Spinal with hardware:</strong> Cefazolin 2g</li>
+            <li><strong>Duration:</strong> ≤24 hours</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>MRSA Considerations</h2>
+        <p>Add vancomycin to standard prophylaxis when:</p>
+        <ul>
+            <li>Known MRSA colonization (positive nasal screen)</li>
+            <li>Recent MRSA infection</li>
+            <li>High institutional MRSA rates</li>
+            <li>Cardiac surgery with sternotomy</li>
+            <li>Orthopedic surgery with implant (per institutional protocol)</li>
+        </ul>
+        <p><strong>Note:</strong> Vancomycin should be added to (not replace) cefazolin for gram-negative coverage.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Allergy Alternatives</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Allergy Type</th>
+                    <th>Can Use</th>
+                    <th>Avoid</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Penicillin (non-severe)</strong></td>
+                    <td>Cefazolin (low cross-reactivity)</td>
+                    <td>Ampicillin, piperacillin</td>
+                </tr>
+                <tr>
+                    <td><strong>Penicillin (severe/anaphylaxis)</strong></td>
+                    <td>Vancomycin, clindamycin</td>
+                    <td>All beta-lactams</td>
+                </tr>
+                <tr>
+                    <td><strong>Cephalosporin</strong></td>
+                    <td>Vancomycin, clindamycin</td>
+                    <td>All cephalosporins</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Compliance Metrics</h2>
+        <p>The module tracks the following quality metrics:</p>
+        <ul>
+            <li><strong>Timing compliance:</strong> % of cases with prophylaxis within recommended window</li>
+            <li><strong>Agent compliance:</strong> % of cases with guideline-concordant antibiotic</li>
+            <li><strong>Duration compliance:</strong> % of cases discontinued within recommended timeframe</li>
+            <li><strong>Dosing compliance:</strong> % of cases with weight-appropriate dosing</li>
+            <li><strong>Overall compliance:</strong> % of cases meeting all criteria</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>References</h2>
+        <ul>
+            <li>Bratzler DW, Dellinger EP, Olsen KM, et al. Clinical practice guidelines for antimicrobial prophylaxis in surgery. Am J Health Syst Pharm. 2013;70(3):195-283.</li>
+            <li>ASHP/IDSA/SHEA/SIS. Clinical Practice Guidelines for Antimicrobial Prophylaxis in Surgery. 2013.</li>
+            <li>Ban KA, et al. American College of Surgeons and Surgical Infection Society: Surgical Site Infection Guidelines, 2016 Update. J Am Coll Surg. 2017.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

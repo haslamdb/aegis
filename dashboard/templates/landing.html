@@ -75,6 +75,17 @@
             <span>JC Reporting</span>
         </div>
     </a>
+
+    <a href="{{ url_for('surgical_prophylaxis.dashboard') }}" class="section-card section-surgical">
+        <div class="section-icon">&#x1FA7A;</div>
+        <h2>Surgical Prophylaxis</h2>
+        <p>Perioperative antibiotic validation for timing, agent selection, and duration.</p>
+        <div class="section-features">
+            <span>Timing Validation</span>
+            <span>Agent Selection</span>
+            <span>Duration Monitor</span>
+        </div>
+    </a>
 </div>
 
 <style>
@@ -223,6 +234,17 @@
 }
 .section-guidelines .section-icon {
     color: #0891B2;
+}
+
+.section-surgical {
+    border-left-color: #E11D48;
+}
+.section-surgical:hover {
+    border-left-color: #E11D48;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(225, 29, 72, 0.1) 100%);
+}
+.section-surgical .section-icon {
+    color: #E11D48;
 }
 
 .coming-soon-badge {

@@ -10,7 +10,7 @@ Web-based dashboard for the AEGIS (Automated Evaluation and Guidance for Infecti
 
 ## Dashboard Structure
 
-The AEGIS dashboard is organized into six main sections accessible from the landing page:
+The AEGIS dashboard is organized into seven main sections accessible from the landing page:
 
 | Section | URL | Description |
 |---------|-----|-------------|
@@ -20,6 +20,7 @@ The AEGIS dashboard is organized into six main sections accessible from the land
 | **Dashboards** | `/dashboards/` | Analytics dashboards (coming soon) |
 | **Antibiotic Indications** | `/abx-indications/` | ICD-10 based antibiotic appropriateness classification |
 | **Guideline Adherence** | `/guideline-adherence/` | Population-level guideline and care bundle compliance tracking |
+| **Surgical Prophylaxis** | `/surgical-prophylaxis/` | Perioperative antibiotic timing, agent, and duration validation |
 
 ## Features
 
@@ -73,6 +74,16 @@ The AEGIS dashboard is organized into six main sections accessible from the land
   - Pediatric UTI (8 elements)
   - SSTI/Cellulitis (6 elements)
 - **Output**: Compliance percentages, trend analysis, JC reporting
+
+### Surgical Prophylaxis (`/surgical-prophylaxis/`)
+- **Dashboard** - Perioperative antibiotic monitoring
+- **Help** - Timing, agent, and duration guidelines
+- **Validation Checks**:
+  - Agent selection (appropriate for procedure, allergy alternatives)
+  - Timing (within 60/120 min of incision)
+  - Duration (≤24h for most, ≤48h for cardiac)
+  - Dosing (weight-based adjustments)
+- **Coverage**: 55+ CPT codes across 8 surgical specialties
 
 ## Alert Management
 
@@ -274,6 +285,12 @@ dashboard/
 |-------|-------------|
 | `/guideline-adherence/` | Guideline adherence dashboard |
 | `/guideline-adherence/help` | Help and documentation |
+
+### Surgical Prophylaxis
+| Route | Description |
+|-------|-------------|
+| `/surgical-prophylaxis/` | Surgical prophylaxis dashboard |
+| `/surgical-prophylaxis/help` | Help and documentation |
 
 ## Related Documentation
 
