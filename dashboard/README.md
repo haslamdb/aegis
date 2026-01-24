@@ -28,9 +28,14 @@ The AEGIS dashboard is organized into four main sections accessible from the lan
 - **Reports** - Alert volume, resolution times, resolution breakdown
 
 ### HAI Detection (`/hai-detection/`)
-- **Dashboard** - CLABSI candidates awaiting IP review
+- **Dashboard** - HAI candidates (CLABSI, CAUTI, SSI, VAE) awaiting IP review
 - **History** - Resolved candidates (confirmed and rejected)
 - **Reports** - HAI analytics and LLM override stats
+- **Supported HAI Types**:
+  - CLABSI - Central Line-Associated Bloodstream Infections
+  - CAUTI - Catheter-Associated Urinary Tract Infections
+  - SSI - Surgical Site Infections (Superficial, Deep, Organ/Space)
+  - VAE - Ventilator-Associated Events (VAC, IVAC, Possible/Probable VAP)
 
 ### NHSN Reporting (`/nhsn-reporting/`)
 - **Dashboard** - Overview with AU, AR, and HAI summaries

@@ -10,5 +10,7 @@ Architecture:
 
 from .clabsi_extractor import CLABSIExtractor
 from .ssi_extractor import SSIExtractor
+from .vae_extractor import VAEExtractor
+from .cauti_extractor import CAUTIExtractor
 
-__all__ = ["CLABSIExtractor", "SSIExtractor"]
+__all__ = ["CLABSIExtractor", "SSIExtractor", "VAEExtractor", "CAUTIExtractor"]

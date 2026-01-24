@@ -28,20 +28,16 @@ CREATE INDEX IF NOT EXISTS idx_events_hai_type ON nhsn_events(hai_type);
 -- NHSN Submission Audit Log
 CREATE TABLE IF NOT EXISTS nhsn_submission_audit (
     id TEXT PRIMARY KEY,
-    submission_date TIMESTAMP NOT NULL,
-    period_start DATE NOT NULL,
-    period_end DATE NOT NULL,
+    action TEXT NOT NULL,
+    user_name TEXT NOT NULL,
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
     event_count INTEGER NOT NULL,
-    events_submitted TEXT,  -- JSON array of event IDs
-    method TEXT NOT NULL,  -- 'direct', 'manual', 'cda_export'
-    status TEXT NOT NULL,  -- 'pending', 'success', 'failed'
-    error_message TEXT,
-    submitted_by TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    notes TEXT,
+    created_at TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_submission_date ON nhsn_submission_audit(submission_date);
-CREATE INDEX IF NOT EXISTS idx_submission_status ON nhsn_submission_audit(status);
+CREATE INDEX IF NOT EXISTS idx_submission_created_at ON nhsn_submission_audit(created_at);
 
 -- ============================================================
 -- Denominator Tracking Tables

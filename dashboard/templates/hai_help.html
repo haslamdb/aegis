@@ -15,11 +15,13 @@
            Healthcare-Associated Infections (HAIs) for NHSN reporting. Currently supported:</p>
         <ul>
             <li><strong>CLABSI</strong> - Central Line-Associated Bloodstream Infections</li>
+            <li><strong>CAUTI</strong> - Catheter-Associated Urinary Tract Infections</li>
             <li><strong>SSI</strong> - Surgical Site Infections (Superficial, Deep, Organ/Space)</li>
+            <li><strong>VAE</strong> - Ventilator-Associated Events (VAC, IVAC, Possible/Probable VAP)</li>
         </ul>
         <p>The system uses a four-stage workflow:</p>
         <ol>
-            <li><strong>Rule-based screening</strong> - Identifies candidates (BSI + line for CLABSI; procedure + infection signals for SSI)</li>
+            <li><strong>Rule-based screening</strong> - Identifies candidates (BSI + line for CLABSI; catheter + positive urine for CAUTI; procedure + infection signals for SSI; ventilator worsening for VAE)</li>
             <li><strong>LLM fact extraction</strong> - Extracts clinical facts from notes (symptoms, alternate sources, wound assessments)</li>
             <li><strong>Rules engine</strong> - Applies deterministic NHSN criteria to extracted facts</li>
             <li><strong>IP Review</strong> - <strong>ALL candidates</strong> go to IP for final decision</li>
@@ -45,6 +47,20 @@ python scripts/demo_clabsi.py --scenario clabsi
 python scripts/demo_clabsi.py --scenario mbi
 python scripts/demo_clabsi.py --scenario secondary-uti
 python scripts/demo_clabsi.py --scenario secondary-pneumonia</code></pre>
+
+        <h3>Create CAUTI Candidates</h3>
+        <p>Generate demo patients with CAUTI (Catheter-Associated UTI) scenarios:</p>
+        <pre><code># Create one CAUTI + one Not CAUTI (random type)
+cd /home/david/projects/aegis
+python scripts/demo_cauti.py
+
+# Create all scenario types
+python scripts/demo_cauti.py --all
+
+# Create a specific scenario
+python scripts/demo_cauti.py --scenario cauti
+python scripts/demo_cauti.py --scenario asymptomatic-bacteriuria
+python scripts/demo_cauti.py --scenario not-cauti</code></pre>
 
         <h3>Create SSI Candidates</h3>
         <p>Generate demo patients with SSI (Surgical Site Infection) scenarios:</p>
@@ -122,6 +138,67 @@ python -m src.runner --full</code></pre>
     </div>
 
     <div class="help-card">
+        <h2>CAUTI Demo Scenarios</h2>
+        <p>CAUTI (Catheter-Associated Urinary Tract Infection) detection follows NHSN criteria requiring catheter >2 days, positive culture, and qualifying symptoms:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Command</th>
+                    <th>Catheter Days</th>
+                    <th>Key Evidence</th>
+                    <th>Classification</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Clear CAUTI</strong></td>
+                    <td><code>--scenario cauti</code></td>
+                    <td>5 days</td>
+                    <td>E. coli 10^5 CFU/mL, fever 38.5°C, dysuria</td>
+                    <td><span class="badge badge-critical">CAUTI</span></td>
+                </tr>
+                <tr>
+                    <td><strong>CAUTI (Fever Only, Young)</strong></td>
+                    <td><code>--scenario cauti-fever</code></td>
+                    <td>4 days</td>
+                    <td>Klebsiella 10^5 CFU/mL, fever 38.8°C (patient age 50)</td>
+                    <td><span class="badge badge-critical">CAUTI</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Asymptomatic Bacteriuria</strong></td>
+                    <td><code>--scenario asb</code></td>
+                    <td>5 days</td>
+                    <td>Positive culture, no symptoms documented</td>
+                    <td><span class="badge badge-warning">Asymptomatic Bacteriuria</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Fever Only (Elderly)</strong></td>
+                    <td><code>--scenario fever-elderly</code></td>
+                    <td>2 days</td>
+                    <td>Fever 38.5°C, patient age 75, catheter ≤2 days</td>
+                    <td><span class="badge badge-info">Not CAUTI (Age Rule)</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Not Eligible (Mixed Flora)</strong></td>
+                    <td><code>--scenario mixed-flora</code></td>
+                    <td>5 days</td>
+                    <td>&gt;2 organisms (mixed flora culture)</td>
+                    <td><span class="badge badge-success">Not Eligible</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Not Eligible (Candida)</strong></td>
+                    <td><code>--scenario candida</code></td>
+                    <td>5 days</td>
+                    <td>Candida albicans only (yeast excluded)</td>
+                    <td><span class="badge badge-success">Not Eligible</span></td>
+                </tr>
+            </tbody>
+        </table>
+        <p><em>Note: The age-based fever rule requires patients &gt;65 years to have catheter &gt;2 days for fever alone to qualify as a CAUTI symptom.</em></p>
+    </div>
+
+    <div class="help-card">
         <h2>SSI Demo Scenarios</h2>
         <table class="help-table">
             <thead>
@@ -164,6 +241,60 @@ python -m src.runner --full</code></pre>
                 </tr>
             </tbody>
         </table>
+    </div>
+
+    <div class="help-card">
+        <h2>VAE Demo Scenarios</h2>
+        <p>VAE (Ventilator-Associated Event) detection follows the NHSN tiered classification hierarchy:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Command</th>
+                    <th>Ventilator Days</th>
+                    <th>Key Evidence</th>
+                    <th>Classification</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>VAC Only</strong></td>
+                    <td><code>--scenario vac</code></td>
+                    <td>Day 5</td>
+                    <td>FiO2 +25%, no fever, no antibiotics</td>
+                    <td><span class="badge badge-info">VAC (Tier 1)</span></td>
+                </tr>
+                <tr>
+                    <td><strong>IVAC</strong></td>
+                    <td><code>--scenario ivac</code></td>
+                    <td>Day 7</td>
+                    <td>PEEP +4 cmH2O, fever 38.8°C, vancomycin x5 days</td>
+                    <td><span class="badge badge-warning">IVAC (Tier 2)</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Possible VAP</strong></td>
+                    <td><code>--scenario possible-vap</code></td>
+                    <td>Day 8</td>
+                    <td>IVAC criteria + positive sputum culture</td>
+                    <td><span class="badge badge-critical">Possible VAP (Tier 3)</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Probable VAP</strong></td>
+                    <td><code>--scenario probable-vap</code></td>
+                    <td>Day 10</td>
+                    <td>IVAC criteria + purulent secretions + BAL 10^5 CFU/mL</td>
+                    <td><span class="badge badge-critical">Probable VAP (Tier 3)</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Not VAE</strong></td>
+                    <td><code>--scenario not-vae</code></td>
+                    <td>Day 3</td>
+                    <td>Stable ventilator settings, no worsening</td>
+                    <td><span class="badge badge-success">Not VAE</span></td>
+                </tr>
+            </tbody>
+        </table>
+        <p><em>Note: VAE detection requires access to ventilator parameter data (FiO2/PEEP) from the EHR.</em></p>
     </div>
 
     <div class="help-card">
@@ -299,6 +430,150 @@ python -m src.runner --full</code></pre>
     </div>
 
     <div class="help-card">
+        <h2>NHSN CAUTI Criteria Quick Reference</h2>
+
+        <h3>Inclusion Criteria</h3>
+        <ul>
+            <li>Indwelling urinary catheter (IUC) in place for &gt;2 calendar days on date of event</li>
+            <li>IUC was in place on the date of event OR removed the day before</li>
+            <li>Patient has a positive urine culture meeting criteria</li>
+            <li>Patient has at least one qualifying symptom (not asymptomatic bacteriuria)</li>
+        </ul>
+
+        <h3>Culture Criteria</h3>
+        <ul>
+            <li><strong>CFU/mL</strong>: ≥10⁵ CFU/mL (100,000 colony-forming units per mL)</li>
+            <li><strong>Organism count</strong>: ≤2 organisms identified (no mixed flora)</li>
+            <li><strong>Excluded organisms</strong>: Candida species, yeast, and other fungi</li>
+        </ul>
+
+        <h3>Qualifying Symptoms (at least one)</h3>
+        <ul>
+            <li><strong>Fever</strong>: Temperature &gt;38.0°C (100.4°F)</li>
+            <li><strong>Suprapubic tenderness</strong>: Pain/tenderness over the bladder</li>
+            <li><strong>CVA pain/tenderness</strong>: Costovertebral angle (flank) tenderness</li>
+            <li><strong>Urinary urgency</strong>: Sudden compelling need to urinate</li>
+            <li><strong>Urinary frequency</strong>: Increased frequency of urination</li>
+            <li><strong>Dysuria</strong>: Pain or burning with urination</li>
+        </ul>
+
+        <h3>Age-Based Fever Rule</h3>
+        <p>Special consideration for fever as the only symptom:</p>
+        <ul>
+            <li><strong>Patient ≤65 years</strong>: Fever alone qualifies as a CAUTI symptom</li>
+            <li><strong>Patient &gt;65 years</strong>: Fever alone requires catheter &gt;2 days; otherwise, another symptom must be present</li>
+        </ul>
+        <p><em>This rule helps distinguish CAUTI from other causes of fever in elderly catheterized patients.</em></p>
+
+        <h3>Asymptomatic Bacteriuria</h3>
+        <p>If catheter and culture criteria are met but NO symptoms are documented, the case is classified as:</p>
+        <ul>
+            <li><strong>Asymptomatic bacteriuria (ASB)</strong> - Not reported as CAUTI</li>
+            <li>ASB cases require IP review to confirm no symptoms were missed in documentation</li>
+            <li>ASB is common in catheterized patients and should not be treated unless symptomatic</li>
+        </ul>
+
+        <h3>Common Uropathogens</h3>
+        <p>Organisms typically associated with CAUTI:</p>
+        <ul>
+            <li>Escherichia coli (most common)</li>
+            <li>Klebsiella pneumoniae</li>
+            <li>Enterococcus faecalis</li>
+            <li>Pseudomonas aeruginosa</li>
+            <li>Proteus mirabilis</li>
+            <li>Enterobacter species</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>NHSN VAE Criteria Quick Reference</h2>
+
+        <h3>VAE Hierarchy (NHSN Tiers)</h3>
+        <p>VAE classifications are hierarchical - higher tiers include all criteria from lower tiers:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Classification</th>
+                    <th>Tier</th>
+                    <th>Requires</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>VAC</strong> (Ventilator-Associated Condition)</td>
+                    <td>1</td>
+                    <td>Baseline period + sustained worsening</td>
+                </tr>
+                <tr>
+                    <td><strong>IVAC</strong> (Infection-related VAC)</td>
+                    <td>2</td>
+                    <td>VAC + temperature/WBC + antimicrobials</td>
+                </tr>
+                <tr>
+                    <td><strong>Possible VAP</strong></td>
+                    <td>3</td>
+                    <td>IVAC + purulent secretions OR positive culture</td>
+                </tr>
+                <tr>
+                    <td><strong>Probable VAP</strong></td>
+                    <td>3</td>
+                    <td>IVAC + purulent secretions + quantitative culture</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>VAC Criteria</h3>
+        <p><strong>Baseline Period (≥2 calendar days):</strong></p>
+        <ul>
+            <li>Patient on mechanical ventilation</li>
+            <li>Stable or decreasing daily minimum FiO2 or PEEP</li>
+        </ul>
+        <p><strong>Worsening Period (≥2 calendar days after baseline):</strong></p>
+        <ul>
+            <li>Daily minimum FiO2 increased ≥20 percentage points over baseline minimum, OR</li>
+            <li>Daily minimum PEEP increased ≥3 cmH2O over baseline minimum</li>
+        </ul>
+        <p><em>VAC onset date = first day of the worsening period</em></p>
+
+        <h3>IVAC Criteria (VAC + all of the following)</h3>
+        <ul>
+            <li><strong>Temperature</strong>: &gt;38°C or &lt;36°C</li>
+            <li><strong>WBC</strong>: ≥12,000 cells/mm³ or ≤4,000 cells/mm³</li>
+            <li><strong>Antimicrobials</strong>: New qualifying antimicrobial started within ±2 calendar days of VAC onset AND continued for ≥4 calendar days</li>
+        </ul>
+
+        <h3>Possible VAP Criteria (IVAC + one of the following)</h3>
+        <ul>
+            <li><strong>Purulent secretions</strong>: ≥25 neutrophils and ≤10 squamous epithelial cells per low power field</li>
+            <li><strong>Positive culture</strong>: Positive respiratory culture (any growth)</li>
+        </ul>
+
+        <h3>Probable VAP Criteria (IVAC + both of the following)</h3>
+        <ul>
+            <li><strong>Purulent secretions</strong>: As defined above</li>
+            <li><strong>Quantitative culture</strong> meeting threshold:
+                <ul>
+                    <li>BAL (bronchoalveolar lavage): ≥10⁴ CFU/mL</li>
+                    <li>Lung tissue: ≥10⁴ CFU/g</li>
+                    <li>PSB (protected specimen brush): ≥10³ CFU/mL</li>
+                    <li>ETA (endotracheal aspirate): ≥10⁶ CFU/mL</li>
+                </ul>
+            </li>
+        </ul>
+
+        <h3>Qualifying Antimicrobials for IVAC</h3>
+        <p>Includes most IV/PO antibiotics used for respiratory infections:</p>
+        <ul>
+            <li>Beta-lactams (piperacillin-tazobactam, ceftriaxone, cefepime, meropenem, etc.)</li>
+            <li>Fluoroquinolones (ciprofloxacin, levofloxacin, moxifloxacin)</li>
+            <li>Aminoglycosides (gentamicin, tobramycin, amikacin)</li>
+            <li>Glycopeptides (vancomycin)</li>
+            <li>Oxazolidinones (linezolid)</li>
+        </ul>
+        <p><em>Excludes: Topical agents, antifungals, antivirals</em></p>
+    </div>
+
+    <div class="help-card">
         <h2>LLM-Assisted Classification</h2>
         <p>The system uses a two-stage approach: <strong>LLM extraction</strong> followed by <strong>rules engine</strong>.</p>
 
@@ -374,6 +649,7 @@ ollama serve</code></pre>
 |   Demo Scripts    |----&gt;|  HAPI FHIR        |
 | demo_clabsi.py    |     |  Server :8081     |
 | demo_ssi.py       |     |                   |
+| demo_vae.py       |     |                   |
 +-------------------+     +---------+---------+
                                     |
                                     v
@@ -383,15 +659,15 @@ ollama serve</code></pre>
                          |   Screening)      |
                          +---------+---------+
                                    |
-              +--------------------+--------------------+
-              |                                        |
-    +-------------------+                    +-------------------+
-    |  CLABSI Detector  |                    |   SSI Detector    |
-    |  (BSI + Line)     |                    |  (Procedure +     |
-    |                   |                    |   Infection)      |
-    +-------------------+                    +-------------------+
-              |                                        |
-              +--------------------+--------------------+
+       +---------------+---------------+---------------+---------------+
+       |               |               |               |               |
++-------------+ +-------------+ +-------------+ +-------------+
+|CLABSI       | |CAUTI        | | SSI         | | VAE         |
+|Detector     | |Detector     | | Detector    | | Detector    |
+|(BSI + Line) | |(Cath + UCx) | | (Procedure) | | (Vent Params)|
++-------------+ +-------------+ +-------------+ +-------------+
+       |               |               |               |
+       +---------------+---------------+---------------+
                                    |
               +--------------------+--------------------+
               v                                        v

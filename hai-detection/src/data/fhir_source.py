@@ -1,13 +1,16 @@
 """FHIR-based data source implementations."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 import requests
 
 from ..config import Config
-from ..models import ClinicalNote, DeviceInfo, CultureResult, Patient
-from .base import BaseNoteSource, BaseDeviceSource, BaseCultureSource
+from ..models import (
+    ClinicalNote, DeviceInfo, CultureResult, Patient,
+    VentilationEpisode, DailyVentParameters,
+)
+from .base import BaseNoteSource, BaseDeviceSource, BaseCultureSource, BaseVentilatorSource
 
 logger = logging.getLogger(__name__)
 
@@ -773,3 +776,903 @@ class FHIRCultureSource(BaseCultureSource):
                     matching.append(culture)
 
         return matching
+
+
+class FHIRVentilatorSource(BaseVentilatorSource):
+    """FHIR-based mechanical ventilation data retrieval for VAE surveillance.
+
+    Uses FHIR Procedure, DeviceUseStatement, and Observation resources to:
+    - Identify patients on mechanical ventilation
+    - Track ventilation episodes (intubation to extubation)
+    - Retrieve daily FiO2 and PEEP parameters
+    """
+
+    # SNOMED codes for mechanical ventilation procedures
+    MECHANICAL_VENTILATION_CODES = {
+        "40617009",   # Artificial respiration (procedure)
+        "243141005",  # Mechanically assisted spontaneous ventilation
+        "243147009",  # Controlled mechanical ventilation
+        "243148004",  # Synchronized intermittent mandatory ventilation
+        "243150007",  # Assisted controlled mandatory ventilation
+        "243151006",  # Controlled mandatory ventilation
+        "428311008",  # Non-invasive ventilation
+        "371907003",  # Oxygen administration by nasal cannula (for FiO2 context)
+    }
+
+    # SNOMED codes for endotracheal/tracheostomy devices
+    VENTILATOR_DEVICE_CODES = {
+        "129121000",  # Endotracheal tube
+        "270902009",  # Tracheostomy tube
+        "426854004",  # Ventilator device
+        "706172005",  # Breathing circuit
+    }
+
+    # LOINC codes for ventilator parameters
+    FIO2_LOINC_CODES = [
+        "3150-0",     # Inhaled oxygen concentration
+        "19994-3",    # Oxygen/Total gas setting Ventilator
+    ]
+
+    PEEP_LOINC_CODES = [
+        "76530-5",    # PEEP Respiratory system by Ventilator
+        "20077-4",    # Positive end expiratory pressure setting Ventilator
+    ]
+
+    def __init__(self, base_url: str | None = None):
+        self.base_url = base_url or Config.get_fhir_base_url()
+        self.session = requests.Session()
+
+    def get_ventilated_patients(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        min_vent_days: int = 2,
+    ) -> list[tuple[Patient, VentilationEpisode]]:
+        """Get patients on mechanical ventilation within a date range.
+
+        Queries FHIR Procedure resources for mechanical ventilation procedures
+        and filters to patients with at least min_vent_days on the ventilator.
+        """
+        results = []
+
+        # Query Procedure resources for mechanical ventilation
+        params = {
+            "code": ",".join(self.MECHANICAL_VENTILATION_CODES),
+            "date": [
+                f"ge{start_date.strftime('%Y-%m-%d')}",
+                f"le{end_date.strftime('%Y-%m-%d')}",
+            ],
+            "_include": "Procedure:subject",
+            "_count": "100",
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.base_url}/Procedure",
+                params=params,
+                timeout=30,
+            )
+            response.raise_for_status()
+            bundle = response.json()
+
+            # Build patient lookup from included resources
+            patients = {}
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+                if resource.get("resourceType") == "Patient":
+                    patient = self._parse_patient(resource)
+                    if patient:
+                        patients[patient.fhir_id] = patient
+
+            # Parse Procedure resources to find ventilation episodes
+            episodes_by_patient = {}
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+                if resource.get("resourceType") == "Procedure":
+                    episode = self._parse_ventilation_procedure(resource)
+                    if episode:
+                        patient_id = episode.patient_id
+                        if patient_id not in episodes_by_patient:
+                            episodes_by_patient[patient_id] = []
+                        episodes_by_patient[patient_id].append(episode)
+
+            # Filter to episodes with minimum vent days and build results
+            for patient_id, episodes in episodes_by_patient.items():
+                patient = patients.get(patient_id)
+                if not patient:
+                    patient = self._fetch_patient(patient_id)
+
+                if patient:
+                    for episode in episodes:
+                        vent_days = episode.get_ventilator_days()
+                        if vent_days >= min_vent_days:
+                            results.append((patient, episode))
+
+            logger.info(f"Found {len(results)} ventilated patients meeting criteria")
+
+        except requests.RequestException as e:
+            logger.error(f"FHIR ventilation query failed: {e}")
+
+        return results
+
+    def get_daily_vent_parameters(
+        self,
+        episode_id: str,
+        start_date: date,
+        end_date: date,
+    ) -> list[DailyVentParameters]:
+        """Get daily ventilator parameters for a ventilation episode.
+
+        Queries FHIR Observation resources for FiO2 and PEEP values,
+        calculates the minimum for each calendar day.
+        """
+        results = []
+
+        # We need the patient_id from the episode to query observations
+        # For now, episode_id contains patient info in format "patient_id:intubation_date"
+        parts = episode_id.split(":")
+        if len(parts) < 1:
+            return results
+
+        patient_id = parts[0]
+
+        # Query FiO2 observations
+        fio2_by_date = self._get_daily_min_observations(
+            patient_id,
+            self.FIO2_LOINC_CODES,
+            start_date,
+            end_date,
+        )
+
+        # Query PEEP observations
+        peep_by_date = self._get_daily_min_observations(
+            patient_id,
+            self.PEEP_LOINC_CODES,
+            start_date,
+            end_date,
+        )
+
+        # Merge FiO2 and PEEP data by date
+        all_dates = set(fio2_by_date.keys()) | set(peep_by_date.keys())
+
+        for day_date in sorted(all_dates):
+            fio2_data = fio2_by_date.get(day_date, {})
+            peep_data = peep_by_date.get(day_date, {})
+
+            # Calculate ventilator day (1-based from start of episode)
+            intubation_date = datetime.fromisoformat(parts[1]).date() if len(parts) > 1 else start_date
+            vent_day = (day_date - intubation_date).days + 1
+
+            param = DailyVentParameters(
+                episode_id=episode_id,
+                date=day_date,
+                ventilator_day=vent_day,
+                min_fio2=fio2_data.get("value"),
+                min_peep=peep_data.get("value"),
+                fio2_observation_id=fio2_data.get("id"),
+                peep_observation_id=peep_data.get("id"),
+            )
+            results.append(param)
+
+        return results
+
+    def get_ventilation_episodes_for_patient(
+        self,
+        patient_id: str,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[VentilationEpisode]:
+        """Get ventilation episodes for a specific patient."""
+        results = []
+
+        params = {
+            "patient": patient_id,
+            "code": ",".join(self.MECHANICAL_VENTILATION_CODES),
+            "date": [
+                f"ge{start_date.strftime('%Y-%m-%d')}",
+                f"le{end_date.strftime('%Y-%m-%d')}",
+            ],
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.base_url}/Procedure",
+                params=params,
+                timeout=30,
+            )
+            response.raise_for_status()
+            bundle = response.json()
+
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+                if resource.get("resourceType") == "Procedure":
+                    episode = self._parse_ventilation_procedure(resource)
+                    if episode:
+                        results.append(episode)
+
+        except requests.RequestException as e:
+            logger.error(f"FHIR ventilation episodes query failed: {e}")
+
+        return results
+
+    def _parse_ventilation_procedure(self, resource: dict) -> VentilationEpisode | None:
+        """Parse a FHIR Procedure resource to VentilationEpisode."""
+        try:
+            fhir_id = resource.get("id")
+
+            # Get patient reference
+            subject_ref = resource.get("subject", {}).get("reference", "")
+            patient_id = subject_ref.split("/")[-1] if subject_ref else ""
+
+            if not patient_id:
+                return None
+
+            # Get timing from performedPeriod
+            performed = resource.get("performedPeriod", {})
+            start_str = performed.get("start")
+            end_str = performed.get("end")
+
+            if not start_str:
+                # Try performedDateTime for point-in-time procedures
+                performed_dt = resource.get("performedDateTime")
+                if performed_dt:
+                    start_str = performed_dt
+                else:
+                    return None
+
+            intubation_date = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+            extubation_date = None
+            if end_str:
+                extubation_date = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
+
+            # Get encounter reference
+            encounter_ref = resource.get("encounter", {}).get("reference", "")
+            encounter_id = encounter_ref.split("/")[-1] if encounter_ref else None
+
+            # Get location from encounter if available
+            location_code = None
+            if encounter_id:
+                location_code = self._get_encounter_location(encounter_id)
+
+            # Generate episode ID
+            episode_id = f"{patient_id}:{intubation_date.isoformat()}"
+
+            # Get patient MRN (will need to be fetched separately if needed)
+            patient_mrn = ""
+
+            return VentilationEpisode(
+                id=episode_id,
+                patient_id=patient_id,
+                patient_mrn=patient_mrn,
+                intubation_date=intubation_date,
+                extubation_date=extubation_date,
+                encounter_id=encounter_id,
+                location_code=location_code,
+                fhir_device_id=fhir_id,
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to parse ventilation procedure: {e}")
+            return None
+
+    def _get_daily_min_observations(
+        self,
+        patient_id: str,
+        loinc_codes: list[str],
+        start_date: date,
+        end_date: date,
+    ) -> dict[date, dict]:
+        """Get minimum observation values for each day.
+
+        Returns dict mapping date to {"value": float, "id": str}
+        """
+        daily_mins = {}
+
+        params = {
+            "patient": patient_id,
+            "code": ",".join(loinc_codes),
+            "date": [
+                f"ge{start_date.isoformat()}",
+                f"le{end_date.isoformat()}",
+            ],
+            "_sort": "date",
+            "_count": "500",
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.base_url}/Observation",
+                params=params,
+                timeout=30,
+            )
+            response.raise_for_status()
+            bundle = response.json()
+
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+                if resource.get("resourceType") != "Observation":
+                    continue
+
+                # Get date
+                effective = resource.get("effectiveDateTime")
+                if not effective:
+                    continue
+                obs_datetime = datetime.fromisoformat(effective.replace("Z", "+00:00"))
+                obs_date = obs_datetime.date()
+
+                # Get value
+                value_quantity = resource.get("valueQuantity", {})
+                value = value_quantity.get("value")
+                if value is None:
+                    continue
+
+                # Track minimum for each day
+                obs_id = resource.get("id")
+                if obs_date not in daily_mins or value < daily_mins[obs_date]["value"]:
+                    daily_mins[obs_date] = {"value": value, "id": obs_id}
+
+        except requests.RequestException as e:
+            logger.error(f"FHIR observation query failed: {e}")
+
+        return daily_mins
+
+    def _get_encounter_location(self, encounter_id: str) -> str | None:
+        """Get location code from an encounter."""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/Encounter/{encounter_id}",
+                timeout=10,
+            )
+            response.raise_for_status()
+            encounter = response.json()
+
+            # Get location from encounter.location[]
+            for loc in encounter.get("location", []):
+                loc_ref = loc.get("location", {}).get("reference", "")
+                if loc_ref:
+                    # Could fetch Location resource for NHSN code
+                    return loc_ref.split("/")[-1]
+
+        except requests.RequestException as e:
+            logger.debug(f"Could not fetch encounter location: {e}")
+
+        return None
+
+    def _parse_patient(self, resource: dict) -> Patient | None:
+        """Parse FHIR Patient resource."""
+        try:
+            fhir_id = resource.get("id")
+
+            # Get MRN from identifiers
+            mrn = ""
+            for identifier in resource.get("identifier", []):
+                type_coding = identifier.get("type", {}).get("coding", [])
+                for coding in type_coding:
+                    if coding.get("code") == "MR":
+                        mrn = identifier.get("value", "")
+                        break
+                if mrn:
+                    break
+
+            # Get name
+            name = ""
+            for name_obj in resource.get("name", []):
+                if name_obj.get("use") == "official" or not name:
+                    given = " ".join(name_obj.get("given", []))
+                    family = name_obj.get("family", "")
+                    name = f"{given} {family}".strip()
+
+            # Get birth date
+            birth_date = resource.get("birthDate")
+
+            return Patient(
+                fhir_id=fhir_id,
+                mrn=mrn,
+                name=name,
+                birth_date=birth_date,
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to parse Patient: {e}")
+            return None
+
+    def _fetch_patient(self, patient_id: str) -> Patient | None:
+        """Fetch a patient by ID."""
+        try:
+            response = self.session.get(
+                f"{self.base_url}/Patient/{patient_id}",
+                timeout=10,
+            )
+            response.raise_for_status()
+            return self._parse_patient(response.json())
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch patient {patient_id}: {e}")
+            return None
+
+
+# ============================================================
+# CAUTI-specific FHIR Data Sources
+# ============================================================
+
+class FHIRUrinaryCatheterSource(FHIRDeviceSource):
+    """FHIR DeviceUseStatement-based urinary catheter retrieval for CAUTI surveillance.
+
+    Extends FHIRDeviceSource to specifically query for indwelling urinary catheters
+    using SNOMED CT codes for urinary catheter devices.
+    """
+
+    # SNOMED CT codes for urinary catheters
+    URINARY_CATHETER_CODES = {
+        "20568009",    # Urinary catheter (general)
+        "68135008",    # Foley catheter
+        "286558007",   # Indwelling urinary catheter
+        "448130004",   # Suprapubic catheter
+        "61088005",    # Urethral catheter
+    }
+
+    # SNOMED CT codes for urinary catheter body sites
+    URINARY_CATHETER_SITES = {
+        "87953007",    # Urinary bladder
+        "13648007",    # Urinary bladder structure
+        "64033007",    # Urethra
+        "181422007",   # Suprapubic region
+    }
+
+    def get_urinary_catheters(
+        self,
+        patient_id: str,
+        as_of_date: datetime,
+    ) -> list[DeviceInfo]:
+        """Get indwelling urinary catheters present at a given date.
+
+        Args:
+            patient_id: FHIR patient ID
+            as_of_date: Date to check for catheter presence
+
+        Returns:
+            List of urinary catheter DeviceInfo objects
+        """
+        devices = []
+
+        params = {
+            "patient": patient_id,
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.base_url}/DeviceUseStatement",
+                params=params,
+                timeout=10,
+            )
+            response.raise_for_status()
+            bundle = response.json()
+
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+
+                # Skip entered-in-error status
+                if resource.get("status") == "entered-in-error":
+                    continue
+
+                device = self._parse_urinary_catheter(resource)
+
+                if device and self._is_urinary_catheter(device, resource):
+                    # Check if catheter was present at as_of_date
+                    if self._was_present_at_date(device, as_of_date):
+                        devices.append(device)
+
+        except requests.RequestException as e:
+            logger.error(f"FHIR urinary catheter query failed: {e}")
+
+        return devices
+
+    def get_all_urinary_catheter_episodes(
+        self,
+        patient_id: str,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[DeviceInfo]:
+        """Get all urinary catheter episodes for a patient within a date range.
+
+        Args:
+            patient_id: FHIR patient ID
+            start_date: Start of date range
+            end_date: End of date range
+
+        Returns:
+            List of urinary catheter DeviceInfo objects
+        """
+        devices = []
+
+        params = {
+            "patient": patient_id,
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.base_url}/DeviceUseStatement",
+                params=params,
+                timeout=10,
+            )
+            response.raise_for_status()
+            bundle = response.json()
+
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+
+                if resource.get("status") == "entered-in-error":
+                    continue
+
+                device = self._parse_urinary_catheter(resource)
+
+                if device and self._is_urinary_catheter(device, resource):
+                    # Check if catheter overlaps with date range
+                    if self._overlaps_date_range(device, start_date, end_date):
+                        devices.append(device)
+
+        except requests.RequestException as e:
+            logger.error(f"FHIR urinary catheter episodes query failed: {e}")
+
+        return devices
+
+    def _parse_urinary_catheter(self, resource: dict) -> DeviceInfo | None:
+        """Parse FHIR DeviceUseStatement to DeviceInfo for urinary catheters."""
+        try:
+            # Get device type from device reference or code
+            device_type = "urinary_catheter"
+            device_ref = resource.get("device", {})
+
+            # Try to get specific type from CodeableConcept
+            if isinstance(device_ref, dict) and device_ref.get("concept"):
+                for coding in device_ref.get("concept", {}).get("coding", []):
+                    code = coding.get("code")
+                    display = coding.get("display", "")
+
+                    if code == "68135008" or "foley" in display.lower():
+                        device_type = "foley_catheter"
+                    elif code == "448130004" or "suprapubic" in display.lower():
+                        device_type = "suprapubic_catheter"
+                    elif code in self.URINARY_CATHETER_CODES:
+                        device_type = "urinary_catheter"
+
+            # Get site from bodySite
+            site = None
+            body_site = resource.get("bodySite", {})
+            for coding in body_site.get("coding", []):
+                code = coding.get("code")
+                display = coding.get("display")
+
+                if code in self.URINARY_CATHETER_SITES:
+                    site = display or "urinary"
+                    # Infer device type from site if not already set
+                    if "suprapubic" in (display or "").lower():
+                        device_type = "suprapubic_catheter"
+
+            # Get timing
+            timing = resource.get("timingPeriod", {}) or resource.get("timing", {}).get("repeat", {}).get("boundsPeriod", {})
+            insertion_date = None
+            removal_date = None
+
+            if timing.get("start"):
+                insertion_date = datetime.fromisoformat(
+                    timing["start"].replace("Z", "+00:00")
+                )
+            if timing.get("end"):
+                removal_date = datetime.fromisoformat(
+                    timing["end"].replace("Z", "+00:00")
+                )
+
+            return DeviceInfo(
+                device_type=device_type,
+                insertion_date=insertion_date,
+                removal_date=removal_date,
+                site=site,
+                fhir_id=resource.get("id"),
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to parse urinary catheter DeviceUseStatement: {e}")
+            return None
+
+    def _is_urinary_catheter(self, device: DeviceInfo, resource: dict) -> bool:
+        """Check if device is a urinary catheter.
+
+        Uses both device type and body site information to determine.
+        """
+        # Check device type
+        catheter_types = {
+            "urinary_catheter",
+            "foley_catheter",
+            "suprapubic_catheter",
+            "indwelling_urinary_catheter",
+        }
+        if device.device_type.lower() in catheter_types:
+            return True
+
+        # Check device code
+        device_ref = resource.get("device", {})
+        if isinstance(device_ref, dict) and device_ref.get("concept"):
+            for coding in device_ref.get("concept", {}).get("coding", []):
+                if coding.get("code") in self.URINARY_CATHETER_CODES:
+                    return True
+
+        # Check body site
+        body_site = resource.get("bodySite", {})
+        for coding in body_site.get("coding", []):
+            if coding.get("code") in self.URINARY_CATHETER_SITES:
+                return True
+
+        return False
+
+    def _overlaps_date_range(
+        self,
+        device: DeviceInfo,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> bool:
+        """Check if device use overlaps with a date range."""
+        if device.insertion_date is None:
+            return False
+
+        # Device inserted after range end - no overlap
+        if device.insertion_date > end_date:
+            return False
+
+        # Device removed before range start - no overlap
+        if device.removal_date and device.removal_date < start_date:
+            return False
+
+        return True
+
+
+class FHIRUrineCultureSource(FHIRCultureSource):
+    """FHIR DiagnosticReport-based urine culture retrieval for CAUTI surveillance.
+
+    Extends FHIRCultureSource to specifically query for urine cultures
+    and parse CFU/mL values needed for CAUTI criteria.
+    """
+
+    # LOINC codes for urine cultures
+    URINE_CULTURE_CODES = {
+        "630-4",      # Bacteria identified in urine by Culture
+        "6463-4",     # Bacteria identified in urine by Aerobe culture
+        "88461-2",    # Urine culture colony count
+        "49581-2",    # Bacteria identified in urine by Culture (Quantitative)
+        "5799-2",     # Bacteria identified in urine by Microorganisms (culture)
+    }
+
+    def get_positive_urine_cultures(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        min_cfu_ml: int = 100000,
+    ) -> list[tuple[Patient, CultureResult]]:
+        """Get positive urine cultures meeting CFU threshold.
+
+        Args:
+            start_date: Start of date range
+            end_date: End of date range
+            min_cfu_ml: Minimum CFU/mL threshold (default 10^5 for CAUTI)
+
+        Returns:
+            List of (Patient, CultureResult) tuples for qualifying cultures
+        """
+        results = []
+
+        params = {
+            "code": ",".join(self.URINE_CULTURE_CODES),
+            "date": [
+                f"ge{start_date.strftime('%Y-%m-%d')}",
+                f"le{end_date.strftime('%Y-%m-%d')}",
+            ],
+            "_include": "DiagnosticReport:subject",
+            "_count": "100",
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.base_url}/DiagnosticReport",
+                params=params,
+                timeout=30,
+            )
+            response.raise_for_status()
+            bundle = response.json()
+
+            # Build patient lookup from included resources
+            patients = {}
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+                if resource.get("resourceType") == "Patient":
+                    patient = self._parse_patient(resource)
+                    if patient:
+                        patients[patient.fhir_id] = patient
+
+            # Parse urine culture DiagnosticReports
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+                if resource.get("resourceType") == "DiagnosticReport":
+                    culture = self._parse_urine_culture(resource)
+
+                    if culture and culture.is_positive:
+                        # Check CFU threshold if available
+                        cfu_ml = self._extract_cfu_ml(resource)
+                        if cfu_ml is None or cfu_ml >= min_cfu_ml:
+                            patient_ref = resource.get("subject", {}).get("reference", "")
+                            patient_id = patient_ref.split("/")[-1]
+                            patient = patients.get(patient_id)
+
+                            if patient:
+                                # Store CFU in culture result for later use
+                                culture._cfu_ml = cfu_ml
+                                results.append((patient, culture))
+                            else:
+                                patient = self._fetch_patient(patient_id)
+                                if patient:
+                                    culture._cfu_ml = cfu_ml
+                                    results.append((patient, culture))
+
+            logger.info(f"Found {len(results)} positive urine cultures meeting CAUTI criteria")
+
+        except requests.RequestException as e:
+            logger.error(f"FHIR urine culture query failed: {e}")
+
+        return results
+
+    def get_urine_cultures_for_patient(
+        self,
+        patient_id: str,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> list[CultureResult]:
+        """Get urine cultures for a specific patient within date range."""
+        results = []
+
+        params = {
+            "patient": patient_id,
+            "code": ",".join(self.URINE_CULTURE_CODES),
+            "date": [
+                f"ge{start_date.strftime('%Y-%m-%d')}",
+                f"le{end_date.strftime('%Y-%m-%d')}",
+            ],
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.base_url}/DiagnosticReport",
+                params=params,
+                timeout=30,
+            )
+            response.raise_for_status()
+            bundle = response.json()
+
+            for entry in bundle.get("entry", []):
+                resource = entry.get("resource", {})
+                if resource.get("resourceType") == "DiagnosticReport":
+                    culture = self._parse_urine_culture(resource)
+                    if culture:
+                        culture._cfu_ml = self._extract_cfu_ml(resource)
+                        results.append(culture)
+
+        except requests.RequestException as e:
+            logger.error(f"FHIR urine culture patient query failed: {e}")
+
+        return results
+
+    def _parse_urine_culture(self, resource: dict) -> CultureResult | None:
+        """Parse a FHIR DiagnosticReport for urine culture."""
+        try:
+            fhir_id = resource.get("id")
+
+            # Get collection date
+            effective = resource.get("effectiveDateTime") or resource.get("effectivePeriod", {}).get("start")
+            if not effective:
+                return None
+            collection_date = datetime.fromisoformat(effective.replace("Z", "+00:00"))
+
+            # Get result date
+            issued = resource.get("issued")
+            result_date = datetime.fromisoformat(issued.replace("Z", "+00:00")) if issued else None
+
+            # Determine if positive and get organism(s)
+            is_positive = False
+            organism = None
+            organism_count = 0
+
+            conclusion = resource.get("conclusion", "")
+            if conclusion:
+                conclusion_lower = conclusion.lower()
+                is_positive = (
+                    "positive" in conclusion_lower or
+                    "growth" in conclusion_lower or
+                    "colony" in conclusion_lower
+                )
+                # Check for mixed flora
+                if "mixed" in conclusion_lower or "multiple" in conclusion_lower:
+                    organism_count = 3  # Assume >2 for mixed flora
+
+            # Try to extract organism(s) from conclusion codes
+            organisms = []
+            for cc in resource.get("conclusionCode", []):
+                for coding in cc.get("coding", []):
+                    if coding.get("display"):
+                        organisms.append(coding.get("display"))
+                        is_positive = True
+
+            if organisms:
+                organism = organisms[0]  # Primary organism
+                organism_count = len(organisms)
+
+            return CultureResult(
+                fhir_id=fhir_id,
+                collection_date=collection_date,
+                organism=organism,
+                result_date=result_date,
+                specimen_source="urine",
+                is_positive=is_positive,
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to parse urine culture DiagnosticReport: {e}")
+            return None
+
+    def _extract_cfu_ml(self, resource: dict) -> int | None:
+        """Extract CFU/mL value from DiagnosticReport or linked Observations.
+
+        Looks for colony count in:
+        1. Conclusion text (e.g., "10^5 CFU/mL")
+        2. Linked Observation resources
+        3. Extended fields
+        """
+        try:
+            # Try to extract from conclusion text
+            conclusion = resource.get("conclusion", "")
+            if conclusion:
+                # Match patterns like "10^5", ">100000", "1E5"
+                import re
+
+                # Pattern for scientific notation
+                sci_match = re.search(r"10\^(\d+)", conclusion)
+                if sci_match:
+                    exponent = int(sci_match.group(1))
+                    return 10 ** exponent
+
+                # Pattern for 1E notation
+                e_match = re.search(r"(\d+)E(\d+)", conclusion, re.IGNORECASE)
+                if e_match:
+                    base = int(e_match.group(1))
+                    exponent = int(e_match.group(2))
+                    return base * (10 ** exponent)
+
+                # Pattern for numeric with > or >= prefix
+                num_match = re.search(r"[>≥]?\s*(\d{5,})", conclusion)
+                if num_match:
+                    return int(num_match.group(1))
+
+            # Check linked Observation resources (would need separate query)
+            # For now, return None if not in conclusion
+            return None
+
+        except Exception as e:
+            logger.debug(f"Could not extract CFU/mL: {e}")
+            return None
+
+    def get_organism_count(self, resource: dict) -> int:
+        """Get the number of organisms identified in a culture.
+
+        Returns:
+            Number of organisms (>2 typically indicates mixed flora)
+        """
+        count = 0
+
+        # Count organisms in conclusionCode
+        for cc in resource.get("conclusionCode", []):
+            for coding in cc.get("coding", []):
+                if coding.get("display"):
+                    count += 1
+
+        # Check conclusion for mixed flora indication
+        conclusion = resource.get("conclusion", "").lower()
+        if "mixed flora" in conclusion or "mixed growth" in conclusion:
+            return 3  # More than 2 organisms
+
+        return max(count, 1) if count > 0 else 0

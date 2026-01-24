@@ -3,14 +3,35 @@
 All models use dataclasses following existing AEGIS patterns.
 This module contains models for NHSN submission, AU/AR data, and denominators.
 
-Note: HAI candidate detection models are in the hai-detection module.
+HAI candidate detection models are re-exported from hai-detection for convenience.
 """
 
+import importlib.util
 from dataclasses import dataclass, field
 from datetime import datetime, date
 from enum import Enum
+from pathlib import Path
 from typing import Any
 import json
+
+# Re-export HAI detection models from hai-detection module
+_hai_models_path = Path(__file__).parent.parent.parent / "hai-detection" / "src" / "models.py"
+_spec = importlib.util.spec_from_file_location("hai_detection_models", _hai_models_path)
+_hai_models = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_hai_models)
+
+HAICandidate = _hai_models.HAICandidate
+CandidateStatus = _hai_models.CandidateStatus
+Classification = _hai_models.Classification
+ClassificationDecision = _hai_models.ClassificationDecision
+Review = _hai_models.Review
+ReviewQueueType = _hai_models.ReviewQueueType
+ReviewerDecision = _hai_models.ReviewerDecision
+Patient = _hai_models.Patient
+CultureResult = _hai_models.CultureResult
+DeviceInfo = _hai_models.DeviceInfo
+SupportingEvidence = _hai_models.SupportingEvidence
+LLMAuditEntry = _hai_models.LLMAuditEntry
 
 
 class HAIType(Enum):

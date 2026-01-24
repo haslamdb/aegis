@@ -8,7 +8,7 @@ Reference: 2024 NHSN Patient Safety Component Manual, Chapter 4
 https://www.cdc.gov/nhsn/pdfs/pscmanual/pcsmanual_current.pdf
 """
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 # =============================================================================
 # NHSN Version and Update Tracking
@@ -719,3 +719,439 @@ def get_ssi_type_name(ssi_type: str) -> str:
     if ssi_type in SSI_TYPES:
         return SSI_TYPES[ssi_type]["name"]
     return ssi_type.replace("_", " ").title()
+
+
+# =============================================================================
+# VAE (Ventilator-Associated Event) Criteria
+# =============================================================================
+
+# Minimum mechanical ventilation days for VAE eligibility
+# "Patient must be on mechanical ventilation for ≥2 calendar days"
+VAE_MIN_VENT_DAYS = 2
+
+# Days of stable/improving ventilator settings required before worsening
+# "≥2 calendar days of stable or decreasing daily minimum FiO2 or PEEP values"
+VAE_BASELINE_PERIOD_DAYS = 2
+
+# Days of sustained worsening required for VAC
+# "≥2 calendar days of increased daily minimum FiO2 or PEEP"
+VAE_WORSENING_PERIOD_DAYS = 2
+
+# FiO2 increase threshold (percentage points)
+# "Increase in daily minimum FiO2 of ≥20 percentage points over the daily minimum FiO2 of the first day of the baseline period"
+VAE_FIO2_INCREASE_THRESHOLD = 20.0
+
+# PEEP increase threshold (cmH2O)
+# "Increase in daily minimum PEEP of ≥3 cmH2O over the daily minimum PEEP of the first day of the baseline period"
+VAE_PEEP_INCREASE_THRESHOLD = 3.0
+
+# VAC onset occurs on the first day of sustained worsening after the baseline period
+# This is calendar day 3 or later of mechanical ventilation (day 1 + 2 baseline + worsening)
+
+# =============================================================================
+# IVAC (Infection-Related Ventilator-Associated Complication) Criteria
+# =============================================================================
+
+# Temperature thresholds for IVAC
+# "Temperature >38°C or <36°C"
+IVAC_FEVER_THRESHOLD_CELSIUS = 38.0
+IVAC_HYPOTHERMIA_THRESHOLD_CELSIUS = 36.0
+
+# WBC thresholds for IVAC
+# "WBC count ≥12,000 cells/mm³ or ≤4,000 cells/mm³"
+IVAC_LEUKOCYTOSIS_THRESHOLD = 12000
+IVAC_LEUKOPENIA_THRESHOLD = 4000
+
+# Antimicrobial duration requirement for IVAC
+# "New antimicrobial agent(s) started and continued for ≥4 calendar days"
+IVAC_ANTIMICROBIAL_MIN_DAYS = 4
+
+# Window for antimicrobial start relative to worsening
+# "Started on the day of or within 2 days before or after the onset of worsening oxygenation"
+IVAC_ANTIMICROBIAL_WINDOW_DAYS_BEFORE = 2
+IVAC_ANTIMICROBIAL_WINDOW_DAYS_AFTER = 2
+
+# Qualifying antimicrobial classes for IVAC/VAP
+QUALIFYING_ANTIMICROBIALS = {
+    # Beta-lactams
+    "piperacillin-tazobactam", "piperacillin/tazobactam", "zosyn",
+    "ampicillin-sulbactam", "ampicillin/sulbactam", "unasyn",
+    "amoxicillin-clavulanate", "amoxicillin/clavulanate", "augmentin",
+    "ticarcillin-clavulanate", "ticarcillin/clavulanate", "timentin",
+    "ceftriaxone", "rocephin",
+    "ceftazidime", "fortaz", "tazicef",
+    "cefepime", "maxipime",
+    "ceftazidime-avibactam", "ceftazidime/avibactam", "avycaz",
+    "ceftolozane-tazobactam", "ceftolozane/tazobactam", "zerbaxa",
+    "meropenem", "merrem",
+    "imipenem-cilastatin", "imipenem/cilastatin", "primaxin",
+    "ertapenem", "invanz",
+    "doripenem", "doribax",
+    "aztreonam", "azactam",
+
+    # Fluoroquinolones
+    "ciprofloxacin", "cipro",
+    "levofloxacin", "levaquin",
+    "moxifloxacin", "avelox",
+
+    # Aminoglycosides
+    "gentamicin", "garamycin",
+    "tobramycin", "tobi", "nebcin",
+    "amikacin", "amikin",
+
+    # Glycopeptides
+    "vancomycin", "vancocin",
+    "telavancin", "vibativ",
+    "dalbavancin", "dalvance",
+    "oritavancin", "orbactiv",
+
+    # Oxazolidinones
+    "linezolid", "zyvox",
+    "tedizolid", "sivextro",
+
+    # Lipopeptides
+    "daptomycin", "cubicin",
+
+    # Polymyxins
+    "colistin", "colistimethate", "coly-mycin",
+    "polymyxin b",
+
+    # Tetracyclines
+    "tigecycline", "tygacil",
+
+    # Other
+    "metronidazole", "flagyl",
+    "clindamycin", "cleocin",
+    "trimethoprim-sulfamethoxazole", "tmp-smx", "bactrim", "septra",
+
+    # Antifungals (for VAP evaluation)
+    "fluconazole", "diflucan",
+    "voriconazole", "vfend",
+    "posaconazole", "noxafil",
+    "isavuconazole", "cresemba",
+    "micafungin", "mycamine",
+    "caspofungin", "cancidas",
+    "anidulafungin", "eraxis",
+    "amphotericin b", "ambisome", "abelcet",
+}
+
+
+def is_qualifying_antimicrobial(drug_name: str) -> bool:
+    """Check if a drug is a qualifying antimicrobial for IVAC/VAP.
+
+    Args:
+        drug_name: Drug name from medication list
+
+    Returns:
+        True if drug qualifies for IVAC criteria
+    """
+    if not drug_name:
+        return False
+    drug_lower = drug_name.lower().strip()
+
+    # Direct match
+    if drug_lower in QUALIFYING_ANTIMICROBIALS:
+        return True
+
+    # Partial match for variations
+    for antimicrobial in QUALIFYING_ANTIMICROBIALS:
+        if antimicrobial in drug_lower or drug_lower in antimicrobial:
+            return True
+
+    return False
+
+
+# =============================================================================
+# VAP (Ventilator-Associated Pneumonia) Criteria
+# =============================================================================
+
+# Quantitative culture thresholds for Probable VAP
+# Different thresholds based on specimen type
+VAP_CULTURE_THRESHOLDS = {
+    "bal": 10000,           # Bronchoalveolar lavage: ≥10^4 CFU/mL
+    "bronchoalveolar lavage": 10000,
+    "mini-bal": 10000,
+    "protected brush": 1000,  # Protected specimen brush: ≥10^3 CFU/mL
+    "psb": 1000,
+    "eta": 1000000,         # Endotracheal aspirate: ≥10^6 CFU/mL
+    "endotracheal aspirate": 1000000,
+    "tracheal aspirate": 1000000,
+    "sputum": 1000000,      # Sputum treated same as ETA
+    "lung tissue": 10000,   # Lung tissue: ≥10^4 CFU/g
+}
+
+
+def get_vap_culture_threshold(specimen_type: str) -> int | None:
+    """Get the quantitative culture threshold for a specimen type.
+
+    Args:
+        specimen_type: Type of respiratory specimen
+
+    Returns:
+        CFU/mL threshold, or None if specimen type not recognized
+    """
+    if not specimen_type:
+        return None
+    specimen_lower = specimen_type.lower().strip()
+
+    # Direct match
+    if specimen_lower in VAP_CULTURE_THRESHOLDS:
+        return VAP_CULTURE_THRESHOLDS[specimen_lower]
+
+    # Partial match
+    for spec_type, threshold in VAP_CULTURE_THRESHOLDS.items():
+        if spec_type in specimen_lower or specimen_lower in spec_type:
+            return threshold
+
+    return None
+
+
+def meets_vap_quantitative_threshold(specimen_type: str, colony_count: int) -> bool:
+    """Check if a culture meets the quantitative threshold for Probable VAP.
+
+    Args:
+        specimen_type: Type of respiratory specimen
+        colony_count: Colony count in CFU/mL
+
+    Returns:
+        True if culture meets threshold for specimen type
+    """
+    threshold = get_vap_culture_threshold(specimen_type)
+    if threshold is None:
+        return False
+    return colony_count >= threshold
+
+
+# Purulent secretions criteria for VAP
+# "Secretions from lungs, bronchi, or trachea that contain ≥25 neutrophils
+# and ≤10 squamous epithelial cells per low power field"
+VAP_PURULENT_PMN_THRESHOLD = 25
+VAP_PURULENT_EPITHELIAL_MAX = 10
+
+# Positive respiratory culture organisms for Possible VAP
+# Any organism counts for Possible VAP (qualitative positive)
+# Quantitative threshold only matters for Probable VAP
+
+
+# =============================================================================
+# VAE LOINC Codes
+# =============================================================================
+
+# LOINC codes for ventilator parameters
+VAE_LOINC_CODES = {
+    "fio2": [
+        "3150-0",     # Inhaled oxygen concentration
+        "19994-3",    # Oxygen/Total gas setting Ventilator
+    ],
+    "peep": [
+        "76530-5",    # PEEP Respiratory system by Ventilator
+        "20077-4",    # Positive end expiratory pressure setting Ventilator
+    ],
+    "mechanical_ventilation": [
+        "19835-8",    # Ventilator mode
+        "60956-0",    # Mechanical ventilation status
+    ],
+}
+
+
+# =============================================================================
+# VAE Helper Functions
+# =============================================================================
+
+def calculate_ventilator_days(intubation_date: datetime, reference_date: datetime) -> int:
+    """Calculate ventilator days at a reference date.
+
+    Day 1 is the day of intubation.
+
+    Args:
+        intubation_date: Date/time of intubation
+        reference_date: Date to calculate days at
+
+    Returns:
+        Number of ventilator days (1-based)
+    """
+    # Normalize to date for calendar day calculation
+    intub_date = intubation_date.date() if hasattr(intubation_date, 'date') else intubation_date
+    ref_date = reference_date.date() if hasattr(reference_date, 'date') else reference_date
+    delta = ref_date - intub_date
+    return delta.days + 1  # Day 1 is intubation day
+
+
+def is_vae_eligible(ventilator_days: int) -> bool:
+    """Check if patient meets minimum ventilator days for VAE eligibility.
+
+    Args:
+        ventilator_days: Number of days on mechanical ventilation
+
+    Returns:
+        True if patient meets minimum ventilator days requirement
+    """
+    return ventilator_days >= VAE_MIN_VENT_DAYS
+
+
+# =============================================================================
+# CAUTI (Catheter-Associated Urinary Tract Infection) Criteria
+# =============================================================================
+
+# Minimum days catheter must be in place for CAUTI eligibility
+# "Indwelling urinary catheter in place for >2 calendar days"
+CAUTI_MIN_CATHETER_DAYS = 2
+
+# Days after catheter removal that UTI can still be attributed
+# "on the day of or the day after the device is removed"
+CAUTI_POST_REMOVAL_WINDOW_DAYS = 1
+
+# Minimum CFU/mL threshold for CAUTI
+# ">=10^5 CFU/mL with no more than 2 species of microorganisms"
+CAUTI_MIN_CFU_ML = 100000  # 10^5
+
+# Maximum number of organisms for a valid CAUTI culture
+# More than 2 organisms is considered mixed flora
+CAUTI_MAX_ORGANISMS = 2
+
+# Fever threshold for CAUTI
+CAUTI_FEVER_THRESHOLD_CELSIUS = 38.0
+
+# Age threshold for fever rule
+# Patients >65 years: fever alone requires catheter >2 days
+# Patients <=65 years: fever can be used regardless of catheter duration
+CAUTI_FEVER_AGE_THRESHOLD = 65
+
+
+# Urinary catheter SNOMED codes
+URINARY_CATHETER_CODES = {
+    "20568009",    # Urinary catheter (general)
+    "68135008",    # Foley catheter
+    "286558007",   # Indwelling urinary catheter
+    "448130004",   # Suprapubic catheter
+    "61088005",    # Urethral catheter
+}
+
+# Urinary catheter insertion site SNOMED codes
+URINARY_CATHETER_SITES = {
+    "87953007",    # Urinary bladder
+    "13648007",    # Urinary bladder structure
+    "64033007",    # Urethra
+}
+
+
+# Organisms excluded from CAUTI (yeasts/fungi are excluded)
+CAUTI_EXCLUDED_ORGANISMS = {
+    "candida",
+    "candida albicans",
+    "candida glabrata",
+    "candida krusei",
+    "candida parapsilosis",
+    "candida tropicalis",
+    "candida auris",
+    "yeast",
+    "fungus",
+    "fungi",
+}
+
+
+# Common uropathogens (for reference, not exclusive)
+COMMON_UROPATHOGENS = {
+    "escherichia coli",
+    "e. coli",
+    "klebsiella pneumoniae",
+    "klebsiella oxytoca",
+    "proteus mirabilis",
+    "proteus vulgaris",
+    "pseudomonas aeruginosa",
+    "enterococcus faecalis",
+    "enterococcus faecium",
+    "enterobacter cloacae",
+    "enterobacter aerogenes",
+    "serratia marcescens",
+    "citrobacter freundii",
+    "morganella morganii",
+    "providencia stuartii",
+    "staphylococcus aureus",
+    "staphylococcus saprophyticus",
+    "streptococcus agalactiae",
+    "group b streptococcus",
+}
+
+
+def is_cauti_excluded_organism(organism: str) -> bool:
+    """Check if an organism is excluded from CAUTI criteria.
+
+    Yeasts and fungi are excluded from CAUTI - they should not be
+    reported as CAUTI even if catheter and symptoms are present.
+
+    Args:
+        organism: Organism name from culture result
+
+    Returns:
+        True if organism is excluded from CAUTI reporting
+    """
+    if not organism:
+        return False
+    organism_lower = organism.lower().strip()
+
+    # Direct match
+    if organism_lower in CAUTI_EXCLUDED_ORGANISMS:
+        return True
+
+    # Partial match for variations
+    for excluded in CAUTI_EXCLUDED_ORGANISMS:
+        if excluded in organism_lower or organism_lower in excluded:
+            return True
+
+    return False
+
+
+def is_valid_cauti_culture(organism_count: int, cfu_ml: int) -> bool:
+    """Check if a urine culture meets CAUTI criteria.
+
+    Args:
+        organism_count: Number of distinct organisms in culture
+        cfu_ml: Colony forming units per mL
+
+    Returns:
+        True if culture meets CAUTI threshold (>=10^5 CFU/mL, <=2 organisms)
+    """
+    if organism_count > CAUTI_MAX_ORGANISMS:
+        return False  # Mixed flora - not valid for CAUTI
+    if cfu_ml < CAUTI_MIN_CFU_ML:
+        return False  # Below threshold
+    return True
+
+
+def is_cauti_fever_eligible(patient_age: int | None, catheter_days: int) -> bool:
+    """Check if fever can be used as the sole symptom criterion for CAUTI.
+
+    NHSN Rule:
+    - Patient <=65 years: Fever can always be used alone
+    - Patient >65 years: Fever alone only valid if catheter >2 days
+
+    For patients >65 with catheter <=2 days, a non-fever symptom is required.
+
+    Args:
+        patient_age: Patient age in years (None treated as eligible)
+        catheter_days: Number of days catheter has been in place
+
+    Returns:
+        True if fever alone is sufficient for symptom criterion
+    """
+    if patient_age is None:
+        return True  # Default to eligible if age unknown
+
+    if patient_age <= CAUTI_FEVER_AGE_THRESHOLD:
+        return True  # Younger patients can always use fever
+
+    # Older patients need catheter >2 days for fever to count alone
+    return catheter_days > CAUTI_MIN_CATHETER_DAYS
+
+
+def is_cauti_eligible(catheter_days: int) -> bool:
+    """Check if patient meets minimum catheter days for CAUTI eligibility.
+
+    Args:
+        catheter_days: Number of days catheter has been in place
+
+    Returns:
+        True if patient meets minimum catheter days requirement (>2 days)
+    """
+    return catheter_days > CAUTI_MIN_CATHETER_DAYS
