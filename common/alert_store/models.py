@@ -13,6 +13,8 @@ class AlertType(Enum):
     BROAD_SPECTRUM_USAGE = "broad_spectrum_usage"
     NHSN_CLABSI = "nhsn_clabsi"        # NHSN CLABSI candidate
     NHSN_SSI = "nhsn_ssi"              # NHSN SSI candidate
+    NHSN_VAE = "nhsn_vae"              # NHSN VAE candidate
+    NHSN_CAUTI = "nhsn_cauti"          # NHSN CAUTI candidate
     NHSN_REVIEW = "nhsn_review"        # NHSN review queue item
     CUSTOM = "custom"
 

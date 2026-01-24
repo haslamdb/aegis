@@ -58,7 +58,7 @@ class NHSNDatabase:
         with self._get_connection() as conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO nhsn_candidates (
+                INSERT OR REPLACE INTO hai_candidates (
                     id, hai_type, patient_id, patient_mrn, patient_name,
                     culture_id, culture_date, organism, device_info,
                     device_days_at_culture, meets_initial_criteria,
@@ -88,7 +88,7 @@ class NHSNDatabase:
         """Get a candidate by ID."""
         with self._get_connection() as conn:
             row = conn.execute(
-                "SELECT * FROM nhsn_candidates WHERE id = ?", (candidate_id,)
+                "SELECT * FROM hai_candidates WHERE id = ?", (candidate_id,)
             ).fetchone()
             if row:
                 return self._row_to_candidate(row)
@@ -101,12 +101,12 @@ class NHSNDatabase:
         with self._get_connection() as conn:
             if hai_type:
                 rows = conn.execute(
-                    "SELECT * FROM nhsn_candidates WHERE status = ? AND hai_type = ? ORDER BY created_at DESC",
+                    "SELECT * FROM hai_candidates WHERE status = ? AND hai_type = ? ORDER BY created_at DESC",
                     (status.value, hai_type.value),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT * FROM nhsn_candidates WHERE status = ? ORDER BY created_at DESC",
+                    "SELECT * FROM hai_candidates WHERE status = ? ORDER BY created_at DESC",
                     (status.value,),
                 ).fetchall()
             return [self._row_to_candidate(row) for row in rows]
@@ -118,12 +118,12 @@ class NHSNDatabase:
         with self._get_connection() as conn:
             if hai_type:
                 rows = conn.execute(
-                    "SELECT * FROM nhsn_candidates WHERE hai_type = ? ORDER BY created_at DESC LIMIT ?",
+                    "SELECT * FROM hai_candidates WHERE hai_type = ? ORDER BY created_at DESC LIMIT ?",
                     (hai_type.value, limit),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    "SELECT * FROM nhsn_candidates ORDER BY created_at DESC LIMIT ?",
+                    "SELECT * FROM hai_candidates ORDER BY created_at DESC LIMIT ?",
                     (limit,),
                 ).fetchall()
             return [self._row_to_candidate(row) for row in rows]
@@ -140,12 +140,12 @@ class NHSNDatabase:
         with self._get_connection() as conn:
             if hai_type:
                 rows = conn.execute(
-                    f"SELECT * FROM nhsn_candidates WHERE status IN (?, ?, ?) AND hai_type = ? ORDER BY created_at DESC LIMIT ?",
+                    f"SELECT * FROM hai_candidates WHERE status IN (?, ?, ?) AND hai_type = ? ORDER BY created_at DESC LIMIT ?",
                     (*active_statuses, hai_type.value, limit),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    f"SELECT * FROM nhsn_candidates WHERE status IN (?, ?, ?) ORDER BY created_at DESC LIMIT ?",
+                    f"SELECT * FROM hai_candidates WHERE status IN (?, ?, ?) ORDER BY created_at DESC LIMIT ?",
                     (*active_statuses, limit),
                 ).fetchall()
             return [self._row_to_candidate(row) for row in rows]
@@ -161,12 +161,12 @@ class NHSNDatabase:
         with self._get_connection() as conn:
             if hai_type:
                 rows = conn.execute(
-                    f"SELECT * FROM nhsn_candidates WHERE status IN (?, ?) AND hai_type = ? ORDER BY created_at DESC LIMIT ?",
+                    f"SELECT * FROM hai_candidates WHERE status IN (?, ?) AND hai_type = ? ORDER BY created_at DESC LIMIT ?",
                     (*resolved_statuses, hai_type.value, limit),
                 ).fetchall()
             else:
                 rows = conn.execute(
-                    f"SELECT * FROM nhsn_candidates WHERE status IN (?, ?) ORDER BY created_at DESC LIMIT ?",
+                    f"SELECT * FROM hai_candidates WHERE status IN (?, ?) ORDER BY created_at DESC LIMIT ?",
                     (*resolved_statuses, limit),
                 ).fetchall()
             return [self._row_to_candidate(row) for row in rows]
@@ -175,7 +175,7 @@ class NHSNDatabase:
         """Check if a candidate already exists for this culture."""
         with self._get_connection() as conn:
             result = conn.execute(
-                "SELECT 1 FROM nhsn_candidates WHERE hai_type = ? AND culture_id = ?",
+                "SELECT 1 FROM hai_candidates WHERE hai_type = ? AND culture_id = ?",
                 (hai_type.value, culture_id),
             ).fetchone()
             return result is not None
@@ -186,7 +186,7 @@ class NHSNDatabase:
         """Update candidate status."""
         with self._get_connection() as conn:
             conn.execute(
-                "UPDATE nhsn_candidates SET status = ? WHERE id = ?",
+                "UPDATE hai_candidates SET status = ? WHERE id = ?",
                 (status.value, candidate_id),
             )
             conn.commit()
@@ -639,23 +639,23 @@ class NHSNDatabase:
                 date_params = (since_date,)
 
             total = conn.execute(
-                f"SELECT COUNT(*) FROM nhsn_candidates WHERE 1=1{date_filter}",
+                f"SELECT COUNT(*) FROM hai_candidates WHERE 1=1{date_filter}",
                 date_params,
             ).fetchone()[0]
             pending = conn.execute(
-                f"SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'pending'{date_filter}",
+                f"SELECT COUNT(*) FROM hai_candidates WHERE status = 'pending'{date_filter}",
                 date_params,
             ).fetchone()[0]
             pending_review = conn.execute(
-                f"SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'pending_review'{date_filter}",
+                f"SELECT COUNT(*) FROM hai_candidates WHERE status = 'pending_review'{date_filter}",
                 date_params,
             ).fetchone()[0]
             confirmed = conn.execute(
-                f"SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'confirmed'{date_filter}",
+                f"SELECT COUNT(*) FROM hai_candidates WHERE status = 'confirmed'{date_filter}",
                 date_params,
             ).fetchone()[0]
             rejected = conn.execute(
-                f"SELECT COUNT(*) FROM nhsn_candidates WHERE status = 'rejected'{date_filter}",
+                f"SELECT COUNT(*) FROM hai_candidates WHERE status = 'rejected'{date_filter}",
                 date_params,
             ).fetchone()[0]
 
@@ -771,7 +771,7 @@ class NHSNDatabase:
                 """
                 SELECT r.*, c.patient_mrn, c.organism
                 FROM nhsn_reviews r
-                JOIN nhsn_candidates c ON r.candidate_id = c.id
+                JOIN hai_candidates c ON r.candidate_id = c.id
                 WHERE r.is_override = 1
                 ORDER BY r.reviewed_at DESC
                 LIMIT ?
@@ -814,7 +814,7 @@ class NHSNDatabase:
             if hai_type:
                 rows = conn.execute(
                     """
-                    SELECT * FROM nhsn_candidates
+                    SELECT * FROM hai_candidates
                     WHERE status = 'confirmed'
                     AND hai_type = ?
                     AND created_at >= ?
@@ -825,7 +825,7 @@ class NHSNDatabase:
             else:
                 rows = conn.execute(
                     """
-                    SELECT * FROM nhsn_candidates
+                    SELECT * FROM hai_candidates
                     WHERE status = 'confirmed'
                     AND created_at >= ?
                     ORDER BY created_at DESC
@@ -856,7 +856,7 @@ class NHSNDatabase:
             rows = conn.execute(
                 """
                 SELECT hai_type, COUNT(*) as count
-                FROM nhsn_candidates
+                FROM hai_candidates
                 WHERE status = 'confirmed'
                 AND created_at >= ?
                 GROUP BY hai_type
@@ -893,7 +893,7 @@ class NHSNDatabase:
                 rows = conn.execute(
                     """
                     SELECT DATE(created_at) as date, COUNT(*) as count
-                    FROM nhsn_candidates
+                    FROM hai_candidates
                     WHERE status = 'confirmed'
                     AND hai_type = ?
                     AND created_at >= ?
@@ -906,7 +906,7 @@ class NHSNDatabase:
                 rows = conn.execute(
                     """
                     SELECT DATE(created_at) as date, COUNT(*) as count
-                    FROM nhsn_candidates
+                    FROM hai_candidates
                     WHERE status = 'confirmed'
                     AND created_at >= ?
                     GROUP BY DATE(created_at)
@@ -939,7 +939,7 @@ class NHSNDatabase:
             # Total confirmed in period
             total_confirmed = conn.execute(
                 """
-                SELECT COUNT(*) FROM nhsn_candidates
+                SELECT COUNT(*) FROM hai_candidates
                 WHERE status = 'confirmed' AND created_at >= ?
                 """,
                 (cutoff,),
@@ -948,7 +948,7 @@ class NHSNDatabase:
             # Total rejected in period
             total_rejected = conn.execute(
                 """
-                SELECT COUNT(*) FROM nhsn_candidates
+                SELECT COUNT(*) FROM hai_candidates
                 WHERE status = 'rejected' AND created_at >= ?
                 """,
                 (cutoff,),
@@ -1016,7 +1016,7 @@ class NHSNDatabase:
         with self._get_connection() as conn:
             rows = conn.execute(
                 """
-                SELECT * FROM nhsn_candidates
+                SELECT * FROM hai_candidates
                 WHERE status = 'confirmed'
                 AND DATE(culture_date) >= DATE(?)
                 AND DATE(culture_date) < DATE(?)
@@ -1043,21 +1043,21 @@ class NHSNDatabase:
         with self._get_connection() as conn:
             # Update the nhsn_reported flag (we need to add this column if it doesn't exist)
             # First check if column exists
-            cursor = conn.execute("PRAGMA table_info(nhsn_candidates)")
+            cursor = conn.execute("PRAGMA table_info(hai_candidates)")
             columns = [row[1] for row in cursor.fetchall()]
 
             if "nhsn_reported" not in columns:
                 conn.execute(
-                    "ALTER TABLE nhsn_candidates ADD COLUMN nhsn_reported INTEGER DEFAULT 0"
+                    "ALTER TABLE hai_candidates ADD COLUMN nhsn_reported INTEGER DEFAULT 0"
                 )
                 conn.execute(
-                    "ALTER TABLE nhsn_candidates ADD COLUMN nhsn_reported_at TEXT"
+                    "ALTER TABLE hai_candidates ADD COLUMN nhsn_reported_at TEXT"
                 )
 
             placeholders = ",".join(["?" for _ in candidate_ids])
             conn.execute(
                 f"""
-                UPDATE nhsn_candidates
+                UPDATE hai_candidates
                 SET nhsn_reported = 1, nhsn_reported_at = ?
                 WHERE id IN ({placeholders})
                 """,

@@ -21,8 +21,8 @@ from .models import (
     CandidateStatus,
     ClassificationDecision,
 )
-from .candidates import CLABSICandidateDetector, SSICandidateDetector
-from .classifiers import CLABSIClassifierV2, SSIClassifierV2
+from .candidates import CLABSICandidateDetector, SSICandidateDetector, VAECandidateDetector, CAUTICandidateDetector
+from .classifiers import CLABSIClassifierV2, SSIClassifierV2, VAEClassifier, CAUTIClassifier
 from .notes.retriever import NoteRetriever
 
 logger = logging.getLogger(__name__)
@@ -52,17 +52,18 @@ class HAIMonitor:
         self.detectors = {
             HAIType.CLABSI: CLABSICandidateDetector(),
             HAIType.SSI: SSICandidateDetector(),
-            # Future: CAUTI, VAE detectors
+            HAIType.VAE: VAECandidateDetector(),
+            HAIType.CAUTI: CAUTICandidateDetector(),
         }
 
         # Initialize classifiers and note retriever (lazy-loaded)
-        self._classifiers: dict[HAIType, CLABSIClassifierV2 | SSIClassifierV2] = {}
+        self._classifiers: dict[HAIType, CLABSIClassifierV2 | SSIClassifierV2 | VAEClassifier] = {}
         self._note_retriever: NoteRetriever | None = None
 
         # Track processed cultures to avoid duplicates within session
         self._processed_cultures: set[str] = set()
 
-    def get_classifier(self, hai_type: HAIType) -> CLABSIClassifierV2 | SSIClassifierV2:
+    def get_classifier(self, hai_type: HAIType) -> CLABSIClassifierV2 | SSIClassifierV2 | VAEClassifier:
         """Get classifier for the specified HAI type (lazy-loaded).
 
         Args:
@@ -76,6 +77,10 @@ class HAIMonitor:
                 self._classifiers[hai_type] = CLABSIClassifierV2(db=self.db)
             elif hai_type == HAIType.SSI:
                 self._classifiers[hai_type] = SSIClassifierV2(db=self.db)
+            elif hai_type == HAIType.VAE:
+                self._classifiers[hai_type] = VAEClassifier(db=self.db)
+            elif hai_type == HAIType.CAUTI:
+                self._classifiers[hai_type] = CAUTIClassifier()
             else:
                 # Default to CLABSI classifier for other types for now
                 logger.warning(f"No specific classifier for {hai_type}, using CLABSI")
@@ -202,6 +207,12 @@ class HAIMonitor:
         if candidate.hai_type == HAIType.SSI:
             alert_type = AlertType.NHSN_SSI
             title = f"SSI Candidate: {candidate.patient.name or candidate.patient.mrn}"
+        elif candidate.hai_type == HAIType.VAE:
+            alert_type = AlertType.NHSN_VAE
+            title = f"VAE Candidate: {candidate.patient.name or candidate.patient.mrn}"
+        elif candidate.hai_type == HAIType.CAUTI:
+            alert_type = AlertType.NHSN_CAUTI
+            title = f"CAUTI Candidate: {candidate.patient.name or candidate.patient.mrn}"
         else:
             alert_type = AlertType.NHSN_CLABSI
             title = f"CLABSI Candidate: {candidate.patient.name or candidate.patient.mrn}"
@@ -222,6 +233,25 @@ class HAIMonitor:
                 content["procedure_name"] = ssi_data.procedure.procedure_name
                 content["nhsn_category"] = ssi_data.procedure.nhsn_category
                 content["days_post_op"] = ssi_data.days_post_op
+        elif candidate.hai_type == HAIType.VAE:
+            vae_data = getattr(candidate, "_vae_data", None)
+            if vae_data:
+                content["vac_onset_date"] = vae_data.vac_onset_date.isoformat() if vae_data.vac_onset_date else None
+                content["ventilator_days"] = vae_data.episode.get_ventilator_days() if vae_data.episode else None
+                content["baseline_min_fio2"] = vae_data.baseline_min_fio2
+                content["baseline_min_peep"] = vae_data.baseline_min_peep
+                content["fio2_increase"] = vae_data.fio2_increase
+                content["peep_increase"] = vae_data.peep_increase
+        elif candidate.hai_type == HAIType.CAUTI:
+            cauti_data = getattr(candidate, "_cauti_data", None)
+            if cauti_data:
+                content["catheter_days"] = cauti_data.catheter_days
+                content["catheter_type"] = cauti_data.catheter_episode.catheter_type if cauti_data.catheter_episode else None
+                content["culture_cfu_ml"] = cauti_data.culture_cfu_ml
+                content["patient_age"] = cauti_data.patient_age
+            else:
+                content["catheter_days"] = candidate.device_days_at_culture
+                content["catheter_type"] = candidate.device_info.device_type if candidate.device_info else None
         else:
             content["device_days"] = candidate.device_days_at_culture
             content["device_type"] = candidate.device_info.device_type if candidate.device_info else None
@@ -252,6 +282,36 @@ class HAIMonitor:
                 return ", ".join(parts)
             else:
                 return f"SSI signal detected ({candidate.culture.organism or 'keyword-based'})"
+        elif candidate.hai_type == HAIType.VAE:
+            vae_data = getattr(candidate, "_vae_data", None)
+            if vae_data:
+                parts = ["VAC detected"]
+                if vae_data.episode:
+                    parts.append(f"on ventilator day {vae_data.episode.get_ventilator_days()}")
+                if vae_data.fio2_increase:
+                    parts.append(f"FiO2 +{vae_data.fio2_increase:.0f}%")
+                if vae_data.peep_increase:
+                    parts.append(f"PEEP +{vae_data.peep_increase:.0f}")
+                return ", ".join(parts)
+            else:
+                return "Ventilator-associated condition detected"
+        elif candidate.hai_type == HAIType.CAUTI:
+            cauti_data = getattr(candidate, "_cauti_data", None)
+            if cauti_data:
+                parts = [
+                    f"Positive urine culture ({candidate.culture.organism or 'organism pending'})",
+                    f"with urinary catheter in place {cauti_data.catheter_days} days",
+                ]
+                if cauti_data.culture_cfu_ml:
+                    parts.append(f"({cauti_data.culture_cfu_ml:,} CFU/mL)")
+                return " ".join(parts)
+            else:
+                parts = [
+                    f"Positive urine culture ({candidate.culture.organism or 'organism pending'})",
+                ]
+                if candidate.device_days_at_culture:
+                    parts.append(f"with catheter in place {candidate.device_days_at_culture} days")
+                return " ".join(parts)
         else:
             # CLABSI summary
             parts = [
@@ -317,6 +377,108 @@ Patient Information:
 Infection Signal:
   - Organism: {candidate.culture.organism or 'Keyword-based detection'}
   - Detection Date: {candidate.culture.collection_date.strftime('%Y-%m-%d %H:%M')}
+
+This candidate requires IP review.
+
+Review in Dashboard: {Config.DASHBOARD_BASE_URL}/hai-detection/candidates/{candidate.id}
+"""
+            elif candidate.hai_type == HAIType.VAE:
+                # VAE-specific email
+                vae_data = getattr(candidate, "_vae_data", None)
+                subject = f"New VAE Candidate: {candidate.patient.mrn} - VAC Detected"
+                if vae_data:
+                    body = f"""
+New VAE Candidate Detected (Ventilator-Associated Condition)
+
+Patient Information:
+  - Name: {candidate.patient.name or 'Unknown'}
+  - MRN: {candidate.patient.mrn}
+  - Location: {candidate.patient.location or 'Unknown'}
+
+Ventilator Information:
+  - Intubation Date: {vae_data.episode.intubation_date.strftime('%Y-%m-%d') if vae_data.episode and vae_data.episode.intubation_date else 'Unknown'}
+  - Ventilator Days: {vae_data.episode.get_ventilator_days() if vae_data.episode else 'Unknown'}
+
+VAC Details:
+  - VAC Onset Date: {vae_data.vac_onset_date.strftime('%Y-%m-%d') if vae_data.vac_onset_date else 'Unknown'}
+  - Baseline Period: {vae_data.baseline_start_date.strftime('%Y-%m-%d') if vae_data.baseline_start_date else 'Unknown'} to {vae_data.baseline_end_date.strftime('%Y-%m-%d') if vae_data.baseline_end_date else 'Unknown'}
+  - Baseline FiO2: {vae_data.baseline_min_fio2}%
+  - Baseline PEEP: {vae_data.baseline_min_peep} cmH2O
+  - FiO2 Increase: +{vae_data.fio2_increase:.0f}% (threshold: 20%)
+  - PEEP Increase: +{vae_data.peep_increase:.0f} cmH2O (threshold: 3)
+
+IVAC/VAP classification requires clinical review.
+
+This candidate requires IP review.
+
+Review in Dashboard: {Config.DASHBOARD_BASE_URL}/hai-detection/candidates/{candidate.id}
+"""
+                else:
+                    body = f"""
+New VAE Candidate Detected (Ventilator-Associated Condition)
+
+Patient Information:
+  - Name: {candidate.patient.name or 'Unknown'}
+  - MRN: {candidate.patient.mrn}
+  - Location: {candidate.patient.location or 'Unknown'}
+
+A Ventilator-Associated Condition (VAC) was detected. IVAC/VAP classification requires clinical review.
+
+This candidate requires IP review.
+
+Review in Dashboard: {Config.DASHBOARD_BASE_URL}/hai-detection/candidates/{candidate.id}
+"""
+            elif candidate.hai_type == HAIType.CAUTI:
+                # CAUTI-specific email
+                cauti_data = getattr(candidate, "_cauti_data", None)
+                subject = f"New CAUTI Candidate: {candidate.patient.mrn} - {candidate.culture.organism or 'Organism Pending'}"
+                if cauti_data:
+                    body = f"""
+New CAUTI Candidate Detected (Catheter-Associated Urinary Tract Infection)
+
+Patient Information:
+  - Name: {candidate.patient.name or 'Unknown'}
+  - MRN: {candidate.patient.mrn}
+  - Location: {candidate.patient.location or 'Unknown'}
+  - Age: {cauti_data.patient_age or 'Unknown'} years
+
+Catheter Information:
+  - Catheter Type: {cauti_data.catheter_episode.catheter_type if cauti_data.catheter_episode else 'Unknown'}
+  - Catheter Days at Culture: {cauti_data.catheter_days}
+  - Insertion Date: {cauti_data.catheter_episode.insertion_date.strftime('%Y-%m-%d') if cauti_data.catheter_episode and cauti_data.catheter_episode.insertion_date else 'Unknown'}
+
+Urine Culture:
+  - Organism: {candidate.culture.organism or 'Pending identification'}
+  - CFU/mL: {cauti_data.culture_cfu_ml:,} if cauti_data.culture_cfu_ml else 'Not specified'
+  - Collection Date: {candidate.culture.collection_date.strftime('%Y-%m-%d %H:%M')}
+
+NHSN CAUTI Criteria:
+  - Catheter >2 days: {'Yes' if cauti_data.catheter_days > 2 else 'No'} ({cauti_data.catheter_days} days)
+  - CFU threshold met: {'Yes' if cauti_data.culture_cfu_ml and cauti_data.culture_cfu_ml >= 100000 else 'Check required'}
+
+Symptom documentation requires clinical review.
+
+This candidate requires IP review.
+
+Review in Dashboard: {Config.DASHBOARD_BASE_URL}/hai-detection/candidates/{candidate.id}
+"""
+                else:
+                    body = f"""
+New CAUTI Candidate Detected (Catheter-Associated Urinary Tract Infection)
+
+Patient Information:
+  - Name: {candidate.patient.name or 'Unknown'}
+  - MRN: {candidate.patient.mrn}
+  - Location: {candidate.patient.location or 'Unknown'}
+
+Urine Culture:
+  - Organism: {candidate.culture.organism or 'Pending identification'}
+  - Collection Date: {candidate.culture.collection_date.strftime('%Y-%m-%d %H:%M')}
+
+Catheter Information:
+  - Catheter Days: {candidate.device_days_at_culture or 'Unknown'}
+
+Symptom documentation requires clinical review.
 
 This candidate requires IP review.
 

@@ -403,3 +403,320 @@ class LLMAuditEntry:
     response_time_ms: int = 0
     error_message: str | None = None
     created_at: datetime = field(default_factory=datetime.now)
+
+
+# ============================================================
+# Ventilator-Associated Event (VAE) Models
+# ============================================================
+
+@dataclass
+class VentilationEpisode:
+    """A mechanical ventilation episode for a patient.
+
+    Tracks intubation to extubation with daily ventilator parameters
+    for VAE surveillance.
+    """
+    id: str
+    patient_id: str
+    patient_mrn: str
+    intubation_date: datetime
+    extubation_date: datetime | None = None
+    encounter_id: str | None = None
+    location_code: str | None = None  # NHSN location code
+    fhir_device_id: str | None = None
+
+    def get_ventilator_days(self, reference_date: datetime | None = None) -> int:
+        """Calculate ventilator days.
+
+        Day 1 is the day of intubation (calendar day counting).
+
+        Args:
+            reference_date: Date to calculate days at. If None, uses
+                          extubation date or current date.
+
+        Returns:
+            Number of ventilator days (1-based)
+        """
+        if reference_date is None:
+            if self.extubation_date:
+                reference_date = self.extubation_date
+            else:
+                reference_date = datetime.now()
+
+        # Normalize to date for calendar day calculation
+        intub_date = self.intubation_date.date() if hasattr(self.intubation_date, 'date') else self.intubation_date
+        ref_date = reference_date.date() if hasattr(reference_date, 'date') else reference_date
+        delta = ref_date - intub_date
+        return delta.days + 1  # Day 1 is intubation day
+
+    def is_active(self, reference_date: datetime | None = None) -> bool:
+        """Check if ventilation is still active at a given date."""
+        if self.extubation_date is None:
+            return True
+        if reference_date is None:
+            reference_date = datetime.now()
+        return reference_date <= self.extubation_date
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON storage."""
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "patient_mrn": self.patient_mrn,
+            "intubation_date": self.intubation_date.isoformat(),
+            "extubation_date": self.extubation_date.isoformat() if self.extubation_date else None,
+            "encounter_id": self.encounter_id,
+            "location_code": self.location_code,
+            "fhir_device_id": self.fhir_device_id,
+        }
+
+    def to_db_row(self) -> dict:
+        """Convert to database row format."""
+        return self.to_dict()
+
+
+@dataclass
+class DailyVentParameters:
+    """Daily ventilator parameters for VAE detection.
+
+    Captures the minimum FiO2 and PEEP values for each calendar day
+    of mechanical ventilation. Minimum values are used per NHSN criteria.
+    """
+    episode_id: str
+    date: date
+    ventilator_day: int  # 1-based day number
+    min_fio2: float | None = None  # Minimum FiO2 for the day (percentage, e.g., 40.0)
+    min_peep: float | None = None  # Minimum PEEP for the day (cmH2O)
+    fio2_observation_id: str | None = None  # FHIR Observation ID
+    peep_observation_id: str | None = None
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON storage."""
+        return {
+            "episode_id": self.episode_id,
+            "date": self.date.isoformat(),
+            "ventilator_day": self.ventilator_day,
+            "min_fio2": self.min_fio2,
+            "min_peep": self.min_peep,
+            "fio2_observation_id": self.fio2_observation_id,
+            "peep_observation_id": self.peep_observation_id,
+        }
+
+    def to_db_row(self) -> dict:
+        """Convert to database row format."""
+        return self.to_dict()
+
+
+@dataclass
+class VAECandidate:
+    """Extended candidate info specific to VAE.
+
+    Links to an HAICandidate but contains VAE-specific fields
+    including VAC detection details and IVAC/VAP criteria tracking.
+    """
+    candidate_id: str
+    episode: VentilationEpisode
+    vac_onset_date: date
+    ventilator_day_at_onset: int
+
+    # Baseline period (≥2 days stable/improving)
+    baseline_start_date: date | None = None
+    baseline_end_date: date | None = None
+    baseline_min_fio2: float | None = None
+    baseline_min_peep: float | None = None
+
+    # Worsening detection
+    worsening_start_date: date | None = None
+    fio2_increase: float | None = None  # Percentage point increase from baseline
+    peep_increase: float | None = None  # cmH2O increase from baseline
+    met_fio2_criterion: bool = False
+    met_peep_criterion: bool = False
+
+    # Classification
+    vae_classification: str | None = None  # vac, ivac, possible_vap, probable_vap
+    vae_tier: int | None = None  # 1, 2, or 3
+
+    # IVAC criteria
+    temperature_criterion_met: bool = False
+    wbc_criterion_met: bool = False
+    antimicrobial_criterion_met: bool = False
+    qualifying_antimicrobials: list[str] = field(default_factory=list)
+
+    # VAP criteria
+    purulent_secretions_met: bool = False
+    positive_culture_met: bool = False
+    quantitative_culture_met: bool = False
+    organism_identified: str | None = None
+    specimen_type: str | None = None
+
+    def to_db_row(self) -> dict:
+        """Convert to database row format."""
+        return {
+            "candidate_id": self.candidate_id,
+            "episode_id": self.episode.id,
+            "intubation_date": self.episode.intubation_date.isoformat(),
+            "vac_onset_date": self.vac_onset_date.isoformat(),
+            "ventilator_day_at_onset": self.ventilator_day_at_onset,
+            "baseline_start_date": self.baseline_start_date.isoformat() if self.baseline_start_date else None,
+            "baseline_end_date": self.baseline_end_date.isoformat() if self.baseline_end_date else None,
+            "baseline_min_fio2": self.baseline_min_fio2,
+            "baseline_min_peep": self.baseline_min_peep,
+            "worsening_start_date": self.worsening_start_date.isoformat() if self.worsening_start_date else None,
+            "fio2_increase": self.fio2_increase,
+            "peep_increase": self.peep_increase,
+            "met_fio2_criterion": self.met_fio2_criterion,
+            "met_peep_criterion": self.met_peep_criterion,
+            "vae_classification": self.vae_classification,
+            "vae_tier": self.vae_tier,
+            "temperature_criterion_met": self.temperature_criterion_met,
+            "wbc_criterion_met": self.wbc_criterion_met,
+            "antimicrobial_criterion_met": self.antimicrobial_criterion_met,
+            "qualifying_antimicrobials": json.dumps(self.qualifying_antimicrobials),
+            "purulent_secretions_met": self.purulent_secretions_met,
+            "positive_culture_met": self.positive_culture_met,
+            "quantitative_culture_met": self.quantitative_culture_met,
+            "organism_identified": self.organism_identified,
+            "specimen_type": self.specimen_type,
+        }
+
+
+# ============================================================
+# Catheter-Associated Urinary Tract Infection (CAUTI) Models
+# ============================================================
+
+@dataclass
+class CatheterEpisode:
+    """An indwelling urinary catheter episode for a patient.
+
+    Tracks catheter insertion to removal for CAUTI surveillance.
+    """
+    id: str
+    patient_id: str
+    patient_mrn: str
+    insertion_date: datetime
+    removal_date: datetime | None = None
+    catheter_type: str | None = None  # urethral, suprapubic
+    site: str | None = None
+    encounter_id: str | None = None
+    location_code: str | None = None
+    fhir_device_id: str | None = None
+
+    def get_catheter_days(self, reference_date: datetime | None = None) -> int:
+        """Calculate catheter days.
+
+        Day 1 is the day of insertion (calendar day counting).
+
+        Args:
+            reference_date: Date to calculate days at. If None, uses
+                          removal date or current date.
+
+        Returns:
+            Number of catheter days (1-based)
+        """
+        if reference_date is None:
+            if self.removal_date:
+                reference_date = self.removal_date
+            else:
+                reference_date = datetime.now()
+
+        # Normalize to date for calendar day calculation
+        insert_date = self.insertion_date.date() if hasattr(self.insertion_date, 'date') else self.insertion_date
+        ref_date = reference_date.date() if hasattr(reference_date, 'date') else reference_date
+        delta = ref_date - insert_date
+        return delta.days + 1  # Day 1 is insertion day
+
+    def is_active(self, reference_date: datetime | None = None) -> bool:
+        """Check if catheter is still in place at a given date."""
+        if self.removal_date is None:
+            return True
+        if reference_date is None:
+            reference_date = datetime.now()
+        return reference_date <= self.removal_date
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON storage."""
+        return {
+            "id": self.id,
+            "patient_id": self.patient_id,
+            "patient_mrn": self.patient_mrn,
+            "insertion_date": self.insertion_date.isoformat(),
+            "removal_date": self.removal_date.isoformat() if self.removal_date else None,
+            "catheter_type": self.catheter_type,
+            "site": self.site,
+            "encounter_id": self.encounter_id,
+            "location_code": self.location_code,
+            "fhir_device_id": self.fhir_device_id,
+        }
+
+    def to_db_row(self) -> dict:
+        """Convert to database row format."""
+        return self.to_dict()
+
+
+@dataclass
+class CAUTICandidate:
+    """Extended candidate info specific to CAUTI.
+
+    Links to an HAICandidate but contains CAUTI-specific fields
+    including catheter episode and symptom tracking.
+    """
+    candidate_id: str
+    catheter_episode: CatheterEpisode
+    catheter_days: int
+    patient_age: int | None = None
+
+    # Culture details
+    culture_cfu_ml: int | None = None  # CFU/mL
+    culture_organism: str | None = None
+    culture_organism_count: int | None = None
+
+    # Symptom tracking
+    fever_documented: bool = False
+    dysuria_documented: bool = False
+    urgency_documented: bool = False
+    frequency_documented: bool = False
+    suprapubic_tenderness: bool = False
+    cva_tenderness: bool = False
+
+    # Classification
+    classification: str | None = None  # cauti, not_cauti, asymptomatic_bacteriuria
+
+    # Age-based fever rule tracking
+    fever_eligible_per_age_rule: bool = True
+
+    def get_symptoms_documented(self) -> list[str]:
+        """Get list of documented symptom names."""
+        symptoms = []
+        if self.fever_documented:
+            symptoms.append("fever")
+        if self.dysuria_documented:
+            symptoms.append("dysuria")
+        if self.urgency_documented:
+            symptoms.append("urgency")
+        if self.frequency_documented:
+            symptoms.append("frequency")
+        if self.suprapubic_tenderness:
+            symptoms.append("suprapubic_tenderness")
+        if self.cva_tenderness:
+            symptoms.append("cva_tenderness")
+        return symptoms
+
+    def to_db_row(self) -> dict:
+        """Convert to database row format."""
+        return {
+            "candidate_id": self.candidate_id,
+            "catheter_episode_id": self.catheter_episode.id,
+            "catheter_days": self.catheter_days,
+            "patient_age": self.patient_age,
+            "culture_cfu_ml": self.culture_cfu_ml,
+            "culture_organism": self.culture_organism,
+            "culture_organism_count": self.culture_organism_count,
+            "fever_documented": self.fever_documented,
+            "dysuria_documented": self.dysuria_documented,
+            "urgency_documented": self.urgency_documented,
+            "frequency_documented": self.frequency_documented,
+            "suprapubic_tenderness": self.suprapubic_tenderness,
+            "cva_tenderness": self.cva_tenderness,
+            "classification": self.classification,
+            "fever_eligible_per_age_rule": self.fever_eligible_per_age_rule,
+        }

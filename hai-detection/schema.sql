@@ -257,3 +257,260 @@ SELECT
 FROM ssi_candidate_details
 WHERE ssi_type IS NOT NULL
 GROUP BY ssi_type, strftime('%Y-%m', created_at);
+
+
+-- ============================================================
+-- VAE (Ventilator-Associated Event) Tracking Tables
+-- ============================================================
+
+-- VAE Ventilation Episodes - tracked mechanical ventilation episodes
+CREATE TABLE IF NOT EXISTS vae_ventilation_episodes (
+    id TEXT PRIMARY KEY,
+    patient_id TEXT NOT NULL,
+    patient_mrn TEXT NOT NULL,
+    intubation_date TIMESTAMP NOT NULL,
+    extubation_date TIMESTAMP,
+    encounter_id TEXT,
+    location_code TEXT,  -- NHSN location code
+    fhir_device_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(patient_id, intubation_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vae_episodes_patient ON vae_ventilation_episodes(patient_mrn);
+CREATE INDEX IF NOT EXISTS idx_vae_episodes_intubation ON vae_ventilation_episodes(intubation_date);
+CREATE INDEX IF NOT EXISTS idx_vae_episodes_encounter ON vae_ventilation_episodes(encounter_id);
+
+-- VAE Daily Parameters - FiO2/PEEP time series for each ventilation day
+CREATE TABLE IF NOT EXISTS vae_daily_parameters (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    episode_id TEXT NOT NULL,
+    date DATE NOT NULL,
+    ventilator_day INTEGER NOT NULL,  -- 1-based day number
+    min_fio2 REAL,  -- Minimum FiO2 for the day (percentage)
+    min_peep REAL,  -- Minimum PEEP for the day (cmH2O)
+    fio2_observation_id TEXT,  -- FHIR Observation ID
+    peep_observation_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (episode_id) REFERENCES vae_ventilation_episodes(id),
+    UNIQUE(episode_id, date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vae_params_episode ON vae_daily_parameters(episode_id);
+CREATE INDEX IF NOT EXISTS idx_vae_params_date ON vae_daily_parameters(date);
+
+-- VAE Candidate Details - VAE-specific data linked to hai_candidates
+CREATE TABLE IF NOT EXISTS vae_candidate_details (
+    id TEXT PRIMARY KEY,
+    candidate_id TEXT NOT NULL,
+    episode_id TEXT NOT NULL,
+    vac_onset_date DATE NOT NULL,
+    ventilator_day_at_onset INTEGER NOT NULL,
+    -- Baseline period
+    baseline_start_date DATE,
+    baseline_end_date DATE,
+    baseline_min_fio2 REAL,
+    baseline_min_peep REAL,
+    -- Worsening detection
+    worsening_start_date DATE,
+    fio2_increase REAL,  -- Percentage point increase
+    peep_increase REAL,  -- cmH2O increase
+    met_fio2_criterion BOOLEAN DEFAULT 0,
+    met_peep_criterion BOOLEAN DEFAULT 0,
+    -- Classification
+    vae_classification TEXT,  -- vac, ivac, possible_vap, probable_vap
+    vae_tier INTEGER,  -- 1, 2, or 3
+    -- IVAC criteria
+    temperature_criterion_met BOOLEAN DEFAULT 0,
+    wbc_criterion_met BOOLEAN DEFAULT 0,
+    antimicrobial_criterion_met BOOLEAN DEFAULT 0,
+    qualifying_antimicrobials TEXT,  -- JSON array
+    -- VAP criteria
+    purulent_secretions_met BOOLEAN DEFAULT 0,
+    positive_culture_met BOOLEAN DEFAULT 0,
+    quantitative_culture_met BOOLEAN DEFAULT 0,
+    organism_identified TEXT,
+    specimen_type TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (candidate_id) REFERENCES hai_candidates(id),
+    FOREIGN KEY (episode_id) REFERENCES vae_ventilation_episodes(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_vae_details_candidate ON vae_candidate_details(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_vae_details_episode ON vae_candidate_details(episode_id);
+CREATE INDEX IF NOT EXISTS idx_vae_details_classification ON vae_candidate_details(vae_classification);
+CREATE INDEX IF NOT EXISTS idx_vae_details_tier ON vae_candidate_details(vae_tier);
+
+-- VAE Rates View - monthly VAE rates per 1000 ventilator days
+CREATE VIEW IF NOT EXISTS vae_rates_monthly AS
+SELECT
+    strftime('%Y-%m', e.intubation_date) as month,
+    COUNT(DISTINCT e.id) as episodes,
+    SUM(
+        CAST(
+            julianday(COALESCE(e.extubation_date, date('now'))) -
+            julianday(e.intubation_date) + 1
+        AS INTEGER)
+    ) as ventilator_days,
+    COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.status IN ('confirmed', 'pending_review', 'classified') THEN c.id END) as vae_count,
+    ROUND(
+        1000.0 * COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.status IN ('confirmed', 'pending_review', 'classified') THEN c.id END) /
+        NULLIF(SUM(
+            CAST(
+                julianday(COALESCE(e.extubation_date, date('now'))) -
+                julianday(e.intubation_date) + 1
+            AS INTEGER)
+        ), 0),
+        2
+    ) as vae_rate_per_1000_vent_days
+FROM vae_ventilation_episodes e
+LEFT JOIN vae_candidate_details d ON e.id = d.episode_id
+LEFT JOIN hai_candidates c ON d.candidate_id = c.id AND c.hai_type = 'vae'
+GROUP BY strftime('%Y-%m', e.intubation_date);
+
+-- VAE by Tier View - counts by VAE classification tier
+CREATE VIEW IF NOT EXISTS vae_by_tier AS
+SELECT
+    vae_classification,
+    vae_tier,
+    COUNT(*) as count,
+    strftime('%Y-%m', created_at) as month
+FROM vae_candidate_details
+WHERE vae_classification IS NOT NULL
+GROUP BY vae_classification, vae_tier, strftime('%Y-%m', created_at);
+
+-- VAE by Location View - VAE counts by unit/location
+CREATE VIEW IF NOT EXISTS vae_by_location AS
+SELECT
+    e.location_code,
+    strftime('%Y-%m', e.intubation_date) as month,
+    COUNT(DISTINCT e.id) as episodes,
+    COUNT(DISTINCT CASE WHEN d.vae_classification IS NOT NULL THEN d.id END) as vae_count,
+    COUNT(DISTINCT CASE WHEN d.vae_classification = 'vac' THEN d.id END) as vac_count,
+    COUNT(DISTINCT CASE WHEN d.vae_classification = 'ivac' THEN d.id END) as ivac_count,
+    COUNT(DISTINCT CASE WHEN d.vae_classification IN ('possible_vap', 'probable_vap') THEN d.id END) as vap_count
+FROM vae_ventilation_episodes e
+LEFT JOIN vae_candidate_details d ON e.id = d.episode_id
+WHERE e.location_code IS NOT NULL
+GROUP BY e.location_code, strftime('%Y-%m', e.intubation_date);
+
+
+-- ============================================================
+-- CAUTI (Catheter-Associated Urinary Tract Infection) Tracking Tables
+-- ============================================================
+
+-- CAUTI Catheter Episodes - tracked indwelling urinary catheter episodes
+CREATE TABLE IF NOT EXISTS cauti_catheter_episodes (
+    id TEXT PRIMARY KEY,
+    patient_id TEXT NOT NULL,
+    patient_mrn TEXT NOT NULL,
+    insertion_date TIMESTAMP NOT NULL,
+    removal_date TIMESTAMP,
+    catheter_type TEXT,  -- urethral, suprapubic
+    site TEXT,  -- urethral, suprapubic
+    encounter_id TEXT,
+    location_code TEXT,
+    fhir_device_id TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(patient_id, insertion_date)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cauti_episodes_patient ON cauti_catheter_episodes(patient_mrn);
+CREATE INDEX IF NOT EXISTS idx_cauti_episodes_insertion ON cauti_catheter_episodes(insertion_date);
+CREATE INDEX IF NOT EXISTS idx_cauti_episodes_encounter ON cauti_catheter_episodes(encounter_id);
+
+-- CAUTI Candidate Details - CAUTI-specific data linked to hai_candidates
+CREATE TABLE IF NOT EXISTS cauti_candidate_details (
+    id TEXT PRIMARY KEY,
+    candidate_id TEXT NOT NULL,
+    catheter_episode_id TEXT NOT NULL,
+    catheter_days INTEGER NOT NULL,
+    patient_age INTEGER,
+    -- Culture details
+    culture_cfu_ml INTEGER,
+    culture_organism TEXT,
+    culture_organism_count INTEGER,
+    -- Symptom tracking
+    fever_documented BOOLEAN DEFAULT 0,
+    dysuria_documented BOOLEAN DEFAULT 0,
+    urgency_documented BOOLEAN DEFAULT 0,
+    frequency_documented BOOLEAN DEFAULT 0,
+    suprapubic_tenderness BOOLEAN DEFAULT 0,
+    cva_tenderness BOOLEAN DEFAULT 0,
+    -- Classification
+    classification TEXT,  -- cauti, not_cauti, asymptomatic_bacteriuria
+    -- Age-based fever rule
+    fever_eligible_per_age_rule BOOLEAN DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (candidate_id) REFERENCES hai_candidates(id),
+    FOREIGN KEY (catheter_episode_id) REFERENCES cauti_catheter_episodes(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cauti_details_candidate ON cauti_candidate_details(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_cauti_details_episode ON cauti_candidate_details(catheter_episode_id);
+CREATE INDEX IF NOT EXISTS idx_cauti_details_classification ON cauti_candidate_details(classification);
+
+-- CAUTI Rates View - monthly CAUTI rates per 1000 catheter days
+CREATE VIEW IF NOT EXISTS cauti_rates_monthly AS
+SELECT
+    strftime('%Y-%m', e.insertion_date) as month,
+    COUNT(DISTINCT e.id) as episodes,
+    SUM(
+        CAST(
+            julianday(COALESCE(e.removal_date, date('now'))) -
+            julianday(e.insertion_date) + 1
+        AS INTEGER)
+    ) as catheter_days,
+    COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.status IN ('confirmed', 'pending_review', 'classified') THEN c.id END) as cauti_count,
+    ROUND(
+        1000.0 * COUNT(DISTINCT CASE WHEN c.id IS NOT NULL AND c.status IN ('confirmed', 'pending_review', 'classified') THEN c.id END) /
+        NULLIF(SUM(
+            CAST(
+                julianday(COALESCE(e.removal_date, date('now'))) -
+                julianday(e.insertion_date) + 1
+            AS INTEGER)
+        ), 0),
+        2
+    ) as cauti_rate_per_1000_cath_days
+FROM cauti_catheter_episodes e
+LEFT JOIN cauti_candidate_details d ON e.id = d.catheter_episode_id
+LEFT JOIN hai_candidates c ON d.candidate_id = c.id AND c.hai_type = 'cauti'
+GROUP BY strftime('%Y-%m', e.insertion_date);
+
+-- CAUTI by Classification View
+CREATE VIEW IF NOT EXISTS cauti_by_classification AS
+SELECT
+    classification,
+    COUNT(*) as count,
+    strftime('%Y-%m', created_at) as month
+FROM cauti_candidate_details
+WHERE classification IS NOT NULL
+GROUP BY classification, strftime('%Y-%m', created_at);
+
+-- CAUTI by Location View
+CREATE VIEW IF NOT EXISTS cauti_by_location AS
+SELECT
+    e.location_code,
+    strftime('%Y-%m', e.insertion_date) as month,
+    COUNT(DISTINCT e.id) as episodes,
+    COUNT(DISTINCT CASE WHEN d.classification = 'cauti' THEN d.id END) as cauti_count,
+    COUNT(DISTINCT CASE WHEN d.classification = 'asymptomatic_bacteriuria' THEN d.id END) as asb_count
+FROM cauti_catheter_episodes e
+LEFT JOIN cauti_candidate_details d ON e.id = d.catheter_episode_id
+WHERE e.location_code IS NOT NULL
+GROUP BY e.location_code, strftime('%Y-%m', e.insertion_date);
+
+-- CAUTI Symptom Distribution View
+CREATE VIEW IF NOT EXISTS cauti_symptom_distribution AS
+SELECT
+    strftime('%Y-%m', created_at) as month,
+    SUM(CASE WHEN fever_documented = 1 THEN 1 ELSE 0 END) as fever_count,
+    SUM(CASE WHEN dysuria_documented = 1 THEN 1 ELSE 0 END) as dysuria_count,
+    SUM(CASE WHEN urgency_documented = 1 THEN 1 ELSE 0 END) as urgency_count,
+    SUM(CASE WHEN frequency_documented = 1 THEN 1 ELSE 0 END) as frequency_count,
+    SUM(CASE WHEN suprapubic_tenderness = 1 THEN 1 ELSE 0 END) as suprapubic_count,
+    SUM(CASE WHEN cva_tenderness = 1 THEN 1 ELSE 0 END) as cva_count,
+    COUNT(*) as total_candidates
+FROM cauti_candidate_details
+WHERE classification = 'cauti'
+GROUP BY strftime('%Y-%m', created_at);

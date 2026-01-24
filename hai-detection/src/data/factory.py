@@ -3,8 +3,8 @@
 import logging
 
 from ..config import Config
-from .base import BaseNoteSource, BaseDeviceSource, BaseCultureSource
-from .fhir_source import FHIRNoteSource, FHIRDeviceSource, FHIRCultureSource
+from .base import BaseNoteSource, BaseDeviceSource, BaseCultureSource, BaseVentilatorSource
+from .fhir_source import FHIRNoteSource, FHIRDeviceSource, FHIRCultureSource, FHIRVentilatorSource
 from .clarity_source import ClarityNoteSource, ClarityDeviceSource, ClarityCultureSource
 from .procedure_source import (
     BaseProcedureSource,
@@ -170,3 +170,19 @@ def get_procedure_source(source_type: str | None = None) -> BaseProcedureSource:
 
     # Default to mock for development
     return MockProcedureSource()
+
+
+def get_ventilator_source(source_type: str | None = None) -> BaseVentilatorSource:
+    """Get the configured ventilator source for VAE monitoring.
+
+    Args:
+        source_type: Override source type (fhir). Uses config if not specified.
+
+    Returns:
+        Configured ventilator source implementation.
+    """
+    source = source_type or getattr(Config, "VENTILATOR_SOURCE", "fhir")
+
+    # Currently only FHIR source is implemented
+    # Clarity ventilator source could be added in the future
+    return FHIRVentilatorSource()

@@ -39,6 +39,30 @@ from .ssi_schemas import (
     ReoperationFindings,
 )
 from .ssi_engine import SSIRulesEngine
+from .vae_schemas import (
+    VAEClassification,
+    VAETier,
+    VAEExtraction,
+    VAEStructuredData,
+    VAEClassificationResult,
+    TemperatureExtraction,
+    WBCExtraction,
+    AntimicrobialExtraction,
+    RespiratorySecretionsExtraction,
+    RespiratoryCultureExtraction,
+    VentilatorStatusExtraction,
+)
+from .vae_engine import VAERulesEngine
+from .cauti_schemas import (
+    CAUTIClassification,
+    CAUTIExtraction,
+    CAUTIStructuredData,
+    CAUTIClassificationResult,
+    UrinarySymptomExtraction,
+    UrineCultureExtraction,
+    CatheterStatusExtraction,
+)
+from .cauti_engine import CAUTIRulesEngine
 
 __all__ = [
     # CLABSI
@@ -66,4 +90,26 @@ __all__ = [
     "OrganSpaceSSIFindings",
     "ReoperationFindings",
     "SSIRulesEngine",
+    # VAE
+    "VAEClassification",
+    "VAETier",
+    "VAEExtraction",
+    "VAEStructuredData",
+    "VAEClassificationResult",
+    "TemperatureExtraction",
+    "WBCExtraction",
+    "AntimicrobialExtraction",
+    "RespiratorySecretionsExtraction",
+    "RespiratoryCultureExtraction",
+    "VentilatorStatusExtraction",
+    "VAERulesEngine",
+    # CAUTI
+    "CAUTIClassification",
+    "CAUTIExtraction",
+    "CAUTIStructuredData",
+    "CAUTIClassificationResult",
+    "UrinarySymptomExtraction",
+    "UrineCultureExtraction",
+    "CatheterStatusExtraction",
+    "CAUTIRulesEngine",
 ]
