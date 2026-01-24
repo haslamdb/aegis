@@ -616,6 +616,54 @@ table a.btn:hover {
     color: var(--color-white);
 }
 
+/* Indication classification badges */
+.badge-classification-N {
+    background: linear-gradient(135deg, var(--color-danger) 0%, #B91C1C 100%);
+    color: var(--color-white);
+}
+
+.badge-classification-U {
+    background: linear-gradient(135deg, var(--color-gray-500) 0%, var(--color-gray-600) 100%);
+    color: var(--color-white);
+}
+
+.badge-classification-S {
+    background: linear-gradient(135deg, var(--color-warning) 0%, #B45309 100%);
+    color: var(--color-white);
+}
+
+.badge-classification-A,
+.badge-classification-P,
+.badge-classification-FN {
+    background: linear-gradient(135deg, var(--color-success) 0%, #047857 100%);
+    color: var(--color-white);
+}
+
+.badge-success {
+    background: linear-gradient(135deg, var(--color-success) 0%, #047857 100%);
+    color: var(--color-white);
+}
+
+.badge-secondary {
+    background: var(--color-gray-300);
+    color: var(--color-gray-700);
+}
+
+/* Indication alert type styling */
+.alert-type-no-indication {
+    color: var(--color-danger);
+    font-weight: 600;
+}
+
+/* Recommendation text styling */
+.recommendation-text {
+    background: var(--color-warning-light);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--color-warning);
+    font-style: italic;
+}
+
 /* ============================================
    Buttons
    ============================================ */

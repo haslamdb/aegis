@@ -1,18 +1,31 @@
 # Antimicrobial Usage Alerts
 
-Monitors broad-spectrum antibiotic usage duration and alerts when medications exceed configurable thresholds. Part of the [AEGIS](../README.md) system.
+Monitors antimicrobial usage patterns including broad-spectrum duration and antibiotic indication documentation. Part of the [AEGIS](../README.md) system.
 
 > **Disclaimer:** All patient data used for testing is **simulated**. **No actual patient data exists in this repository.**
 
 ## Overview
 
-This module tracks active medication orders for broad-spectrum antibiotics (meropenem, vancomycin, etc.) and generates alerts when usage duration exceeds a configurable threshold (default: 72 hours). This supports antimicrobial stewardship by prompting review of prolonged broad-spectrum therapy.
+This module provides two complementary antimicrobial stewardship monitoring capabilities:
+
+1. **Broad-Spectrum Duration Monitoring** - Tracks active medication orders for broad-spectrum antibiotics (meropenem, vancomycin, etc.) and generates alerts when usage duration exceeds a configurable threshold (default: 72 hours).
+
+2. **Antibiotic Indication Monitoring** - Validates that antibiotic orders have documented indications using ICD-10 classification (Chua et al.) combined with LLM extraction from clinical notes. Only "Never appropriate" (N) classifications generate ASP alerts.
 
 ## Features
 
+### Broad-Spectrum Duration Monitoring
 - **Duration monitoring** - Tracks time since medication start date
 - **Configurable thresholds** - Default 72 hours, adjustable per site
 - **Severity escalation** - Warning at threshold, Critical at 2x threshold
+
+### Antibiotic Indication Monitoring
+- **Two-track classification** - ICD-10 codes first, then LLM extraction from clinical notes
+- **Note priority** - Clinical notes override ICD-10 codes (codes may be stale or inaccurate)
+- **N-only alerts** - Only "Never appropriate" classifications generate alerts
+- **Override tracking** - Track when pharmacist disagrees with system classification
+
+### Shared Infrastructure
 - **Persistent deduplication** - SQLite-backed tracking prevents re-alerting
 - **Multi-channel alerts** - Email and Teams with action buttons
 - **Dashboard integration** - View, acknowledge, snooze, and resolve alerts
@@ -101,6 +114,20 @@ DASHBOARD_API_KEY=your-secret-key
 ALERT_DB_PATH=~/.aegis/alerts.db
 ```
 
+### Indication Monitoring Settings
+
+```bash
+# Indication database path (separate from alerts)
+INDICATION_DB_PATH=~/.aegis/indications.db
+
+# Path to Chua et al. ICD-10 classification CSV
+CHUA_CSV_PATH=/path/to/aegis/data/chuk046645.ww2.csv
+
+# LLM settings for note extraction (Ollama)
+LLM_MODEL=llama3.1:70b
+LLM_BASE_URL=http://localhost:11434
+```
+
 ## Monitored Medications
 
 Default monitored medications (by RxNorm code):
@@ -121,6 +148,8 @@ Add more via `EXTRA_MONITORED_MEDICATIONS` environment variable.
 
 ## CLI Usage
 
+### Broad-Spectrum Duration Monitoring (Default)
+
 ```bash
 # Single check, dry run (no alerts sent)
 python -m src.runner --once --dry-run
@@ -138,22 +167,108 @@ python -m src.runner
 python -m src.runner --once --verbose
 ```
 
+### Antibiotic Indication Monitoring
+
+```bash
+# Run indication monitor only
+python -m src.runner --indication --once
+
+# Run indication monitor with dry-run (no alerts)
+python -m src.runner --indication --once --dry-run
+
+# Run indication monitor without LLM extraction (ICD-10 only)
+python -m src.runner --indication --once --no-llm
+
+# Run both monitors together
+python -m src.runner --both --once
+
+# Verbose output for indication monitoring
+python -m src.runner --indication --once --verbose
+```
+
+### Cron Setup (Nightly Indication Batch)
+
+```bash
+# Add to crontab for nightly 4 AM runs
+0 4 * * * cd /path/to/aegis/antimicrobial-usage-alerts && python -m src.runner --indication --once >> /var/log/aegis/indication-monitor.log 2>&1
+```
+
 ## Architecture
 
 ```
 antimicrobial-usage-alerts/
 ├── src/
 │   ├── alerters/
-│   │   ├── email_alerter.py    # Email notifications
-│   │   └── teams_alerter.py    # Teams with action buttons
-│   ├── config.py               # Environment configuration
-│   ├── fhir_client.py          # FHIR API client
-│   ├── models.py               # Data models
-│   ├── monitor.py              # BroadSpectrumMonitor class
-│   └── runner.py               # CLI entry point
-├── tests/                      # Unit tests
-├── .env.template               # Configuration template
-└── requirements.txt            # Python dependencies
+│   │   ├── email_alerter.py        # Email notifications
+│   │   └── teams_alerter.py        # Teams with action buttons
+│   ├── config.py                   # Environment configuration
+│   ├── fhir_client.py              # FHIR API client
+│   ├── models.py                   # Data models
+│   ├── monitor.py                  # BroadSpectrumMonitor class
+│   ├── indication_monitor.py       # IndicationMonitor class
+│   ├── indication_db.py            # SQLite for indication tracking
+│   ├── llm_extractor.py            # LLM-based note extraction
+│   └── runner.py                   # CLI entry point
+├── prompts/
+│   └── indication_extraction_v1.txt  # LLM prompt template
+├── schema.sql                      # Indication database schema
+├── tests/                          # Unit tests
+├── .env.template                   # Configuration template
+└── requirements.txt                # Python dependencies
+```
+
+## Indication Classification
+
+The indication monitor uses a two-track classification approach:
+
+### Track 1: ICD-10 Classification (Chua et al.)
+
+Uses the pediatric antibiotic indication classification from Chua et al. to categorize ICD-10 diagnosis codes:
+
+| Category | Description | Alert? |
+|----------|-------------|--------|
+| **A** (Always) | Indication always appropriate for antibiotics | No |
+| **S** (Sometimes) | Indication sometimes appropriate | No |
+| **N** (Never) | Indication never appropriate for antibiotics | **Yes** |
+| **P** (Prophylaxis) | Appropriate for prophylaxis | No |
+| **FN** (Febrile Neutropenia) | Empiric therapy appropriate | No |
+| **U** (Unknown) | No matching ICD-10 codes found | Falls through to LLM |
+
+### Track 2: LLM Note Extraction
+
+When ICD-10 classification is N or U, the system extracts indications from clinical notes using a local LLM (Ollama):
+
+- Searches for documented indications (e.g., "treating for pneumonia")
+- Identifies supporting symptoms (fever, elevated WBC)
+- Detects culture results and clinical reasoning
+- **Notes take priority over ICD-10** - if the note says "viral infection" but ICD-10 says pneumonia, the note wins
+
+### Classification Flow
+
+```
+MedicationRequest (antibiotic order)
+         │
+         ▼
+Get Patient ICD-10 Conditions
+         │
+         ▼
+Chua Classification (ICD-10)
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+  A/S/P/FN    N/U
+  (no alert)   │
+               ▼
+    LLM Note Extraction
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+  Found       Still N
+  indication   │
+  (upgrade     ▼
+   to A/S)  Create Alert
 ```
 
 ## Data Models
@@ -229,9 +344,24 @@ python -m src.runner --once --verbose --dry-run
 - Clear alert store to reset: delete alerts.db or resolve all alerts
 - Use `--all` flag to bypass deduplication (for testing)
 
+### LLM not available (indication monitoring)
+
+1. Check Ollama is running: `curl http://localhost:11434/api/tags`
+2. Verify the model is installed: `ollama list`
+3. Pull the model if missing: `ollama pull llama3.1:70b`
+4. Check LLM settings in .env match your Ollama configuration
+5. Use `--no-llm` flag to run with ICD-10 classification only
+
+### Chua CSV not found
+
+1. Verify path in CHUA_CSV_PATH environment variable
+2. Default location: `aegis/data/chuk046645.ww2.csv`
+3. Ensure the abx-indications module is properly installed
+
 ## Related Documentation
 
 - [AEGIS Overview](../README.md)
 - [Demo Workflow](../docs/demo-workflow.md) - Complete demo walkthrough
 - [Bacteremia Alerts](../asp-bacteremia-alerts/README.md)
+- [Antibiotic Indication Classification](../abx-indications/README.md) - Chua et al. methodology
 - [Dashboard](../dashboard/README.md)

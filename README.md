@@ -75,13 +75,25 @@ Real-time monitoring of blood culture results with antibiotic coverage assessmen
 
 ### antimicrobial-usage-alerts
 
-Monitors broad-spectrum antibiotic usage duration. Alerts when meropenem, vancomycin, or other monitored antibiotics exceed configurable thresholds (default 72 hours).
+Monitors antimicrobial usage patterns including broad-spectrum duration and antibiotic indication documentation. Provides two monitoring capabilities:
+
+**Broad-Spectrum Duration Monitoring:**
+- Alerts when meropenem, vancomycin, or other monitored antibiotics exceed configurable thresholds (default 72 hours)
+- Severity escalation (warning at threshold, critical at 2x threshold)
+
+**Antibiotic Indication Monitoring:**
+- Validates documented indications for antibiotic orders using ICD-10 classification (Chua et al.)
+- LLM extraction from clinical notes when ICD-10 codes are inconclusive
+- Notes take priority over ICD-10 codes (codes may be stale or inaccurate)
+- Only "Never appropriate" (N) classifications generate ASP alerts
+- Supports nightly batch runs via cron
 
 **Features:**
 - Duration-based alerting for broad-spectrum antibiotics
+- Two-track indication classification: ICD-10 codes + LLM note extraction
 - Configurable thresholds and monitored medications
-- Severity escalation (warning at threshold, critical at 2x threshold)
 - Teams alerts with acknowledge/snooze buttons
+- Override tracking for pharmacist disagreements
 
 **[Documentation →](antimicrobial-usage-alerts/README.md)**
 

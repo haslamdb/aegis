@@ -13,6 +13,9 @@
         {% set is_nhsn_reporting = request.endpoint and request.endpoint.startswith('nhsn_reporting.') %}
         {% set is_dashboards = request.endpoint and request.endpoint.startswith('dashboards.') %}
         {% set is_asp_alerts = request.endpoint and request.endpoint.startswith('asp_alerts.') %}
+        {% set is_abx_indications = request.endpoint and request.endpoint.startswith('abx_indications.') %}
+        {% set is_guideline_adherence = request.endpoint and request.endpoint.startswith('guideline_adherence.') %}
+        {% set is_surgical_prophylaxis = request.endpoint and request.endpoint.startswith('surgical_prophylaxis.') %}
         {% set is_landing = request.endpoint == 'main.landing' %}
         <div class="nav-brand">
             <svg class="nav-shield" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -27,6 +30,12 @@
             <a href="{{ url_for('dashboards.index') }}">Dashboards</a>
             {% elif is_asp_alerts %}
             <a href="{{ url_for('asp_alerts.alerts_active') }}">ASP Alerts</a>
+            {% elif is_abx_indications %}
+            <a href="{{ url_for('abx_indications.dashboard') }}">Antibiotic Indications</a>
+            {% elif is_guideline_adherence %}
+            <a href="{{ url_for('guideline_adherence.dashboard') }}">Guideline Adherence</a>
+            {% elif is_surgical_prophylaxis %}
+            <a href="{{ url_for('surgical_prophylaxis.dashboard') }}">Surgical Prophylaxis</a>
             {% else %}
             <a href="{{ url_for('main.landing') }}">AEGIS</a>
             {% endif %}
@@ -60,6 +69,21 @@
             <a href="{{ url_for('asp_alerts.reports') }}" {% if request.endpoint == 'asp_alerts.reports' %}class="active"{% endif %}>Reports</a>
             <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
             <a href="{{ url_for('asp_alerts.help_page') }}" {% if request.endpoint == 'asp_alerts.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_abx_indications %}
+            <!-- Antibiotic Indications Navigation -->
+            <a href="{{ url_for('abx_indications.dashboard') }}" {% if request.endpoint == 'abx_indications.dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            <a href="{{ url_for('abx_indications.help_page') }}" {% if request.endpoint == 'abx_indications.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_guideline_adherence %}
+            <!-- Guideline Adherence Navigation -->
+            <a href="{{ url_for('guideline_adherence.dashboard') }}" {% if request.endpoint == 'guideline_adherence.dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            <a href="{{ url_for('guideline_adherence.help_page') }}" {% if request.endpoint == 'guideline_adherence.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_surgical_prophylaxis %}
+            <!-- Surgical Prophylaxis Navigation -->
+            <a href="{{ url_for('surgical_prophylaxis.dashboard') }}" {% if request.endpoint == 'surgical_prophylaxis.dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            <a href="{{ url_for('surgical_prophylaxis.help_page') }}" {% if request.endpoint == 'surgical_prophylaxis.help_page' %}class="active"{% endif %}>Help</a>
             {% else %}
             <!-- Landing Page Navigation -->
             <a href="{{ url_for('asp_alerts.alerts_active') }}" class="nav-alerts">ASP Alerts</a>

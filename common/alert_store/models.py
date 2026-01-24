@@ -11,6 +11,7 @@ class AlertType(Enum):
     """Types of alerts that can be stored."""
     BACTEREMIA = "bacteremia"
     BROAD_SPECTRUM_USAGE = "broad_spectrum_usage"
+    ABX_NO_INDICATION = "abx_no_indication"  # No documented indication for antibiotic
     NHSN_CLABSI = "nhsn_clabsi"        # NHSN CLABSI candidate
     NHSN_SSI = "nhsn_ssi"              # NHSN SSI candidate
     NHSN_VAE = "nhsn_vae"              # NHSN VAE candidate

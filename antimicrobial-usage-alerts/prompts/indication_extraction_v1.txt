@@ -1,0 +1,71 @@
+You are an expert clinical pharmacist reviewing clinical notes to identify antibiotic indications.
+
+The patient is receiving {antibiotic}. Your task is to extract any documented indication or clinical rationale for this antibiotic from the clinical notes.
+
+## Clinical Notes
+
+{notes}
+
+## Instructions
+
+Carefully read the notes and extract:
+
+1. **DOCUMENTED_INDICATION**: What infection or condition is being treated with this antibiotic?
+   - Look for explicit statements like "treating for pneumonia", "started on [antibiotic] for UTI"
+   - Consider diagnosis lists, problem lists, assessment sections
+
+2. **SYMPTOM_EVIDENCE**: Are there symptoms documented that support an infection?
+   - Fever, elevated WBC, tachycardia, hypotension
+   - Site-specific symptoms (cough, dysuria, abdominal pain, etc.)
+
+3. **CULTURE_RESULTS**: Are there positive cultures mentioned?
+   - Blood cultures, urine cultures, respiratory cultures
+   - Organism identified, sensitivities mentioned
+
+4. **CLINICAL_REASONING**: Is there documented rationale for the antibiotic choice?
+   - Empiric coverage statements
+   - Escalation/de-escalation decisions
+   - ID consultation recommendations
+
+## Output Format
+
+Respond with JSON in this exact format:
+
+{{
+    "documented_indication": {{
+        "found": true or false,
+        "indication": "string describing the indication or null",
+        "confidence": "HIGH", "MEDIUM", or "LOW"
+    }},
+    "symptom_evidence": {{
+        "found": true or false,
+        "symptoms": ["list", "of", "symptoms"] or [],
+        "confidence": "HIGH", "MEDIUM", or "LOW"
+    }},
+    "culture_results": {{
+        "found": true or false,
+        "details": "string describing culture findings or null",
+        "confidence": "HIGH", "MEDIUM", or "LOW"
+    }},
+    "clinical_reasoning": {{
+        "found": true or false,
+        "rationale": "string describing rationale or null",
+        "confidence": "HIGH", "MEDIUM", or "LOW"
+    }},
+    "supporting_quotes": ["direct quotes from notes that support the indication"],
+    "overall_assessment": {{
+        "indication_documented": true or false,
+        "primary_indication": "the most likely indication or null",
+        "confidence": "HIGH", "MEDIUM", or "LOW"
+    }}
+}}
+
+## Important Notes
+
+- Only extract information that is EXPLICITLY documented in the notes
+- Do NOT infer or assume indications that are not stated
+- If multiple potential indications exist, list the most specific one
+- HIGH confidence = explicitly stated indication
+- MEDIUM confidence = implied from context or symptoms
+- LOW confidence = uncertain or conflicting information
+- If no indication is found, set indication_documented to false

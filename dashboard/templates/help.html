@@ -10,10 +10,11 @@
 <div class="help-content">
     <div class="help-card">
         <h2>Overview</h2>
-        <p>This guide walks through generating and managing ASP alerts. The system monitors two scenarios:</p>
+        <p>This guide walks through generating and managing ASP alerts. The system monitors three scenarios:</p>
         <ol>
             <li><strong>Bacteremia Alert</strong> - Patient with positive blood culture lacking appropriate antibiotic coverage</li>
             <li><strong>Antimicrobial Usage Alert</strong> - Patient on broad-spectrum antibiotics exceeding the 72-hour threshold</li>
+            <li><strong>No Indication Alert</strong> - Patient receiving antibiotics without documented indication (classification: "Never appropriate")</li>
         </ol>
     </div>
 
@@ -37,6 +38,15 @@ python scripts/demo_antimicrobial_usage.py --antibiotic meropenem --days 5</code
         <p>Then run the usage monitor:</p>
         <pre><code>cd antimicrobial-usage-alerts
 python -m src.runner --once --verbose</code></pre>
+
+        <h3>3. Generate a No Indication Alert</h3>
+        <p>Create a patient with an antibiotic order but viral diagnosis (no indication for antibiotics):</p>
+        <pre><code>cd /home/david/projects/aegis
+python scripts/demo_indication_alert.py --scenario viral_with_abx</code></pre>
+
+        <p>Then run the indication monitor:</p>
+        <pre><code>cd antimicrobial-usage-alerts
+python -m src.runner --indication --once --verbose</code></pre>
     </div>
 
     <div class="help-card">
@@ -120,6 +130,95 @@ python -m src.runner --once --verbose</code></pre>
     </div>
 
     <div class="help-card">
+        <h2>Indication Monitoring Scenarios</h2>
+        <p>The indication monitor classifies antibiotic orders using ICD-10 codes and clinical note extraction. Only "Never appropriate" (N) classifications generate alerts.</p>
+
+        <h3>Demo Scenarios</h3>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Description</th>
+                    <th>Alert?</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>--scenario pneumonia</code></td>
+                    <td>Bacterial pneumonia (ICD-10 + note)</td>
+                    <td><span class="badge badge-status-resolved">No</span> (Always appropriate)</td>
+                </tr>
+                <tr>
+                    <td><code>--scenario uti</code></td>
+                    <td>Urinary tract infection</td>
+                    <td><span class="badge badge-status-resolved">No</span> (Always appropriate)</td>
+                </tr>
+                <tr>
+                    <td><code>--scenario viral_uri</code></td>
+                    <td>Viral upper respiratory infection (no antibiotics)</td>
+                    <td><span class="badge badge-status-resolved">No</span> (No antibiotics ordered)</td>
+                </tr>
+                <tr>
+                    <td><code>--scenario viral_with_abx</code></td>
+                    <td>Viral URI with unnecessary antibiotics</td>
+                    <td><span class="badge badge-warning">Yes</span> (Never appropriate)</td>
+                </tr>
+                <tr>
+                    <td><code>--scenario no_indication_documented</code></td>
+                    <td>Antibiotics with no documented indication</td>
+                    <td><span class="badge badge-warning">Yes</span> (Never appropriate)</td>
+                </tr>
+                <tr>
+                    <td><code>--scenario note_contradicts_icd10</code></td>
+                    <td>ICD-10 says pneumonia, note says viral</td>
+                    <td><span class="badge badge-warning">Yes</span> (Note overrides ICD-10)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Classification Categories</h3>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Meaning</th>
+                    <th>Alert?</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-classification-A">A</span></td>
+                    <td>Always appropriate for antibiotics</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-classification-S">S</span></td>
+                    <td>Sometimes appropriate</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-classification-P">P</span></td>
+                    <td>Prophylaxis appropriate</td>
+                    <td>No</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-classification-N">N</span></td>
+                    <td>Never appropriate</td>
+                    <td><strong>Yes</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Two-Track Classification</h3>
+        <p>The system uses two sources to determine if an antibiotic has an appropriate indication:</p>
+        <ol>
+            <li><strong>ICD-10 Classification</strong> - Uses Chua et al. pediatric antibiotic indication mappings</li>
+            <li><strong>LLM Note Extraction</strong> - Extracts indications from clinical notes using a local LLM</li>
+        </ol>
+        <p><strong>Note Priority:</strong> Clinical notes take precedence over ICD-10 codes. If a note explicitly states "viral infection" but the patient has a pneumonia ICD-10 code, the system classifies as "N" (never appropriate) based on the note.</p>
+    </div>
+
+    <div class="help-card">
         <h2>Alert Resolution Workflow</h2>
         <ol>
             <li><strong>View</strong> - Click on an alert to see details</li>
@@ -180,25 +279,34 @@ rm -f ~/.aegis/alerts.db</code></pre>
 |   (add patients)  |     |  Server :8081     |
 +-------------------+     +---------+---------+
                                     |
-                    +---------------+---------------+
-                    v                               v
-          +-------------------+           +-------------------+
-          |   Bacteremia      |           |  Antimicrobial    |
-          |    Monitor        |           |  Usage Monitor    |
-          +---------+---------+           +---------+---------+
-                    |                               |
-                    +--------------+----------------+
-                                   v
-                         +-------------------+
-                         |   Alert Store     |
-                         |   (SQLite)        |
-                         +---------+---------+
-                                   |
-                    +--------------+---------------+
-                    v              v               v
-           +-----------+   +-----------+   +-----------+
-           | Dashboard |   |   Teams   |   |   Email   |
-           +-----------+   +-----------+   +-----------+
+         +--------------------------+--------------------------+
+         v                          v                          v
++-------------------+    +-------------------+    +-------------------+
+|   Bacteremia      |    |  Broad-Spectrum   |    |   Indication      |
+|    Monitor        |    |  Usage Monitor    |    |    Monitor        |
++---------+---------+    +---------+---------+    +---------+---------+
+         |                        |                        |
+         |                        |               +--------+--------+
+         |                        |               v                 v
+         |                        |      +-------------+   +-------------+
+         |                        |      | ICD-10      |   | LLM Note    |
+         |                        |      | (Chua)      |   | Extraction  |
+         |                        |      +------+------+   +------+------+
+         |                        |             |                 |
+         |                        |             +--------+--------+
+         |                        |                      |
+         +------------------------+----------------------+
+                                  v
+                        +-------------------+
+                        |   Alert Store     |
+                        |   (SQLite)        |
+                        +---------+---------+
+                                  |
+                   +--------------+---------------+
+                   v              v               v
+          +-----------+   +-----------+   +-----------+
+          | Dashboard |   |   Teams   |   |   Email   |
+          +-----------+   +-----------+   +-----------+
         </pre>
     </div>
 </div>

@@ -67,3 +67,41 @@ class UsageAssessment:
     related_cultures: list[str] = field(default_factory=list)
     justification_found: bool = False
     justification_reason: str | None = None
+
+
+@dataclass
+class IndicationCandidate:
+    """Antibiotic order needing indication review."""
+    id: str
+    patient: Patient
+    medication: MedicationOrder
+    icd10_codes: list[str]
+    icd10_classification: str  # A, S, N, P, FN, U
+    icd10_primary_indication: str | None
+    llm_extracted_indication: str | None
+    llm_classification: str | None
+    final_classification: str
+    classification_source: str  # icd10, llm, manual
+    status: str  # pending, alerted, reviewed
+    alert_id: str | None = None
+
+
+@dataclass
+class IndicationAssessment:
+    """Assessment result for an antibiotic order."""
+    candidate: IndicationCandidate
+    requires_alert: bool  # True if final_classification == 'N'
+    recommendation: str
+    severity: AlertSeverity
+    assessed_at: datetime = field(default_factory=datetime.now)
+
+
+@dataclass
+class IndicationExtraction:
+    """LLM extraction result from clinical notes."""
+    found_indications: list[str]
+    supporting_quotes: list[str]
+    confidence: str  # HIGH, MEDIUM, LOW
+    model_used: str
+    prompt_version: str
+    tokens_used: int | None = None

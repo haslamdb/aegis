@@ -74,6 +74,53 @@ class Config:
     # Polling settings
     POLL_INTERVAL: int = int(os.getenv("POLL_INTERVAL", "300"))
 
+    # Indication monitoring settings
+    INDICATION_DB_PATH: str = os.getenv(
+        "INDICATION_DB_PATH",
+        str(Path.home() / ".aegis" / "indications.db"),
+    )
+    CHUA_CSV_PATH: str = os.getenv(
+        "CHUA_CSV_PATH",
+        str(ASP_ALERTS_ROOT / "data" / "chuk046645.ww2.csv"),
+    )
+
+    # LLM settings for indication extraction
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "llama3.1:70b")
+    LLM_BASE_URL: str = os.getenv("LLM_BASE_URL", "http://localhost:11434")
+
+    # Antibiotic RxNorm codes to monitor for indications
+    # This is broader than MONITORED_MEDICATIONS - includes all antibiotics
+    INDICATION_MONITORED_MEDICATIONS: dict[str, str] = {
+        # Cephalosporins
+        "309090": "Ceftriaxone",
+        "309092": "Cefazolin",
+        "309110": "Cefepime",
+        "2176": "Ceftazidime",
+        # Carbapenems
+        "29561": "Meropenem",
+        "77664": "Ertapenem",
+        "25033": "Imipenem/Cilastatin",
+        # Glycopeptides
+        "11124": "Vancomycin",
+        "135152": "Daptomycin",
+        # Beta-lactam/Beta-lactamase inhibitors
+        "392151": "Piperacillin/Tazobactam",
+        "18631": "Ampicillin/Sulbactam",
+        # Fluoroquinolones
+        "82122": "Levofloxacin",
+        "2551": "Ciprofloxacin",
+        # Aminoglycosides
+        "10395": "Tobramycin",
+        "5588": "Gentamicin",
+        "641": "Amikacin",
+        # Other
+        "10831": "Trimethoprim/Sulfamethoxazole",
+        "6922": "Metronidazole",
+        "190376": "Linezolid",
+        "2582": "Clindamycin",
+        "733": "Ampicillin",
+    }
+
     @classmethod
     def is_epic_configured(cls) -> bool:
         """Check if Epic FHIR credentials are configured."""

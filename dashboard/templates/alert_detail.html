@@ -72,6 +72,67 @@
                 {% if alert.content %}
                 <div class="info-section">
                     <h3>Clinical Details</h3>
+
+                    {% if alert.alert_type.value == 'abx_no_indication' %}
+                    {# Indication-specific display #}
+                    <dl>
+                        <dt>Medication</dt>
+                        <dd><strong>{{ alert.content.get('medication_name', 'Unknown') }}</strong></dd>
+
+                        {% if alert.content.get('order_date') %}
+                        <dt>Order Date</dt>
+                        <dd>{{ alert.content.get('order_date') }}</dd>
+                        {% endif %}
+
+                        <dt>ICD-10 Classification</dt>
+                        <dd>
+                            {% set classification = alert.content.get('icd10_classification', 'U') %}
+                            <span class="badge badge-classification-{{ classification }}">
+                                {% if classification == 'N' %}Never Appropriate
+                                {% elif classification == 'U' %}Unknown
+                                {% elif classification == 'S' %}Sometimes
+                                {% elif classification == 'A' %}Always
+                                {% else %}{{ classification }}
+                                {% endif %}
+                            </span>
+                        </dd>
+
+                        {% if alert.content.get('icd10_primary_indication') %}
+                        <dt>Primary ICD-10 Indication</dt>
+                        <dd>{{ alert.content.get('icd10_primary_indication') }}</dd>
+                        {% endif %}
+
+                        {% if alert.content.get('icd10_codes') %}
+                        <dt>ICD-10 Codes</dt>
+                        <dd>
+                            {% for code in alert.content.get('icd10_codes', [])[:5] %}
+                            <code>{{ code }}</code>{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                            {% if alert.content.get('icd10_codes')|length > 5 %}
+                            <em>... and {{ alert.content.get('icd10_codes')|length - 5 }} more</em>
+                            {% endif %}
+                        </dd>
+                        {% endif %}
+
+                        {% if alert.content.get('llm_attempted') %}
+                        <dt>LLM Extraction</dt>
+                        <dd>
+                            {% if alert.content.get('llm_found_indication') %}
+                            <span class="badge badge-success">Found Indication</span>
+                            {% if alert.content.get('llm_extracted_text') %}
+                            <br><em>{{ alert.content.get('llm_extracted_text') }}</em>
+                            {% endif %}
+                            {% else %}
+                            <span class="badge badge-secondary">No Indication Found</span>
+                            {% endif %}
+                        </dd>
+                        {% endif %}
+
+                        <dt>Recommendation</dt>
+                        <dd class="recommendation-text">{{ alert.content.get('recommendation', '-') }}</dd>
+                    </dl>
+                    {% else %}
+                    {# Default display for other alert types #}
                     <dl>
                         {% for key, value in alert.content.items() %}
                         <dt>{{ key.replace('_', ' ').title() }}</dt>
@@ -84,6 +145,7 @@
                         </dd>
                         {% endfor %}
                     </dl>
+                    {% endif %}
                 </div>
                 {% endif %}
 
