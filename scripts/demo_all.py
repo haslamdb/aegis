@@ -22,6 +22,9 @@ Usage:
     # Run monitors only (assume data exists)
     python scripts/demo_all.py --monitors-only
 
+    # Quick demo (skip slow HAI LLM classification)
+    python scripts/demo_all.py --skip-hai
+
     # Dry run (show what would be created)
     python scripts/demo_all.py --dry-run
 
@@ -80,7 +83,7 @@ def print_error(text: str):
     print(f"  {Colors.RED}✗{Colors.END} {text}")
 
 
-def run_command(cmd: list, cwd: Path = None, description: str = None, dry_run: bool = False, verbose: bool = False) -> bool:
+def run_command(cmd: list, cwd: Path = None, description: str = None, dry_run: bool = False, verbose: bool = False, timeout: int = 120) -> bool:
     """Run a shell command and return success status."""
     if description:
         print(f"  Running: {description}")
@@ -98,7 +101,7 @@ def run_command(cmd: list, cwd: Path = None, description: str = None, dry_run: b
             cwd=cwd or PROJECT_ROOT,
             capture_output=not verbose,
             text=True,
-            timeout=120
+            timeout=timeout
         )
         if result.returncode == 0:
             return True
@@ -261,7 +264,7 @@ def create_ssi_demo(dry_run: bool = False, verbose: bool = False) -> bool:
     return success1 and success2
 
 
-def run_monitors(dry_run: bool = False, verbose: bool = False) -> dict:
+def run_monitors(dry_run: bool = False, verbose: bool = False, skip_hai: bool = False) -> dict:
     """Run all monitors to generate alerts."""
     print_header("RUNNING MONITORS")
 
@@ -293,7 +296,9 @@ def run_monitors(dry_run: bool = False, verbose: bool = False) -> dict:
 
     # 3. Indication monitor
     print_step(3, "Running Indication Monitor")
-    cmd = [sys.executable, "-m", "src.indication_runner", "--once"]
+    cmd = [sys.executable, "-m", "src.runner", "--indication", "--once"]
+    if verbose:
+        cmd.append("--verbose")
     results["indication"] = run_command(
         cmd,
         cwd=PROJECT_ROOT / "antimicrobial-usage-alerts",
@@ -328,16 +333,22 @@ def run_monitors(dry_run: bool = False, verbose: bool = False) -> dict:
         verbose=verbose
     )
 
-    # 6. HAI Detection monitor
+    # 6. HAI Detection monitor (longer timeout for LLM classification)
     print_step(6, "Running HAI Detection Monitor")
-    cmd = [sys.executable, "-m", "src.runner", "--full"]
-    results["hai"] = run_command(
-        cmd,
-        cwd=PROJECT_ROOT / "hai-detection",
-        description="hai-detection runner",
-        dry_run=dry_run,
-        verbose=verbose
-    )
+    if skip_hai:
+        print_warning("Skipping HAI detection (--skip-hai flag)")
+        results["hai"] = True  # Mark as success (skipped)
+    else:
+        print("  Note: LLM classification may take several minutes...")
+        cmd = [sys.executable, "-m", "src.runner", "--full"]
+        results["hai"] = run_command(
+            cmd,
+            cwd=PROJECT_ROOT / "hai-detection",
+            description="hai-detection runner",
+            dry_run=dry_run,
+            verbose=verbose,
+            timeout=300  # 5 minutes for LLM classification
+        )
 
     return results
 
@@ -412,6 +423,8 @@ Examples:
                        help="Show what would be done without executing")
     parser.add_argument("--verbose", "-v", action="store_true",
                        help="Show detailed output")
+    parser.add_argument("--skip-hai", action="store_true",
+                       help="Skip HAI detection (LLM classification takes several minutes)")
 
     args = parser.parse_args()
 
@@ -439,7 +452,7 @@ Examples:
 
     # Run monitors
     if not args.data_only:
-        monitor_results = run_monitors(args.dry_run, args.verbose)
+        monitor_results = run_monitors(args.dry_run, args.verbose, args.skip_hai)
 
     # Print summary
     print_summary(data_results, monitor_results if not args.data_only else None)
