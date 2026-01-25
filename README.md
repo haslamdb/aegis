@@ -25,16 +25,17 @@ Our vision is to shift infection prevention from reactive detection to proactive
 
 **AEGIS Landing Page:** [https://aegis-asp.com](https://aegis-asp.com)
 
-The landing page provides access to four main sections:
+The landing page provides access to the following modules:
 
 | Section | URL | Description |
 |---------|-----|-------------|
-| **ASP Alerts** | [/asp-alerts/](https://aegis-asp.com/asp-alerts/) | Antimicrobial stewardship alerts (bacteremia, usage monitoring) |
-| **HAI Detection** | [/hai-detection/](https://aegis-asp.com/hai-detection/) | CLABSI and SSI candidate screening and IP review workflow |
+| **ASP Alerts** | [/asp-alerts/](https://aegis-asp.com/asp-alerts/) | Antimicrobial stewardship alerts (bacteremia, usage, indications) |
+| **HAI Detection** | [/hai-detection/](https://aegis-asp.com/hai-detection/) | CLABSI and SSI candidate screening with IP review workflow |
 | **NHSN Reporting** | [/nhsn-reporting/](https://aegis-asp.com/nhsn-reporting/) | AU, AR, and HAI data aggregation with NHSN submission |
-| **Dashboards** | [/dashboards/](https://aegis-asp.com/dashboards/) | Analytics dashboards (coming soon) |
+| **Guideline Adherence** | [/guideline-adherence/](https://aegis-asp.com/guideline-adherence/) | Bundle compliance monitoring (Sepsis, Febrile Infant, CAP, etc.) |
+| **Surgical Prophylaxis** | [/surgical-prophylaxis/](https://aegis-asp.com/surgical-prophylaxis/) | Surgical prophylaxis compliance (coming soon) |
 
-The demo environment includes synthetic patient data for testing alert, HAI detection, and AU/AR reporting workflows.
+The demo environment includes synthetic patient data for testing alert, HAI detection, guideline adherence, and NHSN reporting workflows.
 
 ## Architecture
 
