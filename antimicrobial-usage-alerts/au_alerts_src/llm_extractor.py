@@ -138,7 +138,7 @@ Respond with JSON containing:
                 prompt_version=self.PROMPT_VERSION,
             )
 
-    def _prepare_notes(self, notes: list[str], max_chars: int = 8000) -> str:
+    def _prepare_notes(self, notes: list[str], max_chars: int = 24000) -> str:
         """Prepare notes for LLM input with truncation.
 
         Args:
@@ -170,25 +170,28 @@ Respond with JSON containing:
             Exception on API or parsing errors.
         """
         response = requests.post(
-            f"{self.base_url}/api/generate",
+            f"{self.base_url}/api/chat",
             json={
                 "model": self.model,
-                "prompt": prompt,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
                 "stream": False,
                 "format": "json",
                 "options": {
                     "temperature": 0.0,  # Deterministic
                     "num_predict": 1024,
+                    "num_ctx": 8192,
                 },
             },
-            timeout=60,
+            timeout=120,  # Increased for larger context
         )
 
         if response.status_code != 200:
             raise Exception(f"LLM API error: {response.status_code} - {response.text}")
 
         result = response.json()
-        response_text = result.get("response", "")
+        response_text = result.get("message", {}).get("content", "")
 
         # Parse JSON from response
         try:
