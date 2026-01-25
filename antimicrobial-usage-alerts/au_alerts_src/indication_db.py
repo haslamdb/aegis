@@ -52,6 +52,34 @@ class IndicationDatabase:
             conn.executescript(schema)
             conn.commit()
 
+            # Run migrations for existing databases
+            self._run_migrations(conn)
+
+    def _run_migrations(self, conn) -> None:
+        """Add new columns to existing databases."""
+        cursor = conn.cursor()
+
+        # Get existing columns
+        cursor.execute("PRAGMA table_info(indication_candidates)")
+        existing_cols = {row[1] for row in cursor.fetchall()}
+
+        # Migrations: add columns if they don't exist
+        migrations = [
+            ("rxnorm_code", "ALTER TABLE indication_candidates ADD COLUMN rxnorm_code TEXT"),
+            ("location", "ALTER TABLE indication_candidates ADD COLUMN location TEXT"),
+            ("service", "ALTER TABLE indication_candidates ADD COLUMN service TEXT"),
+        ]
+
+        for col_name, sql in migrations:
+            if col_name not in existing_cols:
+                try:
+                    cursor.execute(sql)
+                    logger.info(f"Migration: added column {col_name}")
+                except Exception as e:
+                    logger.debug(f"Migration skipped for {col_name}: {e}")
+
+        conn.commit()
+
     @contextmanager
     def _get_connection(self):
         """Get database connection with context manager."""
@@ -87,6 +115,9 @@ class IndicationDatabase:
                 cursor.execute(
                     """
                     UPDATE indication_candidates SET
+                        rxnorm_code = ?,
+                        location = ?,
+                        service = ?,
                         icd10_codes = ?,
                         icd10_classification = ?,
                         icd10_primary_indication = ?,
@@ -100,6 +131,9 @@ class IndicationDatabase:
                     WHERE medication_request_id = ?
                     """,
                     (
+                        candidate.medication.rxnorm_code,
+                        candidate.location,
+                        candidate.service,
                         json.dumps(candidate.icd10_codes),
                         candidate.icd10_classification,
                         candidate.icd10_primary_indication,
@@ -122,11 +156,11 @@ class IndicationDatabase:
                     """
                     INSERT INTO indication_candidates (
                         id, patient_id, patient_mrn, medication_request_id,
-                        medication_name, order_date, icd10_codes, icd10_classification,
-                        icd10_primary_indication, llm_extracted_indication,
-                        llm_classification, final_classification, classification_source,
-                        status, alert_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        medication_name, rxnorm_code, order_date, location, service,
+                        icd10_codes, icd10_classification, icd10_primary_indication,
+                        llm_extracted_indication, llm_classification,
+                        final_classification, classification_source, status, alert_id
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         candidate_id,
@@ -134,9 +168,12 @@ class IndicationDatabase:
                         candidate.patient.mrn,
                         candidate.medication.fhir_id,
                         candidate.medication.medication_name,
+                        candidate.medication.rxnorm_code,
                         candidate.medication.start_date.isoformat()
                         if candidate.medication.start_date
                         else None,
+                        candidate.location,
+                        candidate.service,
                         json.dumps(candidate.icd10_codes),
                         candidate.icd10_classification,
                         candidate.icd10_primary_indication,
@@ -251,10 +288,14 @@ class IndicationDatabase:
             except ValueError:
                 pass
 
+        # Get rxnorm_code safely (may not exist in older rows)
+        rxnorm_code = row["rxnorm_code"] if "rxnorm_code" in row.keys() else None
+
         medication = MedicationOrder(
             fhir_id=row["medication_request_id"],
             patient_id=row["patient_id"],
             medication_name=row["medication_name"],
+            rxnorm_code=rxnorm_code,
             start_date=order_date,
         )
 
@@ -264,6 +305,10 @@ class IndicationDatabase:
                 icd10_codes = json.loads(row["icd10_codes"])
             except json.JSONDecodeError:
                 pass
+
+        # Get location/service safely (may not exist in older rows)
+        location = row["location"] if "location" in row.keys() else None
+        service = row["service"] if "service" in row.keys() else None
 
         return IndicationCandidate(
             id=row["id"],
@@ -278,6 +323,8 @@ class IndicationDatabase:
             classification_source=row["classification_source"],
             status=row["status"],
             alert_id=row["alert_id"],
+            location=location,
+            service=service,
         )
 
     def save_review(
@@ -452,3 +499,249 @@ class IndicationDatabase:
                 (f"-{days} days",),
             )
             return {r["final_classification"]: r["count"] for r in cursor.fetchall()}
+
+    # ========================
+    # Analytics Methods
+    # ========================
+
+    def get_usage_by_antibiotic(self, days: int = 30) -> list[dict]:
+        """Get antibiotic usage statistics grouped by medication.
+
+        Args:
+            days: Number of days to include.
+
+        Returns:
+            List of dicts with medication stats (name, total, appropriate, inappropriate).
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT
+                    medication_name,
+                    rxnorm_code,
+                    COUNT(*) as total_orders,
+                    SUM(CASE WHEN final_classification IN ('A', 'S', 'P') THEN 1 ELSE 0 END) as appropriate,
+                    SUM(CASE WHEN final_classification = 'N' THEN 1 ELSE 0 END) as inappropriate,
+                    SUM(CASE WHEN final_classification IN ('U', 'FN') THEN 1 ELSE 0 END) as unknown
+                FROM indication_candidates
+                WHERE created_at >= datetime('now', ?)
+                GROUP BY medication_name, rxnorm_code
+                ORDER BY total_orders DESC
+                """,
+                (f"-{days} days",),
+            )
+            results = []
+            for r in cursor.fetchall():
+                total = r["total_orders"]
+                results.append({
+                    "medication_name": r["medication_name"],
+                    "rxnorm_code": r["rxnorm_code"],
+                    "total_orders": total,
+                    "appropriate": r["appropriate"],
+                    "inappropriate": r["inappropriate"],
+                    "unknown": r["unknown"],
+                    "appropriate_rate": r["appropriate"] / total if total > 0 else 0,
+                })
+            return results
+
+    def get_usage_by_location(self, days: int = 30) -> list[dict]:
+        """Get antibiotic usage statistics grouped by location/unit.
+
+        Args:
+            days: Number of days to include.
+
+        Returns:
+            List of dicts with location stats.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT
+                    COALESCE(location, 'Unknown') as location,
+                    COUNT(*) as total_orders,
+                    SUM(CASE WHEN final_classification IN ('A', 'S', 'P') THEN 1 ELSE 0 END) as appropriate,
+                    SUM(CASE WHEN final_classification = 'N' THEN 1 ELSE 0 END) as inappropriate,
+                    SUM(CASE WHEN final_classification IN ('U', 'FN') THEN 1 ELSE 0 END) as unknown
+                FROM indication_candidates
+                WHERE created_at >= datetime('now', ?)
+                GROUP BY location
+                ORDER BY total_orders DESC
+                """,
+                (f"-{days} days",),
+            )
+            results = []
+            for r in cursor.fetchall():
+                total = r["total_orders"]
+                results.append({
+                    "location": r["location"],
+                    "total_orders": total,
+                    "appropriate": r["appropriate"],
+                    "inappropriate": r["inappropriate"],
+                    "unknown": r["unknown"],
+                    "appropriate_rate": r["appropriate"] / total if total > 0 else 0,
+                })
+            return results
+
+    def get_usage_by_service(self, days: int = 30) -> list[dict]:
+        """Get antibiotic usage statistics grouped by ordering service.
+
+        Args:
+            days: Number of days to include.
+
+        Returns:
+            List of dicts with service stats.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT
+                    COALESCE(service, 'Unknown') as service,
+                    COUNT(*) as total_orders,
+                    SUM(CASE WHEN final_classification IN ('A', 'S', 'P') THEN 1 ELSE 0 END) as appropriate,
+                    SUM(CASE WHEN final_classification = 'N' THEN 1 ELSE 0 END) as inappropriate,
+                    SUM(CASE WHEN final_classification IN ('U', 'FN') THEN 1 ELSE 0 END) as unknown
+                FROM indication_candidates
+                WHERE created_at >= datetime('now', ?)
+                GROUP BY service
+                ORDER BY total_orders DESC
+                """,
+                (f"-{days} days",),
+            )
+            results = []
+            for r in cursor.fetchall():
+                total = r["total_orders"]
+                results.append({
+                    "service": r["service"],
+                    "total_orders": total,
+                    "appropriate": r["appropriate"],
+                    "inappropriate": r["inappropriate"],
+                    "unknown": r["unknown"],
+                    "appropriate_rate": r["appropriate"] / total if total > 0 else 0,
+                })
+            return results
+
+    def get_usage_by_location_and_antibiotic(self, days: int = 30) -> list[dict]:
+        """Get cross-tabulated usage by location AND antibiotic.
+
+        Args:
+            days: Number of days to include.
+
+        Returns:
+            List of dicts with location/antibiotic combination stats.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT
+                    COALESCE(location, 'Unknown') as location,
+                    medication_name,
+                    COUNT(*) as total_orders,
+                    SUM(CASE WHEN final_classification IN ('A', 'S', 'P') THEN 1 ELSE 0 END) as appropriate,
+                    SUM(CASE WHEN final_classification = 'N' THEN 1 ELSE 0 END) as inappropriate
+                FROM indication_candidates
+                WHERE created_at >= datetime('now', ?)
+                GROUP BY location, medication_name
+                ORDER BY location, total_orders DESC
+                """,
+                (f"-{days} days",),
+            )
+            results = []
+            for r in cursor.fetchall():
+                total = r["total_orders"]
+                results.append({
+                    "location": r["location"],
+                    "medication_name": r["medication_name"],
+                    "total_orders": total,
+                    "appropriate": r["appropriate"],
+                    "inappropriate": r["inappropriate"],
+                    "appropriate_rate": r["appropriate"] / total if total > 0 else 0,
+                })
+            return results
+
+    def get_daily_usage_trend(self, days: int = 30) -> list[dict]:
+        """Get daily antibiotic usage trend.
+
+        Args:
+            days: Number of days to include.
+
+        Returns:
+            List of dicts with daily stats.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT
+                    DATE(order_date) as date,
+                    COUNT(*) as total_orders,
+                    SUM(CASE WHEN final_classification IN ('A', 'S', 'P') THEN 1 ELSE 0 END) as appropriate,
+                    SUM(CASE WHEN final_classification = 'N' THEN 1 ELSE 0 END) as inappropriate
+                FROM indication_candidates
+                WHERE order_date >= datetime('now', ?)
+                GROUP BY DATE(order_date)
+                ORDER BY date
+                """,
+                (f"-{days} days",),
+            )
+            results = []
+            for r in cursor.fetchall():
+                total = r["total_orders"]
+                results.append({
+                    "date": r["date"],
+                    "total_orders": total,
+                    "appropriate": r["appropriate"],
+                    "inappropriate": r["inappropriate"],
+                    "appropriate_rate": r["appropriate"] / total if total > 0 else 0,
+                })
+            return results
+
+    def get_usage_summary(self, days: int = 30) -> dict:
+        """Get overall usage summary statistics.
+
+        Args:
+            days: Number of days to include.
+
+        Returns:
+            Dict with summary statistics.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT
+                    COUNT(*) as total_orders,
+                    COUNT(DISTINCT patient_id) as unique_patients,
+                    COUNT(DISTINCT medication_name) as unique_antibiotics,
+                    COUNT(DISTINCT location) as unique_locations,
+                    COUNT(DISTINCT service) as unique_services,
+                    SUM(CASE WHEN final_classification IN ('A', 'S', 'P') THEN 1 ELSE 0 END) as appropriate,
+                    SUM(CASE WHEN final_classification = 'N' THEN 1 ELSE 0 END) as inappropriate,
+                    SUM(CASE WHEN final_classification IN ('U', 'FN') THEN 1 ELSE 0 END) as unknown,
+                    SUM(CASE WHEN classification_source = 'llm' THEN 1 ELSE 0 END) as llm_classified,
+                    SUM(CASE WHEN classification_source = 'icd10' THEN 1 ELSE 0 END) as icd10_classified
+                FROM indication_candidates
+                WHERE created_at >= datetime('now', ?)
+                """,
+                (f"-{days} days",),
+            )
+            r = cursor.fetchone()
+            total = r["total_orders"] or 0
+            return {
+                "days": days,
+                "total_orders": total,
+                "unique_patients": r["unique_patients"] or 0,
+                "unique_antibiotics": r["unique_antibiotics"] or 0,
+                "unique_locations": r["unique_locations"] or 0,
+                "unique_services": r["unique_services"] or 0,
+                "appropriate": r["appropriate"] or 0,
+                "inappropriate": r["inappropriate"] or 0,
+                "unknown": r["unknown"] or 0,
+                "appropriate_rate": (r["appropriate"] or 0) / total if total > 0 else 0,
+                "inappropriate_rate": (r["inappropriate"] or 0) / total if total > 0 else 0,
+                "llm_classified": r["llm_classified"] or 0,
+                "icd10_classified": r["icd10_classified"] or 0,
+            }

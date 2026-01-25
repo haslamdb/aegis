@@ -215,6 +215,66 @@ class FHIRClient(ABC):
             status=resource.get("status", "active"),
         )
 
+    def get_patient_encounter_info(self, patient_id: str) -> dict:
+        """Get patient's active encounter with location and service.
+
+        Args:
+            patient_id: FHIR patient ID.
+
+        Returns:
+            Dict with 'location' and 'service' keys (may be None).
+        """
+        params = {
+            "patient": patient_id,
+            "status": "in-progress",
+            "_sort": "-date",
+            "_count": "1",
+        }
+
+        try:
+            response = self.get("Encounter", params)
+            resources = self._extract_entries(response)
+        except Exception as e:
+            logger.warning(f"Failed to get encounter for patient {patient_id}: {e}")
+            return {"location": None, "service": None}
+
+        if not resources:
+            return {"location": None, "service": None}
+
+        encounter = resources[0]
+
+        # Extract location from encounter.location[].location.display
+        location = None
+        for loc in encounter.get("location", []):
+            if loc_ref := loc.get("location", {}):
+                location = loc_ref.get("display")
+                if location:
+                    break
+
+        # Extract service from serviceType or class
+        service = None
+        if service_type := encounter.get("serviceType"):
+            coding = service_type.get("coding", [{}])[0]
+            service = coding.get("display") or coding.get("code")
+
+        # Fall back to encounter class if no serviceType
+        if not service:
+            if enc_class := encounter.get("class"):
+                service = enc_class.get("display") or enc_class.get("code")
+
+        # Try to get service from participant (attending physician service)
+        if not service:
+            for participant in encounter.get("participant", []):
+                for type_coding in participant.get("type", [{}]):
+                    for coding in type_coding.get("coding", []):
+                        if coding.get("code") == "ATND":  # Attending
+                            if individual := participant.get("individual", {}).get("display"):
+                                # Often includes service: "Dr. Smith (Hospitalist)"
+                                if "(" in individual and ")" in individual:
+                                    service = individual.split("(")[1].rstrip(")")
+
+        return {"location": location, "service": service}
+
     def get_patient_conditions(self, patient_id: str) -> list[str]:
         """Get active ICD-10 codes for a patient.
 
