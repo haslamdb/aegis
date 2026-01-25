@@ -48,6 +48,7 @@
                 <th>Patient MRN</th>
                 <th>Antibiotic</th>
                 <th>Order Date</th>
+                <th>Indication</th>
                 <th>ICD-10 Class</th>
                 <th>Final</th>
                 <th>Source</th>
@@ -60,6 +61,15 @@
                 <td>{{ c.patient.mrn or '-' }}</td>
                 <td>{{ c.medication.medication_name or '-' }}</td>
                 <td>{{ c.medication.start_date.strftime('%Y-%m-%d') if c.medication.start_date else '-' }}</td>
+                <td class="indication-cell">
+                    {% if c.icd10_primary_indication %}
+                        {{ c.icd10_primary_indication }}
+                    {% elif c.llm_extracted_indication %}
+                        <em>{{ c.llm_extracted_indication }}</em>
+                    {% else %}
+                        <span class="text-muted">No indication</span>
+                    {% endif %}
+                </td>
                 <td>
                     <span class="badge badge-classification-{{ c.icd10_classification or 'U' }}">
                         {{ c.icd10_classification or 'U' }}
@@ -72,9 +82,17 @@
                 </td>
                 <td>{{ c.classification_source or '-' }}</td>
                 <td>
+                    {% if c.alert_id %}
+                    <a href="{{ url_for('asp_alerts.alert_detail', alert_id=c.alert_id) }}" class="badge-link">
+                        <span class="badge badge-status-{{ c.status or 'pending' }}">
+                            {{ c.status or 'pending' }}
+                        </span>
+                    </a>
+                    {% else %}
                     <span class="badge badge-status-{{ c.status or 'pending' }}">
                         {{ c.status or 'pending' }}
                     </span>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}
@@ -283,6 +301,36 @@
 .override-stats p {
     margin: 0;
     color: var(--color-gray-700);
+}
+
+.indication-cell {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.indication-cell em {
+    color: var(--color-gray-600);
+}
+
+.text-muted {
+    color: var(--color-gray-400);
+    font-style: italic;
+}
+
+.badge-link {
+    text-decoration: none;
+}
+
+.badge-link:hover .badge {
+    opacity: 0.85;
+    transform: scale(1.05);
+}
+
+.badge-link .badge {
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
 }
 
 .summary-card {

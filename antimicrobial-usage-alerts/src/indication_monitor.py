@@ -502,6 +502,75 @@ class IndicationMonitor:
         """Clear the set of alerted orders (useful for testing)."""
         self._alerted_orders.clear()
 
+    def alert_pending_n_candidates(self) -> list[tuple[str, str]]:
+        """Create alerts for pending N candidates that were missed.
+
+        This catches candidates that were classified as N but never alerted,
+        possibly due to incomplete processing.
+
+        Returns:
+            List of (candidate_id, alert_id) tuples for newly alerted candidates.
+        """
+        # Get pending candidates with N classification
+        pending_n = self.db.list_candidates(status="pending", classification="N")
+        logger.info(f"Found {len(pending_n)} pending N candidates to check")
+
+        newly_alerted = []
+        for candidate in pending_n:
+            order_id = candidate.medication.fhir_id
+
+            # Check if already alerted (by source_id)
+            if self.alert_store.check_if_alerted(
+                AlertType.ABX_NO_INDICATION,
+                order_id,
+                include_resolved=True,
+            ):
+                # Already alerted - just update status
+                candidate.status = "alerted"
+                # Try to find the existing alert ID
+                existing = self.alert_store.get_alert_by_source(
+                    AlertType.ABX_NO_INDICATION, order_id
+                )
+                if existing:
+                    candidate.alert_id = existing.id
+                self.db.save_candidate(candidate)
+                logger.info(f"Updated status for {candidate.patient.mrn} (already alerted)")
+                continue
+
+            # Create new alert
+            try:
+                # Build assessment for alert creation
+                recommendation = self._generate_recommendation(
+                    candidate.medication,
+                    candidate.final_classification,
+                    candidate.icd10_primary_indication,
+                    [],
+                )
+
+                assessment = IndicationAssessment(
+                    candidate=candidate,
+                    requires_alert=True,
+                    recommendation=recommendation,
+                    severity=AlertSeverity.WARNING,
+                )
+
+                stored_alert = self._create_alert(assessment)
+                candidate.alert_id = stored_alert.id
+                candidate.status = "alerted"
+                self.db.save_candidate(candidate)
+
+                newly_alerted.append((candidate.id, stored_alert.id))
+                logger.info(
+                    f"Created alert for {candidate.patient.mrn} - "
+                    f"{candidate.medication.medication_name}"
+                )
+
+            except Exception as e:
+                logger.error(f"Failed to create alert for {candidate.id}: {e}")
+
+        logger.info(f"Newly alerted: {len(newly_alerted)} candidates")
+        return newly_alerted
+
 
 def run_indication_monitor(since_hours: int = 24, dry_run: bool = False) -> int:
     """Convenience function to run the indication monitor.
@@ -514,6 +583,12 @@ def run_indication_monitor(since_hours: int = 24, dry_run: bool = False) -> int:
         Number of new alerts found.
     """
     monitor = IndicationMonitor()
+
+    # First, fix any pending N candidates that were missed
+    if not dry_run:
+        monitor.alert_pending_n_candidates()
+
+    # Then check for new alerts
     alert_tuples = monitor.check_new_alerts()
 
     if dry_run:
