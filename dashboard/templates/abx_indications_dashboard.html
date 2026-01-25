@@ -12,32 +12,76 @@
     <div class="summary-card">
         <div class="summary-icon" style="color: var(--color-success);">&#x2705;</div>
         <div class="summary-content">
-            <div class="summary-value">--</div>
+            <div class="summary-value">{{ counts.get('A', 0) + counts.get('FN', 0) }}</div>
             <div class="summary-label">Always Indicated</div>
         </div>
     </div>
     <div class="summary-card">
         <div class="summary-icon" style="color: var(--color-warning);">&#x26A0;</div>
         <div class="summary-content">
-            <div class="summary-value">--</div>
+            <div class="summary-value">{{ counts.get('S', 0) }}</div>
             <div class="summary-label">Sometimes Indicated</div>
         </div>
     </div>
     <div class="summary-card">
         <div class="summary-icon" style="color: var(--color-danger);">&#x274C;</div>
         <div class="summary-content">
-            <div class="summary-value">--</div>
+            <div class="summary-value">{{ counts.get('N', 0) }}</div>
             <div class="summary-label">Never Indicated</div>
         </div>
     </div>
     <div class="summary-card">
         <div class="summary-icon" style="color: var(--color-primary);">&#x1F3E5;</div>
         <div class="summary-content">
-            <div class="summary-value">--</div>
+            <div class="summary-value">{{ counts.get('P', 0) }}</div>
             <div class="summary-label">Prophylaxis</div>
         </div>
     </div>
 </div>
+
+{% if recent_candidates %}
+<div class="recent-candidates">
+    <h2>Recent Assessments <span class="subtitle">(Last 7 days)</span></h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient MRN</th>
+                <th>Antibiotic</th>
+                <th>Order Date</th>
+                <th>ICD-10 Class</th>
+                <th>Final</th>
+                <th>Source</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in recent_candidates %}
+            <tr>
+                <td>{{ c.patient.mrn or '-' }}</td>
+                <td>{{ c.medication.medication_name or '-' }}</td>
+                <td>{{ c.medication.start_date.strftime('%Y-%m-%d') if c.medication.start_date else '-' }}</td>
+                <td>
+                    <span class="badge badge-classification-{{ c.icd10_classification or 'U' }}">
+                        {{ c.icd10_classification or 'U' }}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge badge-classification-{{ c.final_classification or 'U' }}">
+                        {{ c.final_classification or 'U' }}
+                    </span>
+                </td>
+                <td>{{ c.classification_source or '-' }}</td>
+                <td>
+                    <span class="badge badge-status-{{ c.status or 'pending' }}">
+                        {{ c.status or 'pending' }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
 
 <div class="module-info">
     <h2>About This Module</h2>
@@ -109,10 +153,16 @@
     </ul>
 </div>
 
-<div class="coming-soon-notice">
-    <h3>Coming Soon</h3>
-    <p>Real-time integration with Epic FHIR for automated antibiotic order assessment.</p>
+{% if override_stats and override_stats.get('total_reviews', 0) > 0 %}
+<div class="override-stats">
+    <h3>Review Statistics (Last 30 Days)</h3>
+    <p>
+        <strong>{{ override_stats.get('total_reviews', 0) }}</strong> reviews completed,
+        <strong>{{ override_stats.get('total_overrides', 0) }}</strong> overrides
+        ({{ "%.1f"|format(override_stats.get('override_rate', 0) * 100) }}% override rate)
+    </p>
 </div>
+{% endif %}
 
 <style>
 .dashboard-summary {
@@ -120,6 +170,119 @@
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
     margin-bottom: 2rem;
+}
+
+.recent-candidates {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 2rem;
+}
+
+.recent-candidates h2 {
+    margin: 0 0 1rem 0;
+    color: var(--color-gray-800);
+}
+
+.recent-candidates .subtitle {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--color-gray-500);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.data-table th {
+    background: var(--color-gray-50);
+    font-weight: 600;
+    color: var(--color-gray-700);
+    font-size: 0.875rem;
+}
+
+.data-table td {
+    font-size: 0.875rem;
+    color: var(--color-gray-700);
+}
+
+.data-table tbody tr:hover {
+    background: var(--color-gray-50);
+}
+
+/* Classification badges */
+.badge-classification-A {
+    background: var(--color-success);
+    color: white;
+}
+
+.badge-classification-FN {
+    background: var(--color-success);
+    color: white;
+}
+
+.badge-classification-S {
+    background: var(--color-warning);
+    color: var(--color-gray-900);
+}
+
+.badge-classification-N {
+    background: var(--color-danger);
+    color: white;
+}
+
+.badge-classification-P {
+    background: var(--color-primary);
+    color: white;
+}
+
+.badge-classification-U {
+    background: var(--color-gray-400);
+    color: white;
+}
+
+/* Status badges */
+.badge-status-pending {
+    background: var(--color-warning);
+    color: var(--color-gray-900);
+}
+
+.badge-status-alerted {
+    background: var(--color-danger);
+    color: white;
+}
+
+.badge-status-reviewed {
+    background: var(--color-success);
+    color: white;
+}
+
+.override-stats {
+    background: var(--color-info-light);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.override-stats h3 {
+    margin: 0 0 0.5rem 0;
+    color: var(--color-primary);
+    font-size: 1rem;
+}
+
+.override-stats p {
+    margin: 0;
+    color: var(--color-gray-700);
 }
 
 .summary-card {
