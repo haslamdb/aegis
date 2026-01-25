@@ -180,11 +180,12 @@ def test_sample_content():
         print("...\n")
 
 
-def test_llm_classification(use_filtering: bool = True):
+def test_llm_classification(use_filtering: bool = True, debug: bool = False):
     """Test LLM classification for SSI.
 
     Args:
         use_filtering: Whether to use keyword filtering
+        debug: If True, show detailed extraction output
 
     Returns:
         Tuple of (classification_result, elapsed_time)
@@ -230,7 +231,8 @@ def test_llm_classification(use_filtering: bool = True):
 
     start_llm = time.time()
     try:
-        classification = classifier.classify(candidate, notes)
+        # Use classify_with_extraction to get detailed output
+        classification, extraction, rules_result = classifier.classify_with_extraction(candidate, notes)
         llm_time = time.time() - start_llm
 
         print(f"\n  LLM classification completed in {llm_time:.1f}s")
@@ -239,6 +241,59 @@ def test_llm_classification(use_filtering: bool = True):
         print(f"    - Confidence: {classification.confidence:.2f}")
         if classification.reasoning:
             print(f"    - Reasoning: {classification.reasoning[:300]}...")
+
+        if debug:
+            print(f"\n{'=' * 70}")
+            print("DEBUG: Extraction Output")
+            print("=" * 70)
+
+            # Superficial findings
+            sup = extraction.superficial_findings
+            print(f"\nSuperficial Findings:")
+            print(f"  - purulent_drainage_superficial: {sup.purulent_drainage_superficial.value}")
+            if sup.purulent_drainage_quote:
+                print(f"    quote: '{sup.purulent_drainage_quote}'")
+            print(f"  - organisms_from_superficial_culture: {sup.organisms_from_superficial_culture.value}")
+            if sup.organism_identified:
+                print(f"    organism: {sup.organism_identified}")
+            print(f"  - pain_or_tenderness: {sup.pain_or_tenderness.value}")
+            print(f"  - localized_swelling: {sup.localized_swelling.value}")
+            print(f"  - erythema: {sup.erythema.value}")
+            print(f"  - heat: {sup.heat.value}")
+            print(f"  - incision_deliberately_opened: {sup.incision_deliberately_opened.value}")
+            print(f"  - physician_diagnosis_superficial_ssi: {sup.physician_diagnosis_superficial_ssi.value}")
+            if sup.diagnosis_quote:
+                print(f"    diagnosis quote: '{sup.diagnosis_quote}'")
+
+            # Wound assessments
+            print(f"\nWound Assessments ({len(extraction.wound_assessments)} total):")
+            for i, wa in enumerate(extraction.wound_assessments[:5]):  # Show first 5
+                print(f"  Assessment {i+1}:")
+                print(f"    - drainage_present: {wa.drainage_present.value}, type: {wa.drainage_type}")
+                print(f"    - erythema_present: {wa.erythema_present.value}, extent: {wa.erythema_extent}")
+                print(f"    - wound_dehisced: {wa.wound_dehisced.value}")
+                print(f"    - wound_opened_deliberately: {wa.wound_opened_deliberately.value}")
+                if wa.assessment_date:
+                    print(f"    - date: {wa.assessment_date}")
+
+            # General findings
+            print(f"\nGeneral Findings:")
+            print(f"  - fever_documented: {extraction.fever_documented.value}")
+            print(f"  - leukocytosis_documented: {extraction.leukocytosis_documented.value}")
+            print(f"  - antibiotics_for_wound_infection: {extraction.antibiotics_for_wound_infection.value}")
+            if extraction.antibiotic_names:
+                print(f"    antibiotics: {', '.join(extraction.antibiotic_names)}")
+            print(f"  - ssi_suspected_by_team: {extraction.ssi_suspected_by_team.value}")
+            print(f"  - clinical_team_impression: {extraction.clinical_team_impression}")
+
+            # Rules result
+            print(f"\nRules Engine Result:")
+            print(f"  - classification: {rules_result.classification.value}")
+            print(f"  - ssi_type: {rules_result.ssi_type}")
+            print(f"  - eligibility_checks: {rules_result.eligibility_checks}")
+            print(f"  - superficial_criteria_met: {rules_result.superficial_criteria_met}")
+            print(f"  - deep_criteria_met: {rules_result.deep_criteria_met}")
+            print(f"  - organ_space_criteria_met: {rules_result.organ_space_criteria_met}")
 
         return classification, llm_time
 
@@ -268,7 +323,7 @@ def main():
     print("# LLM Classification Test")
     print("#" * 70)
 
-    result_filtered, time_filtered = test_llm_classification(use_filtering=True)
+    result_filtered, time_filtered = test_llm_classification(use_filtering=True, debug=True)
 
     # Summary
     print("\n" + "=" * 70)
