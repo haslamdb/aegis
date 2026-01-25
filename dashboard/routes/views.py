@@ -48,6 +48,19 @@ def alerts_active():
 
     alerts = store.list_alerts(**filter_kwargs)
 
+    # Define ASP alert types (exclude NHSN types which belong on HAI Detection page)
+    ASP_ALERT_TYPES = {
+        AlertType.BACTEREMIA,
+        AlertType.GUIDELINE_DEVIATION,
+        AlertType.ABX_NO_INDICATION,
+        AlertType.BROAD_SPECTRUM_USAGE,
+        AlertType.SURGICAL_PROPHYLAXIS,
+        AlertType.CUSTOM,
+    }
+
+    # Filter to only ASP-related alerts (exclude NHSN_CLABSI, NHSN_SSI, etc.)
+    alerts = [a for a in alerts if a.alert_type in ASP_ALERT_TYPES]
+
     # Sort alerts: bacteremia first, then guideline deviation, then no indication, then broad spectrum, then by severity
     severity_order = {"critical": 0, "warning": 1, "info": 2}
     type_order = {
@@ -55,7 +68,8 @@ def alerts_active():
         AlertType.GUIDELINE_DEVIATION: 1,
         AlertType.ABX_NO_INDICATION: 2,
         AlertType.BROAD_SPECTRUM_USAGE: 3,
-        AlertType.CUSTOM: 4,
+        AlertType.SURGICAL_PROPHYLAXIS: 4,
+        AlertType.CUSTOM: 5,
     }
     alerts.sort(key=lambda a: (
         type_order.get(a.alert_type, 99),
@@ -111,6 +125,20 @@ def alerts_history():
         filter_kwargs["resolution_reason"] = resolution
 
     alerts = store.list_alerts(**filter_kwargs)
+
+    # Define ASP alert types (exclude NHSN types which belong on HAI Detection page)
+    ASP_ALERT_TYPES = {
+        AlertType.BACTEREMIA,
+        AlertType.GUIDELINE_DEVIATION,
+        AlertType.ABX_NO_INDICATION,
+        AlertType.BROAD_SPECTRUM_USAGE,
+        AlertType.SURGICAL_PROPHYLAXIS,
+        AlertType.CUSTOM,
+    }
+
+    # Filter to only ASP-related alerts
+    alerts = [a for a in alerts if a.alert_type in ASP_ALERT_TYPES]
+
     # Get stats for resolved alerts only
     stats = store.get_stats(status=AlertStatus.RESOLVED)
 
@@ -179,12 +207,14 @@ def reports():
     # Get analytics data
     analytics = store.get_analytics(alert_type=parsed_type, days=days)
 
-    # Get alert type options for dropdown
+    # Get alert type options for dropdown (ASP types only)
     alert_types = [
         ("", "All Types"),
         ("bacteremia", "Bacteremia"),
+        ("guideline_deviation", "Guideline Deviation"),
         ("abx_no_indication", "No Indication"),
         ("broad_spectrum_usage", "Broad Spectrum Usage"),
+        ("surgical_prophylaxis", "Surgical Prophylaxis"),
     ]
 
     return render_template(
