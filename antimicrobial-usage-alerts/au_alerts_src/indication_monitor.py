@@ -192,6 +192,11 @@ class IndicationMonitor:
                 name="Unknown Patient",
             )
 
+        # Get patient's current encounter info (location, service)
+        encounter_info = self.fhir_client.get_patient_encounter_info(order.patient_id)
+        location = encounter_info.get("location")
+        service = encounter_info.get("service")
+
         # Get patient's ICD-10 codes
         icd10_codes = self.fhir_client.get_patient_conditions(order.patient_id)
         logger.debug(f"Patient {patient.mrn}: {len(icd10_codes)} ICD-10 codes")
@@ -252,6 +257,8 @@ class IndicationMonitor:
             final_classification=final_classification,
             classification_source=classification_source,
             status="pending",
+            location=location,
+            service=service,
         )
 
         # Save candidate to database

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Candidate Not Found - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="empty-state">
+    <h2>Indication Candidate Not Found</h2>
+    <p>The candidate <code>{{ candidate_id }}</code> could not be found.</p>
+    {% if error %}
+    <p class="text-muted">Error: {{ error }}</p>
+    {% endif %}
+    <a href="{{ url_for('abx_indications.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+</div>
+
+<style>
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    max-width: 500px;
+    margin: 2rem auto;
+}
+
+.empty-state h2 {
+    color: var(--color-gray-700);
+    margin-bottom: 1rem;
+}
+
+.empty-state code {
+    background: var(--color-gray-100);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.empty-state .text-muted {
+    color: var(--color-gray-500);
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

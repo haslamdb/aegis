@@ -8,7 +8,12 @@ CREATE TABLE IF NOT EXISTS indication_candidates (
     patient_mrn TEXT NOT NULL,
     medication_request_id TEXT NOT NULL UNIQUE,
     medication_name TEXT NOT NULL,
+    rxnorm_code TEXT,  -- RxNorm code for antibiotic grouping
     order_date TIMESTAMP NOT NULL,
+
+    -- Location/Service for analytics
+    location TEXT,  -- Unit/ward (e.g., "PICU", "4 West", "ED")
+    service TEXT,  -- Ordering service (e.g., "Hospitalist", "Surgery", "Oncology")
 
     -- ICD-10 track
     icd10_codes TEXT,  -- JSON array of codes
@@ -84,8 +89,16 @@ CREATE INDEX IF NOT EXISTS idx_candidates_status ON indication_candidates(status
 CREATE INDEX IF NOT EXISTS idx_candidates_classification ON indication_candidates(final_classification);
 CREATE INDEX IF NOT EXISTS idx_candidates_order_date ON indication_candidates(order_date);
 CREATE INDEX IF NOT EXISTS idx_candidates_created ON indication_candidates(created_at);
+CREATE INDEX IF NOT EXISTS idx_candidates_location ON indication_candidates(location);
+CREATE INDEX IF NOT EXISTS idx_candidates_service ON indication_candidates(service);
+CREATE INDEX IF NOT EXISTS idx_candidates_rxnorm ON indication_candidates(rxnorm_code);
+CREATE INDEX IF NOT EXISTS idx_candidates_medication ON indication_candidates(medication_name);
 
 CREATE INDEX IF NOT EXISTS idx_reviews_candidate ON indication_reviews(candidate_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_override ON indication_reviews(is_override);
 
 CREATE INDEX IF NOT EXISTS idx_extractions_candidate ON indication_extractions(candidate_id);
+
+-- Migration: Add new columns if they don't exist (for existing databases)
+-- SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we use a workaround
+-- These will fail silently if columns already exist (handled in Python)

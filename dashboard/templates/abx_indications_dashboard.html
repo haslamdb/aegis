@@ -5,7 +5,9 @@
 {% block content %}
 <div class="page-header">
     <h1>Antibiotic Indications</h1>
-    <a href="{{ url_for('abx_indications.help_page') }}" class="btn btn-secondary">Help</a>
+    <div class="header-actions">
+        <a href="{{ url_for('abx_indications.analytics') }}" class="btn btn-secondary">Analytics</a>
+    </div>
 </div>
 
 <div class="dashboard-summary">
@@ -53,11 +55,12 @@
                 <th>Final</th>
                 <th>Source</th>
                 <th>Status</th>
+                <th>Action</th>
             </tr>
         </thead>
         <tbody>
             {% for c in recent_candidates %}
-            <tr>
+            <tr class="clickable-row" onclick="window.location='{{ url_for('abx_indications.candidate_detail', candidate_id=c.id) }}'">
                 <td>{{ c.patient.mrn or '-' }}</td>
                 <td>{{ c.medication.medication_name or '-' }}</td>
                 <td>{{ c.medication.start_date.strftime('%Y-%m-%d') if c.medication.start_date else '-' }}</td>
@@ -82,17 +85,12 @@
                 </td>
                 <td>{{ c.classification_source or '-' }}</td>
                 <td>
-                    {% if c.alert_id %}
-                    <a href="{{ url_for('asp_alerts.alert_detail', alert_id=c.alert_id) }}" class="badge-link">
-                        <span class="badge badge-status-{{ c.status or 'pending' }}">
-                            {{ c.status or 'pending' }}
-                        </span>
-                    </a>
-                    {% else %}
                     <span class="badge badge-status-{{ c.status or 'pending' }}">
                         {{ c.status or 'pending' }}
                     </span>
-                    {% endif %}
+                </td>
+                <td class="action-cell" onclick="event.stopPropagation();">
+                    <a href="{{ url_for('abx_indications.candidate_detail', candidate_id=c.id) }}" class="btn btn-sm btn-secondary">Review</a>
                 </td>
             </tr>
             {% endfor %}
@@ -235,6 +233,23 @@
 
 .data-table tbody tr:hover {
     background: var(--color-gray-50);
+}
+
+.clickable-row {
+    cursor: pointer;
+}
+
+.clickable-row:hover {
+    background: var(--color-info-light) !important;
+}
+
+.action-cell {
+    text-align: center;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
 }
 
 /* Classification badges */

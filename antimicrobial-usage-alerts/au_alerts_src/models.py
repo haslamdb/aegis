@@ -84,6 +84,9 @@ class IndicationCandidate:
     classification_source: str  # icd10, llm, manual
     status: str  # pending, alerted, reviewed
     alert_id: str | None = None
+    # Location/service for analytics
+    location: str | None = None  # Unit/ward (PICU, 4 West, ED)
+    service: str | None = None  # Ordering service (Hospitalist, Surgery)
 
 
 @dataclass

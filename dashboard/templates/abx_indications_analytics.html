@@ -1,0 +1,445 @@
+{% extends "base.html" %}
+
+{% block title %}Antibiotic Indications Analytics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Antibiotic Indications Analytics</h1>
+    <a href="{{ url_for('abx_indications.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <strong>Error loading analytics:</strong> {{ error }}
+</div>
+{% else %}
+
+<!-- Summary Cards -->
+<div class="analytics-summary">
+    <div class="summary-card">
+        <div class="summary-value">{{ summary.get('total_orders', 0) }}</div>
+        <div class="summary-label">Total Orders (30 days)</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">{{ "%.1f"|format(summary.get('appropriate_rate', 0) * 100) }}%</div>
+        <div class="summary-label">Appropriate Rate (A + FN)</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">{{ "%.1f"|format(summary.get('inappropriate_rate', 0) * 100) }}%</div>
+        <div class="summary-label">Inappropriate Rate (N)</div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-value">{{ "%.1f"|format(override_stats.get('override_rate', 0) * 100) }}%</div>
+        <div class="summary-label">Override Rate</div>
+    </div>
+</div>
+
+<!-- Classification Breakdown -->
+<div class="analytics-section">
+    <h2>Classification Breakdown</h2>
+    <div class="classification-bars">
+        {% set total = summary.get('total_orders', 1) %}
+        {% set counts = summary.get('by_classification', {}) %}
+        <div class="bar-row">
+            <span class="bar-label">Always (A)</span>
+            <div class="bar-container">
+                <div class="bar bar-success" style="width: {{ (counts.get('A', 0) / total * 100)|round(1) }}%;"></div>
+            </div>
+            <span class="bar-value">{{ counts.get('A', 0) }} ({{ "%.1f"|format(counts.get('A', 0) / total * 100) }}%)</span>
+        </div>
+        <div class="bar-row">
+            <span class="bar-label">Febrile Neutropenia (FN)</span>
+            <div class="bar-container">
+                <div class="bar bar-success" style="width: {{ (counts.get('FN', 0) / total * 100)|round(1) }}%;"></div>
+            </div>
+            <span class="bar-value">{{ counts.get('FN', 0) }} ({{ "%.1f"|format(counts.get('FN', 0) / total * 100) }}%)</span>
+        </div>
+        <div class="bar-row">
+            <span class="bar-label">Sometimes (S)</span>
+            <div class="bar-container">
+                <div class="bar bar-warning" style="width: {{ (counts.get('S', 0) / total * 100)|round(1) }}%;"></div>
+            </div>
+            <span class="bar-value">{{ counts.get('S', 0) }} ({{ "%.1f"|format(counts.get('S', 0) / total * 100) }}%)</span>
+        </div>
+        <div class="bar-row">
+            <span class="bar-label">Never (N)</span>
+            <div class="bar-container">
+                <div class="bar bar-danger" style="width: {{ (counts.get('N', 0) / total * 100)|round(1) }}%;"></div>
+            </div>
+            <span class="bar-value">{{ counts.get('N', 0) }} ({{ "%.1f"|format(counts.get('N', 0) / total * 100) }}%)</span>
+        </div>
+        <div class="bar-row">
+            <span class="bar-label">Prophylaxis (P)</span>
+            <div class="bar-container">
+                <div class="bar bar-info" style="width: {{ (counts.get('P', 0) / total * 100)|round(1) }}%;"></div>
+            </div>
+            <span class="bar-value">{{ counts.get('P', 0) }} ({{ "%.1f"|format(counts.get('P', 0) / total * 100) }}%)</span>
+        </div>
+    </div>
+</div>
+
+<!-- By Antibiotic -->
+{% if by_antibiotic %}
+<div class="analytics-section">
+    <h2>Usage by Antibiotic</h2>
+    <table class="analytics-table">
+        <thead>
+            <tr>
+                <th>Antibiotic</th>
+                <th>Total Orders</th>
+                <th>Always (A)</th>
+                <th>Sometimes (S)</th>
+                <th>Never (N)</th>
+                <th>Prophylaxis (P)</th>
+                <th>Appropriate %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in by_antibiotic %}
+            <tr>
+                <td>{{ row.medication_name }}</td>
+                <td>{{ row.total }}</td>
+                <td>{{ row.count_A or 0 }}</td>
+                <td>{{ row.count_S or 0 }}</td>
+                <td>{{ row.count_N or 0 }}</td>
+                <td>{{ row.count_P or 0 }}</td>
+                <td>
+                    {% set appropriate = (row.count_A or 0) + (row.count_FN or 0) + (row.count_P or 0) %}
+                    {% set rate = appropriate / row.total * 100 if row.total > 0 else 0 %}
+                    <span class="rate-badge {% if rate >= 80 %}rate-good{% elif rate >= 60 %}rate-ok{% else %}rate-poor{% endif %}">
+                        {{ "%.0f"|format(rate) }}%
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- By Location -->
+{% if by_location %}
+<div class="analytics-section">
+    <h2>Usage by Location/Unit</h2>
+    <table class="analytics-table">
+        <thead>
+            <tr>
+                <th>Location</th>
+                <th>Total Orders</th>
+                <th>Always (A)</th>
+                <th>Sometimes (S)</th>
+                <th>Never (N)</th>
+                <th>Appropriate %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in by_location %}
+            <tr>
+                <td>{{ row.location or 'Unknown' }}</td>
+                <td>{{ row.total }}</td>
+                <td>{{ row.count_A or 0 }}</td>
+                <td>{{ row.count_S or 0 }}</td>
+                <td>{{ row.count_N or 0 }}</td>
+                <td>
+                    {% set appropriate = (row.count_A or 0) + (row.count_FN or 0) + (row.count_P or 0) %}
+                    {% set rate = appropriate / row.total * 100 if row.total > 0 else 0 %}
+                    <span class="rate-badge {% if rate >= 80 %}rate-good{% elif rate >= 60 %}rate-ok{% else %}rate-poor{% endif %}">
+                        {{ "%.0f"|format(rate) }}%
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- By Service -->
+{% if by_service %}
+<div class="analytics-section">
+    <h2>Usage by Ordering Service</h2>
+    <table class="analytics-table">
+        <thead>
+            <tr>
+                <th>Service</th>
+                <th>Total Orders</th>
+                <th>Always (A)</th>
+                <th>Sometimes (S)</th>
+                <th>Never (N)</th>
+                <th>Appropriate %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in by_service %}
+            <tr>
+                <td>{{ row.service or 'Unknown' }}</td>
+                <td>{{ row.total }}</td>
+                <td>{{ row.count_A or 0 }}</td>
+                <td>{{ row.count_S or 0 }}</td>
+                <td>{{ row.count_N or 0 }}</td>
+                <td>
+                    {% set appropriate = (row.count_A or 0) + (row.count_FN or 0) + (row.count_P or 0) %}
+                    {% set rate = appropriate / row.total * 100 if row.total > 0 else 0 %}
+                    <span class="rate-badge {% if rate >= 80 %}rate-good{% elif rate >= 60 %}rate-ok{% else %}rate-poor{% endif %}">
+                        {{ "%.0f"|format(rate) }}%
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Override Statistics -->
+{% if override_stats and override_stats.get('total_reviews', 0) > 0 %}
+<div class="analytics-section">
+    <h2>Review Statistics</h2>
+    <div class="override-grid">
+        <div class="override-stat">
+            <div class="stat-value">{{ override_stats.get('total_reviews', 0) }}</div>
+            <div class="stat-label">Total Reviews</div>
+        </div>
+        <div class="override-stat">
+            <div class="stat-value">{{ override_stats.get('total_overrides', 0) }}</div>
+            <div class="stat-label">Overrides</div>
+        </div>
+        <div class="override-stat">
+            <div class="stat-value">{{ "%.1f"|format(override_stats.get('override_rate', 0) * 100) }}%</div>
+            <div class="stat-label">Override Rate</div>
+        </div>
+        <div class="override-stat">
+            <div class="stat-value">{{ override_stats.get('reviewers', 0) }}</div>
+            <div class="stat-label">Reviewers</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Daily Trend -->
+{% if daily_trend %}
+<div class="analytics-section">
+    <h2>Daily Trend (Last 30 Days)</h2>
+    <div class="trend-chart">
+        {% for day in daily_trend %}
+        <div class="trend-bar" title="{{ day.date }}: {{ day.total }} orders">
+            <div class="trend-bar-inner" style="height: {{ (day.total / (daily_trend|map(attribute='total')|max or 1) * 100)|round }}%;"></div>
+            <span class="trend-date">{{ day.date[-5:] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+<style>
+.analytics-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.analytics-summary .summary-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: var(--shadow-md);
+}
+
+.analytics-summary .summary-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.analytics-summary .summary-label {
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+    margin-top: 0.5rem;
+}
+
+.analytics-section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.analytics-section h2 {
+    margin: 0 0 1rem 0;
+    color: var(--color-gray-800);
+    font-size: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-primary);
+}
+
+/* Classification bars */
+.classification-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.bar-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.bar-label {
+    width: 180px;
+    font-size: 0.875rem;
+    color: var(--color-gray-700);
+}
+
+.bar-container {
+    flex: 1;
+    height: 24px;
+    background: var(--color-gray-100);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.bar {
+    height: 100%;
+    border-radius: var(--radius-md);
+    transition: width 0.3s ease;
+}
+
+.bar-success { background: var(--color-success); }
+.bar-warning { background: var(--color-warning); }
+.bar-danger { background: var(--color-danger); }
+.bar-info { background: var(--color-primary); }
+
+.bar-value {
+    width: 120px;
+    text-align: right;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+/* Analytics tables */
+.analytics-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.analytics-table th,
+.analytics-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.analytics-table th {
+    background: var(--color-gray-50);
+    font-weight: 600;
+    color: var(--color-gray-700);
+    font-size: 0.875rem;
+}
+
+.analytics-table td {
+    font-size: 0.875rem;
+}
+
+.analytics-table tbody tr:hover {
+    background: var(--color-gray-50);
+}
+
+.rate-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.rate-good {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.rate-ok {
+    background: var(--color-warning-light);
+    color: var(--color-gray-800);
+}
+
+.rate-poor {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+/* Override stats */
+.override-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.override-stat {
+    text-align: center;
+    padding: 1rem;
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+}
+
+.override-stat .stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-gray-800);
+}
+
+.override-stat .stat-label {
+    font-size: 0.75rem;
+    color: var(--color-gray-600);
+    margin-top: 0.25rem;
+}
+
+/* Trend chart */
+.trend-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 150px;
+    padding-top: 1rem;
+}
+
+.trend-bar {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.trend-bar-inner {
+    width: 100%;
+    background: var(--color-primary);
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+    margin-top: auto;
+}
+
+.trend-date {
+    font-size: 0.6rem;
+    color: var(--color-gray-500);
+    margin-top: 0.25rem;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+}
+
+.alert-danger {
+    background: var(--color-danger-light);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    color: var(--color-danger);
+    margin-bottom: 1.5rem;
+}
+</style>
+{% endblock %}
