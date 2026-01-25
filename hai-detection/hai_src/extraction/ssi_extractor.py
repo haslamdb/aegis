@@ -320,7 +320,9 @@ Respond with JSON matching the SSIExtraction schema."""
     ) -> str:
         """Build the extraction prompt."""
         # Extract relevant context from notes
-        notes_context = self.chunker.extract_relevant_context(notes)
+        # With 70B Q4 model on limited VRAM, context is limited to ~4K tokens
+        # Keep notes to ~4K chars to fit within context window
+        notes_context = self.chunker.extract_relevant_context(notes, max_length=4000)
 
         # Calculate days post-op
         now = datetime.now()

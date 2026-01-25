@@ -42,6 +42,15 @@ class NoteChunker:
         "active_problems": [
             r"(?:^|\n)(?:ACTIVE\s*PROBLEMS?|PROBLEM\s*LIST)[:\s]*\n",
         ],
+        # SSI-specific sections for wound assessments
+        "wound_assessment": [
+            r"(?:^|\n)(?:WOUND\s*(?:ASSESSMENT|EXAM(?:INATION)?|STATUS))[:\s]*",
+            r"(?:^|\n)(?:INCISION\s*(?:ASSESSMENT|EXAM(?:INATION)?|STATUS))[:\s]*",
+            r"(?:^|\n)(?:WOUND\s*VAC\s*(?:ASSESSMENT)?)[:\s]*",
+            r"(?:^|\n)(?:SURGICAL\s*(?:SITE|WOUND)|OPERATIVE\s*SITE)[:\s]*",
+            r"(?:^|\n)(?:WOUND\s*(?:CARE|EXAMINATION))[:\s]*",
+            r"(?:^|\n)(?:WOUND\s*EXAM(?:INATION)?)[:\s-]*",
+        ],
     }
 
     # Common section end patterns
@@ -118,7 +127,7 @@ class NoteChunker:
     def extract_relevant_context(
         self,
         notes: list[ClinicalNote],
-        max_length: int = 10000,
+        max_length: int = 24000,
     ) -> str:
         """Extract and combine relevant context from multiple notes.
 
@@ -138,7 +147,7 @@ class NoteChunker:
         notes_with_sections = set()
 
         # First pass: Try to extract A/P and ID sections
-        for note in notes[:10]:  # Check more notes
+        for note in notes[:20]:  # Check more notes
             chunks = self.extract_sections(note, ["assessment_plan", "id_section"])
             for chunk in chunks:
                 if total_length + len(chunk.content) > max_length:
@@ -155,7 +164,7 @@ class NoteChunker:
 
         # Second pass: Include full content from notes where we couldn't find sections
         # Clinical notes often don't have standardized headers
-        for note in notes[:10]:
+        for note in notes[:20]:
             if total_length >= max_length:
                 break
             if note.id in notes_with_sections:

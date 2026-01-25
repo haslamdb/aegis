@@ -25,6 +25,7 @@ class OllamaClient(BaseLLMClient):
         base_url: str | None = None,
         model: str | None = None,
         timeout: int = 300,  # Increased for large models like 70b
+        num_ctx: int = 8192,  # Context window size
     ):
         """Initialize Ollama client.
 
@@ -32,10 +33,12 @@ class OllamaClient(BaseLLMClient):
             base_url: Ollama API base URL. Uses config if None.
             model: Model to use. Uses config if None.
             timeout: Request timeout in seconds.
+            num_ctx: Context window size in tokens.
         """
         self.base_url = (base_url or Config.OLLAMA_BASE_URL).rstrip("/")
         self.model = model or Config.OLLAMA_MODEL
         self.timeout = timeout
+        self.num_ctx = num_ctx
         self.session = requests.Session()
 
     def generate(
@@ -60,6 +63,7 @@ class OllamaClient(BaseLLMClient):
             "options": {
                 "temperature": temperature,
                 "num_predict": max_tokens,
+                "num_ctx": self.num_ctx,
             },
         }
 
@@ -117,6 +121,7 @@ class OllamaClient(BaseLLMClient):
             "format": "json",
             "options": {
                 "temperature": temperature,
+                "num_ctx": self.num_ctx,
             },
         }
 
