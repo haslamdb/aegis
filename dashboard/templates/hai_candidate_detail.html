@@ -21,7 +21,7 @@
     <a href="{{ url_for('hai_detection.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
 </div>
 
-<div class="alert-detail-layout">
+<div class="alert-detail-layout hai-candidate-page">
     <!-- Left Column: Candidate Information -->
     <div class="alert-detail-main">
         <!-- Status Badge -->
@@ -31,61 +31,64 @@
             </span>
         </div>
 
-        <!-- Patient Info -->
+        <!-- Patient & Culture Info side-by-side -->
         <div class="alert-detail-card">
-            <div class="info-section">
-                <h3>Patient Information</h3>
-                <dl>
-                    <dt>MRN</dt>
-                    <dd>{{ candidate.patient.mrn }}</dd>
-                    <dt>Name</dt>
-                    <dd>{{ candidate.patient.name or 'N/A' }}</dd>
-                    <dt>Location</dt>
-                    <dd>{{ candidate.patient.location or 'N/A' }}</dd>
-                </dl>
-            </div>
+            <div class="info-row-compact">
+                <div class="info-section">
+                    <h3>Patient</h3>
+                    <dl>
+                        <dt>Name</dt>
+                        <dd><strong>{{ candidate.patient.name or 'N/A' }}</strong></dd>
+                        <dt>MRN</dt>
+                        <dd>{{ candidate.patient.mrn }}</dd>
+                        <dt>Location</dt>
+                        <dd>{{ candidate.patient.location or 'N/A' }}</dd>
+                    </dl>
+                </div>
 
-            <div class="info-section">
-                <h3>{% if candidate.hai_type.value == 'ssi' %}Specimen{% else %}Culture{% endif %} Information</h3>
-                <dl>
-                    <dt>Collection Date</dt>
-                    <dd>{{ candidate.culture.collection_date.strftime('%Y-%m-%d %H:%M') }}</dd>
-                    <dt>Organism</dt>
-                    <dd class="{% if candidate.culture.organism %}font-bold{% endif %}">
-                        {{ candidate.culture.organism or 'Pending identification' }}
-                    </dd>
-                    <dt>Specimen Source</dt>
-                    <dd>{{ candidate.culture.specimen_source or 'Blood' }}</dd>
-                    {% if candidate.culture.result_date %}
-                    <dt>Result Date</dt>
-                    <dd>{{ candidate.culture.result_date.strftime('%Y-%m-%d %H:%M') }}</dd>
-                    {% endif %}
-                </dl>
+                <div class="info-section">
+                    <h3>{% if candidate.hai_type.value == 'ssi' %}Specimen{% else %}Culture{% endif %}</h3>
+                    <dl>
+                        <dt>Organism</dt>
+                        <dd><strong>{{ candidate.culture.organism or 'Pending' }}</strong></dd>
+                        <dt>Collected</dt>
+                        <dd>{{ candidate.culture.collection_date.strftime('%m/%d %H:%M') }}</dd>
+                        <dt>Source</dt>
+                        <dd>{{ candidate.culture.specimen_source or 'Blood' }}</dd>
+                    </dl>
+                </div>
             </div>
 
             {% if candidate.hai_type.value == 'clabsi' %}
-            <div class="info-section">
-                <h3>Central Line Information</h3>
-                {% if candidate.device_info %}
-                <dl>
-                    <dt>Device Type</dt>
-                    <dd>{{ candidate.device_info.device_type | replace('_', ' ') | title }}</dd>
-                    <dt>Insertion Date</dt>
-                    <dd>{{ candidate.device_info.insertion_date.strftime('%Y-%m-%d') if candidate.device_info.insertion_date else 'Unknown' }}</dd>
-                    <dt>Device Days at Culture</dt>
-                    <dd class="font-bold text-lg">{{ candidate.device_days_at_culture if candidate.device_days_at_culture is not none else '?' }}</dd>
-                    {% if candidate.device_info.site %}
-                    <dt>Site</dt>
-                    <dd>{{ candidate.device_info.site }}</dd>
+            <div class="info-row-compact">
+                <div class="info-section">
+                    <h3>Key Metrics</h3>
+                    <dl>
+                        <dt>Device Days</dt>
+                        <dd><strong class="metric-value-inline">{{ candidate.device_days_at_culture if candidate.device_days_at_culture is not none else '?' }}</strong></dd>
+                        {% if candidate.device_info and candidate.device_info.site %}
+                        <dt>Site</dt>
+                        <dd>{{ candidate.device_info.site }}</dd>
+                        {% endif %}
+                    </dl>
+                </div>
+                <div class="info-section">
+                    <h3>Central Line</h3>
+                    {% if candidate.device_info %}
+                    <dl>
+                        <dt>Type</dt>
+                        <dd>{{ candidate.device_info.device_type | replace('_', ' ') | title }}</dd>
+                        <dt>Inserted</dt>
+                        <dd>{{ candidate.device_info.insertion_date.strftime('%m/%d/%y') if candidate.device_info.insertion_date else '?' }}</dd>
+                        {% if candidate.device_info.removal_date %}
+                        <dt>Removed</dt>
+                        <dd>{{ candidate.device_info.removal_date.strftime('%m/%d/%y') }}</dd>
+                        {% endif %}
+                    </dl>
+                    {% else %}
+                    <p class="text-muted">No device info</p>
                     {% endif %}
-                    {% if candidate.device_info.removal_date %}
-                    <dt>Removal Date</dt>
-                    <dd>{{ candidate.device_info.removal_date.strftime('%Y-%m-%d') }}</dd>
-                    {% endif %}
-                </dl>
-                {% else %}
-                <p class="text-muted">No device information available.</p>
-                {% endif %}
+                </div>
             </div>
             {% elif candidate.hai_type.value == 'ssi' and ssi_data %}
             <div class="info-section">
@@ -134,10 +137,18 @@
                             <strong>Initial Screening Criteria</strong>
                             {% if not candidate.meets_initial_criteria %}
                             <p class="text-muted">{{ candidate.exclusion_reason }}</p>
+                            {% elif candidate.hai_type.value == 'clabsi' %}
+                            <p class="text-muted">BSI with central line present &gt;2 days</p>
+                            {% elif candidate.hai_type.value == 'cdi' %}
+                            <p class="text-muted">C. difficile positive toxin/PCR test</p>
+                            {% elif candidate.hai_type.value == 'cauti' %}
+                            <p class="text-muted">Urinary catheter present &gt;2 days</p>
+                            {% elif candidate.hai_type.value == 'vae' %}
+                            <p class="text-muted">Mechanical ventilation &ge;2 days</p>
                             {% elif candidate.hai_type.value == 'ssi' %}
                             <p class="text-muted">NHSN operative procedure within surveillance window</p>
                             {% else %}
-                            <p class="text-muted">BSI with central line present &gt;2 days</p>
+                            <p class="text-muted">Meets initial HAI screening criteria</p>
                             {% endif %}
                         </div>
                     </div>
@@ -279,17 +290,14 @@
 
             {% else %}
             <!-- CLABSI/default classification buttons -->
-            <div class="classification-buttons">
+            <div class="classification-buttons-single">
                 <button type="button" class="btn btn-clabsi btn-block" data-decision="confirmed">
-                    {{ candidate.hai_type.value | upper }}
-                </button>
-                <button type="button" class="btn btn-not-clabsi btn-block" data-decision="rejected">
-                    Not {{ candidate.hai_type.value | upper }}
+                    Confirm {{ candidate.hai_type.value | upper }}
                 </button>
             </div>
 
             <div class="classification-divider">
-                <span>If Not {{ candidate.hai_type.value | upper }}, specify reason:</span>
+                <span>Or classify as Not {{ candidate.hai_type.value | upper }}:</span>
             </div>
 
             <div class="secondary-buttons">
@@ -354,7 +362,7 @@
 </div>
 
 <script>
-document.querySelectorAll('.classification-buttons button, .secondary-buttons button, .ssi-type-buttons button').forEach(btn => {
+document.querySelectorAll('.classification-buttons button, .classification-buttons-single button, .secondary-buttons button, .ssi-type-buttons button').forEach(btn => {
     btn.addEventListener('click', async function() {
         const decision = this.getAttribute('data-decision');
         const reviewer = document.getElementById('reviewer').value;
@@ -369,7 +377,7 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
         }
 
         // Highlight selected button
-        document.querySelectorAll('.classification-buttons button, .secondary-buttons button, .ssi-type-buttons button').forEach(b => {
+        document.querySelectorAll('.classification-buttons button, .classification-buttons-single button, .secondary-buttons button, .ssi-type-buttons button').forEach(b => {
             b.classList.remove('selected');
         });
         this.classList.add('selected');
@@ -695,6 +703,7 @@ document.querySelectorAll('.classification-buttons button, .secondary-buttons bu
 }
 
 .classification-buttons button.selected,
+.classification-buttons-single button.selected,
 .secondary-buttons button.selected,
 .ssi-type-buttons button.selected {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);

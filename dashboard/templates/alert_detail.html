@@ -88,14 +88,7 @@
                         <dd>
                             {% if alert.content.get('current_antibiotics') %}
                             {% for abx in alert.content.get('current_antibiotics', []) %}
-                            <div class="abx-mismatch-item">
-                                <strong>{{ abx.get('name', 'Unknown') }}</strong>
-                                {% if abx.get('susceptibility') %}
-                                <span class="badge badge-{% if abx.get('susceptibility') == 'R' %}danger{% elif abx.get('susceptibility') == 'I' %}warning{% else %}success{% endif %}">
-                                    {{ abx.get('susceptibility') }}
-                                </span>
-                                {% endif %}
-                            </div>
+                            <strong>{{ abx.get('name', 'Unknown') }}</strong>{% if not loop.last %}, {% endif %}
                             {% endfor %}
                             {% else %}
                             <span class="text-muted">No active antibiotics identified</span>
@@ -112,7 +105,7 @@
                         {% endif %}
 
                         <dt>Recommendation</dt>
-                        <dd class="recommendation-text">{{ alert.content.get('recommendation', '-') }}</dd>
+                        <dd class="recommendation-text">{{ alert.content.get('recommendation', '-')|replace(' Susceptibility', '')|replace(' susceptibility', '') }}</dd>
                     </dl>
 
                     {% if alert.content.get('susceptibility_panel') %}
@@ -203,7 +196,7 @@
                         {% endif %}
 
                         <dt>Recommendation</dt>
-                        <dd class="recommendation-text">{{ alert.content.get('recommendation', '-') }}</dd>
+                        <dd class="recommendation-text">{{ alert.content.get('recommendation', '-')|replace(' Susceptibility', '')|replace(' susceptibility', '') }}</dd>
                     </dl>
                     {% else %}
                     {# Default display for other alert types #}
