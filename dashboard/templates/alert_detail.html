@@ -73,7 +73,95 @@
                 <div class="info-section">
                     <h3>Clinical Details</h3>
 
-                    {% if alert.alert_type.value == 'abx_no_indication' %}
+                    {% if alert.alert_type.value == 'drug_bug_mismatch' %}
+                    {# Drug-Bug Mismatch specific display #}
+                    <dl>
+                        <dt>Organism</dt>
+                        <dd><strong>{{ alert.content.get('organism', 'Unknown') }}</strong></dd>
+
+                        <dt>Culture Source</dt>
+                        <dd>{{ alert.content.get('specimen_type') or 'Not specified' }}</dd>
+
+                        {% if alert.content.get('collection_date') %}
+                        <dt>Collection Date</dt>
+                        <dd>{{ alert.content.get('collection_date')[:10] if alert.content.get('collection_date') else '-' }}</dd>
+                        {% endif %}
+
+                        <dt>Mismatch Type</dt>
+                        <dd>
+                            {% set mismatch_type = alert.content.get('mismatch_type', 'unknown') %}
+                            <span class="badge badge-{% if mismatch_type == 'resistant' %}danger{% elif mismatch_type == 'intermediate' %}warning{% elif mismatch_type == 'no_coverage' %}info{% else %}secondary{% endif %}">
+                                {{ mismatch_type|replace('_', ' ')|title }}
+                            </span>
+                        </dd>
+
+                        <dt>Current Antibiotic(s)</dt>
+                        <dd>
+                            {% if alert.content.get('current_antibiotics') %}
+                            {% for abx in alert.content.get('current_antibiotics', []) %}
+                            <div class="abx-mismatch-item">
+                                <strong>{{ abx.get('name', 'Unknown') }}</strong>
+                                {% if abx.get('susceptibility') %}
+                                <span class="badge badge-{% if abx.get('susceptibility') == 'R' %}danger{% elif abx.get('susceptibility') == 'I' %}warning{% else %}success{% endif %}">
+                                    {% if abx.get('susceptibility') == 'R' %}Resistant{% elif abx.get('susceptibility') == 'I' %}Intermediate{% elif abx.get('susceptibility') == 'S' %}Susceptible{% else %}{{ abx.get('susceptibility') }}{% endif %}
+                                </span>
+                                {% endif %}
+                                {% if abx.get('mismatch_type') and abx.get('mismatch_type') != 'susceptible' %}
+                                <span class="badge badge-{% if abx.get('mismatch_type') == 'resistant' %}danger{% elif abx.get('mismatch_type') == 'intermediate' %}warning{% else %}secondary{% endif %}">
+                                    {{ abx.get('mismatch_type', '')|replace('_', ' ')|title }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <span class="text-muted">No active antibiotics identified</span>
+                            {% endif %}
+                        </dd>
+
+                        {% if alert.content.get('susceptible_options') %}
+                        <dt>Susceptible Options</dt>
+                        <dd>
+                            {% for option in alert.content.get('susceptible_options', []) %}
+                            <span class="badge badge-success">{{ option }}</span>
+                            {% endfor %}
+                        </dd>
+                        {% endif %}
+
+                        <dt>Recommendation</dt>
+                        <dd class="recommendation-text">{{ alert.content.get('recommendation', '-') }}</dd>
+                    </dl>
+
+                    {% if alert.content.get('susceptibility_panel') %}
+                    <h4 style="margin-top: 1.5rem;">Susceptibility Panel</h4>
+                    <table class="susceptibility-table">
+                        <thead>
+                            <tr>
+                                <th>Antibiotic</th>
+                                <th>Result</th>
+                                <th>MIC</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in alert.content.get('susceptibility_panel', []) %}
+                            <tr class="susc-{{ row.get('result', 'U')|lower }}">
+                                <td>{{ row.get('antibiotic', '-') }}</td>
+                                <td>
+                                    <span class="badge badge-{% if row.get('result') == 'S' %}success{% elif row.get('result') == 'I' %}warning{% elif row.get('result') == 'R' %}danger{% else %}secondary{% endif %}">
+                                        {% if row.get('result') == 'S' %}Susceptible
+                                        {% elif row.get('result') == 'I' %}Intermediate
+                                        {% elif row.get('result') == 'R' %}Resistant
+                                        {% else %}{{ row.get('result', '-') }}
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>{{ row.get('mic', '-') }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+
+                    {% elif alert.alert_type.value == 'abx_no_indication' %}
                     {# Indication-specific display #}
                     <dl>
                         <dt>Medication</dt>
@@ -139,6 +227,8 @@
                         <dd>
                             {% if key == 'coverage_status' %}
                                 <span class="badge badge-coverage-{{ value|lower }}">{{ value|upper }}</span>
+                            {% elif value is iterable and value is not string and value is not mapping %}
+                                {{ value|join(', ') }}
                             {% else %}
                                 {{ value }}
                             {% endif %}
