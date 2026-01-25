@@ -8,9 +8,12 @@ Creates demo alerts for all AEGIS workflows in a single run:
 3. Antibiotic Indication Alert - Ceftriaxone for viral URI (inappropriate)
 4. Guideline Adherence Alert - Sepsis bundle deviation
 5. Surgical Prophylaxis Alert - Missing prophylaxis
-6. HAI Detection:
+6. HAI Detection (all 5 NHSN HAI types):
    - CLABSI candidate + Not CLABSI (MBI-LCBI)
    - SSI candidate + Not SSI (normal healing)
+   - VAE candidate + Not VAE (stable vent settings)
+   - CAUTI candidate + Not CAUTI (asymptomatic bacteriuria)
+   - CDI: HO-CDI (hospital onset) + CO-CDI (community onset)
 
 Usage:
     # Create all demo data and run monitors
@@ -264,6 +267,90 @@ def create_ssi_demo(dry_run: bool = False, verbose: bool = False) -> bool:
     return success1 and success2
 
 
+def create_vae_demo(dry_run: bool = False, verbose: bool = False) -> bool:
+    """Create VAE candidates (VAC and stable)."""
+    print_step(8, "Creating VAE Demo Cases")
+    print("  Scenario A: VAC (Ventilator-Associated Condition) - worsening FiO2/PEEP")
+    print("  Scenario B: Not VAE (stable ventilator settings)")
+
+    cmd = [
+        sys.executable,
+        str(SCRIPT_DIR / "demo_vae.py"),
+        "--scenario", "vac"
+    ]
+    success1 = run_command(cmd, description="demo_vae.py --scenario vac", dry_run=dry_run, verbose=verbose)
+
+    cmd = [
+        sys.executable,
+        str(SCRIPT_DIR / "demo_vae.py"),
+        "--scenario", "stable"
+    ]
+    success2 = run_command(cmd, description="demo_vae.py --scenario stable", dry_run=dry_run, verbose=verbose)
+
+    if success1:
+        print_success("VAC candidate created")
+    if success2:
+        print_success("Not VAE (stable) case created")
+
+    return success1 and success2
+
+
+def create_cauti_demo(dry_run: bool = False, verbose: bool = False) -> bool:
+    """Create CAUTI candidates (symptomatic and asymptomatic)."""
+    print_step(9, "Creating CAUTI Demo Cases")
+    print("  Scenario A: CAUTI (catheter >2 days, positive culture, fever)")
+    print("  Scenario B: Not CAUTI (asymptomatic bacteriuria)")
+
+    cmd = [
+        sys.executable,
+        str(SCRIPT_DIR / "demo_cauti.py"),
+        "--scenario", "cauti"
+    ]
+    success1 = run_command(cmd, description="demo_cauti.py --scenario cauti", dry_run=dry_run, verbose=verbose)
+
+    cmd = [
+        sys.executable,
+        str(SCRIPT_DIR / "demo_cauti.py"),
+        "--scenario", "asymptomatic"
+    ]
+    success2 = run_command(cmd, description="demo_cauti.py --scenario asymptomatic", dry_run=dry_run, verbose=verbose)
+
+    if success1:
+        print_success("CAUTI candidate created")
+    if success2:
+        print_success("Not CAUTI (asymptomatic) case created")
+
+    return success1 and success2
+
+
+def create_cdi_demo(dry_run: bool = False, verbose: bool = False) -> bool:
+    """Create CDI candidates (HO-CDI and CO-CDI)."""
+    print_step(10, "Creating CDI Demo Cases")
+    print("  Scenario A: HO-CDI (Hospital Onset - positive test day 5)")
+    print("  Scenario B: CO-CDI (Community Onset - positive test day 1)")
+
+    cmd = [
+        sys.executable,
+        str(SCRIPT_DIR / "demo_cdi.py"),
+        "--scenario", "ho-cdi"
+    ]
+    success1 = run_command(cmd, description="demo_cdi.py --scenario ho-cdi", dry_run=dry_run, verbose=verbose)
+
+    cmd = [
+        sys.executable,
+        str(SCRIPT_DIR / "demo_cdi.py"),
+        "--scenario", "co-cdi"
+    ]
+    success2 = run_command(cmd, description="demo_cdi.py --scenario co-cdi", dry_run=dry_run, verbose=verbose)
+
+    if success1:
+        print_success("HO-CDI candidate created")
+    if success2:
+        print_success("CO-CDI candidate created")
+
+    return success1 and success2
+
+
 def run_monitors(dry_run: bool = False, verbose: bool = False, skip_hai: bool = False) -> dict:
     """Run all monitors to generate alerts."""
     print_header("RUNNING MONITORS")
@@ -366,6 +453,9 @@ def print_summary(data_results: dict, monitor_results: dict = None):
         ("Prophylaxis Alert", "Missing surgical prophylaxis", "prophylaxis"),
         ("CLABSI", "S. aureus BSI + Not CLABSI (MBI)", "clabsi"),
         ("SSI", "Deep SSI + Not SSI", "ssi"),
+        ("VAE", "VAC + Not VAE (stable)", "vae"),
+        ("CAUTI", "CAUTI + Not CAUTI (asymptomatic)", "cauti"),
+        ("CDI", "HO-CDI + CO-CDI", "cdi"),
     ]
 
     for name, description, key in scenarios:
@@ -449,6 +539,9 @@ Examples:
         data_results["prophylaxis"] = create_surgical_prophylaxis_demo(args.dry_run, args.verbose)
         data_results["clabsi"] = create_clabsi_demo(args.dry_run, args.verbose)
         data_results["ssi"] = create_ssi_demo(args.dry_run, args.verbose)
+        data_results["vae"] = create_vae_demo(args.dry_run, args.verbose)
+        data_results["cauti"] = create_cauti_demo(args.dry_run, args.verbose)
+        data_results["cdi"] = create_cdi_demo(args.dry_run, args.verbose)
 
     # Run monitors
     if not args.data_only:
