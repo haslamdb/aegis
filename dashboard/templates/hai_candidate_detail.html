@@ -288,16 +288,16 @@
                 </button>
             </div>
 
-            {% else %}
-            <!-- CLABSI/default classification buttons -->
+            {% elif candidate.hai_type.value == 'clabsi' %}
+            <!-- CLABSI classification buttons -->
             <div class="classification-buttons-single">
                 <button type="button" class="btn btn-clabsi btn-block" data-decision="confirmed">
-                    Confirm {{ candidate.hai_type.value | upper }}
+                    Confirm CLABSI
                 </button>
             </div>
 
             <div class="classification-divider">
-                <span>Or classify as Not {{ candidate.hai_type.value | upper }}:</span>
+                <span>Or classify as Not CLABSI:</span>
             </div>
 
             <div class="secondary-buttons">
@@ -306,6 +306,90 @@
                 </button>
                 <button type="button" class="btn btn-secondary-source btn-block" data-decision="secondary">
                     Secondary
+                </button>
+                <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
+                    Needs More Info
+                </button>
+            </div>
+
+            {% elif candidate.hai_type.value == 'cdi' %}
+            <!-- CDI classification buttons -->
+            <div class="classification-buttons-single">
+                <button type="button" class="btn btn-clabsi btn-block" data-decision="confirmed">
+                    Confirm CDI
+                </button>
+            </div>
+
+            <div class="classification-divider">
+                <span>Or:</span>
+            </div>
+
+            <div class="secondary-buttons cdi-buttons">
+                <button type="button" class="btn btn-not-clabsi btn-block" data-decision="rejected">
+                    Not CDI
+                </button>
+                <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
+                    Needs More Info
+                </button>
+            </div>
+
+            {% elif candidate.hai_type.value == 'cauti' %}
+            <!-- CAUTI classification buttons -->
+            <div class="classification-buttons-single">
+                <button type="button" class="btn btn-clabsi btn-block" data-decision="confirmed">
+                    Confirm CAUTI
+                </button>
+            </div>
+
+            <div class="classification-divider">
+                <span>Or:</span>
+            </div>
+
+            <div class="secondary-buttons cdi-buttons">
+                <button type="button" class="btn btn-not-clabsi btn-block" data-decision="rejected">
+                    Not CAUTI
+                </button>
+                <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
+                    Needs More Info
+                </button>
+            </div>
+
+            {% elif candidate.hai_type.value == 'vae' %}
+            <!-- VAE classification buttons -->
+            <div class="classification-buttons-single">
+                <button type="button" class="btn btn-clabsi btn-block" data-decision="confirmed">
+                    Confirm VAE
+                </button>
+            </div>
+
+            <div class="classification-divider">
+                <span>Or:</span>
+            </div>
+
+            <div class="secondary-buttons cdi-buttons">
+                <button type="button" class="btn btn-not-clabsi btn-block" data-decision="rejected">
+                    Not VAE
+                </button>
+                <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
+                    Needs More Info
+                </button>
+            </div>
+
+            {% else %}
+            <!-- Default/unknown HAI type -->
+            <div class="classification-buttons-single">
+                <button type="button" class="btn btn-clabsi btn-block" data-decision="confirmed">
+                    Confirm {{ candidate.hai_type.value | upper }}
+                </button>
+            </div>
+
+            <div class="classification-divider">
+                <span>Or:</span>
+            </div>
+
+            <div class="secondary-buttons cdi-buttons">
+                <button type="button" class="btn btn-not-clabsi btn-block" data-decision="rejected">
+                    Not {{ candidate.hai_type.value | upper }}
                 </button>
                 <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
                     Needs More Info
@@ -632,6 +716,10 @@ document.querySelectorAll('.classification-buttons button, .classification-butto
     gap: 0.5rem;
 }
 
+.secondary-buttons.cdi-buttons {
+    grid-template-columns: 1fr 1fr;
+}
+
 .btn-clabsi {
     background: #dc2626;
     color: white;
@@ -836,6 +924,9 @@ document.querySelectorAll('.classification-buttons button, .classification-butto
     .secondary-buttons {
         grid-template-columns: 1fr 1fr 1fr;
     }
+    .secondary-buttons.cdi-buttons {
+        grid-template-columns: 1fr 1fr;
+    }
     .ssi-type-buttons {
         grid-template-columns: 1fr;
     }
@@ -846,6 +937,9 @@ document.querySelectorAll('.classification-buttons button, .classification-butto
 
 @media (max-width: 480px) {
     .secondary-buttons {
+        grid-template-columns: 1fr;
+    }
+    .secondary-buttons.cdi-buttons {
         grid-template-columns: 1fr;
     }
     .ssi-secondary {
