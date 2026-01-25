@@ -8,7 +8,7 @@
     <a href="{{ url_for('asp_alerts.alerts_active') }}" class="btn btn-secondary">Back to Active</a>
 </div>
 
-<div class="alert-detail-layout">
+<div class="alert-detail-layout alert-detail-page">
     <!-- Left Column: Alert Information -->
     <div class="alert-detail-main">
         <div class="alert-detail-card">
@@ -22,44 +22,33 @@
             </div>
 
             <div class="alert-body">
-                <div class="info-section">
-                    <h3>Patient Information</h3>
-                    <dl>
-                        <dt>Name</dt>
-                        <dd>{{ alert.patient_name or 'Unknown' }}</dd>
-                        <dt>MRN</dt>
-                        <dd>{{ alert.patient_mrn or 'Unknown' }}</dd>
-                        <dt>Patient ID</dt>
-                        <dd style="font-size: 0.75rem; word-break: break-all;">{{ alert.patient_id or 'Unknown' }}</dd>
-                    </dl>
-                </div>
+                <!-- Patient & Timeline side-by-side -->
+                <div class="info-row-compact">
+                    <div class="info-section">
+                        <h3>Patient</h3>
+                        <dl>
+                            <dt>Name</dt>
+                            <dd><strong>{{ alert.patient_name or 'Unknown' }}</strong></dd>
+                            <dt>MRN</dt>
+                            <dd>{{ alert.patient_mrn or 'Unknown' }}</dd>
+                        </dl>
+                    </div>
 
-                <div class="info-section">
-                    <h3>Alert Timeline</h3>
-                    <dl>
-                        <dt>Alert ID</dt>
-                        <dd style="font-size: 0.75rem;">{{ alert.id }}</dd>
-                        <dt>Created</dt>
-                        <dd>
-                            <span class="time-relative" data-timestamp="{{ alert.created_at.isoformat() if alert.created_at else '' }}">
-                                {{ alert.created_at.strftime('%Y-%m-%d %H:%M:%S') if alert.created_at else '-' }}
-                            </span>
-                        </dd>
-                        <dt>Sent</dt>
-                        <dd>{{ alert.sent_at.strftime('%Y-%m-%d %H:%M:%S') if alert.sent_at else 'Not sent' }}</dd>
-                        {% if alert.acknowledged_at %}
-                        <dt>Acknowledged</dt>
-                        <dd>{{ alert.acknowledged_at.strftime('%Y-%m-%d %H:%M:%S') }} by {{ alert.acknowledged_by or 'Unknown' }}</dd>
-                        {% endif %}
-                        {% if alert.status.value == 'snoozed' and alert.snoozed_until %}
-                        <dt>Snoozed Until</dt>
-                        <dd>{{ alert.snoozed_until.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
-                        {% endif %}
-                        {% if alert.resolved_at %}
-                        <dt>Resolved</dt>
-                        <dd>{{ alert.resolved_at.strftime('%Y-%m-%d %H:%M:%S') }} by {{ alert.resolved_by or 'Unknown' }}</dd>
-                        {% endif %}
-                    </dl>
+                    <div class="info-section">
+                        <h3>Timeline</h3>
+                        <dl>
+                            <dt>Created</dt>
+                            <dd>{{ alert.created_at.strftime('%m/%d %H:%M') if alert.created_at else '-' }}</dd>
+                            {% if alert.acknowledged_at %}
+                            <dt>Ack'd</dt>
+                            <dd>{{ alert.acknowledged_at.strftime('%m/%d %H:%M') }}</dd>
+                            {% endif %}
+                            {% if alert.resolved_at %}
+                            <dt>Resolved</dt>
+                            <dd>{{ alert.resolved_at.strftime('%m/%d %H:%M') }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
                 </div>
 
                 {% if alert.summary %}
@@ -103,12 +92,7 @@
                                 <strong>{{ abx.get('name', 'Unknown') }}</strong>
                                 {% if abx.get('susceptibility') %}
                                 <span class="badge badge-{% if abx.get('susceptibility') == 'R' %}danger{% elif abx.get('susceptibility') == 'I' %}warning{% else %}success{% endif %}">
-                                    {% if abx.get('susceptibility') == 'R' %}Resistant{% elif abx.get('susceptibility') == 'I' %}Intermediate{% elif abx.get('susceptibility') == 'S' %}Susceptible{% else %}{{ abx.get('susceptibility') }}{% endif %}
-                                </span>
-                                {% endif %}
-                                {% if abx.get('mismatch_type') and abx.get('mismatch_type') != 'susceptible' %}
-                                <span class="badge badge-{% if abx.get('mismatch_type') == 'resistant' %}danger{% elif abx.get('mismatch_type') == 'intermediate' %}warning{% else %}secondary{% endif %}">
-                                    {{ abx.get('mismatch_type', '')|replace('_', ' ')|title }}
+                                    {{ abx.get('susceptibility') }}
                                 </span>
                                 {% endif %}
                             </div>
@@ -122,7 +106,7 @@
                         <dt>Susceptible Options</dt>
                         <dd>
                             {% for option in alert.content.get('susceptible_options', []) %}
-                            <span class="badge badge-success">{{ option }}</span>
+                            <span class="badge badge-success">{{ option|replace(' Susceptibility', '')|replace(' susceptibility', '') }}</span>
                             {% endfor %}
                         </dd>
                         {% endif %}
@@ -132,7 +116,7 @@
                     </dl>
 
                     {% if alert.content.get('susceptibility_panel') %}
-                    <h4 style="margin-top: 1.5rem;">Susceptibility Panel</h4>
+                    <h4 style="margin-top: 1rem; margin-bottom: 0.5rem;">Susceptibility Panel</h4>
                     <table class="susceptibility-table">
                         <thead>
                             <tr>
@@ -143,16 +127,18 @@
                         </thead>
                         <tbody>
                             {% for row in alert.content.get('susceptibility_panel', []) %}
-                            <tr class="susc-{{ row.get('result', 'U')|lower }}">
-                                <td>{{ row.get('antibiotic', '-') }}</td>
+                            <tr class="susc-{{ row.get('result', 'u')|lower }}">
+                                <td>{{ row.get('antibiotic', '-')|replace(' Susceptibility', '')|replace(' susceptibility', '') }}</td>
                                 <td>
-                                    <span class="badge badge-{% if row.get('result') == 'S' %}success{% elif row.get('result') == 'I' %}warning{% elif row.get('result') == 'R' %}danger{% else %}secondary{% endif %}">
-                                        {% if row.get('result') == 'S' %}Susceptible
-                                        {% elif row.get('result') == 'I' %}Intermediate
-                                        {% elif row.get('result') == 'R' %}Resistant
-                                        {% else %}{{ row.get('result', '-') }}
-                                        {% endif %}
-                                    </span>
+                                    <div class="susc-result">
+                                        <span class="susc-badge susc-{{ row.get('result', 'u')|lower }}">{{ row.get('result', '-') }}</span>
+                                        <span class="susc-text">
+                                            {% if row.get('result') == 'S' %}Susceptible
+                                            {% elif row.get('result') == 'I' %}Intermediate
+                                            {% elif row.get('result') == 'R' %}Resistant
+                                            {% endif %}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td>{{ row.get('mic', '-') }}</td>
                             </tr>

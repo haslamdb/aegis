@@ -16,6 +16,7 @@
         {% set is_abx_indications = request.endpoint and request.endpoint.startswith('abx_indications.') %}
         {% set is_guideline_adherence = request.endpoint and request.endpoint.startswith('guideline_adherence.') %}
         {% set is_surgical_prophylaxis = request.endpoint and request.endpoint.startswith('surgical_prophylaxis.') %}
+        {% set is_drug_bug = request.endpoint and request.endpoint.startswith('drug_bug.') %}
         {% set is_landing = request.endpoint == 'main.landing' %}
         <div class="nav-brand">
             <svg class="nav-shield" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -36,6 +37,8 @@
             <a href="{{ url_for('guideline_adherence.dashboard') }}">Guideline Adherence</a>
             {% elif is_surgical_prophylaxis %}
             <a href="{{ url_for('surgical_prophylaxis.dashboard') }}">Surgical Prophylaxis</a>
+            {% elif is_drug_bug %}
+            <a href="{{ url_for('drug_bug.dashboard') }}">Drug-Bug Mismatch</a>
             {% else %}
             <a href="{{ url_for('main.landing') }}">AEGIS</a>
             {% endif %}
@@ -81,6 +84,10 @@
             <!-- Surgical Prophylaxis Navigation -->
             <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
             <a href="{{ url_for('surgical_prophylaxis.help_page') }}" {% if request.endpoint == 'surgical_prophylaxis.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_drug_bug %}
+            <!-- Drug-Bug Mismatch Navigation -->
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            <a href="{{ url_for('drug_bug.help_page') }}" {% if request.endpoint == 'drug_bug.help_page' %}class="active"{% endif %}>Help</a>
             {% else %}
             <!-- Landing Page Navigation -->
             <a href="{{ url_for('asp_alerts.alerts_active') }}" class="nav-alerts">ASP Alerts</a>

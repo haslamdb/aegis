@@ -22,7 +22,7 @@ from typing import Any
 from . import get_schema_sql
 
 # Default database path
-DEFAULT_DB_PATH = Path.home() / ".asp-alerts" / "mock_clarity.db"
+DEFAULT_DB_PATH = Path.home() / ".aegis" / "mock_clarity.db"
 
 # CCHMC-specific locations (matching NHSN_LOCATION_MAP in schema)
 LOCATIONS = [

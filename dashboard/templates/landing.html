@@ -86,6 +86,17 @@
             <span>Duration Monitor</span>
         </div>
     </a>
+
+    <a href="{{ url_for('drug_bug.dashboard') }}" class="section-card section-drugbug">
+        <div class="section-icon">&#x1F9EC;</div>
+        <h2>Drug-Bug Mismatch</h2>
+        <p>Real-time detection of therapy-organism mismatches based on culture susceptibilities.</p>
+        <div class="section-features">
+            <span>Coverage Gaps</span>
+            <span>Resistance Alerts</span>
+            <span>De-escalation</span>
+        </div>
+    </a>
 </div>
 
 <style>
@@ -245,6 +256,17 @@
 }
 .section-surgical .section-icon {
     color: #E11D48;
+}
+
+.section-drugbug {
+    border-left-color: #7C3AED;
+}
+.section-drugbug:hover {
+    border-left-color: #7C3AED;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(124, 58, 237, 0.1) 100%);
+}
+.section-drugbug .section-icon {
+    color: #7C3AED;
 }
 
 .coming-soon-badge {
