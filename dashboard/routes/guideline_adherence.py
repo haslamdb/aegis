@@ -76,26 +76,51 @@ def dashboard():
                     "created_at": alert.created_at.isoformat() if alert.created_at else None,
                 })
 
-            # Get adherence stats by bundle
+            # Get adherence stats by bundle (completed episodes)
             stats = db.get_adherence_stats(days=30)
 
-            # Get per-bundle stats
+            # Get per-bundle stats - include both completed and active episodes
             for bundle_id, bundle in GUIDELINE_BUNDLES.items():
                 bundle_stat = stats.get(bundle_id, {})
+
+                # Get active episodes for this bundle
+                active_for_bundle = [ep for ep in episodes if ep.bundle_id == bundle_id]
+                active_count = len(active_for_bundle)
+
+                # Calculate compliance including active episodes
+                completed_episodes = bundle_stat.get("total_episodes", 0)
+                completed_avg = bundle_stat.get("avg_adherence_percentage", 0) or 0
+
+                # Combine active + completed for overall compliance
+                if active_for_bundle:
+                    active_adherences = [ep.adherence_percentage or 0 for ep in active_for_bundle]
+                    active_avg = sum(active_adherences) / len(active_adherences)
+
+                    # Weighted average of completed and active
+                    total_count = completed_episodes + active_count
+                    if total_count > 0:
+                        avg_compliance = (
+                            (completed_avg * completed_episodes) + (active_avg * active_count)
+                        ) / total_count
+                    else:
+                        avg_compliance = 0
+                else:
+                    avg_compliance = completed_avg
+
                 bundle_stats.append({
                     "bundle_id": bundle_id,
                     "bundle_name": bundle.name,
-                    "total_episodes": bundle_stat.get("total_episodes", 0),
-                    "active_episodes": sum(1 for ep in episodes if ep.bundle_id == bundle_id),
-                    "avg_compliance": round(bundle_stat.get("avg_adherence_percentage", 0) or 0, 1),
+                    "total_episodes": completed_episodes + active_count,
+                    "active_episodes": active_count,
+                    "avg_compliance": round(avg_compliance, 1),
                     "element_count": len(bundle.elements),
                 })
 
-            # Overall metrics
-            total_episodes = sum(s.get("total_episodes", 0) for s in stats.values())
+            # Overall metrics - include active episodes in totals
+            completed_total = sum(s.get("total_episodes", 0) for s in stats.values())
             total_alerts = len(alerts)
             metrics = {
-                "total_episodes": total_episodes,
+                "total_episodes": completed_total + len(episodes),
                 "active_episodes": len(episodes),
                 "active_alerts": total_alerts,
             }
@@ -176,6 +201,7 @@ def episode_detail(episode_id):
     episode = None
     results = []
     bundle = None
+    nlp_assessment = None
 
     if db:
         try:
@@ -193,6 +219,15 @@ def episode_detail(episode_id):
                     "trigger_code": ep.trigger_code,
                     "trigger_description": ep.trigger_description,
                 }
+
+                # Parse clinical context for NLP assessment
+                if ep.clinical_context:
+                    import json
+                    try:
+                        nlp_assessment = json.loads(ep.clinical_context)
+                    except json.JSONDecodeError:
+                        nlp_assessment = None
+
                 raw_results = db.get_element_results(episode_id)
                 for r in raw_results:
                     results.append({
@@ -217,6 +252,7 @@ def episode_detail(episode_id):
         episode=episode,
         results=results,
         bundle=bundle,
+        nlp_assessment=nlp_assessment,
     )
 
 
@@ -232,30 +268,51 @@ def compliance_metrics():
 
     if db:
         try:
-            # Get adherence stats
+            # Get adherence stats (completed/closed episodes)
             stats = db.get_adherence_stats(days=days)
 
-            # Overall metrics
-            total_episodes = sum(s.get("total_episodes", 0) for s in stats.values())
-            all_adherence = [s.get("avg_adherence_percentage", 0) for s in stats.values() if s.get("avg_adherence_percentage")]
-            avg_adherence = sum(all_adherence) / len(all_adherence) if all_adherence else 0
+            # Get active episodes to include in counts
+            active_episodes = db.get_active_episodes(limit=1000)
+
+            # Filter by bundle if specified
+            if bundle_filter:
+                active_episodes = [ep for ep in active_episodes if ep.bundle_id == bundle_filter]
+
+            # Calculate overall metrics
+            completed_total = sum(s.get("total_episodes", 0) for s in stats.values())
+            active_total = len(active_episodes)
+
+            # Get element-level compliance rates from element results
+            element_rates = db.get_element_compliance_rates(days=days, bundle_id=bundle_filter)
 
             metrics = {
-                "total_episodes": total_episodes,
-                "avg_adherence": round(avg_adherence, 1),
+                "episode_counts": {
+                    "total": completed_total + active_total,
+                    "active": active_total,
+                    "complete": completed_total,
+                },
+                "element_rates": element_rates,
             }
 
-            # Per-bundle breakdown
-            for bundle_id, bundle in GUIDELINE_BUNDLES.items():
-                bundle_stat = stats.get(bundle_id, {})
-                bundle_metrics.append({
-                    "bundle_id": bundle_id,
-                    "bundle_name": bundle.name,
-                    "metrics": {
-                        "total_episodes": bundle_stat.get("total_episodes", 0),
-                        "avg_adherence": round(bundle_stat.get("avg_adherence_percentage", 0) or 0, 1),
-                    },
-                })
+            # Per-bundle breakdown (only if no bundle filter)
+            if not bundle_filter:
+                for bundle_id, bundle in GUIDELINE_BUNDLES.items():
+                    bundle_stat = stats.get(bundle_id, {})
+                    active_for_bundle = [ep for ep in active_episodes if ep.bundle_id == bundle_id]
+                    bundle_element_rates = db.get_element_compliance_rates(days=days, bundle_id=bundle_id)
+
+                    bundle_metrics.append({
+                        "bundle_id": bundle_id,
+                        "bundle_name": bundle.name,
+                        "metrics": {
+                            "episode_counts": {
+                                "total": bundle_stat.get("total_episodes", 0) + len(active_for_bundle),
+                                "active": len(active_for_bundle),
+                                "complete": bundle_stat.get("total_episodes", 0),
+                            },
+                            "element_rates": bundle_element_rates,
+                        },
+                    })
         except Exception as e:
             current_app.logger.error(f"Error loading metrics: {e}")
             import traceback

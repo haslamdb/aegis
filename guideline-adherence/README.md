@@ -306,6 +306,55 @@ FHIR Server (Conditions, Medications, Labs, Vitals)
             → Episode detail view
 ```
 
+## NLP Clinical Note Analysis
+
+The system uses **LLM-based Natural Language Processing** to extract clinical information from unstructured notes that cannot be reliably captured with simple keyword matching.
+
+### Clinical Impression Extraction (Febrile Infant)
+
+Critical for risk stratification in the Febrile Infant guideline. The LLM analyzes clinical notes to determine:
+
+| Assessment | Indicators | Clinical Action |
+|------------|-----------|-----------------|
+| **Well-Appearing** | Alert, playful, active, feeding well, good eye contact, pink, well-perfused | Follow standard age-stratified pathway |
+| **Ill-Appearing** | Lethargic, irritable, poor feeding, mottled, pale, decreased activity | Higher risk stratification, consider HSV workup |
+| **Toxic-Appearing** | Obtunded, unresponsive, septic appearance, shock, poor perfusion | Full sepsis workup, aggressive resuscitation |
+
+### GI Symptom Extraction (C. diff Testing)
+
+Extracts precise symptom information for C. diff testing appropriateness:
+
+- **Stool count**: Exact number of stools in past 24 hours
+- **Stool consistency**: Liquid, watery, loose, soft, or formed
+- **Symptom duration**: When diarrhea started (converted to hours)
+- **Associated symptoms**: Abdominal pain, cramping, fever, bloody stool
+
+### NLP Configuration
+
+The NLP module uses a local LLM via **Ollama** for HIPAA-compliant processing (no PHI leaves the server):
+
+```bash
+# Check LLM availability
+python -c "from guideline_src.nlp.clinical_impression import check_llm_availability; print(check_llm_availability())"
+
+# Test clinical impression extraction
+python -m guideline_src.nlp.clinical_impression
+
+# Test GI symptom extraction
+python -m guideline_src.nlp.gi_symptoms
+```
+
+### Confidence Levels
+
+| Source | Confidence | Description |
+|--------|------------|-------------|
+| NLP extraction | HIGH | LLM found clear clinical markers with supporting quotes |
+| NLP extraction | MEDIUM | LLM found some indicators but notes were ambiguous |
+| Keyword fallback | MEDIUM | Multiple keywords matched |
+| Keyword fallback | LOW | Single keyword match or no clear indicators |
+
+**Fallback**: If LLM is unavailable, the system falls back to keyword-based matching with reduced accuracy.
+
 ## Module Structure
 
 ```
@@ -320,15 +369,19 @@ guideline-adherence/
 │   ├── episode_monitor.py        # EpisodeAdherenceMonitor (Mode 2)
 │   ├── adherence_db.py           # Legacy adherence database
 │   ├── episode_db.py             # Episode tracking database
+│   ├── nlp/                      # NLP extraction modules
+│   │   ├── __init__.py
+│   │   ├── clinical_impression.py    # Ill-appearing detection for Febrile Infant
+│   │   └── gi_symptoms.py            # Stool count/consistency for C. diff
 │   ├── checkers/
 │   │   ├── __init__.py
 │   │   ├── base.py               # ElementChecker ABC
 │   │   ├── lab_checker.py        # Blood culture, lactate, inflammatory markers
 │   │   ├── medication_checker.py # Antibiotic timing, fluid bolus
 │   │   ├── note_checker.py       # Reassessment documentation
-│   │   ├── febrile_infant_checker.py  # Age-stratified febrile infant logic
+│   │   ├── febrile_infant_checker.py  # Age-stratified febrile infant logic + NLP
 │   │   ├── hsv_checker.py        # Neonatal HSV bundle
-│   │   └── cdiff_testing_checker.py   # C. diff testing stewardship
+│   │   └── cdiff_testing_checker.py   # C. diff testing stewardship + NLP
 │   └── runner.py                 # CLI entry point (all three modes)
 ├── guideline_adherence.py        # Bundle definitions (GUIDELINE_BUNDLES)
 ├── demo_patients.py              # Demo patient scenarios for testing

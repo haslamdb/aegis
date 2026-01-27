@@ -5,6 +5,7 @@ febrile infants 8-60 days old. Handles:
 - Age-stratified workup requirements (8-21d, 22-28d, 29-60d)
 - Conditional logic based on inflammatory markers
 - CSF-based decision branches
+- NLP-based clinical impression assessment (ill-appearing vs well-appearing)
 """
 
 from datetime import datetime, timedelta
@@ -24,6 +25,19 @@ from guideline_adherence import BundleElement
 from ..models import ElementCheckResult, ElementCheckStatus
 from ..config import config
 from .base import ElementChecker
+
+# Import NLP extractor for clinical impression
+try:
+    from ..nlp.clinical_impression import (
+        ClinicalImpressionExtractor,
+        ClinicalAppearance,
+        get_clinical_impression_extractor,
+    )
+    NLP_AVAILABLE = True
+except ImportError:
+    NLP_AVAILABLE = False
+    ClinicalImpressionExtractor = None
+    ClinicalAppearance = None
 
 logger = logging.getLogger(__name__)
 
@@ -86,11 +100,26 @@ class FebrileInfantChecker(ElementChecker):
         "fi_urine_culture": [config.LOINC_URINE_CULTURE],
     }
 
-    def __init__(self, fhir_client):
-        """Initialize with FHIR client."""
+    def __init__(self, fhir_client, use_nlp: bool = True):
+        """Initialize with FHIR client.
+
+        Args:
+            fhir_client: FHIR client for data retrieval.
+            use_nlp: Whether to use NLP for clinical impression extraction.
+        """
         super().__init__(fhir_client)
         # Cache for patient context
         self._patient_context = {}
+
+        # Initialize NLP extractor if available and requested
+        self._nlp_extractor = None
+        if use_nlp and NLP_AVAILABLE:
+            try:
+                self._nlp_extractor = get_clinical_impression_extractor()
+                if self._nlp_extractor:
+                    logger.info("NLP clinical impression extractor initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize NLP extractor: {e}")
 
     def check(
         self,
@@ -207,6 +236,11 @@ class FebrileInfantChecker(ElementChecker):
             "transportation_confirmed": False,
             "parent_education": False,
             "return_precautions": False,
+            # Clinical impression (NLP-based)
+            "clinical_impression": None,  # ClinicalImpressionResult if NLP available
+            "is_ill_appearing": False,
+            "clinical_impression_confidence": "LOW",
+            "clinical_impression_source": "keyword",  # "nlp" or "keyword"
         }
 
         # Get patient info if age not provided
@@ -237,7 +271,118 @@ class FebrileInfantChecker(ElementChecker):
             context["hsv_risk_present"] = len(context["hsv_risk_factors"]) > 0
             context["acyclovir_ordered"] = self._is_acyclovir_ordered(patient_id, trigger_time)
 
+        # Determine clinical impression (ill-appearing vs well-appearing)
+        # This is critical for risk stratification per AAP 2021
+        context.update(self._assess_clinical_impression(patient_id, trigger_time))
+
         return context
+
+    def _assess_clinical_impression(
+        self,
+        patient_id: str,
+        trigger_time: datetime,
+    ) -> dict:
+        """Assess clinical impression using NLP or keyword matching.
+
+        Uses LLM-based NLP extraction if available, falls back to keyword matching.
+
+        Args:
+            patient_id: FHIR patient ID.
+            trigger_time: When the bundle was triggered.
+
+        Returns:
+            Dict with clinical impression fields.
+        """
+        result = {
+            "clinical_impression": None,
+            "is_ill_appearing": False,
+            "clinical_impression_confidence": "LOW",
+            "clinical_impression_source": "keyword",
+        }
+
+        # Get recent notes for analysis
+        notes = self.fhir_client.get_recent_notes(
+            patient_id=patient_id,
+            since_time=trigger_time - timedelta(hours=24),
+        )
+
+        if not notes:
+            return result
+
+        # Try NLP-based extraction first
+        if self._nlp_extractor:
+            try:
+                note_texts = [n.get("text", "") for n in notes if n.get("text")]
+                if note_texts:
+                    impression = self._nlp_extractor.extract(note_texts)
+                    result["clinical_impression"] = impression
+                    result["is_ill_appearing"] = impression.is_high_risk()
+                    result["clinical_impression_confidence"] = impression.confidence
+                    result["clinical_impression_source"] = "nlp"
+
+                    logger.info(
+                        f"NLP clinical impression for {patient_id}: "
+                        f"{impression.appearance.value} ({impression.confidence})"
+                    )
+                    return result
+            except Exception as e:
+                logger.warning(f"NLP extraction failed, falling back to keywords: {e}")
+
+        # Fallback to keyword-based matching
+        ill_appearing_keywords = [
+            # Toxic/severely ill markers
+            "toxic", "toxic-appearing", "toxic appearing",
+            "septic", "septic appearing", "septic-appearing",
+            "obtunded", "unresponsive", "shock",
+            # Ill-appearing markers
+            "ill-appearing", "ill appearing", "sick-appearing", "sick appearing",
+            "lethargic", "listless", "limp", "floppy",
+            "irritable", "inconsolable", "high-pitched cry",
+            "poor feeding", "not feeding", "refuses to eat", "poor suck",
+            "mottled", "mottling", "pale", "ashen", "cyanotic",
+            "delayed cap refill", "poor perfusion",
+            "decreased activity", "difficult to arouse", "sleepy",
+            "grunting", "nasal flaring", "retractions",
+        ]
+
+        well_appearing_keywords = [
+            "well-appearing", "well appearing", "non-toxic",
+            "alert", "playful", "active", "interactive",
+            "feeding well", "good suck", "taking feeds",
+            "good eye contact", "consolable",
+            "pink", "well-perfused", "good perfusion",
+            "normal activity",
+        ]
+
+        # Check all notes for appearance indicators
+        ill_count = 0
+        well_count = 0
+
+        for note in notes:
+            note_text = note.get("text", "").lower()
+
+            for kw in ill_appearing_keywords:
+                if kw in note_text:
+                    ill_count += 1
+
+            for kw in well_appearing_keywords:
+                if kw in note_text:
+                    well_count += 1
+
+        # Determine appearance based on keyword frequency
+        # Ill-appearing takes precedence if found
+        if ill_count > 0:
+            result["is_ill_appearing"] = True
+            result["clinical_impression_confidence"] = "MEDIUM" if ill_count >= 2 else "LOW"
+            logger.info(
+                f"Keyword-based clinical impression for {patient_id}: "
+                f"ill-appearing (found {ill_count} indicators)"
+            )
+        elif well_count > 0:
+            result["is_ill_appearing"] = False
+            result["clinical_impression_confidence"] = "MEDIUM" if well_count >= 2 else "LOW"
+
+        return result
 
     def _check_element_applicability(self, element_id: str, context: dict) -> str:
         """Check if element applies given patient context.
