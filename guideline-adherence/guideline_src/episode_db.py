@@ -15,6 +15,44 @@ from .config import config
 logger = logging.getLogger(__name__)
 
 
+def _log_guideline_activity(
+    activity_type: str,
+    entity_id: str,
+    entity_type: str,
+    action_taken: str,
+    provider_id: str | None = None,
+    provider_name: str | None = None,
+    patient_mrn: str | None = None,
+    location_code: str | None = None,
+    outcome: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Log activity to the unified metrics store.
+
+    This is a fire-and-forget operation - failures are logged but don't
+    interrupt the main operation.
+    """
+    try:
+        from common.metrics_store import MetricsStore, ModuleSource
+
+        store = MetricsStore()
+        store.log_activity(
+            activity_type=activity_type,
+            module=ModuleSource.GUIDELINE_ADHERENCE,
+            provider_id=provider_id,
+            provider_name=provider_name,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            action_taken=action_taken,
+            outcome=outcome,
+            patient_mrn=patient_mrn,
+            location_code=location_code,
+            details=details,
+        )
+    except Exception as e:
+        logger.debug(f"Failed to log activity to metrics store: {e}")
+
+
 @dataclass
 class BundleEpisode:
     """Represents an active bundle monitoring episode."""
@@ -586,8 +624,15 @@ class EpisodeDB:
 
     def acknowledge_alert(self, alert_id: int, acknowledged_by: str):
         """Acknowledge an alert."""
+        # Get alert info for activity logging
+        alert = None
         with self._get_connection() as conn:
             cursor = conn.cursor()
+            cursor.execute("SELECT * FROM bundle_alerts WHERE id = ?", (alert_id,))
+            row = cursor.fetchone()
+            if row:
+                alert = self._row_to_alert(row)
+
             cursor.execute(
                 """
                 UPDATE bundle_alerts SET
@@ -600,6 +645,23 @@ class EpisodeDB:
                 (acknowledged_by, alert_id),
             )
             conn.commit()
+
+        # Log to unified metrics store
+        _log_guideline_activity(
+            activity_type="acknowledgment",
+            entity_id=str(alert_id),
+            entity_type="bundle_alert",
+            action_taken="acknowledged",
+            provider_name=acknowledged_by,
+            patient_mrn=alert.patient_mrn if alert else None,
+            location_code=None,
+            details={
+                "bundle_id": alert.bundle_id if alert else None,
+                "bundle_name": alert.bundle_name if alert else None,
+                "alert_type": alert.alert_type if alert else None,
+                "severity": alert.severity if alert else None,
+            },
+        )
 
     def resolve_alert(self, alert_id: int, resolution_notes: Optional[str] = None):
         """Resolve an alert."""

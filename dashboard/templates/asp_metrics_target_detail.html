@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Target: {{ target.target_name or target.target_id }} - ASP/IP Metrics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Intervention Target: {{ target.target_name or target.target_id }}</h1>
+    <div class="header-actions">
+        <a href="{{ url_for('asp_metrics.targets') }}" class="btn btn-secondary">Back to Targets</a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <!-- Target Details -->
+    <div class="dashboard-card">
+        <h3>Target Details</h3>
+        <dl class="detail-list">
+            <div class="detail-row">
+                <dt>Target Type</dt>
+                <dd>{{ target.target_type | replace('_', ' ') | title }}</dd>
+            </div>
+            <div class="detail-row">
+                <dt>Target ID</dt>
+                <dd>{{ target.target_id }}</dd>
+            </div>
+            <div class="detail-row">
+                <dt>Target Name</dt>
+                <dd>{{ target.target_name or '--' }}</dd>
+            </div>
+            <div class="detail-row">
+                <dt>Issue Type</dt>
+                <dd>{{ target.issue_type | replace('_', ' ') | title }}</dd>
+            </div>
+            <div class="detail-row">
+                <dt>Issue Description</dt>
+                <dd>{{ target.issue_description or '--' }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Metrics -->
+    <div class="dashboard-card">
+        <h3>Metrics</h3>
+        <dl class="detail-list">
+            <div class="detail-row">
+                <dt>Metric Name</dt>
+                <dd>{{ target.metric_name or '--' }}</dd>
+            </div>
+            <div class="detail-row">
+                <dt>Baseline Value</dt>
+                <dd>{{ target.baseline_value | round(1) if target.baseline_value is not none else '--' }}{{ '%' if target.metric_unit == 'percent' else '' }}</dd>
+            </div>
+            <div class="detail-row">
+                <dt>Target Value</dt>
+                <dd>{{ target.target_value | round(1) if target.target_value is not none else '--' }}{{ '%' if target.metric_unit == 'percent' else '' }}</dd>
+            </div>
+            <div class="detail-row">
+                <dt>Current Value</dt>
+                <dd class="{% if target.current_value and target.target_value and target.current_value <= target.target_value %}text-success{% elif target.current_value and target.baseline_value and target.current_value < target.baseline_value %}text-info{% endif %}">
+                    {{ target.current_value | round(1) if target.current_value is not none else '--' }}{{ '%' if target.metric_unit == 'percent' else '' }}
+                </dd>
+            </div>
+        </dl>
+    </div>
+</div>
+
+<!-- Status and Priority -->
+<div class="dashboard-card">
+    <h3>Status & Assignment</h3>
+    <form id="status-form" class="status-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status" onchange="updateStatus()">
+                    <option value="identified" {% if target.status == 'identified' %}selected{% endif %}>Identified</option>
+                    <option value="planned" {% if target.status == 'planned' %}selected{% endif %}>Planned</option>
+                    <option value="in_progress" {% if target.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="completed" {% if target.status == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="dismissed" {% if target.status == 'dismissed' %}selected{% endif %}>Dismissed</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Assigned To</label>
+                <input type="text" name="assigned_to" value="{{ target.assigned_to or '' }}" onchange="updateStatus()">
+            </div>
+            <div class="form-group">
+                <label>Priority Score</label>
+                <span class="priority-badge priority-{{ 'high' if target.priority_score and target.priority_score > 10 else 'medium' if target.priority_score and target.priority_score > 5 else 'low' }}">
+                    {{ target.priority_score | round(1) if target.priority_score else '--' }}
+                </span>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Identified Date</label>
+                <span>{{ target.identified_date }}</span>
+            </div>
+            <div class="form-group">
+                <label>Planned Date</label>
+                <input type="date" name="planned_date" value="{{ target.planned_date or '' }}" onchange="updateStatus()">
+            </div>
+            <div class="form-group">
+                <label>Started Date</label>
+                <input type="date" name="started_date" value="{{ target.started_date or '' }}" onchange="updateStatus()">
+            </div>
+            <div class="form-group">
+                <label>Completed Date</label>
+                <input type="date" name="completed_date" value="{{ target.completed_date or '' }}" onchange="updateStatus()">
+            </div>
+        </div>
+    </form>
+    {% if target.priority_reason %}
+    <div class="priority-reason">
+        <strong>Priority Reason:</strong> {{ target.priority_reason }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Related Sessions -->
+<div class="dashboard-card">
+    <h3>Related Intervention Sessions</h3>
+    {% if sessions %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Topic</th>
+                <th>Conducted By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td>{{ session.session_date }}</td>
+                <td>{{ session.session_type | replace('_', ' ') | title }}</td>
+                <td>{{ session.topic or '--' }}</td>
+                <td>{{ session.conducted_by or '--' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No intervention sessions linked to this target</p>
+    {% endif %}
+    <a href="{{ url_for('asp_metrics.interventions') }}" class="btn btn-link">Log New Session</a>
+</div>
+
+<!-- Outcomes -->
+<div class="dashboard-card">
+    <h3>Intervention Outcomes</h3>
+    {% if outcomes %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Pre Period</th>
+                <th>Pre Value</th>
+                <th>Post Period</th>
+                <th>Post Value</th>
+                <th>Change</th>
+                <th>Improved?</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for outcome in outcomes %}
+            <tr>
+                <td>{{ outcome.pre_period_start }} - {{ outcome.pre_period_end }}</td>
+                <td>{{ outcome.pre_value | round(1) if outcome.pre_value is not none else '--' }}</td>
+                <td>{{ outcome.post_period_start }} - {{ outcome.post_period_end }}</td>
+                <td>{{ outcome.post_value | round(1) if outcome.post_value is not none else '--' }}</td>
+                <td>
+                    {% if outcome.absolute_change is not none %}
+                        {{ ('+' if outcome.absolute_change >= 0 else '') }}{{ outcome.absolute_change | round(1) }}
+                        ({{ outcome.percent_change | round(1) if outcome.percent_change else '--' }}%)
+                    {% else %}
+                        --
+                    {% endif %}
+                </td>
+                <td>
+                    {% if outcome.is_improvement is not none %}
+                        {{ 'Yes' if outcome.is_improvement else 'No' }}
+                    {% else %}
+                        --
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No outcomes recorded yet</p>
+    {% endif %}
+</div>
+
+<script>
+function updateStatus() {
+    const form = document.getElementById('status-form');
+    const data = {
+        status: form.querySelector('[name="status"]').value,
+        assigned_to: form.querySelector('[name="assigned_to"]').value,
+        planned_date: form.querySelector('[name="planned_date"]').value || null,
+        started_date: form.querySelector('[name="started_date"]').value || null,
+        completed_date: form.querySelector('[name="completed_date"]').value || null,
+    };
+
+    fetch('{{ url_for("asp_metrics.update_target", target_id=target.id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (!result.success) {
+            alert('Error updating target: ' + result.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
+</script>
+
+<style>
+.detail-list {
+    margin: 0;
+}
+
+.detail-row {
+    display: flex;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row dt {
+    width: 150px;
+    flex-shrink: 0;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+.detail-row dd {
+    margin: 0;
+}
+
+.status-form .form-row {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.status-form .form-group {
+    flex: 1;
+}
+
+.status-form .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+}
+
+.status-form .form-group input,
+.status-form .form-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+.priority-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: bold;
+}
+
+.priority-high {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.priority-medium {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+.priority-low {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.priority-reason {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.text-success {
+    color: #16a34a;
+    font-weight: bold;
+}
+
+.text-info {
+    color: #0284c7;
+}
+
+.btn-link {
+    background: none;
+    color: #0d9488;
+    padding: 0.5rem 0;
+    text-decoration: underline;
+}
+
+.empty-state {
+    text-align: center;
+    color: #6b7280;
+    padding: 1.5rem;
+}
+</style>
+{% endblock %}

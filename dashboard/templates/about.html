@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}About - AEGIS{% endblock %}
+
+{% block content %}
+<div class="about-header">
+    <h1>About AEGIS</h1>
+    <p class="about-subtitle">Antimicrobial &amp; Epidemiological Guidance Intelligence System</p>
+</div>
+
+<div class="about-content">
+    <section class="about-section">
+        <h2>Overview</h2>
+        <p>AEGIS is a comprehensive healthcare intelligence platform designed to support Antimicrobial Stewardship Programs (ASP) and Infection Prevention (IP) teams. The system integrates clinical data to provide real-time surveillance, decision support, and regulatory reporting capabilities.</p>
+        <p>By combining automated detection algorithms with clinical workflow tools, AEGIS helps healthcare teams identify opportunities for intervention, track outcomes, and maintain compliance with quality reporting requirements.</p>
+    </section>
+
+    <section class="about-section">
+        <h2>Modules</h2>
+
+        <div class="module-list">
+            <div class="module-item">
+                <div class="module-icon" style="color: var(--color-danger);">&#x26A0;</div>
+                <div class="module-details">
+                    <h3>ASP Alerts</h3>
+                    <p>Real-time alerting for blood culture results and antimicrobial therapy reviews. Identifies patients with positive cultures requiring stewardship attention, tracks therapy coverage, and facilitates timely interventions. Supports acknowledgment workflows and resolution tracking.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: var(--color-success);">&#x1F3E5;</div>
+                <div class="module-details">
+                    <h3>HAI Detection</h3>
+                    <p>Automated surveillance for healthcare-associated infections using NHSN criteria. Detects potential CLABSI (Central Line-Associated Bloodstream Infections) and CAUTI (Catheter-Associated Urinary Tract Infections) candidates based on device days, culture results, and clinical context. Supports IP review and override workflows.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: #059669;">&#x1F48A;</div>
+                <div class="module-details">
+                    <h3>Antibiotic Indications</h3>
+                    <p>ICD-10 based classification of antibiotic appropriateness for real-time order assessment. Automatically categorizes prescriptions as therapeutic, prophylactic, or requiring review based on documented diagnoses. Identifies febrile neutropenia patients and supports appropriateness reviews.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: #0891B2;">&#x1F4CB;</div>
+                <div class="module-details">
+                    <h3>Guideline Adherence</h3>
+                    <p>Population-level monitoring of clinical guideline and care bundle compliance. Tracks adherence to evidence-based bundles (e.g., sepsis, surgical site infection prevention) at the element level. Generates alerts for non-adherence and supports quality reporting.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: #E11D48;">&#x1FA7A;</div>
+                <div class="module-details">
+                    <h3>Surgical Prophylaxis</h3>
+                    <p>Perioperative antibiotic validation for surgical patients. Monitors timing of prophylactic antibiotics relative to incision, validates agent selection based on procedure type, and tracks duration to prevent excessive post-operative dosing.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: #7C3AED;">&#x1F9EC;</div>
+                <div class="module-details">
+                    <h3>Drug-Bug Mismatch</h3>
+                    <p>Real-time detection of therapy-organism mismatches based on culture and susceptibility results. Identifies coverage gaps where current antibiotics may not be effective against isolated organisms, and opportunities for de-escalation to narrower-spectrum agents.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: #7C3AED;">&#x1F4CA;</div>
+                <div class="module-details">
+                    <h3>NHSN Reporting</h3>
+                    <p>Antimicrobial usage (AU) and antimicrobial resistance (AR) reporting for the CDC's National Healthcare Safety Network. Aggregates usage data by drug and location, tracks resistance patterns, calculates standardized metrics, and generates CDA files for electronic submission.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: var(--color-primary);">&#x1F4C8;</div>
+                <div class="module-details">
+                    <h3>Dashboards</h3>
+                    <p>Analytics dashboards providing cross-module insights for ASP/IP leadership. Includes unified metrics tracking, provider workload analysis, intervention targeting based on data patterns, trending comparisons, and outcome tracking for quality improvement initiatives.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="about-section">
+        <h2>Technology</h2>
+        <p>AEGIS is built with Python and Flask, using SQLite databases for data persistence. The system is designed for institutional deployment and integrates with electronic health record systems through standard data interfaces.</p>
+    </section>
+</div>
+
+<div class="about-footer">
+    <a href="{{ url_for('main.landing') }}" class="btn btn-primary">Back to Home</a>
+</div>
+
+<style>
+.about-header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding: 2rem 0;
+}
+
+.about-header h1 {
+    font-size: 2.5rem;
+    color: var(--color-gray-900);
+    margin-bottom: 0.5rem;
+}
+
+.about-subtitle {
+    font-size: 1.125rem;
+    color: var(--color-gray-600);
+    margin: 0;
+}
+
+.about-content {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.about-section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.about-section h2 {
+    font-size: 1.5rem;
+    color: var(--color-gray-800);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--color-gray-200);
+}
+
+.about-section > p {
+    color: var(--color-gray-700);
+    line-height: 1.7;
+    margin-bottom: 1rem;
+}
+
+.about-section > p:last-child {
+    margin-bottom: 0;
+}
+
+.module-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.module-item {
+    display: flex;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--color-gray-300);
+}
+
+.module-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    width: 2.5rem;
+    text-align: center;
+}
+
+.module-details h3 {
+    font-size: 1.125rem;
+    color: var(--color-gray-800);
+    margin-bottom: 0.5rem;
+}
+
+.module-details p {
+    color: var(--color-gray-600);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    margin: 0;
+}
+
+.about-footer {
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all var(--transition-smooth);
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--color-primary-dark);
+}
+
+@media (max-width: 768px) {
+    .about-header h1 {
+        font-size: 2rem;
+    }
+
+    .module-item {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .module-icon {
+        width: auto;
+        text-align: left;
+    }
+}
+</style>
+{% endblock %}

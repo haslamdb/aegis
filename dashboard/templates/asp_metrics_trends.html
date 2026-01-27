@@ -1,0 +1,467 @@
+{% extends "base.html" %}
+
+{% block title %}Trends - ASP/IP Metrics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Trends and Period Comparison</h1>
+    <div class="header-actions">
+        <a href="{{ url_for('asp_metrics.dashboard') }}" class="btn btn-secondary">Back to Metrics</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error loading trends:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Period Comparison Tool -->
+<div class="dashboard-card">
+    <h3>Compare Time Periods</h3>
+    <form id="comparison-form" class="comparison-form">
+        <div class="form-row">
+            <div class="form-group">
+                <label>Metric</label>
+                <select name="metric_name" id="metric-select">
+                    <option value="alerts_created">Alerts Created</option>
+                    <option value="alerts_resolved">Alerts Resolved</option>
+                    <option value="alerts_acknowledged">Alerts Acknowledged</option>
+                    <option value="avg_time_to_ack_minutes">Avg Time to Acknowledge (min)</option>
+                    <option value="avg_time_to_resolve_minutes">Avg Time to Resolve (min)</option>
+                    <option value="hai_candidates_created">HAI Candidates Created</option>
+                    <option value="hai_confirmed">HAI Confirmed</option>
+                    <option value="indication_reviews">Indication Reviews</option>
+                    <option value="inappropriate_rate">Inappropriate ABX Rate (%)</option>
+                    <option value="total_reviews">Total Reviews</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Baseline Period</label>
+                <div class="date-range">
+                    <input type="date" name="period1_start" id="period1-start">
+                    <span>to</span>
+                    <input type="date" name="period1_end" id="period1-end">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Comparison Period</label>
+                <div class="date-range">
+                    <input type="date" name="period2_start" id="period2-start">
+                    <span>to</span>
+                    <input type="date" name="period2_end" id="period2-end">
+                </div>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Compare</button>
+            <button type="button" onclick="setQuickComparison('week')" class="btn btn-secondary">Week over Week</button>
+            <button type="button" onclick="setQuickComparison('month')" class="btn btn-secondary">Month over Month</button>
+        </div>
+    </form>
+
+    <div id="comparison-result" class="comparison-result" style="display: none;">
+        <div class="comparison-cards">
+            <div class="comparison-card">
+                <div class="period-label">Baseline Period</div>
+                <div class="period-dates" id="period1-dates"></div>
+                <div class="period-value" id="period1-value"></div>
+            </div>
+            <div class="comparison-card comparison-change">
+                <div class="change-label">Change</div>
+                <div class="change-value" id="change-value"></div>
+                <div class="change-percent" id="change-percent"></div>
+            </div>
+            <div class="comparison-card">
+                <div class="period-label">Comparison Period</div>
+                <div class="period-dates" id="period2-dates"></div>
+                <div class="period-value" id="period2-value"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Daily Snapshots Chart -->
+<div class="dashboard-card">
+    <h3>Daily Metrics (Last 90 Days)</h3>
+    {% if snapshots %}
+    <div class="chart-container">
+        <div class="chart-header">
+            <select id="chart-metric" onchange="updateChart()">
+                <option value="alerts_created">Alerts Created</option>
+                <option value="alerts_resolved">Alerts Resolved</option>
+                <option value="total_reviews">Total Reviews</option>
+                <option value="hai_candidates_reviewed">HAI Reviews</option>
+                <option value="indication_reviews">Indication Reviews</option>
+            </select>
+        </div>
+        <div class="line-chart" id="line-chart"></div>
+    </div>
+    {% else %}
+    <p class="empty-state">No daily snapshots available. Run daily snapshot creation to populate trend data.</p>
+    <button onclick="createSnapshot()" class="btn btn-primary">Create Snapshot for Yesterday</button>
+    {% endif %}
+</div>
+
+<!-- Snapshot Data Table -->
+{% if snapshots %}
+<div class="dashboard-card">
+    <h3>Recent Daily Snapshots</h3>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Alerts Created</th>
+                <th>Alerts Resolved</th>
+                <th>Total Reviews</th>
+                <th>Unique Reviewers</th>
+                <th>Inappropriate Rate</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for snapshot in snapshots[:30] %}
+            <tr>
+                <td>{{ snapshot.snapshot_date }}</td>
+                <td>{{ snapshot.alerts_created }}</td>
+                <td>{{ snapshot.alerts_resolved }}</td>
+                <td>{{ snapshot.total_reviews }}</td>
+                <td>{{ snapshot.unique_reviewers }}</td>
+                <td>{{ snapshot.inappropriate_rate | round(1) if snapshot.inappropriate_rate else '--' }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<script>
+const snapshots = {{ snapshots | tojson | safe }};
+
+// Set default dates
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date();
+    const oneWeekAgo = new Date(today);
+    oneWeekAgo.setDate(today.getDate() - 7);
+    const twoWeeksAgo = new Date(today);
+    twoWeeksAgo.setDate(today.getDate() - 14);
+
+    document.getElementById('period2-end').value = formatDate(today);
+    document.getElementById('period2-start').value = formatDate(oneWeekAgo);
+    document.getElementById('period1-end').value = formatDate(oneWeekAgo);
+    document.getElementById('period1-start').value = formatDate(twoWeeksAgo);
+
+    if (snapshots.length > 0) {
+        updateChart();
+    }
+});
+
+function formatDate(date) {
+    return date.toISOString().split('T')[0];
+}
+
+function setQuickComparison(type) {
+    const today = new Date();
+
+    if (type === 'week') {
+        const oneWeekAgo = new Date(today);
+        oneWeekAgo.setDate(today.getDate() - 7);
+        const twoWeeksAgo = new Date(today);
+        twoWeeksAgo.setDate(today.getDate() - 14);
+
+        document.getElementById('period2-end').value = formatDate(today);
+        document.getElementById('period2-start').value = formatDate(oneWeekAgo);
+        document.getElementById('period1-end').value = formatDate(oneWeekAgo);
+        document.getElementById('period1-start').value = formatDate(twoWeeksAgo);
+    } else if (type === 'month') {
+        const oneMonthAgo = new Date(today);
+        oneMonthAgo.setMonth(today.getMonth() - 1);
+        const twoMonthsAgo = new Date(today);
+        twoMonthsAgo.setMonth(today.getMonth() - 2);
+
+        document.getElementById('period2-end').value = formatDate(today);
+        document.getElementById('period2-start').value = formatDate(oneMonthAgo);
+        document.getElementById('period1-end').value = formatDate(oneMonthAgo);
+        document.getElementById('period1-start').value = formatDate(twoMonthsAgo);
+    }
+}
+
+document.getElementById('comparison-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const data = {
+        metric_name: document.getElementById('metric-select').value,
+        period1_start: document.getElementById('period1-start').value,
+        period1_end: document.getElementById('period1-end').value,
+        period2_start: document.getElementById('period2-start').value,
+        period2_end: document.getElementById('period2-end').value,
+    };
+
+    fetch('{{ url_for("asp_metrics.compare_periods") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            displayComparison(result.comparison);
+        } else {
+            alert('Error: ' + result.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+});
+
+function displayComparison(comparison) {
+    document.getElementById('comparison-result').style.display = 'block';
+
+    document.getElementById('period1-dates').textContent =
+        comparison.period1.start + ' to ' + comparison.period1.end;
+    document.getElementById('period2-dates').textContent =
+        comparison.period2.start + ' to ' + comparison.period2.end;
+
+    const p1Value = comparison.period1.value !== null ?
+        comparison.period1.value.toFixed(1) : '--';
+    const p2Value = comparison.period2.value !== null ?
+        comparison.period2.value.toFixed(1) : '--';
+
+    document.getElementById('period1-value').textContent = p1Value;
+    document.getElementById('period2-value').textContent = p2Value;
+
+    const changeValue = comparison.absolute_change !== null ?
+        (comparison.absolute_change >= 0 ? '+' : '') + comparison.absolute_change.toFixed(1) : '--';
+    const changePercent = comparison.percent_change !== null ?
+        (comparison.percent_change >= 0 ? '+' : '') + comparison.percent_change.toFixed(1) + '%' : '--';
+
+    document.getElementById('change-value').textContent = changeValue;
+    document.getElementById('change-percent').textContent = changePercent;
+
+    // Color coding
+    const changeCard = document.querySelector('.comparison-change');
+    if (comparison.percent_change !== null) {
+        if (comparison.percent_change < 0) {
+            changeCard.classList.add('positive');
+            changeCard.classList.remove('negative');
+        } else if (comparison.percent_change > 0) {
+            changeCard.classList.add('negative');
+            changeCard.classList.remove('positive');
+        } else {
+            changeCard.classList.remove('positive', 'negative');
+        }
+    }
+}
+
+function updateChart() {
+    const metric = document.getElementById('chart-metric').value;
+    const container = document.getElementById('line-chart');
+
+    // Clear existing
+    container.innerHTML = '';
+
+    if (snapshots.length === 0) return;
+
+    // Get values for selected metric
+    const values = snapshots.map(s => s[metric] || 0).reverse();
+    const dates = snapshots.map(s => s.snapshot_date).reverse();
+    const maxValue = Math.max(...values, 1);
+
+    // Create simple bar chart (SVG would be better but keeping it simple)
+    const chartHtml = `
+        <div class="simple-chart">
+            ${values.map((v, i) => `
+                <div class="chart-column" title="${dates[i]}: ${v}">
+                    <div class="chart-bar" style="height: ${(v / maxValue * 100)}%"></div>
+                </div>
+            `).join('')}
+        </div>
+        <div class="chart-x-axis">
+            <span>${dates[0]}</span>
+            <span>${dates[Math.floor(dates.length/2)]}</span>
+            <span>${dates[dates.length-1]}</span>
+        </div>
+    `;
+
+    container.innerHTML = chartHtml;
+}
+
+function createSnapshot() {
+    fetch('{{ url_for("asp_metrics.api_create_snapshot") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Snapshot created successfully');
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
+</script>
+
+<style>
+.comparison-form {
+    margin-bottom: 1.5rem;
+}
+
+.form-row {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1rem;
+}
+
+.form-group {
+    flex: 1;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.date-range {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.date-range input {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.comparison-result {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.comparison-cards {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.comparison-card {
+    background: #f3f4f6;
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    min-width: 150px;
+}
+
+.comparison-change {
+    background: #f3f4f6;
+}
+
+.comparison-change.positive {
+    background: #dcfce7;
+}
+
+.comparison-change.negative {
+    background: #fef2f2;
+}
+
+.period-label, .change-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-bottom: 0.5rem;
+}
+
+.period-dates {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-bottom: 0.5rem;
+}
+
+.period-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #0d9488;
+}
+
+.change-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.change-percent {
+    font-size: 1rem;
+    color: #6b7280;
+}
+
+.chart-container {
+    margin-top: 1rem;
+}
+
+.chart-header {
+    margin-bottom: 1rem;
+}
+
+.chart-header select {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+.simple-chart {
+    display: flex;
+    align-items: flex-end;
+    height: 200px;
+    gap: 2px;
+    padding: 0 1rem;
+}
+
+.chart-column {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+}
+
+.chart-column .chart-bar {
+    width: 100%;
+    background: linear-gradient(180deg, #0d9488 0%, #14b8a6 100%);
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+}
+
+.chart-x-axis {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.empty-state {
+    text-align: center;
+    color: #6b7280;
+    padding: 2rem;
+}
+</style>
+{% endblock %}

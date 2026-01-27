@@ -21,6 +21,46 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
+def _log_asp_activity(
+    activity_type: str,
+    entity_id: str,
+    entity_type: str,
+    action_taken: str,
+    provider_id: str | None = None,
+    provider_name: str | None = None,
+    patient_mrn: str | None = None,
+    location_code: str | None = None,
+    service: str | None = None,
+    outcome: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Log activity to the unified metrics store.
+
+    This is a fire-and-forget operation - failures are logged but don't
+    interrupt the main operation.
+    """
+    try:
+        from common.metrics_store import MetricsStore, ActivityType, ModuleSource
+
+        store = MetricsStore()
+        store.log_activity(
+            activity_type=activity_type,
+            module=ModuleSource.ASP_ALERTS,
+            provider_id=provider_id,
+            provider_name=provider_name,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            action_taken=action_taken,
+            outcome=outcome,
+            patient_mrn=patient_mrn,
+            location_code=location_code,
+            service=service,
+            details=details,
+        )
+    except Exception as e:
+        logger.debug(f"Failed to log activity to metrics store: {e}")
+
+
 class AlertStore:
     """SQLite-backed storage for managing alert lifecycle."""
 
@@ -244,6 +284,10 @@ class AlertStore:
     ) -> bool:
         """Acknowledge an alert."""
         now = datetime.now()
+
+        # Get alert info for activity logging
+        alert = self.get_alert(alert_id)
+
         with self._connect() as conn:
             cursor = conn.execute(
                 """
@@ -270,6 +314,21 @@ class AlertStore:
                 )
                 conn.commit()
                 logger.info(f"Alert {alert_id} acknowledged by {acknowledged_by}")
+
+                # Log to unified metrics store
+                _log_asp_activity(
+                    activity_type="acknowledgment",
+                    entity_id=alert_id,
+                    entity_type="alert",
+                    action_taken="acknowledged",
+                    provider_name=acknowledged_by,
+                    patient_mrn=alert.patient_mrn if alert else None,
+                    details={
+                        "alert_type": alert.alert_type.value if alert else None,
+                        "severity": alert.severity if alert else None,
+                    },
+                )
+
                 return True
 
             return False
@@ -339,6 +398,9 @@ class AlertStore:
         """
         now = datetime.now()
 
+        # Get alert info for activity logging
+        alert = self.get_alert(alert_id)
+
         # Convert string to enum if needed
         reason_value = None
         if resolution_reason:
@@ -387,6 +449,24 @@ class AlertStore:
                 )
                 conn.commit()
                 logger.info(f"Alert {alert_id} resolved by {resolved_by} (reason: {reason_value})")
+
+                # Log to unified metrics store
+                _log_asp_activity(
+                    activity_type="resolution",
+                    entity_id=alert_id,
+                    entity_type="alert",
+                    action_taken=reason_value or "resolved",
+                    provider_name=resolved_by,
+                    patient_mrn=alert.patient_mrn if alert else None,
+                    outcome=reason_value,
+                    details={
+                        "alert_type": alert.alert_type.value if alert else None,
+                        "severity": alert.severity if alert else None,
+                        "resolution_reason": reason_value,
+                        "notes": notes[:200] if notes else None,
+                    },
+                )
+
                 return True
 
             return False
