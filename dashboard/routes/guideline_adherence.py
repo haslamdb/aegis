@@ -15,11 +15,11 @@ if str(GUIDELINE_PATH) not in sys.path:
 
 try:
     from guideline_adherence import GUIDELINE_BUNDLES
-    from guideline_src.adherence_db import AdherenceDatabase
-    from guideline_src.config import config as adherence_config
+    from guideline_src.episode_db import EpisodeDB
+    from guideline_src.config import Config as adherence_config
 except ImportError:
     GUIDELINE_BUNDLES = {}
-    AdherenceDatabase = None
+    EpisodeDB = None
     adherence_config = None
 
 
@@ -28,54 +28,87 @@ guideline_adherence_bp = Blueprint(
 )
 
 
-def get_adherence_db():
-    """Get adherence database instance."""
-    if AdherenceDatabase is None:
+def get_episode_db():
+    """Get episode database instance."""
+    if EpisodeDB is None:
         return None
-    return AdherenceDatabase()
+    return EpisodeDB()
 
 
 @guideline_adherence_bp.route("/")
 def dashboard():
     """Render the Guideline Adherence dashboard with real data."""
-    db = get_adherence_db()
+    db = get_episode_db()
 
     # Get metrics
     metrics = None
     active_episodes = []
     bundle_stats = []
+    active_alerts = []
 
     if db:
         try:
-            # Get overall metrics
-            metrics = db.get_compliance_metrics(days=30)
+            # Get active episodes (returns BundleEpisode objects)
+            episodes = db.get_active_episodes(limit=10)
+            for ep in episodes:
+                active_episodes.append({
+                    "id": ep.id,
+                    "patient_id": ep.patient_id,
+                    "patient_mrn": ep.patient_mrn or ep.patient_id,
+                    "patient_name": ep.patient_id,  # Use patient_id as name for now
+                    "bundle_id": ep.bundle_id,
+                    "bundle_name": ep.bundle_name,
+                    "status": ep.status,
+                    "adherence_pct": ep.adherence_percentage or 0,
+                    "trigger_time": ep.trigger_time.isoformat() if ep.trigger_time else None,
+                })
 
-            # Get active episodes
-            active_episodes = db.get_active_episodes()[:10]  # Top 10
+            # Get active alerts
+            alerts = db.get_active_alerts(limit=10)
+            for alert in alerts:
+                active_alerts.append({
+                    "id": alert.id,
+                    "patient_id": alert.patient_id,
+                    "bundle_name": alert.bundle_name,
+                    "element_name": alert.element_name,
+                    "severity": alert.severity,
+                    "message": alert.message,
+                    "created_at": alert.created_at.isoformat() if alert.created_at else None,
+                })
+
+            # Get adherence stats by bundle
+            stats = db.get_adherence_stats(days=30)
 
             # Get per-bundle stats
             for bundle_id, bundle in GUIDELINE_BUNDLES.items():
-                bundle_metrics = db.get_compliance_metrics(bundle_id=bundle_id, days=30)
-                element_rates = bundle_metrics.get("element_rates", [])
-                avg_rate = 0
-                if element_rates:
-                    avg_rate = sum(e["compliance_rate"] for e in element_rates) / len(element_rates)
-
+                bundle_stat = stats.get(bundle_id, {})
                 bundle_stats.append({
                     "bundle_id": bundle_id,
                     "bundle_name": bundle.name,
-                    "total_episodes": bundle_metrics.get("episode_counts", {}).get("total", 0),
-                    "active_episodes": bundle_metrics.get("episode_counts", {}).get("active", 0),
-                    "avg_compliance": round(avg_rate, 1),
+                    "total_episodes": bundle_stat.get("total_episodes", 0),
+                    "active_episodes": sum(1 for ep in episodes if ep.bundle_id == bundle_id),
+                    "avg_compliance": round(bundle_stat.get("avg_adherence_percentage", 0) or 0, 1),
                     "element_count": len(bundle.elements),
                 })
+
+            # Overall metrics
+            total_episodes = sum(s.get("total_episodes", 0) for s in stats.values())
+            total_alerts = len(alerts)
+            metrics = {
+                "total_episodes": total_episodes,
+                "active_episodes": len(episodes),
+                "active_alerts": total_alerts,
+            }
         except Exception as e:
             current_app.logger.error(f"Error loading adherence data: {e}")
+            import traceback
+            traceback.print_exc()
 
     return render_template(
         "guideline_adherence_dashboard.html",
         metrics=metrics,
         active_episodes=active_episodes,
+        active_alerts=active_alerts,
         bundle_stats=bundle_stats,
         bundles=GUIDELINE_BUNDLES,
     )
@@ -84,27 +117,48 @@ def dashboard():
 @guideline_adherence_bp.route("/active")
 def active_episodes():
     """Show patients with active bundles being monitored."""
-    db = get_adherence_db()
+    db = get_episode_db()
     bundle_filter = request.args.get("bundle")
 
     episodes = []
     if db:
         try:
-            episodes = db.get_active_episodes(bundle_id=bundle_filter)
+            # Get active episodes
+            raw_episodes = db.get_active_episodes(limit=100)
+
+            # Filter by bundle if specified
+            if bundle_filter:
+                raw_episodes = [ep for ep in raw_episodes if ep.bundle_id == bundle_filter]
 
             # Enrich with latest results
-            for episode in episodes:
-                results = db.get_episode_results(episode["id"])
-                episode["results"] = results
+            for ep in raw_episodes:
+                results = db.get_element_results(ep.id)
+                result_list = []
+                for r in results:
+                    result_list.append({
+                        "element_name": r.element_name,
+                        "status": r.status,
+                        "value": r.value,
+                        "checked_at": r.created_at.isoformat() if r.created_at else None,
+                    })
 
-                # Calculate current adherence
-                met = sum(1 for r in results if r.get("status") == "met")
-                not_met = sum(1 for r in results if r.get("status") == "not_met")
-                total = met + not_met
-                episode["adherence_pct"] = round((met / total) * 100, 1) if total > 0 else 100
+                episodes.append({
+                    "id": ep.id,
+                    "patient_id": ep.patient_id,
+                    "patient_mrn": ep.patient_mrn or ep.patient_id,
+                    "patient_name": ep.patient_id,
+                    "bundle_id": ep.bundle_id,
+                    "bundle_name": ep.bundle_name,
+                    "status": ep.status,
+                    "adherence_pct": ep.adherence_percentage or 0,
+                    "trigger_time": ep.trigger_time.isoformat() if ep.trigger_time else None,
+                    "results": result_list,
+                })
 
         except Exception as e:
             current_app.logger.error(f"Error loading active episodes: {e}")
+            import traceback
+            traceback.print_exc()
 
     return render_template(
         "guideline_adherence_active.html",
@@ -114,10 +168,10 @@ def active_episodes():
     )
 
 
-@guideline_adherence_bp.route("/episode/<episode_id>")
+@guideline_adherence_bp.route("/episode/<int:episode_id>")
 def episode_detail(episode_id):
     """Show element timeline for a specific episode."""
-    db = get_adherence_db()
+    db = get_episode_db()
 
     episode = None
     results = []
@@ -125,12 +179,35 @@ def episode_detail(episode_id):
 
     if db:
         try:
-            episode = db.get_episode(episode_id)
-            if episode:
-                results = db.get_episode_results(episode_id)
-                bundle = GUIDELINE_BUNDLES.get(episode.get("bundle_id"))
+            ep = db.get_episode(episode_id)
+            if ep:
+                episode = {
+                    "id": ep.id,
+                    "patient_id": ep.patient_id,
+                    "bundle_id": ep.bundle_id,
+                    "bundle_name": ep.bundle_name,
+                    "status": ep.status,
+                    "adherence_pct": ep.adherence_percentage or 0,
+                    "trigger_time": ep.trigger_time.isoformat() if ep.trigger_time else None,
+                    "trigger_type": ep.trigger_type,
+                    "trigger_code": ep.trigger_code,
+                    "trigger_description": ep.trigger_description,
+                }
+                raw_results = db.get_element_results(episode_id)
+                for r in raw_results:
+                    results.append({
+                        "element_name": r.element_name,
+                        "status": r.status,
+                        "value": r.value,
+                        "deadline": r.deadline.isoformat() if r.deadline else None,
+                        "checked_at": r.created_at.isoformat() if r.created_at else None,
+                        "notes": r.notes,
+                    })
+                bundle = GUIDELINE_BUNDLES.get(ep.bundle_id)
         except Exception as e:
             current_app.logger.error(f"Error loading episode {episode_id}: {e}")
+            import traceback
+            traceback.print_exc()
 
     if not episode:
         return render_template("guideline_adherence_episode_not_found.html", episode_id=episode_id), 404
@@ -146,7 +223,7 @@ def episode_detail(episode_id):
 @guideline_adherence_bp.route("/metrics")
 def compliance_metrics():
     """Show aggregate compliance rates and trends."""
-    db = get_adherence_db()
+    db = get_episode_db()
     bundle_filter = request.args.get("bundle")
     days = request.args.get("days", 30, type=int)
 
@@ -155,19 +232,34 @@ def compliance_metrics():
 
     if db:
         try:
+            # Get adherence stats
+            stats = db.get_adherence_stats(days=days)
+
             # Overall metrics
-            metrics = db.get_compliance_metrics(bundle_id=bundle_filter, days=days)
+            total_episodes = sum(s.get("total_episodes", 0) for s in stats.values())
+            all_adherence = [s.get("avg_adherence_percentage", 0) for s in stats.values() if s.get("avg_adherence_percentage")]
+            avg_adherence = sum(all_adherence) / len(all_adherence) if all_adherence else 0
+
+            metrics = {
+                "total_episodes": total_episodes,
+                "avg_adherence": round(avg_adherence, 1),
+            }
 
             # Per-bundle breakdown
             for bundle_id, bundle in GUIDELINE_BUNDLES.items():
-                bm = db.get_compliance_metrics(bundle_id=bundle_id, days=days)
+                bundle_stat = stats.get(bundle_id, {})
                 bundle_metrics.append({
                     "bundle_id": bundle_id,
                     "bundle_name": bundle.name,
-                    "metrics": bm,
+                    "metrics": {
+                        "total_episodes": bundle_stat.get("total_episodes", 0),
+                        "avg_adherence": round(bundle_stat.get("avg_adherence_percentage", 0) or 0, 1),
+                    },
                 })
         except Exception as e:
             current_app.logger.error(f"Error loading metrics: {e}")
+            import traceback
+            traceback.print_exc()
 
     return render_template(
         "guideline_adherence_metrics.html",
