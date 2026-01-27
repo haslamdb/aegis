@@ -261,7 +261,7 @@ class ProphylaxisEvaluator:
             return ElementResult(
                 element_name="Agent Selection",
                 status=ComplianceStatus.NOT_MET,
-                details=f"Agent mismatch: given {agents_given}, expected {acceptable_agents}",
+                details=f"Agent mismatch: given {', '.join(agents_given)}, expected {', '.join(acceptable_agents)}",
                 recommendation=f"Recommended agents: {', '.join(acceptable_agents)}",
                 data={"agents_given": agents_given, "acceptable": acceptable_agents},
             )
