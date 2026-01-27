@@ -5,147 +5,241 @@
 {% block content %}
 <div class="page-header">
     <h1>Surgical Prophylaxis</h1>
-    <a href="{{ url_for('surgical_prophylaxis.help_page') }}" class="btn btn-secondary">Help</a>
+    <div class="header-actions">
+        <a href="{{ url_for('surgical_prophylaxis.case_list') }}" class="btn btn-primary">View All Cases</a>
+        <a href="{{ url_for('surgical_prophylaxis.alert_list') }}" class="btn btn-secondary">Alerts ({{ metrics.pending_alerts }})</a>
+        <a href="{{ url_for('surgical_prophylaxis.help_page') }}" class="btn btn-secondary">Help</a>
+    </div>
 </div>
 
+<!-- Stats Cards -->
 <div class="dashboard-summary">
     <div class="summary-card">
         <div class="summary-icon" style="color: var(--color-success);">&#x2714;</div>
         <div class="summary-content">
-            <div class="summary-value">--</div>
-            <div class="summary-label">Compliant Cases</div>
-        </div>
-    </div>
-    <div class="summary-card">
-        <div class="summary-icon" style="color: var(--color-warning);">&#x23F1;</div>
-        <div class="summary-content">
-            <div class="summary-value">--</div>
-            <div class="summary-label">Duration Alerts</div>
-        </div>
-    </div>
-    <div class="summary-card">
-        <div class="summary-icon" style="color: var(--color-danger);">&#x26A0;</div>
-        <div class="summary-content">
-            <div class="summary-value">--</div>
-            <div class="summary-label">Agent Mismatches</div>
+            <div class="summary-value">{{ metrics.bundle_rate }}%</div>
+            <div class="summary-label">Bundle Compliance</div>
         </div>
     </div>
     <div class="summary-card">
         <div class="summary-icon" style="color: var(--color-primary);">&#x1F3E5;</div>
         <div class="summary-content">
-            <div class="summary-value">--</div>
-            <div class="summary-label">Active OR Cases</div>
+            <div class="summary-value">{{ metrics.total_cases }}</div>
+            <div class="summary-label">Total Cases (30d)</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-warning);">&#x1F4CA;</div>
+        <div class="summary-content">
+            <div class="summary-value">{{ metrics.avg_score }}%</div>
+            <div class="summary-label">Avg Score</div>
+        </div>
+    </div>
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-danger);">&#x26A0;</div>
+        <div class="summary-content">
+            <div class="summary-value">{{ metrics.pending_alerts }}</div>
+            <div class="summary-label">Active Alerts</div>
         </div>
     </div>
 </div>
 
-<div class="module-info">
-    <h2>About This Module</h2>
-    <p>The Surgical Prophylaxis module provides real-time monitoring and validation of surgical antibiotic
-       prophylaxis following ASHP/IDSA/SHEA/SIS guidelines. It ensures appropriate agent selection,
-       timing, and duration for perioperative antibiotics.</p>
-
-    <h3>Validation Checks</h3>
-    <div class="check-cards">
-        <div class="check-card">
-            <h4>&#x1F48A; Agent Selection</h4>
-            <ul>
-                <li>Appropriate antibiotic for procedure</li>
-                <li>Allergy-aware alternatives</li>
-                <li>MRSA coverage when indicated</li>
-            </ul>
+<!-- Element-Level Compliance -->
+{% if element_rates %}
+<div class="section">
+    <h2>Element-Level Compliance (30 days)</h2>
+    <div class="element-bars">
+        {% for element, rate in element_rates.items() %}
+        <div class="element-bar-row">
+            <span class="element-name">{{ element|replace('_', ' ')|title }}</span>
+            <div class="element-bar-container">
+                <div class="element-bar {% if rate >= 90 %}success{% elif rate >= 70 %}warning{% else %}danger{% endif %}" style="width: {{ rate }}%"></div>
+            </div>
+            <span class="element-rate">{{ rate|round(1) }}%</span>
         </div>
-        <div class="check-card">
-            <h4>&#x23F0; Timing</h4>
-            <ul>
-                <li>Within 60 min of incision (standard)</li>
-                <li>Within 120 min (vancomycin/fluoroquinolones)</li>
-                <li>Re-dosing for long procedures</li>
-            </ul>
-        </div>
-        <div class="check-card">
-            <h4>&#x23F1; Duration</h4>
-            <ul>
-                <li>≤24 hours post-op (most procedures)</li>
-                <li>≤48 hours (cardiac surgery)</li>
-                <li>Alert when exceeded</li>
-            </ul>
-        </div>
-        <div class="check-card">
-            <h4>&#x2696; Dosing</h4>
-            <ul>
-                <li>Weight-based (cefazolin ≥120kg: 3g)</li>
-                <li>Pediatric dosing</li>
-                <li>Renal adjustments</li>
-            </ul>
-        </div>
+        {% endfor %}
     </div>
+</div>
+{% endif %}
 
-    <h3>Procedure Coverage</h3>
-    <table class="help-table">
+<!-- Category Stats -->
+{% if category_stats %}
+<div class="section">
+    <h2>Compliance by Procedure Category</h2>
+    <div class="category-cards">
+        {% for cat in category_stats %}
+        <div class="category-card">
+            <h4>{{ cat.category }}</h4>
+            <div class="category-stat">
+                <span class="compliance-badge {% if cat.compliance_rate >= 90 %}success{% elif cat.compliance_rate >= 70 %}warning{% else %}danger{% endif %}">
+                    {{ cat.compliance_rate }}%
+                </span>
+            </div>
+            <p>{{ cat.total_cases }} cases</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Active Alerts -->
+{% if active_alerts %}
+<div class="section">
+    <h2>Active Alerts</h2>
+    <table class="data-table">
         <thead>
             <tr>
-                <th>Specialty</th>
-                <th>Example Procedures</th>
-                <th>Primary Agent</th>
+                <th>Severity</th>
+                <th>Patient</th>
+                <th>Procedure</th>
+                <th>Alert Type</th>
+                <th>Message</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
+            {% for alert in active_alerts %}
             <tr>
-                <td><strong>Cardiac</strong></td>
-                <td>VSD repair, valve replacement, CABG, transplant</td>
-                <td>Cefazolin, Vancomycin</td>
+                <td><span class="badge badge-{{ alert.severity }}">{{ alert.severity|upper }}</span></td>
+                <td>{{ alert.patient_mrn }}</td>
+                <td>{{ alert.procedure }}</td>
+                <td>{{ alert.alert_type|replace('_', ' ')|title }}</td>
+                <td>{{ alert.message }}</td>
+                <td>
+                    <a href="{{ url_for('surgical_prophylaxis.case_detail', case_id=alert.case_id) }}" class="btn btn-small">View</a>
+                </td>
             </tr>
-            <tr>
-                <td><strong>Thoracic</strong></td>
-                <td>Lobectomy, pneumonectomy</td>
-                <td>Cefazolin, Amp-sulbactam</td>
-            </tr>
-            <tr>
-                <td><strong>Hepatobiliary</strong></td>
-                <td>Cholecystectomy, liver transplant</td>
-                <td>Cefazolin, Pip-tazo</td>
-            </tr>
-            <tr>
-                <td><strong>Colorectal</strong></td>
-                <td>Colectomy, appendectomy</td>
-                <td>Cefazolin + Metronidazole</td>
-            </tr>
-            <tr>
-                <td><strong>GU</strong></td>
-                <td>Pyeloplasty, nephrectomy, transplant</td>
-                <td>Cefazolin</td>
-            </tr>
-            <tr>
-                <td><strong>Orthopedic</strong></td>
-                <td>Arthroplasty, spinal fusion, ORIF</td>
-                <td>Cefazolin</td>
-            </tr>
-            <tr>
-                <td><strong>Neurosurgery</strong></td>
-                <td>Craniotomy, VP shunt, laminectomy</td>
-                <td>Cefazolin, Vancomycin</td>
-            </tr>
-            <tr>
-                <td><strong>Vascular</strong></td>
-                <td>Endarterectomy, bypass</td>
-                <td>Cefazolin</td>
-            </tr>
+            {% endfor %}
         </tbody>
     </table>
+    <div style="margin-top: 1rem;">
+        <a href="{{ url_for('surgical_prophylaxis.alert_list') }}" class="btn btn-secondary">View All Alerts</a>
+    </div>
 </div>
+{% endif %}
 
-<div class="coming-soon-notice">
-    <h3>Coming Soon</h3>
-    <p>Real-time OR integration with prophylaxis timing validation and duration monitoring alerts.</p>
+<!-- Recent Non-Compliant Cases -->
+{% if recent_cases %}
+<div class="section">
+    <h2>Recent Non-Compliant Cases</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Procedure</th>
+                <th>Category</th>
+                <th>Score</th>
+                <th>Issues</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for case in recent_cases %}
+            <tr>
+                <td>
+                    <span class="patient-mrn">{{ case.patient_mrn }}</span>
+                </td>
+                <td>{{ case.procedure }}</td>
+                <td>{{ case.category|replace('_', ' ')|title if case.category else '-' }}</td>
+                <td>
+                    <span class="compliance-badge {% if case.score >= 90 %}success{% elif case.score >= 70 %}warning{% else %}danger{% endif %}">
+                        {{ case.score|int }}%
+                    </span>
+                </td>
+                <td>
+                    {% if case.indication_status == 'not_met' %}<span class="issue-tag">Indication</span>{% endif %}
+                    {% if case.agent_status == 'not_met' %}<span class="issue-tag">Agent</span>{% endif %}
+                    {% if case.timing_status == 'not_met' %}<span class="issue-tag">Timing</span>{% endif %}
+                    {% if case.dosing_status == 'not_met' %}<span class="issue-tag">Dosing</span>{% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('surgical_prophylaxis.case_detail', case_id=case.case_id) }}" class="btn btn-small">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div style="margin-top: 1rem;">
+        <a href="{{ url_for('surgical_prophylaxis.case_list', status='non_compliant') }}" class="btn btn-secondary">View All Non-Compliant Cases</a>
+    </div>
+</div>
+{% else %}
+<div class="section">
+    <h2>Recent Cases</h2>
+    <div class="empty-state">
+        <p>No cases found in the last 30 days.</p>
+        <p style="font-size: 0.875rem; color: var(--color-gray-500);">
+            Cases appear here when surgical procedures are evaluated for prophylaxis compliance.
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Module Info -->
+<div class="module-info">
+    <h2>About This Module</h2>
+    <p>The Surgical Prophylaxis module monitors compliance with ASHP/IDSA/SHEA/SIS 2013 guidelines
+       and CCHMC protocols (v2024.2) for surgical antimicrobial prophylaxis.</p>
+
+    <h3>7-Element Bundle</h3>
+    <div class="check-cards">
+        <div class="check-card">
+            <h4>1. Indication</h4>
+            <p>Prophylaxis given (or withheld) appropriately for procedure type</p>
+        </div>
+        <div class="check-card">
+            <h4>2. Agent Selection</h4>
+            <p>Correct antibiotic for procedure and patient allergies</p>
+        </div>
+        <div class="check-card">
+            <h4>3. Pre-op Timing</h4>
+            <p>Within 60 min of incision (120 min for vancomycin)</p>
+        </div>
+        <div class="check-card">
+            <h4>4. Dosing</h4>
+            <p>Weight-based dosing with appropriate max doses</p>
+        </div>
+        <div class="check-card">
+            <h4>5. Redosing</h4>
+            <p>Intraoperative redosing for prolonged surgery</p>
+        </div>
+        <div class="check-card">
+            <h4>6. Post-op Continuation</h4>
+            <p>Appropriate continuation when required</p>
+        </div>
+        <div class="check-card">
+            <h4>7. Discontinuation</h4>
+            <p>Stopped within 24h (48h for cardiac)</p>
+        </div>
+    </div>
 </div>
 
 <style>
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+
+.section h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1.25rem;
+    color: var(--color-gray-800);
+}
+
 .dashboard-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
 }
 
 .summary-card {
@@ -173,6 +267,149 @@
     color: var(--color-gray-600);
 }
 
+.element-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.element-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.element-name {
+    width: 140px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.element-bar-container {
+    flex: 1;
+    height: 24px;
+    background: var(--color-gray-100);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.element-bar {
+    height: 100%;
+    border-radius: var(--radius-md);
+    transition: width 0.3s ease;
+}
+
+.element-bar.success { background: var(--color-success); }
+.element-bar.warning { background: var(--color-warning); }
+.element-bar.danger { background: var(--color-danger); }
+
+.element-rate {
+    width: 50px;
+    text-align: right;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.category-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.category-card {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: var(--color-gray-50);
+    border-left: 4px solid #E11D48;
+}
+
+.category-card h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    color: var(--color-gray-700);
+}
+
+.category-card p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+}
+
+.category-stat {
+    margin-bottom: 0.5rem;
+}
+
+.compliance-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.compliance-badge.success {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.compliance-badge.warning {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.compliance-badge.danger {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.data-table th {
+    font-weight: 600;
+    color: var(--color-gray-600);
+    font-size: 0.875rem;
+}
+
+.patient-mrn {
+    font-weight: 500;
+    font-family: monospace;
+}
+
+.issue-tag {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    margin: 0.125rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.badge-high {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.badge-medium {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.badge-low {
+    background: var(--color-info-light);
+    color: var(--color-primary);
+}
+
 .module-info {
     background: var(--color-white);
     border-radius: var(--radius-lg);
@@ -194,7 +431,7 @@
 
 .check-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 1rem;
     margin: 1rem 0;
 }
@@ -208,37 +445,20 @@
 
 .check-card h4 {
     margin: 0 0 0.5rem 0;
-    font-size: 1rem;
+    font-size: 0.875rem;
     color: var(--color-gray-800);
 }
 
-.check-card ul {
+.check-card p {
     margin: 0;
-    padding-left: 1.25rem;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     color: var(--color-gray-600);
 }
 
-.check-card li {
-    margin: 0.25rem 0;
-}
-
-.coming-soon-notice {
-    background: var(--color-info-light);
-    border: 1px dashed var(--color-primary);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
+.empty-state {
     text-align: center;
-}
-
-.coming-soon-notice h3 {
-    margin: 0 0 0.5rem 0;
-    color: var(--color-primary);
-}
-
-.coming-soon-notice p {
-    margin: 0;
-    color: var(--color-gray-600);
+    padding: 2rem;
+    color: var(--color-gray-500);
 }
 </style>
 {% endblock %}

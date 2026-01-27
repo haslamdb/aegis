@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Case Not Found - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Case Not Found</h1>
+</div>
+
+<div class="section">
+    <div class="not-found-content">
+        <div class="not-found-icon">&#x1F50D;</div>
+        <h2>Case Not Found</h2>
+        <p>The surgical case with ID <strong>{{ case_id }}</strong> could not be found.</p>
+        <p>It may have been deleted or the ID may be incorrect.</p>
+        <div class="actions">
+            <a href="{{ url_for('surgical_prophylaxis.case_list') }}" class="btn btn-primary">View All Cases</a>
+            <a href="{{ url_for('surgical_prophylaxis.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.not-found-content {
+    text-align: center;
+    padding: 2rem;
+}
+
+.not-found-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+.not-found-content h2 {
+    margin: 0 0 1rem 0;
+    color: var(--color-gray-800);
+}
+
+.not-found-content p {
+    margin: 0.5rem 0;
+    color: var(--color-gray-600);
+}
+
+.actions {
+    margin-top: 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+</style>
+{% endblock %}

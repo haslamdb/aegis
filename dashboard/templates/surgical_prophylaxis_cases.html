@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Surgical Cases - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Surgical Prophylaxis Cases</h1>
+    <div class="header-actions">
+        <a href="{{ url_for('surgical_prophylaxis.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters-section">
+    <form method="get" class="filters-form">
+        <div class="filter-group">
+            <label>Time Range</label>
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if current_days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if current_days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="90" {% if current_days == 90 %}selected{% endif %}>Last 90 days</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label>Status</label>
+            <select name="status" onchange="this.form.submit()">
+                <option value="" {% if not current_status %}selected{% endif %}>All Cases</option>
+                <option value="non_compliant" {% if current_status == 'non_compliant' %}selected{% endif %}>Non-Compliant</option>
+            </select>
+        </div>
+    </form>
+</div>
+
+{% if cases %}
+<div class="section">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient MRN</th>
+                <th>Procedure</th>
+                <th>Category</th>
+                <th>OR Time</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for case in cases %}
+            <tr>
+                <td><span class="patient-mrn">{{ case.patient_mrn }}</span></td>
+                <td>{{ case.procedure }}</td>
+                <td>{{ case.category|replace('_', ' ')|title if case.category else '-' }}</td>
+                <td>{{ case.scheduled_time[:16] if case.scheduled_time else '-' }}</td>
+                <td>
+                    {% if case.excluded %}
+                    <span class="badge badge-neutral">Excluded</span>
+                    {% else %}
+                    <span class="compliance-badge {% if case.score >= 90 %}success{% elif case.score >= 70 %}warning{% else %}danger{% endif %}">
+                        {{ case.score|int }}%
+                    </span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if case.excluded %}
+                    <span class="badge badge-neutral">Excluded</span>
+                    {% elif case.compliant %}
+                    <span class="badge badge-success">Compliant</span>
+                    {% else %}
+                    <span class="badge badge-danger">Non-Compliant</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('surgical_prophylaxis.case_detail', case_id=case.case_id) }}" class="btn btn-small">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="section">
+    <div class="empty-state">
+        <p>No cases found for the selected filters.</p>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.filters-section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.5rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+
+.filters-form {
+    display: flex;
+    gap: 1.5rem;
+    align-items: end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-gray-600);
+}
+
+.filter-group select {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+}
+
+.section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.data-table th {
+    font-weight: 600;
+    color: var(--color-gray-600);
+    font-size: 0.875rem;
+}
+
+.patient-mrn {
+    font-family: monospace;
+    font-weight: 500;
+}
+
+.compliance-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.compliance-badge.success { background: var(--color-success-light); color: var(--color-success); }
+.compliance-badge.warning { background: var(--color-warning-light); color: var(--color-warning); }
+.compliance-badge.danger { background: var(--color-danger-light); color: var(--color-danger); }
+
+.badge-success { background: var(--color-success-light); color: var(--color-success); }
+.badge-danger { background: var(--color-danger-light); color: var(--color-danger); }
+.badge-neutral { background: var(--color-gray-200); color: var(--color-gray-600); }
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-gray-500);
+}
+</style>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Surgical Prophylaxis Alerts - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Surgical Prophylaxis Alerts</h1>
+    <div class="header-actions">
+        <a href="{{ url_for('surgical_prophylaxis.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+{% if alerts %}
+<div class="section">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Severity</th>
+                <th>Patient</th>
+                <th>Procedure</th>
+                <th>Alert Type</th>
+                <th>Element</th>
+                <th>Message</th>
+                <th>Time</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alert in alerts %}
+            <tr>
+                <td><span class="badge badge-{{ alert.severity }}">{{ alert.severity|upper }}</span></td>
+                <td><span class="patient-mrn">{{ alert.patient_mrn }}</span></td>
+                <td>{{ alert.procedure }}</td>
+                <td>{{ alert.alert_type|replace('_', ' ')|title }}</td>
+                <td>{{ alert.element_name or '-' }}</td>
+                <td>{{ alert.message }}</td>
+                <td>{{ alert.alert_time[:16] if alert.alert_time else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('surgical_prophylaxis.case_detail', case_id=alert.case_id) }}" class="btn btn-small">View Case</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="section">
+    <div class="empty-state">
+        <div class="empty-icon">&#x2714;</div>
+        <p>No pending alerts.</p>
+        <p style="font-size: 0.875rem; color: var(--color-gray-500);">
+            All surgical prophylaxis cases are currently compliant.
+        </p>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.data-table th {
+    font-weight: 600;
+    color: var(--color-gray-600);
+    font-size: 0.875rem;
+}
+
+.patient-mrn {
+    font-family: monospace;
+    font-weight: 500;
+}
+
+.badge-high {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.badge-medium {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.badge-low {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: var(--color-info-light);
+    color: var(--color-primary);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-gray-500);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    color: var(--color-success);
+    margin-bottom: 1rem;
+}
+</style>
+{% endblock %}
