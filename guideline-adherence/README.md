@@ -6,9 +6,10 @@ Real-time monitoring of evidence-based clinical guideline bundles with automated
 
 The Guideline Adherence module provides:
 
-1. **Real-time Monitoring** - Checks active patient episodes every 15 minutes for bundle element completion
-2. **GUIDELINE_DEVIATION Alerts** - Creates alerts in ASP Alerts queue when bundle elements are not met within time windows
-3. **Compliance Metrics** - Tracks aggregate adherence rates for QI dashboards and Joint Commission reporting
+1. **Trigger Detection** - Automatically detects when patients match bundle criteria (diagnoses, orders, labs)
+2. **Real-time Monitoring** - Checks active patient episodes for bundle element completion
+3. **GUIDELINE_DEVIATION Alerts** - Creates alerts when bundle elements are not met within time windows
+4. **Compliance Metrics** - Tracks aggregate adherence rates for QI dashboards and Joint Commission reporting
 
 ### Key Distinction from Antibiotic Indications
 
@@ -30,11 +31,40 @@ The Guideline Adherence module provides:
 | **Surgical Prophylaxis** | `surgical_prophy_2024` | 5 | Agent selection, timing ≤60min, duration ≤24h |
 | **Pediatric UTI** | `uti_peds_2024` | 7 | UA, culture, empiric choice, imaging |
 | **SSTI/Cellulitis** | `ssti_peds_2024` | 6 | Margins marked, MRSA coverage, I&D if needed |
-| **Febrile Infant (AAP 2021)** | `febrile_infant_2024` | 12 | UA, blood cx, inflammatory markers, LP (age-stratified), HSV |
+| **Febrile Infant (AAP 2021)** | `febrile_infant_2024` | 14 | UA, blood cx, inflammatory markers, LP (age-stratified), HSV risk, safe discharge |
+| **Neonatal HSV** | `neonatal_hsv_2024` | 11 | CSF/blood PCR, surface cultures, LFTs, acyclovir dosing, ID consult |
+| **C. diff Testing** | `cdiff_testing_2024` | 8 | Diagnostic stewardship criteria (age, symptoms, risk factors) |
 
-## Febrile Infant Bundle (AAP 2021)
+## Bundle Trigger System
 
-The Febrile Infant bundle implements the AAP Clinical Practice Guideline for evaluation of well-appearing febrile infants 8-60 days old. It features:
+The module automatically detects when to start monitoring a patient based on configured triggers:
+
+### Trigger Types
+
+| Trigger Type | Description | Example |
+|--------------|-------------|---------|
+| **Diagnosis** | New ICD-10 code added | A41.9 (Sepsis) → Sepsis bundle |
+| **Medication** | Specific medication ordered | Acyclovir in neonate → HSV bundle |
+| **Lab Order** | Specific lab test ordered | C. diff PCR ordered → C. diff Testing bundle |
+| **Vital Sign** | Abnormal vital detected | Temp ≥38°C in infant → Febrile Infant bundle |
+
+### Configured Triggers
+
+| Bundle | Trigger Type | Trigger Codes |
+|--------|--------------|---------------|
+| Sepsis | Diagnosis | A41%, A40%, R65.2%, P36% |
+| Sepsis | Lab | Lactate (LOINC 2524-7) |
+| Febrile Infant | Diagnosis | R50%, P81.9 (age 8-60d) |
+| Neonatal HSV | Diagnosis | P35.2, B00% (age ≤21d) |
+| Neonatal HSV | Medication | Acyclovir ordered |
+| Neonatal HSV | Lab | HSV PCR (LOINC 16955-7, 49986-3) |
+| C. diff Testing | Lab | C. diff toxin/PCR/GDH |
+| CAP | Diagnosis | J13-J18 |
+| UTI | Diagnosis | N39.0, N10, N30% |
+
+## Febrile Infant Bundle (AAP 2021 + CCHMC)
+
+The Febrile Infant bundle implements the AAP Clinical Practice Guideline for evaluation of well-appearing febrile infants 8-60 days old with CCHMC enhancements.
 
 ### Age-Stratified Requirements
 
@@ -52,21 +82,77 @@ The Febrile Infant bundle implements the AAP Clinical Practice Guideline for eva
 - ANC > 4,000/μL
 - CRP > 2.0 mg/dL
 
-### Bundle Elements
+### HSV Risk Integration (CCHMC Enhancement)
+
+For infants 0-28 days, HSV risk factors are automatically detected:
+- Maternal HSV history
+- Scalp electrode use
+- Vesicular rash
+- Seizures
+- CSF pleocytosis
+- Elevated LFTs (>3x ULN)
+
+If risk factors present → Acyclovir administration is tracked as a required element.
+
+### Safe Discharge Checklist (CCHMC Enhancement)
+
+For infants being discharged home, tracks 5 safety elements:
+1. Follow-up within 24h arranged
+2. Working phone number documented
+3. Reliable transportation confirmed
+4. Parent education completed
+5. Return precautions verbalized
+
+## Neonatal HSV Bundle (CCHMC 2024)
+
+Comprehensive monitoring for suspected HSV in neonates ≤21 days.
+
+### Elements (11 total)
 
 | Element | Time Window | Required |
 |---------|-------------|----------|
-| Urinalysis obtained | 2h | Yes |
-| Blood culture obtained | 2h | Yes |
-| Inflammatory markers (ANC, CRP) | 2h | Yes |
-| Procalcitonin (29-60 days) | 2h | Recommended |
-| LP (8-21 days) | 2h | Yes |
-| LP (22-28 days, IMs abnormal) | 2h | Yes |
-| Parenteral antibiotics (8-21 days) | 1h | Yes |
-| Parenteral antibiotics (22-28d, IMs abnormal) | 1h | Yes |
-| HSV risk assessment (8-28 days) | 4h | Yes |
-| Hospital admission (age/risk stratified) | - | Yes |
-| Safe discharge checklist | - | Recommended |
+| CSF HSV PCR | 4h | Yes |
+| Surface cultures (SEM) | 4h | Yes |
+| Blood HSV PCR | 4h | Yes |
+| LFTs obtained | 4h | Yes |
+| Acyclovir started | 1h | Yes |
+| Acyclovir 60mg/kg/day Q8H | 24h | Yes |
+| ID consult | 24h | Yes |
+| Ophthalmology (if ocular) | 48h | Conditional |
+| Neuroimaging (if CNS) | 48h | Conditional |
+| Treatment duration | End of therapy | Yes |
+| Suppressive therapy follow-up | Discharge | Yes |
+
+### Classification-Based Treatment Duration
+
+| HSV Classification | Treatment Duration |
+|-------------------|-------------------|
+| SEM (Skin, Eye, Mouth) | 14 days |
+| CNS disease | 21 days |
+| Disseminated | 21 days |
+
+## C. diff Testing Appropriateness Bundle (CCHMC 2024)
+
+Diagnostic stewardship bundle to ensure C. diff testing criteria are met before ordering.
+
+### Appropriateness Criteria
+
+| Criterion | Requirement |
+|-----------|-------------|
+| Age | ≥3 years (or exception documented) |
+| Symptoms | ≥3 liquid stools in 24 hours |
+| No laxatives | Not given within 48 hours |
+| No enteral contrast | Not given within 48 hours |
+| No tube feed changes | Not changed within 48 hours |
+| No active GI bleed | Documented |
+| Risk factor present | Antibiotics, hospitalization, PPI, gastrostomy, or chronic disease |
+| Symptom duration | ≥48 hours if low-risk patient |
+
+### Appropriateness Classification
+
+- **Appropriate**: All criteria met
+- **Potentially Inappropriate**: 1-2 concerns
+- **Inappropriate**: 3+ concerns or major exclusion
 
 ## Installation
 
@@ -77,7 +163,7 @@ cd guideline-adherence
 pip install -r requirements.txt
 
 # Initialize database
-python -c "from guideline_src.adherence_db import AdherenceDatabase; AdherenceDatabase()"
+python -c "from guideline_src.episode_db import EpisodeDB; EpisodeDB()"
 ```
 
 ## Usage
@@ -85,28 +171,48 @@ python -c "from guideline_src.adherence_db import AdherenceDatabase; AdherenceDa
 ### CLI Commands
 
 ```bash
-# Run monitor once (check all active episodes)
-python -m src.runner --once
+# List available bundles
+python -m guideline_src.runner --list-bundles
 
-# Run for specific bundle only
-python -m src.runner --once --bundle sepsis_peds_2024
+# === TRIGGER MONITORING (detect new patients) ===
 
-# Run febrile infant bundle
-python -m src.runner --once --bundle febrile_infant_2024
+# Poll once for new triggers
+python -m guideline_src.runner --trigger --once
+
+# Poll continuously (every 60 seconds)
+python -m guideline_src.runner --trigger --daemon --interval 60
+
+# Show monitoring status
+python -m guideline_src.runner --trigger --status
+
+# Use real FHIR connection
+python -m guideline_src.runner --trigger --daemon --use-fhir
+
+# === ADHERENCE CHECKING (check active episodes) ===
+
+# Check all active episodes once
+python -m guideline_src.runner --once
 
 # Dry run (no alerts created)
-python -m src.runner --once --dry-run --verbose
+python -m guideline_src.runner --once --dry-run --verbose
+
+# Check specific bundle only
+python -m guideline_src.runner --once --bundle febrile_infant_2024
 
 # Run as daemon (every 15 minutes)
-python -m src.runner --daemon --interval 15
+python -m guideline_src.runner --daemon --interval 15
 ```
 
 ### Cron Setup
 
 ```bash
-# Add to crontab for automatic monitoring every 15 minutes
+# Trigger monitoring - poll for new patients every minute
+* * * * * cd /home/david/projects/aegis/guideline-adherence && \
+    python -m guideline_src.runner --trigger --once --use-fhir >> /var/log/aegis/trigger-monitor.log 2>&1
+
+# Adherence checking - check active episodes every 15 minutes
 */15 * * * * cd /home/david/projects/aegis/guideline-adherence && \
-    python -m src.runner --once >> /var/log/aegis/guideline-adherence.log 2>&1
+    python -m guideline_src.runner --once >> /var/log/aegis/guideline-adherence.log 2>&1
 ```
 
 ### Environment Variables
@@ -125,61 +231,104 @@ export GUIDELINE_ADHERENCE_DB_PATH=/path/to/guideline_adherence.db
 export ALERT_DB_PATH=/path/to/alerts.db
 
 # Enabled bundles (comma-separated)
-export ENABLED_BUNDLES=sepsis_peds_2024,febrile_infant_2024
+export ENABLED_BUNDLES=sepsis_peds_2024,febrile_infant_2024,neonatal_hsv_2024
 ```
 
 ## Architecture
 
 ```
-Patient Episode (FHIR: Conditions, Meds, Labs, Vitals)
+FHIR Server (Conditions, Medications, Labs, Vitals)
          │
          ▼
-GuidelineAdherenceMonitor (real-time, every 15 min)
-         │
-    ┌────┴────┐
-    │         │
-    ▼         ▼
-Compliant   Non-Compliant (element NOT_MET)
-    │             │
-    │             ▼
-    │      ASP Alert (GUIDELINE_DEVIATION)
-    │      → Teams notification
-    │      → Resolve/Override workflow
-    │
-    └──────┬──────┘
-           ▼
-   GuidelineAdherenceDB (all assessments)
-           │
-           ▼
-   /guideline-adherence/ Dashboard
-   → Compliance % by bundle/element
-   → Trends over time
-   → Drill-down to episodes
+┌─────────────────────────────────────────────────────────┐
+│           BUNDLE TRIGGER MONITOR                         │
+│  - Polls for new diagnoses, orders, labs                │
+│  - Matches to bundle triggers                           │
+│  - Creates episodes when criteria met                   │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│              EPISODE MANAGER                             │
+│  - Tracks active episodes per patient/bundle            │
+│  - Initializes element deadlines                        │
+│  - Stores to bundle_episodes table                      │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│           GUIDELINE ADHERENCE MONITOR                    │
+│  - Checks element completion via FHIR                   │
+│  - Uses specialized checkers per bundle type            │
+│  - Updates element_results table                        │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+              ┌───────┴───────┐
+              ▼               ▼
+         Compliant      Non-Compliant
+              │               │
+              │               ▼
+              │        ASP Alert (GUIDELINE_DEVIATION)
+              │        → Teams notification
+              │        → Resolve/Override workflow
+              │
+              └───────┬───────┘
+                      ▼
+            Dashboard (/guideline-adherence/)
+            → Compliance % by bundle/element
+            → Trends over time
+            → Active episodes
+            → Episode detail view
 ```
 
 ## Module Structure
 
 ```
 guideline-adherence/
-├── src/
+├── guideline_src/
 │   ├── __init__.py
 │   ├── config.py                 # Configuration with LOINC codes, thresholds
 │   ├── models.py                 # GuidelineMonitorResult, ElementCheckResult
-│   ├── fhir_client.py            # Extended FHIR client (vitals, MedicationAdmin)
+│   ├── fhir_client.py            # Extended FHIR client
 │   ├── monitor.py                # GuidelineAdherenceMonitor class
-│   ├── adherence_db.py           # SQLite for tracking episodes
+│   ├── bundle_monitor.py         # BundleTriggerMonitor class (NEW)
+│   ├── adherence_db.py           # Legacy adherence database
+│   ├── episode_db.py             # Episode tracking database (NEW)
 │   ├── checkers/
 │   │   ├── __init__.py
 │   │   ├── base.py               # ElementChecker ABC
 │   │   ├── lab_checker.py        # Blood culture, lactate, inflammatory markers
 │   │   ├── medication_checker.py # Antibiotic timing, fluid bolus
 │   │   ├── note_checker.py       # Reassessment documentation
-│   │   └── febrile_infant_checker.py  # Age-stratified febrile infant logic
+│   │   ├── febrile_infant_checker.py  # Age-stratified febrile infant logic
+│   │   ├── hsv_checker.py        # Neonatal HSV bundle (NEW)
+│   │   └── cdiff_testing_checker.py   # C. diff testing stewardship (NEW)
 │   └── runner.py                 # CLI entry point
 ├── guideline_adherence.py        # Bundle definitions (GUIDELINE_BUNDLES)
-├── febrile_infant_guideline.py   # Original CCHMC febrile infant evaluator
+├── schema.sql                    # Database schema (NEW)
 └── tests/
 ```
+
+## Database Schema
+
+### Tables
+
+| Table | Purpose |
+|-------|---------|
+| `bundle_episodes` | Active monitoring episodes per patient/bundle |
+| `bundle_element_results` | Status of each element within an episode |
+| `bundle_alerts` | Alerts generated for overdue/not met elements |
+| `bundle_triggers` | Configuration for what triggers each bundle |
+| `monitor_state` | Last poll time for incremental polling |
+
+### Views
+
+| View | Purpose |
+|------|---------|
+| `v_active_episodes` | Active episodes with element summary |
+| `v_pending_elements` | Elements that need attention (with urgency) |
+| `v_active_alerts` | Active alerts sorted by severity |
+| `v_adherence_summary` | Adherence statistics by bundle (last 30 days) |
 
 ## Alert Content
 
@@ -193,10 +342,11 @@ GUIDELINE_DEVIATION alerts appear in ASP Alerts and include:
 
 Example alert:
 ```
-Guideline Deviation: Antibiotics within 1 hour
-Pediatric Sepsis Bundle: Broad-spectrum antibiotics not administered within 1 hour of sepsis recognition.
+Guideline Deviation: Acyclovir started
+Neonatal HSV Bundle: IV acyclovir not initiated within 1 hour of HSV suspicion.
 Time window: 1h (expired at 2024-01-24T11:00:00)
-Overall adherence: 50%
+HSV risk factors: maternal hsv, csf pleocytosis
+Overall adherence: 45%
 ```
 
 ## Dashboard Features
@@ -215,6 +365,12 @@ Access the dashboard at `/guideline-adherence/`
 - Deviation history and alerts
 - Bundle reference information
 
+### Monitoring Status
+- Active episodes by bundle
+- Pending elements with urgency
+- Active alerts by severity
+- Adherence summary statistics
+
 ## Joint Commission (JC) Compliance
 
 This module supports MM.09.01.01 EP 18-19 compliance by:
@@ -231,11 +387,17 @@ This module supports MM.09.01.01 EP 18-19 compliance by:
 
 2. **AAP Clinical Practice Guideline.** Evaluation and Management of Well-Appearing Febrile Infants 8 to 60 Days Old. Pediatrics. August 2021.
 
-3. **Bradley JS, et al.** The Management of Community-Acquired Pneumonia in Infants and Children Older Than 3 Months of Age: PIDS and IDSA. Clin Infect Dis. 2011.
+3. **Kimberlin DW.** Neonatal herpes simplex infection. Clin Microbiol Rev. 2004.
 
-4. **The Joint Commission.** MM.09.01.01 - Antimicrobial Stewardship Standard. Effective January 1, 2023.
+4. **IDSA/SHEA.** Clinical Practice Guidelines for Clostridium difficile Infection. 2018.
 
-5. **CMS.** Severe Sepsis and Septic Shock Early Management Bundle (SEP-1).
+5. **CCHMC Pocket Docs.** Bugs & Drugs Guidelines, Neonatal HSV Algorithm, C. diff Testing Algorithm. 2024.
+
+6. **Bradley JS, et al.** The Management of Community-Acquired Pneumonia in Infants and Children Older Than 3 Months of Age: PIDS and IDSA. Clin Infect Dis. 2011.
+
+7. **The Joint Commission.** MM.09.01.01 - Antimicrobial Stewardship Standard. Effective January 1, 2023.
+
+8. **CMS.** Severe Sepsis and Septic Shock Early Management Bundle (SEP-1).
 
 ---
 

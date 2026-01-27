@@ -18,11 +18,11 @@ This module provides automated classification of antibiotic indication appropria
 │  └────────┬────────┘    └────────┬────────┘    └────────┬────────┘         │
 │           │                      │                      │                   │
 │  ┌────────▼────────┐    ┌────────▼────────┐    ┌────────▼────────┐         │
-│  │ Chua ICD-10     │    │ Pocket Card     │    │ PIDS/IDSA       │         │
-│  │ Classification  │    │ + Stanford      │    │ Guidelines      │         │
-│  │ (This Module)   │    │ Guidelines      │    │ (Future)        │         │
-│  │                 │    │ (Phase 2)       │    │                 │         │
-│  │ ✓ IMPLEMENTED   │    │ □ PLANNED       │    │ □ PLANNED       │         │
+│  │ Chua ICD-10     │    │ CCHMC Pocket    │    │ PIDS/IDSA       │         │
+│  │ Classification  │    │ Docs (Bugs &    │    │ Guidelines      │         │
+│  │ (This Module)   │    │ Drugs)          │    │ (Future)        │         │
+│  │                 │    │                 │    │                 │         │
+│  │ ✓ IMPLEMENTED   │    │ ✓ IMPLEMENTED   │    │ □ PLANNED       │         │
 │  └─────────────────┘    └─────────────────┘    └─────────────────┘         │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -33,7 +33,7 @@ This module provides automated classification of antibiotic indication appropria
 | Layer | Question | Data Source | Status |
 |-------|----------|-------------|--------|
 | **Layer 1** | Is there ANY indication for antibiotics? | Chua ICD-10 classification | ✅ Implemented |
-| **Layer 2** | Is THIS antibiotic appropriate for the indication? | Pocket card + Guidelines | 🔲 Phase 2 |
+| **Layer 2** | Is THIS antibiotic appropriate for the indication? | CCHMC Pocket Docs | ✅ Implemented |
 | **Layer 3** | Is the DURATION appropriate? | PIDS/IDSA guidelines | 🔲 Phase 3 |
 
 ---
@@ -48,6 +48,9 @@ This module provides automated classification of antibiotic indication appropria
 | `pediatric_icd10_abx_classification.csv` | Modified Chua classification (94,249 ICD-10 codes) |
 | `pediatric_abx_reference.json` | Surgical/medical prophylaxis tables, febrile neutropenia logic |
 | `aegis_integration_example.py` | Example AEGIS dashboard integration |
+| `cchmc_guidelines.py` | CCHMC Guidelines Engine for agent appropriateness (Layer 2) |
+| `data/cchmc_disease_guidelines.json` | ~100 disease entities with first-line/alternative agents |
+| `data/cchmc_antimicrobial_dosing.json` | ~50 drugs with age-stratified dosing recommendations |
 
 ### Classification Categories
 
@@ -120,110 +123,168 @@ The base Chua classification is designed for outpatient use. We apply these modi
 
 ---
 
-## Phase 2: Agent Appropriateness (Pocket Card Integration)
+## Layer 2: Agent Appropriateness (CCHMC Pocket Docs)
 
-### Goal
-Answer: "Given the diagnosis, is the SPECIFIC antibiotic ordered appropriate?"
+### Overview
+
+Layer 2 uses the CCHMC Guidelines Engine (`cchmc_guidelines.py`) to answer: "Given the diagnosis, is the SPECIFIC antibiotic ordered appropriate?"
 
 ### Data Sources
 
-1. **Cincinnati Children's Pocket Card** - First-line and second-line agents by indication
-2. **Stanford/LPCH Guidelines** - Comprehensive pediatric infection treatment table
-3. **Local antibiogram** - Resistance patterns affecting empiric choice
+1. **Cincinnati Children's Pocket Docs** - Bugs & Drugs guidelines with ~100 disease entities
+2. **CCHMC Antimicrobial Dosing Tables** - Age-stratified dosing for ~50 drugs
 
-### Planned Data Structure
+### CCHMCGuidelinesEngine Class
 
 ```python
-# Agent appropriateness will be stored as:
-AGENT_RECOMMENDATIONS = {
-    'indication_group': {
-        'name': 'Community-Acquired Pneumonia',
-        'icd10_patterns': ['J13', 'J14', 'J15', 'J18'],
-        'first_line': [
-            {
-                'agent': 'ampicillin',
-                'dose': '50 mg/kg/dose IV q6h',
-                'max_dose': '2g/dose',
-                'conditions': ['inpatient', 'no_atypical_coverage_needed']
-            },
-            {
-                'agent': 'amoxicillin',
-                'dose': '45 mg/kg/dose PO q12h',
-                'max_dose': '1g/dose',
-                'conditions': ['outpatient', 'mild_moderate']
-            }
-        ],
-        'second_line': [
-            {
-                'agent': 'ceftriaxone',
-                'dose': '50 mg/kg/dose IV q24h',
-                'max_dose': '2g/dose',
-                'conditions': ['penicillin_allergy_non_severe', 'failed_first_line']
-            }
-        ],
-        'avoid': [
-            {
-                'agent': 'azithromycin',
-                'reason': 'Monotherapy not recommended for typical bacterial CAP'
-            }
-        ],
-        'duration_days': {'typical': 5, 'range': [5, 7]},
-        'references': ['PIDS CAP Guidelines 2011', 'Cincinnati Pocket Card 2024']
+from cchmc_guidelines import CCHMCGuidelinesEngine, AgentCategory
+
+engine = CCHMCGuidelinesEngine()
+
+# Check agent appropriateness
+result = engine.check_agent_appropriateness(
+    icd10_codes=['J18.9'],           # Pneumonia
+    prescribed_agent='azithromycin',
+    patient_age_months=84,           # 7 years old
+    allergies=['penicillin']
+)
+
+print(result.disease_matched)           # "Community-Acquired Pneumonia"
+print(result.current_agent_category)    # AgentCategory.ALTERNATIVE
+print(result.first_line_agents)         # ["amoxicillin", "ampicillin"]
+print(result.recommendation)            # "azithromycin is an acceptable alternative..."
+```
+
+### Agent Categories
+
+| Category | Meaning | Alert Level |
+|----------|---------|-------------|
+| `FIRST_LINE` | Guideline-recommended first choice | None |
+| `ALTERNATIVE` | Acceptable alternative (allergy, atypical coverage) | Informational |
+| `OFF_GUIDELINE` | Not in CCHMC guidelines for this indication | Warning |
+| `NOT_ASSESSED` | No matching disease in guidelines | None |
+
+### Disease Coverage by Body System
+
+| System | Diseases | Examples |
+|--------|----------|----------|
+| Febrile/SBI | 6 | Septic shock, Fever & Neutropenia, RMSF, Lyme |
+| CNS | 2 | Bacterial meningitis, VP shunt infection |
+| Eyes | 2 | Orbital cellulitis, Preseptal cellulitis |
+| HENT | 5 | AOM, Sinusitis, Pharyngitis, Mastoiditis |
+| RTI | 3 | CAP, Aspiration pneumonia, Pertussis |
+| GI | 5 | Appendicitis, C. diff, Peritonitis |
+| GU | 3 | UTI, Cystitis, Pyelonephritis |
+| SST | 4 | Cellulitis, Necrotizing fasciitis, Lymphadenitis |
+| Ortho | 2 | Osteomyelitis, Septic arthritis |
+| Neonatal | 4 | Neonatal meningitis, NEC, Pneumonia, UTI |
+| Bites | 3 | Cat, Dog, Human bites |
+
+### Dosing Lookup
+
+```python
+# Get dosing recommendation
+dosing = engine.get_dosing_recommendation(
+    drug_name='amoxicillin',
+    age_months=36,
+    indication='pneumonia'
+)
+
+print(dosing.dose_mg_kg)          # 45
+print(dosing.frequency)           # "Q12H"
+print(dosing.max_single_dose_mg)  # 1000
+print(dosing.notes)               # "High-dose for CAP"
+```
+
+### Integration with Indication Monitor
+
+The CCHMC engine is integrated into the antimicrobial-usage-alerts module:
+
+```python
+# In indication_monitor.py
+if final_classification in ("A", "S", "P", "FN"):
+    agent_recommendation = self.cchmc_engine.check_agent_appropriateness(
+        icd10_codes=icd10_codes,
+        prescribed_agent=order.medication_name,
+        patient_age_months=patient_age_months,
+        allergies=patient_allergies
+    )
+
+    # Generate warning alert if off-guideline
+    if agent_recommendation.current_agent_category == AgentCategory.OFF_GUIDELINE:
+        self._create_agent_alert(candidate, agent_recommendation)
+```
+
+### Alert Logic
+
+| Scenario | Alert Type |
+|----------|------------|
+| Classification = N (Never) | CRITICAL - No indication |
+| Classification = A/S/P AND agent = OFF_GUIDELINE | WARNING - Off-guideline agent |
+| Classification = A/S/P AND agent = ALTERNATIVE | Informational only |
+| Classification = A/S/P AND agent = FIRST_LINE | No alert |
+
+### Data Files
+
+#### cchmc_disease_guidelines.json
+
+```json
+{
+  "body_systems": {
+    "rti": {
+      "name": "Respiratory Tract Infections",
+      "diseases": [
+        {
+          "disease_id": "cap",
+          "name": "Community-Acquired Pneumonia",
+          "icd10_codes": ["J13", "J14", "J18.9"],
+          "icd10_patterns": ["J15", "J18"],
+          "first_line": [
+            {"agent": "amoxicillin", "dose_mg_kg": 45, "frequency": "Q12H"},
+            {"agent": "ampicillin", "dose_mg_kg": 50, "frequency": "Q6H", "route": "IV"}
+          ],
+          "alternatives": [
+            {"agent": "azithromycin", "indication": "atypical coverage >=5 years"}
+          ],
+          "age_modifications": [
+            {"age_group": ">=5 years", "agents": ["azithromycin"], "notes": "Add for atypical"}
+          ]
+        }
+      ]
     }
+  }
 }
 ```
 
-### Implementation Plan
+#### cchmc_antimicrobial_dosing.json
 
-```
-Phase 2 Tasks:
-├── 2.1 Parse Cincinnati pocket card into structured format
-│   ├── Extract indication → agent mappings
-│   ├── Capture dose recommendations
-│   └── Note allergy alternatives
-│
-├── 2.2 Parse Stanford/LPCH guidelines PDF
-│   ├── Extract by body system
-│   ├── Map to ICD-10 codes
-│   └── Capture duration recommendations
-│
-├── 2.3 Create indication grouping logic
-│   ├── Map ICD-10 codes to indication groups
-│   ├── Handle overlapping indications
-│   └── Priority rules for multiple diagnoses
-│
-├── 2.4 Build agent matching function
-│   ├── Match ordered antibiotic to recommendations
-│   ├── Flag first-line vs second-line vs off-guideline
-│   └── Check for contraindicated agents
-│
-└── 2.5 Integration with Layer 1
-    ├── Extend ClassificationResult
-    ├── Add agent_appropriate field
-    └── Add agent_recommendations field
-```
-
-### Expected Output (Phase 2)
-
-```python
-result = classifier.classify(
-    icd10_codes=['J18.9'],           # Pneumonia
-    ordered_antibiotic='azithromycin' # What was actually ordered
-)
-
-# Extended result:
+```json
 {
-    'overall_category': 'A',          # Indication appropriate
-    'primary_indication': 'Pneumonia, unspecified organism',
-    'agent_assessment': {
-        'ordered': 'azithromycin',
-        'appropriate': False,
-        'classification': 'AVOID',
-        'reason': 'Monotherapy not recommended for typical bacterial CAP',
-        'first_line_alternatives': ['ampicillin', 'amoxicillin'],
-        'second_line_alternatives': ['ceftriaxone', 'levofloxacin']
-    },
-    'flags': ['AGENT_NOT_FIRST_LINE', 'REVIEW_RECOMMENDED']
+  "drugs": [
+    {
+      "drug_id": "amoxicillin",
+      "generic_name": "Amoxicillin",
+      "brand_names": ["Amoxil", "Trimox"],
+      "drug_class": "Penicillin",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "standard",
+          "dose_mg_kg": 25,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 500,
+          "max_daily_dose_mg": 1500
+        },
+        {
+          "indication": "pneumonia",
+          "dose_mg_kg": 45,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 1000,
+          "notes": "High-dose for CAP"
+        }
+      ]
+    }
+  ]
 }
 ```
 
@@ -481,14 +542,17 @@ Flags: FEBRILE_NEUTROPENIA
 - [x] Antifungal indication flagging
 - [x] Basic AEGIS integration example
 
-### Phase 2 (Next)
-- [ ] Parse Cincinnati pocket card → structured format
-- [ ] Parse Stanford/LPCH guidelines
-- [ ] Build indication → agent mapping
-- [ ] Agent appropriateness scoring
-- [ ] Allergy-aware alternatives
+### Phase 2 (Complete ✅)
+- [x] Parse CCHMC Pocket Docs → structured format
+- [x] Create cchmc_disease_guidelines.json (~100 diseases)
+- [x] Create cchmc_antimicrobial_dosing.json (~50 drugs)
+- [x] Build CCHMCGuidelinesEngine class
+- [x] Agent appropriateness scoring (FIRST_LINE/ALTERNATIVE/OFF_GUIDELINE)
+- [x] Age-stratified recommendations
+- [x] Allergy-aware alternatives
+- [x] Integration with indication_monitor.py
 
-### Phase 3 (Future)
+### Phase 3 (Next)
 - [ ] Duration tracking from MAR data
 - [ ] Auto-stop recommendations
 - [ ] De-escalation prompts
@@ -505,13 +569,17 @@ Flags: FEBRILE_NEUTROPENIA
 
 1. **Chua KP, Fischer MA, Linder JA.** Appropriateness of outpatient antibiotic prescribing among privately insured US patients: ICD-10-CM based cross sectional study. BMJ. 2019;364:k5092.
 
-2. **Stanford Children's Health.** Guidelines for Initial Therapy for Common Pediatric Infections. Updated October 2025.
+2. **CCHMC Pocket Docs.** Bugs & Drugs - Antimicrobial Guidelines. Cincinnati Children's Hospital Medical Center. 2024.
 
-3. **ASHP/IDSA/SHEA/SIS.** Clinical Practice Guidelines for Antimicrobial Prophylaxis in Surgery. 2013.
+3. **CCHMC Antimicrobial Dosing Tables.** Pediatric Antimicrobial Dosing Reference. Cincinnati Children's Hospital Medical Center. 2024.
 
-4. **Bradley JS, et al.** The Management of Community-Acquired Pneumonia in Infants and Children Older Than 3 Months of Age: Clinical Practice Guidelines by PIDS and IDSA. Clin Infect Dis. 2011.
+4. **Stanford Children's Health.** Guidelines for Initial Therapy for Common Pediatric Infections. Updated October 2025.
 
-5. **The Joint Commission.** MM.09.01.01 - Antimicrobial Stewardship Standard. Effective January 1, 2023.
+5. **ASHP/IDSA/SHEA/SIS.** Clinical Practice Guidelines for Antimicrobial Prophylaxis in Surgery. 2013.
+
+6. **Bradley JS, et al.** The Management of Community-Acquired Pneumonia in Infants and Children Older Than 3 Months of Age: Clinical Practice Guidelines by PIDS and IDSA. Clin Infect Dis. 2011.
+
+7. **The Joint Commission.** MM.09.01.01 - Antimicrobial Stewardship Standard. Effective January 1, 2023.
 
 ---
 
