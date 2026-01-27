@@ -5,9 +5,10 @@ This script demonstrates the guideline adherence monitoring system with
 realistic patient scenarios for different bundles.
 
 Usage:
-    python demo_patients.py
+    python demo_patients.py           # Uses temp database (data deleted after)
+    python demo_patients.py --persist # Uses real database (data persists for dashboard)
 
-The demo creates a temporary database and simulates:
+The demo creates sample scenarios for:
 1. Febrile Infant (14-day-old) - Full adherence scenario
 2. Sepsis (3-year-old) - Partial adherence with missed elements
 3. Neonatal HSV (10-day-old) - Critical alerts scenario
@@ -16,6 +17,7 @@ The demo creates a temporary database and simulates:
 
 import sys
 import os
+import argparse
 import tempfile
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -616,40 +618,22 @@ def display_dashboard_summary(db: EpisodeDB):
             print(f"  {name}: {total} episodes, {avg:.1f}% avg adherence")
 
 
-def main():
-    """Run the demo."""
-    print_header("AEGIS GUIDELINE ADHERENCE MONITORING - DEMO")
+def run_demo(db_path: str, persist: bool = False):
+    """Run the demo with specified database."""
+    # Initialize database
+    db = EpisodeDB(db_path)
 
+    # Create patient scenarios
+    create_febrile_infant_episode(db)
+    create_sepsis_episode(db)
+    create_neonatal_hsv_episode(db)
+    create_cdiff_testing_episode(db)
+
+    # Display summary dashboard
+    display_dashboard_summary(db)
+
+    print_header("DEMO COMPLETE")
     print("""
-    This demo creates sample patient scenarios to demonstrate the
-    guideline adherence monitoring system.
-
-    Patients:
-    1. Febrile Infant (14 days) - Full adherence example
-    2. Sepsis (3 years) - Partial adherence with alerts
-    3. Neonatal HSV (10 days) - Critical alert scenario
-    4. C. diff Testing (8 years) - Diagnostic stewardship
-    """)
-
-    # Create temporary database
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, "demo_guideline_adherence.db")
-        print(f"  Demo database: {db_path}")
-
-        # Initialize database
-        db = EpisodeDB(db_path)
-
-        # Create patient scenarios
-        create_febrile_infant_episode(db)
-        create_sepsis_episode(db)
-        create_neonatal_hsv_episode(db)
-        create_cdiff_testing_episode(db)
-
-        # Display summary dashboard
-        display_dashboard_summary(db)
-
-        print_header("DEMO COMPLETE")
-        print("""
     Key Observations:
 
     1. FEBRILE INFANT: 100% adherence - all age-appropriate elements met
@@ -681,7 +665,69 @@ def main():
     - Automated alerts for missed elements
     - Compliance metrics for QI dashboards
     - Joint Commission MM.09.01.01 documentation
+    """)
+
+    if persist:
+        print(f"""
+    Data persisted to: {db_path}
+    View in dashboard: http://localhost:8082/guideline-adherence/
         """)
+
+
+def main():
+    """Run the demo."""
+    parser = argparse.ArgumentParser(description="Guideline Adherence Demo")
+    parser.add_argument(
+        "--persist",
+        action="store_true",
+        help="Persist data to real database (for dashboard viewing)",
+    )
+    parser.add_argument(
+        "--clear",
+        action="store_true",
+        help="Clear existing demo data before creating new episodes",
+    )
+    args = parser.parse_args()
+
+    print_header("AEGIS GUIDELINE ADHERENCE MONITORING - DEMO")
+
+    print("""
+    This demo creates sample patient scenarios to demonstrate the
+    guideline adherence monitoring system.
+
+    Patients:
+    1. Febrile Infant (14 days) - Full adherence example
+    2. Sepsis (3 years) - Partial adherence with alerts
+    3. Neonatal HSV (10 days) - Critical alert scenario
+    4. C. diff Testing (8 years) - Diagnostic stewardship
+    """)
+
+    if args.persist:
+        # Use real database
+        from guideline_src.config import Config
+        db_path = str(Config.ADHERENCE_DB_PATH)
+        print(f"  Using persistent database: {db_path}")
+
+        if args.clear:
+            # Clear existing demo MRNs
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            demo_mrns = ["FI-2024-001", "SEP-2024-002", "HSV-2024-003", "CDIFF-2024-004"]
+            for mrn in demo_mrns:
+                conn.execute("DELETE FROM bundle_alerts WHERE episode_id IN (SELECT id FROM bundle_episodes WHERE patient_id = ?)", (mrn,))
+                conn.execute("DELETE FROM bundle_element_results WHERE episode_id IN (SELECT id FROM bundle_episodes WHERE patient_id = ?)", (mrn,))
+                conn.execute("DELETE FROM bundle_episodes WHERE patient_id = ?", (mrn,))
+            conn.commit()
+            conn.close()
+            print("  Cleared existing demo data")
+
+        run_demo(db_path, persist=True)
+    else:
+        # Use temporary database
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "demo_guideline_adherence.db")
+            print(f"  Demo database: {db_path}")
+            run_demo(db_path, persist=False)
 
 
 if __name__ == "__main__":
