@@ -46,6 +46,9 @@ class BundleEpisode:
     adherence_percentage: Optional[float] = None
     adherence_level: Optional[str] = None
 
+    # NLP/Clinical Assessment Context (JSON string)
+    clinical_context: Optional[str] = None
+
     # Timestamps
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -315,6 +318,13 @@ class EpisodeDB:
 
     def _row_to_episode(self, row: sqlite3.Row) -> BundleEpisode:
         """Convert database row to BundleEpisode."""
+        # Handle clinical_context column which may not exist in older schemas
+        clinical_context = None
+        try:
+            clinical_context = row["clinical_context"]
+        except (KeyError, IndexError):
+            pass
+
         return BundleEpisode(
             id=row["id"],
             patient_id=row["patient_id"],
@@ -338,10 +348,38 @@ class EpisodeDB:
             elements_pending=row["elements_pending"],
             adherence_percentage=row["adherence_percentage"],
             adherence_level=row["adherence_level"],
+            clinical_context=clinical_context,
             created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None,
             updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else None,
             completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
         )
+
+    def update_clinical_context(self, episode_id: int, context: dict) -> bool:
+        """Update the clinical context for an episode.
+
+        Args:
+            episode_id: Episode ID.
+            context: Dict with clinical assessment data (will be JSON serialized).
+
+        Returns:
+            True if updated successfully.
+        """
+        import json
+        context_json = json.dumps(context)
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                UPDATE bundle_episodes SET
+                    clinical_context = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (context_json, episode_id),
+            )
+            conn.commit()
+            return cursor.rowcount > 0
 
     # =========================================================================
     # ELEMENT RESULT OPERATIONS
@@ -713,7 +751,76 @@ class EpisodeDB:
                     "full_adherence": row["full_adherence"],
                     "partial_adherence": row["partial_adherence"],
                     "low_adherence": row["low_adherence"],
-                    "avg_adherence_pct": row["avg_adherence_pct"],
+                    "avg_adherence_percentage": row["avg_adherence_pct"],
                 }
 
             return stats
+
+    def get_element_compliance_rates(
+        self, days: int = 30, bundle_id: Optional[str] = None
+    ) -> list[dict]:
+        """Get element-level compliance rates.
+
+        Args:
+            days: Number of days to look back.
+            bundle_id: Optional bundle filter.
+
+        Returns:
+            List of dicts with element_id, element_name, compliance_rate, total_assessed.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            if bundle_id:
+                cursor.execute(
+                    """
+                    SELECT
+                        r.element_id,
+                        r.element_name,
+                        COUNT(*) as total_assessed,
+                        SUM(CASE WHEN r.status = 'met' THEN 1 ELSE 0 END) as met_count,
+                        ROUND(
+                            100.0 * SUM(CASE WHEN r.status = 'met' THEN 1 ELSE 0 END) / COUNT(*),
+                            1
+                        ) as compliance_rate
+                    FROM bundle_element_results r
+                    JOIN bundle_episodes e ON r.episode_id = e.id
+                    WHERE e.created_at >= datetime('now', ?)
+                      AND e.bundle_id = ?
+                      AND r.status IN ('met', 'not_met')
+                    GROUP BY r.element_id, r.element_name
+                    ORDER BY compliance_rate ASC
+                    """,
+                    (f"-{days} days", bundle_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT
+                        r.element_id,
+                        r.element_name,
+                        COUNT(*) as total_assessed,
+                        SUM(CASE WHEN r.status = 'met' THEN 1 ELSE 0 END) as met_count,
+                        ROUND(
+                            100.0 * SUM(CASE WHEN r.status = 'met' THEN 1 ELSE 0 END) / COUNT(*),
+                            1
+                        ) as compliance_rate
+                    FROM bundle_element_results r
+                    JOIN bundle_episodes e ON r.episode_id = e.id
+                    WHERE e.created_at >= datetime('now', ?)
+                      AND r.status IN ('met', 'not_met')
+                    GROUP BY r.element_id, r.element_name
+                    ORDER BY compliance_rate ASC
+                    """,
+                    (f"-{days} days",),
+                )
+
+            return [
+                {
+                    "element_id": row["element_id"],
+                    "element_name": row["element_name"],
+                    "total_assessed": row["total_assessed"],
+                    "compliance_rate": row["compliance_rate"] or 0,
+                }
+                for row in cursor.fetchall()
+            ]

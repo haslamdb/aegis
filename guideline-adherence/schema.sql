@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS bundle_episodes (
     adherence_percentage REAL,
     adherence_level TEXT,  -- 'full', 'partial', 'low'
 
+    -- NLP/Clinical Assessment Context (JSON)
+    -- Stores clinical impression, GI symptoms, and other NLP extraction results
+    clinical_context TEXT,
+
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

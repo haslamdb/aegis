@@ -493,6 +493,66 @@
     </div>
 
     <div class="help-card">
+        <h2>NLP Clinical Note Analysis</h2>
+        <p>The system uses <strong>LLM-based Natural Language Processing</strong> to extract clinical information
+           from unstructured notes that cannot be reliably captured with simple keyword matching.</p>
+
+        <h3>Clinical Impression Extraction (Febrile Infant)</h3>
+        <p>Critical for risk stratification in the Febrile Infant guideline. The LLM analyzes clinical notes to determine:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Assessment</th>
+                    <th>Indicators</th>
+                    <th>Clinical Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong class="status-met">Well-Appearing</strong></td>
+                    <td>Alert, playful, active, feeding well, good eye contact, pink, well-perfused</td>
+                    <td>Follow standard age-stratified pathway</td>
+                </tr>
+                <tr>
+                    <td><strong class="status-warning">Ill-Appearing</strong></td>
+                    <td>Lethargic, irritable, poor feeding, mottled, pale, decreased activity, fussy</td>
+                    <td>Higher risk stratification, consider HSV workup</td>
+                </tr>
+                <tr>
+                    <td><strong class="status-not-met">Toxic-Appearing</strong></td>
+                    <td>Obtunded, unresponsive, septic appearance, shock, poor perfusion, inconsolable</td>
+                    <td>Full sepsis workup, aggressive resuscitation</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>GI Symptom Extraction (C. diff Testing)</h3>
+        <p>Extracts precise symptom information for C. diff testing appropriateness:</p>
+        <ul>
+            <li><strong>Stool count:</strong> Exact number of stools in past 24 hours</li>
+            <li><strong>Stool consistency:</strong> Liquid, watery, loose, soft, or formed</li>
+            <li><strong>Symptom duration:</strong> When diarrhea started (converted to hours)</li>
+            <li><strong>Associated symptoms:</strong> Abdominal pain, cramping, fever, bloody stool</li>
+        </ul>
+
+        <h3>NLP Configuration</h3>
+        <p>The NLP module uses a local LLM via <strong>Ollama</strong> for HIPAA-compliant processing:</p>
+        <pre class="code-block">
+# Check LLM availability
+python -c "from guideline_src.nlp.clinical_impression import check_llm_availability; print(check_llm_availability())"
+
+# Test clinical impression extraction
+python -m guideline_src.nlp.clinical_impression
+
+# Test GI symptom extraction
+python -m guideline_src.nlp.gi_symptoms</pre>
+
+        <p><strong>Fallback:</strong> If LLM is unavailable, the system falls back to keyword-based matching
+           with reduced accuracy. NLP extraction adds HIGH/MEDIUM confidence levels, while keyword matching
+           is tagged with LOW/MEDIUM confidence.</p>
+    </div>
+
+    <div class="help-card">
         <h2>Running the Monitor</h2>
 
         <h3>Mode 1: Trigger Monitoring</h3>

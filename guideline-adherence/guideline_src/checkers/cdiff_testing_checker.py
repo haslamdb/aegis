@@ -34,6 +34,21 @@ from ..models import ElementCheckResult, ElementCheckStatus
 from ..config import config
 from .base import ElementChecker
 
+# Import NLP extractor for GI symptoms
+try:
+    from ..nlp.gi_symptoms import (
+        GISymptomExtractor,
+        GISymptomResult,
+        StoolConsistency,
+        get_gi_symptom_extractor,
+    )
+    NLP_AVAILABLE = True
+except ImportError:
+    NLP_AVAILABLE = False
+    GISymptomExtractor = None
+    GISymptomResult = None
+    StoolConsistency = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -81,11 +96,26 @@ class CDiffTestingChecker(ElementChecker):
         "chemotherapy",
     ]
 
-    def __init__(self, fhir_client):
-        """Initialize with FHIR client."""
+    def __init__(self, fhir_client, use_nlp: bool = True):
+        """Initialize with FHIR client.
+
+        Args:
+            fhir_client: FHIR client for data retrieval.
+            use_nlp: Whether to use NLP for GI symptom extraction.
+        """
         super().__init__(fhir_client)
         # Cache for patient context
         self._patient_context = {}
+
+        # Initialize NLP extractor if available and requested
+        self._nlp_extractor = None
+        if use_nlp and NLP_AVAILABLE:
+            try:
+                self._nlp_extractor = get_gi_symptom_extractor()
+                if self._nlp_extractor:
+                    logger.info("NLP GI symptom extractor initialized")
+            except Exception as e:
+                logger.warning(f"Failed to initialize GI NLP extractor: {e}")
 
     def check(
         self,
@@ -417,13 +447,66 @@ class CDiffTestingChecker(ElementChecker):
         trigger_time: datetime,
         context: dict,
     ) -> ElementCheckResult:
-        """Check if patient has >= 3 liquid stools in 24 hours."""
+        """Check if patient has >= 3 liquid stools in 24 hours.
+
+        Uses LLM-based NLP extraction if available to accurately extract
+        stool count and consistency from clinical notes.
+        """
         # Check nursing documentation for stool counts
         notes = self.fhir_client.get_recent_notes(
             patient_id=patient_id,
             since_time=trigger_time - timedelta(hours=24),
         )
 
+        if not notes:
+            return self._create_result(
+                element=element,
+                status=ElementCheckStatus.PENDING,
+                trigger_time=trigger_time,
+                notes="No nursing documentation available to assess stool output",
+            )
+
+        # Try NLP-based extraction first
+        if self._nlp_extractor:
+            try:
+                note_texts = [n.get("text", "") for n in notes if n.get("text")]
+                if note_texts:
+                    gi_result = self._nlp_extractor.extract(note_texts)
+
+                    # Store result in context for other checks
+                    context["gi_symptoms"] = gi_result
+
+                    if gi_result.meets_cdiff_criteria():
+                        return self._create_result(
+                            element=element,
+                            status=ElementCheckStatus.MET,
+                            trigger_time=trigger_time,
+                            value=f"{gi_result.stool_count_24h} {gi_result.stool_consistency.value} stools",
+                            notes=f"NLP extraction: {gi_result.stool_count_24h} {gi_result.stool_consistency.value} stools in 24h ({gi_result.confidence})",
+                        )
+                    elif gi_result.stool_count_24h is not None:
+                        if gi_result.stool_count_24h < self.MIN_LIQUID_STOOLS:
+                            return self._create_result(
+                                element=element,
+                                status=ElementCheckStatus.NOT_MET,
+                                trigger_time=trigger_time,
+                                value=f"{gi_result.stool_count_24h} stools",
+                                notes=f"Only {gi_result.stool_count_24h} stools documented (need >= {self.MIN_LIQUID_STOOLS})",
+                            )
+                        # Count met but consistency not liquid/watery
+                        return self._create_result(
+                            element=element,
+                            status=ElementCheckStatus.NOT_MET,
+                            trigger_time=trigger_time,
+                            value=f"{gi_result.stool_count_24h} {gi_result.stool_consistency.value} stools",
+                            notes=f"Stool consistency ({gi_result.stool_consistency.value}) may not be liquid/watery",
+                        )
+
+                    logger.info(f"NLP GI assessment for {patient_id}: {gi_result.to_dict()}")
+            except Exception as e:
+                logger.warning(f"GI NLP extraction failed, falling back to keywords: {e}")
+
+        # Fallback to keyword-based matching
         stool_keywords = [
             "liquid stool", "watery stool", "diarrhea", "loose stool",
             "3 or more stools", "multiple loose stools", "frequent diarrhea"
@@ -436,7 +519,7 @@ class CDiffTestingChecker(ElementChecker):
                     element=element,
                     status=ElementCheckStatus.MET,
                     trigger_time=trigger_time,
-                    notes="Liquid stools documented (>=3 in 24 hours likely)",
+                    notes="Liquid stools documented (>=3 in 24 hours likely) - keyword match",
                 )
 
         return self._create_result(

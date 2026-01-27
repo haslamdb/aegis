@@ -35,6 +35,148 @@
     </div>
 </div>
 
+<!-- LLM Clinical Assessment -->
+{% if nlp_assessment %}
+<div class="section">
+    <h3>LLM Clinical Assessment</h3>
+
+    {% if nlp_assessment.clinical_impression %}
+    <div class="classification-item">
+        <div class="classification-header">
+            <span class="badge badge-{{ 'danger' if nlp_assessment.clinical_impression.is_high_risk else 'success' }}">
+                {{ nlp_assessment.clinical_impression.appearance|replace('_', '-')|title }}
+            </span>
+            <span class="confidence">{{ nlp_assessment.clinical_impression.confidence }} confidence</span>
+            <span class="text-muted">Source: {{ nlp_assessment.clinical_impression_source|default('NLP')|upper }}</span>
+        </div>
+
+        {% if nlp_assessment.clinical_impression.is_high_risk %}
+        <div class="classification-reasoning">
+            <strong>Risk Assessment:</strong>
+            <p>Infant appears ill-appearing based on clinical documentation. Consider higher-risk pathway and HSV workup if age-appropriate.</p>
+        </div>
+        {% else %}
+        <div class="classification-reasoning">
+            <strong>Risk Assessment:</strong>
+            <p>Infant appears well-appearing based on clinical documentation. Standard age-stratified pathway appropriate.</p>
+        </div>
+        {% endif %}
+
+        {% if nlp_assessment.clinical_impression.concerning_signs %}
+        <div class="evidence evidence-contradicting">
+            <strong>Concerning Signs:</strong>
+            <ul>
+            {% for sign in nlp_assessment.clinical_impression.concerning_signs[:5] %}
+                <li>
+                    <span class="evidence-text">{{ sign }}</span>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if nlp_assessment.clinical_impression.reassuring_signs %}
+        <div class="evidence evidence-supporting">
+            <strong>Reassuring Signs:</strong>
+            <ul>
+            {% for sign in nlp_assessment.clinical_impression.reassuring_signs[:5] %}
+                <li>
+                    <span class="evidence-text">{{ sign }}</span>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if nlp_assessment.clinical_impression.supporting_quotes %}
+        <div class="evidence evidence-quotes">
+            <strong>Supporting Quotes from Notes:</strong>
+            <ul>
+            {% for quote in nlp_assessment.clinical_impression.supporting_quotes[:3] %}
+                <li>
+                    <span class="evidence-text">"{{ quote }}"</span>
+                    <br><small class="evidence-source">Source: Clinical Notes</small>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="classification-meta">
+            <small>Model: {{ nlp_assessment.clinical_impression.model_used|default('llama3.3:70b') }}
+            {% if nlp_assessment.clinical_impression.response_time_ms %}
+            | Response time: {{ nlp_assessment.clinical_impression.response_time_ms }}ms
+            {% endif %}
+            </small>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if nlp_assessment.gi_symptoms %}
+    <div class="classification-item">
+        <div class="classification-header">
+            <span class="badge badge-{{ 'success' if nlp_assessment.gi_symptoms.meets_cdiff_criteria else 'warning' }}">
+                {% if nlp_assessment.gi_symptoms.meets_cdiff_criteria %}Criteria Met{% else %}Criteria Not Met{% endif %}
+            </span>
+            <span class="confidence">{{ nlp_assessment.gi_symptoms.confidence }} confidence</span>
+            <span class="text-muted">GI Symptom Assessment</span>
+        </div>
+
+        <div class="classification-reasoning">
+            <strong>C. diff Testing Appropriateness:</strong>
+            <p>
+                {% if nlp_assessment.gi_symptoms.stool_count_24h %}
+                    {{ nlp_assessment.gi_symptoms.stool_count_24h }} {{ nlp_assessment.gi_symptoms.stool_consistency|replace('_', ' ') }} stools in 24 hours.
+                {% else %}
+                    Stool count not clearly documented.
+                {% endif %}
+                {% if nlp_assessment.gi_symptoms.symptom_duration_hours %}
+                    Symptoms present for {{ nlp_assessment.gi_symptoms.symptom_duration_hours|round|int }} hours.
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="evidence evidence-supporting">
+            <strong>Symptoms Identified:</strong>
+            <ul>
+                {% if nlp_assessment.gi_symptoms.has_diarrhea %}<li><span class="evidence-text">Diarrhea documented</span></li>{% endif %}
+                {% if nlp_assessment.gi_symptoms.has_abdominal_pain %}<li><span class="evidence-text">Abdominal pain present</span></li>{% endif %}
+                {% if nlp_assessment.gi_symptoms.has_cramping %}<li><span class="evidence-text">Cramping noted</span></li>{% endif %}
+                {% if nlp_assessment.gi_symptoms.has_fever %}<li><span class="evidence-text">Fever present</span></li>{% endif %}
+                {% if nlp_assessment.gi_symptoms.has_bloody_stool %}<li><span class="evidence-text" style="color: var(--color-danger);">Bloody stool - evaluate for other causes</span></li>{% endif %}
+            </ul>
+        </div>
+
+        {% if nlp_assessment.gi_symptoms.supporting_quotes %}
+        <div class="evidence evidence-quotes">
+            <strong>Supporting Quotes from Notes:</strong>
+            <ul>
+            {% for quote in nlp_assessment.gi_symptoms.supporting_quotes[:2] %}
+                <li>
+                    <span class="evidence-text">"{{ quote }}"</span>
+                    <br><small class="evidence-source">Source: Clinical Notes</small>
+                </li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <div class="classification-meta">
+            <small>Model: {{ nlp_assessment.gi_symptoms.model_used|default('llama3.3:70b') }}
+            {% if nlp_assessment.gi_symptoms.response_time_ms %}
+            | Response time: {{ nlp_assessment.gi_symptoms.response_time_ms }}ms
+            {% endif %}
+            </small>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if not nlp_assessment.clinical_impression and not nlp_assessment.gi_symptoms %}
+    <p class="text-muted" style="text-align: center; padding: 1rem;">No LLM assessments available for this episode.</p>
+    {% endif %}
+</div>
+{% endif %}
+
 <!-- Adherence Summary -->
 <div class="adherence-summary">
     {% set met = results|selectattr('status', 'equalto', 'met')|list|length %}
@@ -299,5 +441,93 @@
     margin: 0.5rem 0 0 1.5rem;
     padding: 0;
 }
+
+/* LLM Classification Styles (matching HAI detail page) */
+.classification-item {
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: var(--color-white);
+}
+
+.classification-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.confidence {
+    font-weight: 600;
+    color: var(--color-gray-700);
+}
+
+.classification-reasoning {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-gray-50);
+}
+
+.classification-reasoning p {
+    margin: 0.25rem 0 0 0;
+    color: var(--color-gray-700);
+}
+
+.evidence {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--color-gray-50);
+}
+
+.evidence-supporting {
+    border-left: 3px solid var(--color-success);
+}
+
+.evidence-contradicting {
+    border-left: 3px solid var(--color-danger);
+}
+
+.evidence-quotes {
+    border-left: 3px solid var(--color-primary);
+}
+
+.evidence ul {
+    margin: 0.5rem 0 0 1.5rem;
+    padding: 0;
+}
+
+.evidence ul li {
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.evidence-text {
+    font-weight: 500;
+    color: var(--color-gray-800);
+}
+
+.evidence-source {
+    color: var(--color-primary);
+    font-size: 0.8rem;
+}
+
+.classification-meta {
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--color-gray-200);
+    color: var(--color-gray-500);
+}
+
+.text-muted {
+    color: var(--color-gray-500);
+}
+
+.badge-success { background: var(--color-success); color: white; }
+.badge-danger { background: var(--color-danger); color: white; }
+.badge-warning { background: var(--color-warning); color: var(--color-gray-900); }
 </style>
 {% endblock %}
