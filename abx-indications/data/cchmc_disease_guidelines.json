@@ -1,0 +1,1172 @@
+{
+  "metadata": {
+    "source": "CCHMC Pocket Docs - Bugs and Drugs 2024",
+    "version": "2024.1",
+    "last_updated": "2024-01-01",
+    "description": "Disease-specific antibiotic recommendations from Cincinnati Children's Hospital"
+  },
+  "body_systems": {
+    "febrile_sbi": {
+      "name": "Febrile/Serious Bacterial Infection",
+      "diseases": [
+        {
+          "disease_id": "ehrlichiosis",
+          "name": "Ehrlichiosis/Anaplasmosis",
+          "organisms": ["Ehrlichia chaffensis", "Anaplasma phagocytophilum"],
+          "icd10_codes": ["A77.4", "A77.40", "A77.41", "A77.49"],
+          "icd10_patterns": ["A77.4"],
+          "first_line": [
+            {"agent": "doxycycline", "route": "PO", "preferred": true, "duration_days": "7-14"}
+          ],
+          "alternatives": [
+            {"agent": "doxycycline", "route": "IV", "duration_days": "7-14"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Suspect if febrile, flu-like illness without rash in April-Sept. Leukopenia & thrombocytopenia common. PO preferred.",
+          "consults": []
+        },
+        {
+          "disease_id": "fever_neutropenia",
+          "name": "Fever and Neutropenia",
+          "organisms": ["CoNS", "S. aureus", "Enterococcus spp", "Strep viridans", "S. pneumoniae", "GAS", "aerobic GNR"],
+          "icd10_codes": ["D70.0", "D70.1", "D70.9"],
+          "icd10_patterns": ["D70"],
+          "first_line": [
+            {"agent": "cefepime", "route": "IV", "indication": "BMT/Heme/Onc"}
+          ],
+          "alternatives": [
+            {"agent": "vancomycin", "route": "IV", "indication": "high-risk, ill-appearing, MRSA/CoNS suspected", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "High-risk or ill-appearing patients add vancomycin",
+          "consults": []
+        },
+        {
+          "disease_id": "lyme_disease",
+          "name": "Lyme Disease",
+          "organisms": ["Borrelia burgdorferi"],
+          "icd10_codes": ["A69.20", "A69.21", "A69.22", "A69.23", "A69.29"],
+          "icd10_patterns": ["A69.2"],
+          "first_line": [
+            {"agent": "doxycycline", "route": "PO", "preferred": true, "duration_days": 10, "age_restriction": ">=8 years"}
+          ],
+          "alternatives": [
+            {"agent": "doxycycline", "route": "IV", "duration_days": 10}
+          ],
+          "age_modifications": [
+            {"age_group": "<8 years", "agents": ["amoxicillin", "cefuroxime"], "route": "PO", "duration_days": 14}
+          ],
+          "allergy_alternatives": [],
+          "notes": "Early rash (erythema migrans), carditis, facial nerve palsy, meningitis/encephalitis, arthritis",
+          "consults": []
+        },
+        {
+          "disease_id": "clabsi_cons",
+          "name": "CLABSI - CoNS",
+          "organisms": ["CoNS"],
+          "icd10_codes": ["T80.211A", "T80.212A", "T80.219A"],
+          "icd10_patterns": ["T80.21"],
+          "first_line": [
+            {"agent": "vancomycin", "route": "IV", "duration_days": "5-7 if removed, 10-14 if retained"}
+          ],
+          "alternatives": [],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "daptomycin", "route": "IV"}
+          ],
+          "notes": "Consider removing catheter. Strongly consider consulting ID.",
+          "consults": ["ID"]
+        },
+        {
+          "disease_id": "clabsi_enterococcus",
+          "name": "CLABSI - Enterococcus",
+          "organisms": ["Enterococcus"],
+          "icd10_codes": ["T80.211A", "T80.212A", "T80.219A"],
+          "icd10_patterns": ["T80.21"],
+          "first_line": [
+            {"agent": "ampicillin", "route": "IV", "indication": "E. faecalis vanA/B Negative"}
+          ],
+          "alternatives": [
+            {"agent": "vancomycin", "route": "IV", "indication": "E. faecalis vanA/B Positive or E. faecium"},
+            {"agent": "daptomycin", "route": "IV", "indication": "VRE"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Pending antibiotic susceptibilities. Strongly consider consulting ID.",
+          "consults": ["ID"]
+        },
+        {
+          "disease_id": "clabsi_candida",
+          "name": "CLABSI - Candida",
+          "organisms": ["Candida species"],
+          "icd10_codes": ["T80.211A", "T80.212A", "T80.219A", "B37.7"],
+          "icd10_patterns": ["T80.21", "B37.7"],
+          "first_line": [
+            {"agent": "micafungin", "route": "IV", "indication": "critically ill, susceptibilities pending"},
+            {"agent": "fluconazole", "route": "IV", "indication": "clinically stable"}
+          ],
+          "alternatives": [],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Remove catheter. Treat for 14 days minimum after first negative blood culture.",
+          "consults": ["ID"]
+        },
+        {
+          "disease_id": "rmsf",
+          "name": "Rocky Mountain Spotted Fever",
+          "organisms": ["Rickettsia rickettsii"],
+          "icd10_codes": ["A77.0"],
+          "icd10_patterns": ["A77.0"],
+          "first_line": [
+            {"agent": "doxycycline", "route": "PO", "preferred": true, "duration_days": "7-10"}
+          ],
+          "alternatives": [
+            {"agent": "doxycycline", "route": "IV", "duration_days": "7-10"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Recommended for ALL age groups. Suspect if fever, rash (95%), petechiae spreading from distal to central, thrombocytopenia, hyponatremia.",
+          "consults": []
+        },
+        {
+          "disease_id": "septic_shock",
+          "name": "Septic Shock / Bacteremia",
+          "organisms": ["S. pneumoniae", "S. aureus", "H. influenzae", "N. meningitidis"],
+          "icd10_codes": ["A41.9", "A41.01", "A41.02", "R65.20", "R65.21"],
+          "icd10_patterns": ["A41", "R65.2"],
+          "first_line": [
+            {"agent": "ceftriaxone", "route": "IV"}
+          ],
+          "alternatives": [
+            {"agent": "vancomycin", "route": "IV", "indication": "MRSA or resistant Pneumococcus suspected", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Obtain blood cultures. Replete intravascular volume, maximize O2 delivery.",
+          "consults": []
+        },
+        {
+          "disease_id": "tss_staph",
+          "name": "Toxic Shock Syndrome - Staphylococcal",
+          "organisms": ["Staphylococcus aureus"],
+          "icd10_codes": ["A48.3"],
+          "icd10_patterns": ["A48.3"],
+          "first_line": [
+            {"agent": "vancomycin", "route": "IV"}
+          ],
+          "alternatives": [
+            {"agent": "nafcillin", "route": "IV", "indication": "MSSA"},
+            {"agent": "clindamycin", "route": "IV", "add_to_first_line": true, "duration_days": "first 48-72 hours"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Most often associated with toxin-producing organisms at mucosal site.",
+          "consults": []
+        },
+        {
+          "disease_id": "tss_strep",
+          "name": "Toxic Shock Syndrome - Streptococcal",
+          "organisms": ["Group A Streptococcus"],
+          "icd10_codes": ["A48.3"],
+          "icd10_patterns": ["A48.3"],
+          "first_line": [
+            {"agent": "penicillin_g", "route": "IV"},
+            {"agent": "clindamycin", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [
+            {"agent": "ivig", "indication": "controversial, may provide benefit"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "More likely to cause invasive disease at deep site. Seek deep site infection aggressively.",
+          "consults": []
+        }
+      ]
+    },
+    "cns": {
+      "name": "Central Nervous System",
+      "diseases": [
+        {
+          "disease_id": "meningitis_bacterial",
+          "name": "Bacterial Meningitis",
+          "organisms": ["S. pneumoniae", "N. meningitidis", "H. influenzae"],
+          "icd10_codes": ["G00.0", "G00.1", "G00.2", "G00.3", "G00.8", "G00.9"],
+          "icd10_patterns": ["G00"],
+          "first_line": [
+            {"agent": "ceftriaxone", "route": "IV", "dose_meningitis": true}
+          ],
+          "alternatives": [
+            {"agent": "vancomycin", "route": "IV", "indication": "S. pneumoniae suspected", "add_to_first_line": true}
+          ],
+          "age_modifications": [
+            {"age_group": "<6 weeks", "see_reference": "neonatal_section"}
+          ],
+          "allergy_alternatives": [
+            {"agent": "meropenem", "route": "IV"}
+          ],
+          "notes": "Gram stain to expand (not contract) empiric therapy. Add vancomycin when S. pneumoniae suspected.",
+          "consults": ["ID"]
+        },
+        {
+          "disease_id": "meningitis_prophylaxis",
+          "name": "Meningitis Prophylaxis for Contacts",
+          "organisms": ["N. meningitidis"],
+          "icd10_codes": ["Z20.811"],
+          "icd10_patterns": ["Z20.811"],
+          "first_line": [
+            {"agent": "rifampin", "route": "PO", "dose": "10 mg/kg BID", "duration_days": 2, "age_restriction": ">=1 month", "max_dose": "600 mg"},
+            {"agent": "rifampin", "route": "PO", "dose": "5 mg/kg BID", "duration_days": 2, "age_restriction": "<1 month"}
+          ],
+          "alternatives": [
+            {"agent": "ceftriaxone", "route": "IM", "single_dose": true},
+            {"agent": "ciprofloxacin", "route": "PO", "single_dose": true, "age_restriction": ">=1 month"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "For suspected and confirmed cases of N. meningitidis. All contacts in same house for >=4 hours.",
+          "consults": []
+        },
+        {
+          "disease_id": "vp_shunt_infection",
+          "name": "VP Shunt Infection",
+          "organisms": ["S. epidermidis", "S. aureus", "C. acnes", "P. aeruginosa"],
+          "icd10_codes": ["T85.730A", "T85.731A", "T85.79XA"],
+          "icd10_patterns": ["T85.73", "T85.79"],
+          "first_line": [
+            {"agent": "vancomycin", "route": "IV"},
+            {"agent": "cefepime", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "meropenem", "route": "IV"}
+          ],
+          "notes": "Always involve Neurosurgery. Aerobic/anaerobic shunt culture with routine cell counts & chemistries.",
+          "consults": ["Neurosurgery", "ID"]
+        }
+      ]
+    },
+    "eyes": {
+      "name": "Eyes",
+      "diseases": [
+        {
+          "disease_id": "conjunctivitis_bacterial",
+          "name": "Bacterial Conjunctivitis",
+          "organisms": ["S. pneumoniae", "H. influenzae"],
+          "icd10_codes": ["H10.011", "H10.012", "H10.013", "H10.021", "H10.022", "H10.023"],
+          "icd10_patterns": ["H10.0"],
+          "first_line": [
+            {"agent": "polymyxin_trimethoprim", "route": "ophthalmic", "frequency": "q3h"}
+          ],
+          "alternatives": [
+            {"agent": "polymyxin_bacitracin_neomycin", "route": "ophthalmic", "frequency": "q3h"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "erythromycin", "route": "ophthalmic"}
+          ],
+          "notes": "Do not treat any conjunctivitis with topical steroids.",
+          "consults": []
+        },
+        {
+          "disease_id": "conjunctivitis_hsv",
+          "name": "HSV Conjunctivitis",
+          "organisms": ["HSV types 1-2"],
+          "icd10_codes": ["B00.52", "B00.53"],
+          "icd10_patterns": ["B00.5"],
+          "first_line": [
+            {"agent": "trifluridine", "route": "ophthalmic", "frequency": "q2-3h while awake", "duration_days": "7-14"}
+          ],
+          "alternatives": [
+            {"agent": "vidarabine", "route": "ophthalmic"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Can be sight-threatening. Refer to ophthalmologist immediately. 30-50% recurrence in 2 years.",
+          "consults": ["Ophthalmology"]
+        },
+        {
+          "disease_id": "orbital_cellulitis",
+          "name": "Orbital Cellulitis",
+          "organisms": ["S. pneumoniae", "GAS", "H. influenzae", "M. catarrhalis", "S. aureus", "anaerobes"],
+          "icd10_codes": ["H05.011", "H05.012", "H05.013", "H05.019"],
+          "icd10_patterns": ["H05.01"],
+          "first_line": [
+            {"agent": "ampicillin_sulbactam", "route": "IV", "duration_days": "10-21"}
+          ],
+          "alternatives": [
+            {"agent": "vancomycin", "route": "IV", "indication": "CNS involvement suspected", "add_to_first_line": true},
+            {"agent": "ceftriaxone", "route": "IV", "indication": "CNS involvement suspected", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Complication of sinusitis. Proptosis, limited EOM, chemosis, eyelid edema, pain. Surgical drainage may be needed.",
+          "consults": ["Ophthalmology", "ENT"]
+        },
+        {
+          "disease_id": "preseptal_cellulitis",
+          "name": "Preseptal Cellulitis",
+          "organisms": ["S. pneumoniae", "S. aureus", "anaerobes"],
+          "icd10_codes": ["H05.021", "H05.022", "H05.023", "H05.029"],
+          "icd10_patterns": ["H05.02"],
+          "first_line": [
+            {"agent": "nafcillin", "route": "IV", "indication": "skin infection", "duration_days": "7-10"},
+            {"agent": "cefazolin", "route": "IV", "indication": "skin infection", "duration_days": "7-10"}
+          ],
+          "alternatives": [
+            {"agent": "ceftriaxone", "route": "IV", "indication": "sinusitis extension"},
+            {"agent": "ampicillin_sulbactam", "route": "IV", "indication": "sinusitis extension"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Infection without penetrating orbital septum. Periorbital swelling without proptosis or EOM restriction.",
+          "consults": []
+        }
+      ]
+    },
+    "hent": {
+      "name": "Head, Ears, Nose, Throat",
+      "diseases": [
+        {
+          "disease_id": "acute_mastoiditis",
+          "name": "Acute Mastoiditis",
+          "organisms": ["S. pneumoniae", "GAS", "S. aureus", "H. influenzae", "P. aeruginosa"],
+          "icd10_codes": ["H70.001", "H70.002", "H70.003", "H70.009"],
+          "icd10_patterns": ["H70.0"],
+          "first_line": [
+            {"agent": "ampicillin_sulbactam", "route": "IV", "duration_days": "21-28"}
+          ],
+          "alternatives": [
+            {"agent": "ceftriaxone", "route": "IV", "indication": "intracranial complication or recent antibiotics"},
+            {"agent": "vancomycin", "route": "IV", "indication": "intracranial complication", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Consider meningitis. Surgical debridement as indicated. Transition to PO once clinically improved.",
+          "consults": ["ENT"]
+        },
+        {
+          "disease_id": "acute_sinusitis",
+          "name": "Acute Bacterial Sinusitis",
+          "organisms": ["S. pneumoniae", "H. influenzae", "M. catarrhalis", "anaerobes", "S. aureus"],
+          "icd10_codes": ["J01.00", "J01.01", "J01.10", "J01.11", "J01.20", "J01.21", "J01.30", "J01.31", "J01.40", "J01.41", "J01.80", "J01.81", "J01.90", "J01.91"],
+          "icd10_patterns": ["J01"],
+          "first_line": [
+            {"agent": "amoxicillin_clavulanate", "route": "PO", "formulation": "600/42.9/5mL or 1000/62.5 XR", "dose": "45 mg/kg BID", "duration_days": "10-14"}
+          ],
+          "alternatives": [
+            {"agent": "cefdinir", "route": "PO"},
+            {"agent": "cefuroxime", "route": "PO"},
+            {"agent": "levofloxacin", "route": "PO", "indication": "PCN allergy or treatment failure"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "levofloxacin", "route": "PO"}
+          ],
+          "notes": "Defined as persistent (>=10d), severe, or worsening symptoms. Augmentin formulations: 600mg/5mL or 1000/62.5 XR tablets.",
+          "consults": []
+        },
+        {
+          "disease_id": "bacterial_tracheitis",
+          "name": "Bacterial Tracheitis",
+          "organisms": ["S. aureus (MRSA)", "GAS", "H. influenzae", "S. pneumoniae"],
+          "icd10_codes": ["J04.10", "J04.11"],
+          "icd10_patterns": ["J04.1"],
+          "first_line": [
+            {"agent": "vancomycin", "route": "IV"}
+          ],
+          "alternatives": [
+            {"agent": "clindamycin", "route": "IV"},
+            {"agent": "ceftriaxone", "route": "IV", "add_to_first_line": true},
+            {"agent": "cefuroxime", "route": "IV", "dose": "34-50 mg/kg q8h"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Tailor therapy to cultures. Consider alternate causes of symptoms.",
+          "consults": ["ENT"]
+        },
+        {
+          "disease_id": "epiglottitis",
+          "name": "Epiglottitis",
+          "organisms": ["S. pneumoniae", "S. aureus (MRSA)", "H. influenzae", "GAS"],
+          "icd10_codes": ["J05.1"],
+          "icd10_patterns": ["J05.1"],
+          "first_line": [
+            {"agent": "ampicillin_sulbactam", "route": "IV"},
+            {"agent": "vancomycin", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [
+            {"agent": "ceftriaxone", "route": "IV", "indication": "PCN allergy"},
+            {"agent": "clindamycin", "route": "IV", "indication": "PCN allergy"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "vancomycin", "route": "IV"},
+            {"agent": "ceftriaxone", "route": "IV"}
+          ],
+          "notes": "Provide airway support in OR/ICU setting with airway specialist.",
+          "consults": ["ENT", "Anesthesia"]
+        },
+        {
+          "disease_id": "otitis_media",
+          "name": "Acute Otitis Media",
+          "organisms": ["S. pneumoniae", "H. influenzae", "M. catarrhalis"],
+          "icd10_codes": ["H66.001", "H66.002", "H66.003", "H66.004", "H66.005", "H66.006", "H66.007", "H66.009"],
+          "icd10_patterns": ["H66.0"],
+          "first_line": [
+            {"agent": "amoxicillin", "route": "PO", "dose": "90 mg/kg/day", "duration_days": 10, "age_restriction": "<2 years"},
+            {"agent": "amoxicillin", "route": "PO", "dose": "90 mg/kg/day", "duration_days": "5-10", "age_restriction": ">=2 years"}
+          ],
+          "alternatives": [
+            {"agent": "cefdinir", "route": "PO"},
+            {"agent": "amoxicillin_clavulanate", "route": "PO", "indication": "treatment failure"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "cefdinir", "route": "PO"},
+            {"agent": "azithromycin", "route": "PO"}
+          ],
+          "notes": "If >2 years, afebrile, no otalgia, borderline exam: consider symptomatic rx or safety net antibiotic prescription. 33% no bacterial origin.",
+          "consults": []
+        },
+        {
+          "disease_id": "pharyngitis",
+          "name": "Streptococcal Pharyngitis",
+          "organisms": ["Group A Streptococcus", "Group C Streptococcus", "Group G Streptococcus"],
+          "icd10_codes": ["J02.0"],
+          "icd10_patterns": ["J02.0"],
+          "first_line": [
+            {"agent": "penicillin_vk", "route": "PO", "duration_days": 10},
+            {"agent": "amoxicillin", "route": "PO", "duration_days": 10}
+          ],
+          "alternatives": [
+            {"agent": "penicillin_g_benzathine", "route": "IM", "single_dose": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "cephalexin", "route": "PO", "duration_days": 10, "indication": "non-anaphylactic PCN allergy"},
+            {"agent": "azithromycin", "route": "PO", "indication": "anaphylactic PCN allergy"}
+          ],
+          "notes": "Culture before treating. GAS less common in children <3 years. Treatment decreases rheumatic fever 2/3.",
+          "consults": []
+        },
+        {
+          "disease_id": "retropharyngeal_abscess",
+          "name": "Retropharyngeal Abscess",
+          "organisms": ["Strep spp", "anaerobes", "Eikenella", "MSSA", "MRSA"],
+          "icd10_codes": ["J39.0"],
+          "icd10_patterns": ["J39.0"],
+          "first_line": [
+            {"agent": "ampicillin_sulbactam", "route": "IV", "duration_days": 14}
+          ],
+          "alternatives": [
+            {"agent": "ceftriaxone", "route": "IV"},
+            {"agent": "clindamycin", "route": "IV", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Usually polymicrobial. Airway films in extension show increased prevertebral space. Consider CT to r/o extension. Transition to amoxicillin/clavulanate PO.",
+          "consults": ["ENT"]
+        }
+      ]
+    },
+    "rti": {
+      "name": "Respiratory Tract Infections",
+      "diseases": [
+        {
+          "disease_id": "aspiration_pneumonia",
+          "name": "Aspiration Pneumonia",
+          "organisms": ["anaerobes", "gram-negative", "typical CAP organisms"],
+          "icd10_codes": ["J69.0", "J69.1", "J69.8"],
+          "icd10_patterns": ["J69"],
+          "first_line": [
+            {"agent": "amoxicillin_clavulanate", "route": "PO", "formulation": "600/42.9/5mL or 1000/62.5 XR"}
+          ],
+          "alternatives": [
+            {"agent": "ampicillin_sulbactam", "route": "IV"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "High risk for aspiration: abnormal tone, impaired swallowing, poor cough, gastrostomy tube.",
+          "consults": []
+        },
+        {
+          "disease_id": "cap_infant_preschool",
+          "name": "CAP - Infants/Preschool",
+          "organisms": ["RSV", "adenovirus", "rhinovirus", "parainfluenza", "S. pneumoniae", "H. influenzae"],
+          "icd10_codes": ["J13", "J14", "J15.0", "J15.1", "J15.9", "J18.0", "J18.1", "J18.9"],
+          "icd10_patterns": ["J13", "J14", "J15", "J18"],
+          "first_line": [
+            {"agent": "amoxicillin", "route": "PO", "dose": "90 mg/kg/day", "duration_days": 5}
+          ],
+          "alternatives": [
+            {"agent": "ampicillin", "route": "IV", "indication": "hospitalized"}
+          ],
+          "age_modifications": [
+            {"age_group": ">3 months", "agents": ["amoxicillin"], "route": "PO"}
+          ],
+          "allergy_alternatives": [
+            {"agent": "cefdinir", "route": "PO"},
+            {"agent": "clindamycin", "route": "PO"},
+            {"agent": "levofloxacin", "route": "PO"}
+          ],
+          "notes": "Viral pathogens responsible for majority of disease.",
+          "consults": []
+        },
+        {
+          "disease_id": "cap_school_age",
+          "name": "CAP - School Aged",
+          "organisms": ["S. pneumoniae", "Mycoplasma pneumoniae", "C. pneumoniae"],
+          "icd10_codes": ["J13", "J14", "J15.0", "J15.1", "J15.7", "J15.9", "J18.0", "J18.1", "J18.9"],
+          "icd10_patterns": ["J13", "J14", "J15", "J18"],
+          "first_line": [
+            {"agent": "amoxicillin", "route": "PO", "dose": "90 mg/kg/day", "duration_days": 5}
+          ],
+          "alternatives": [
+            {"agent": "azithromycin", "route": "PO", "indication": "atypical suspected", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "cefdinir", "route": "PO"},
+            {"agent": "levofloxacin", "route": "PO"}
+          ],
+          "notes": "Consider atypical bacteria: Mycoplasma, C. pneumoniae. May add azithromycin.",
+          "consults": []
+        },
+        {
+          "disease_id": "cap_unimmunized",
+          "name": "CAP - Unimmunized",
+          "organisms": ["H. influenzae", "S. pneumoniae"],
+          "icd10_codes": ["J13", "J14", "J15.0", "J15.1", "J15.9", "J18.0", "J18.1", "J18.9"],
+          "icd10_patterns": ["J13", "J14", "J15", "J18"],
+          "first_line": [
+            {"agent": "amoxicillin_clavulanate", "route": "PO", "indication": "outpatient"},
+            {"agent": "ampicillin_sulbactam", "route": "IV", "indication": "inpatient"}
+          ],
+          "alternatives": [
+            {"agent": "ceftriaxone", "route": "IV", "indication": "inpatient"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "For unimmunized patients at higher risk for H. influenzae.",
+          "consults": []
+        },
+        {
+          "disease_id": "pertussis",
+          "name": "Pertussis (Whooping Cough)",
+          "organisms": ["Bordetella pertussis"],
+          "icd10_codes": ["A37.00", "A37.01", "A37.80", "A37.81", "A37.90", "A37.91"],
+          "icd10_patterns": ["A37"],
+          "first_line": [
+            {"agent": "azithromycin", "route": "PO", "dose": "10 mg/kg/day x 5 days", "age_restriction": "<6 months"},
+            {"agent": "azithromycin", "route": "PO", "dose": "10 mg/kg x1 then 5 mg/kg x 4 days", "age_restriction": ">=6 months"}
+          ],
+          "alternatives": [
+            {"agent": "erythromycin", "route": "PO"},
+            {"agent": "TMP_SMX", "route": "PO", "indication": "macrolide allergy"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "TMP_SMX", "route": "PO"}
+          ],
+          "notes": "Azithromycin preferred for patients <1 month. Treat household and daycare contacts. Avoid antitussives.",
+          "consults": []
+        }
+      ]
+    },
+    "gi": {
+      "name": "Gastrointestinal",
+      "diseases": [
+        {
+          "disease_id": "appendicitis",
+          "name": "Appendicitis / Bowel Perforation",
+          "organisms": ["Enteric GNR", "Bacteroides spp", "Enterococcus spp"],
+          "icd10_codes": ["K35.2", "K35.3", "K35.80", "K35.89", "K35.890", "K35.891"],
+          "icd10_patterns": ["K35"],
+          "first_line": [
+            {"agent": "ceftriaxone", "route": "IV"},
+            {"agent": "metronidazole", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [
+            {"agent": "piperacillin_tazobactam", "route": "IV"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "ciprofloxacin", "route": "IV"},
+            {"agent": "metronidazole", "route": "IV", "add_to_first_line": true}
+          ],
+          "notes": "Antibiotic decision in conjunction with Surgery.",
+          "consults": ["Surgery"]
+        },
+        {
+          "disease_id": "cdiff",
+          "name": "Clostridioides difficile Infection",
+          "organisms": ["C. difficile"],
+          "icd10_codes": ["A04.71", "A04.72"],
+          "icd10_patterns": ["A04.7"],
+          "first_line": [
+            {"agent": "vancomycin", "route": "PO", "dose": "10 mg/kg QID", "max_dose": "125 mg", "duration_days": 10, "indication": "non-severe"},
+            {"agent": "vancomycin", "route": "PO", "dose": "10 mg/kg QID", "max_dose": "500 mg", "duration_days": 10, "indication": "severe"}
+          ],
+          "alternatives": [
+            {"agent": "metronidazole", "route": "PO", "dose": "7.5 mg/kg TID-QID", "max_dose": "500 mg", "duration_days": 10, "indication": "non-severe"},
+            {"agent": "metronidazole", "route": "IV", "dose": "10 mg/kg TID", "max_dose": "500 mg", "indication": "severe, adjunct", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "See C. diff testing algorithm. Do NOT perform test of cure. For fulminant: contact ID and/or GI. Metronidazole NOT recommended for chronic use due to neurotoxicity risk.",
+          "consults": ["ID", "GI"]
+        },
+        {
+          "disease_id": "salmonella",
+          "name": "Salmonella Enteritis",
+          "organisms": ["Salmonella enterica"],
+          "icd10_codes": ["A02.0", "A02.1", "A02.20", "A02.21", "A02.22", "A02.23", "A02.24", "A02.25", "A02.29"],
+          "icd10_patterns": ["A02"],
+          "first_line": [
+            {"agent": "none", "indication": "uncomplicated enteritis - associated with prolonged carriage"}
+          ],
+          "alternatives": [
+            {"agent": "ceftriaxone", "route": "IV", "indication": "bacteremia, prolonged severe symptoms, immunocompromised"},
+            {"agent": "azithromycin", "route": "PO", "indication": "prolonged severe symptoms"}
+          ],
+          "age_modifications": [
+            {"age_group": "<3 months", "agents": ["ceftriaxone"], "route": "IV", "notes": "treat due to bacteremia risk"}
+          ],
+          "allergy_alternatives": [],
+          "notes": "No antibiotic therapy for uncomplicated enteritis - associated with prolonged carriage. Can be complicated by bacteremia, splenic abscess, osteomyelitis.",
+          "consults": []
+        },
+        {
+          "disease_id": "shigella",
+          "name": "Shigella",
+          "organisms": ["Shigella spp"],
+          "icd10_codes": ["A03.0", "A03.1", "A03.2", "A03.3", "A03.8", "A03.9"],
+          "icd10_patterns": ["A03"],
+          "first_line": [
+            {"agent": "azithromycin", "route": "PO", "duration_days": 5}
+          ],
+          "alternatives": [
+            {"agent": "ciprofloxacin", "route": "PO", "duration_days": 3},
+            {"agent": "ceftriaxone", "route": "IV", "duration_days": 5}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Treat hospitalized children, daycare attendees, food service workers, immunosuppressed. Illness usually self-limited (48-72 hours).",
+          "consults": []
+        },
+        {
+          "disease_id": "sbp",
+          "name": "Spontaneous Bacterial Peritonitis",
+          "organisms": ["S. pneumoniae", "S. aureus", "GNR"],
+          "icd10_codes": ["K65.2"],
+          "icd10_patterns": ["K65.2"],
+          "first_line": [
+            {"agent": "ceftriaxone", "route": "IV"}
+          ],
+          "alternatives": [],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Culture fluid before antibiotics if safe. Definitive therapy based on susceptibilities.",
+          "consults": ["GI"]
+        },
+        {
+          "disease_id": "peritonitis_pd",
+          "name": "Peritonitis with Peritoneal Dialysis",
+          "organisms": ["Staph spp", "Gram negative", "Yeast"],
+          "icd10_codes": ["K65.0", "K65.9"],
+          "icd10_patterns": ["K65"],
+          "first_line": [
+            {"agent": "cefepime", "route": "IV"},
+            {"agent": "vancomycin", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [
+            {"agent": "fluconazole", "route": "IV", "indication": "Candida prophylaxis needed"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Antibiotics are added to dialysate in concentrations approximating serum. Intra-dialytic antibiotics available in orderset.",
+          "consults": ["Nephrology"]
+        }
+      ]
+    },
+    "gu": {
+      "name": "Genitourinary",
+      "diseases": [
+        {
+          "disease_id": "cystitis",
+          "name": "Simple Cystitis",
+          "organisms": ["E. coli", "Enteric GNR", "S. saprophyticus", "GBS"],
+          "icd10_codes": ["N30.00", "N30.01", "N30.10", "N30.11", "N30.90", "N30.91"],
+          "icd10_patterns": ["N30"],
+          "first_line": [
+            {"agent": "cephalexin", "route": "PO", "duration_days": 5},
+            {"agent": "nitrofurantoin", "route": "PO", "duration_days": 5},
+            {"agent": "TMP_SMX", "route": "PO", "duration_days": 5}
+          ],
+          "alternatives": [],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Simple cystitis = afebrile lower urinary tract infection.",
+          "consults": []
+        },
+        {
+          "disease_id": "pyelonephritis",
+          "name": "Pyelonephritis",
+          "organisms": ["E. coli", "Enteric GNR", "S. saprophyticus", "GBS"],
+          "icd10_codes": ["N10", "N11.0", "N11.1", "N11.8", "N11.9", "N12"],
+          "icd10_patterns": ["N10", "N11", "N12"],
+          "first_line": [
+            {"agent": "cefixime", "route": "PO", "indication": "outpatient"},
+            {"agent": "ceftriaxone", "route": "IV", "indication": "inpatient, first dose"},
+            {"agent": "cephalexin", "route": "PO", "indication": "step-down after IV", "duration_days": "7-14 total"}
+          ],
+          "alternatives": [],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "ciprofloxacin", "route": "PO"},
+            {"agent": "gentamicin", "route": "IV"}
+          ],
+          "notes": "Consider renal ultrasound if recurrent. If abnormal, consider VCUG. If severe cephalosporin allergy, may need cipro.",
+          "consults": []
+        },
+        {
+          "disease_id": "febrile_uti",
+          "name": "Febrile UTI",
+          "organisms": ["E. coli", "Enteric GNR", "GBS"],
+          "icd10_codes": ["N39.0"],
+          "icd10_patterns": ["N39.0"],
+          "first_line": [
+            {"agent": "ceftriaxone", "route": "IV"},
+            {"agent": "cefixime", "route": "PO", "indication": "step-down"}
+          ],
+          "alternatives": [],
+          "age_modifications": [
+            {"age_group": "neonates", "see_reference": "neonatal_section"}
+          ],
+          "allergy_alternatives": [],
+          "notes": "See Infectious Disease - Neonatal Infections for neonates.",
+          "consults": []
+        }
+      ]
+    },
+    "sst": {
+      "name": "Skin and Soft Tissue",
+      "diseases": [
+        {
+          "disease_id": "cellulitis_nonsuppurative",
+          "name": "Cellulitis - Non-suppurative",
+          "organisms": ["GAS", "S. aureus"],
+          "icd10_codes": ["L03.011", "L03.012", "L03.019", "L03.111", "L03.112", "L03.113", "L03.114", "L03.115", "L03.116", "L03.119", "L03.90"],
+          "icd10_patterns": ["L03"],
+          "first_line": [
+            {"agent": "cephalexin", "route": "PO", "duration_days": "5-7"},
+            {"agent": "cefazolin", "route": "IV", "indication": "hospitalized"}
+          ],
+          "alternatives": [
+            {"agent": "clindamycin", "route": "PO"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "clindamycin", "route": "PO"}
+          ],
+          "notes": "Non-suppurative = intact skin, no purulent drainage. Usually caused by beta-hemolytic streptococci.",
+          "consults": []
+        },
+        {
+          "disease_id": "cellulitis_suppurative",
+          "name": "Cellulitis - Suppurative/MRSA suspected",
+          "organisms": ["S. aureus (MRSA)", "GAS"],
+          "icd10_codes": ["L03.011", "L03.012", "L03.019", "L03.111", "L03.112", "L03.113", "L03.114", "L03.115", "L03.116", "L03.119", "L03.90"],
+          "icd10_patterns": ["L03"],
+          "first_line": [
+            {"agent": "clindamycin", "route": "PO", "duration_days": "5-7"},
+            {"agent": "TMP_SMX", "route": "PO", "duration_days": "5-7"}
+          ],
+          "alternatives": [
+            {"agent": "doxycycline", "route": "PO", "age_restriction": ">=8 years"},
+            {"agent": "vancomycin", "route": "IV", "indication": "hospitalized"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Suppurative = purulent drainage present. MRSA coverage needed.",
+          "consults": []
+        },
+        {
+          "disease_id": "skin_abscess",
+          "name": "Skin Abscess, Furuncle, Carbuncle",
+          "organisms": ["S. aureus (MSSA/MRSA)", "GAS"],
+          "icd10_codes": ["L02.01", "L02.11", "L02.211", "L02.212", "L02.31", "L02.411", "L02.412", "L02.511", "L02.512", "L02.611", "L02.612", "L02.811", "L02.91"],
+          "icd10_patterns": ["L02"],
+          "first_line": [
+            {"agent": "incision_drainage", "route": "procedure", "notes": "Primary treatment"},
+            {"agent": "cephalexin", "route": "PO", "duration_days": "5-7", "indication": "MSSA/GAS"},
+            {"agent": "clindamycin", "route": "PO", "duration_days": "5-7", "indication": "MRSA"}
+          ],
+          "alternatives": [
+            {"agent": "TMP_SMX", "route": "PO", "indication": "MRSA"},
+            {"agent": "doxycycline", "route": "PO", "indication": "MRSA", "age_restriction": ">=8 years"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "I&D is primary treatment. Send culture. Small furuncles: warm compresses. Larger: I&D + antibiotics. Simple abscess post-I&D may not need antibiotics per guidelines.",
+          "consults": []
+        },
+        {
+          "disease_id": "lymphadenitis",
+          "name": "Lymphadenitis",
+          "organisms": ["GAS", "S. aureus"],
+          "icd10_codes": ["L04.0", "L04.1", "L04.2", "L04.3", "L04.8", "L04.9"],
+          "icd10_patterns": ["L04"],
+          "first_line": [
+            {"agent": "clindamycin", "route": "PO", "duration_days": "5-7", "indication": "MRSA"},
+            {"agent": "cephalexin", "route": "PO", "duration_days": "5-7", "indication": "MSSA"}
+          ],
+          "alternatives": [
+            {"agent": "vancomycin", "route": "IV", "indication": "hospitalized MRSA"},
+            {"agent": "TMP_SMX", "route": "PO", "indication": "MRSA"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Common: GAS, S. aureus. Preschool: consider mycobacterial etiologies. Rabbit exposure: consider tularemia.",
+          "consults": []
+        },
+        {
+          "disease_id": "cat_scratch",
+          "name": "Cat Scratch Disease (Bartonella)",
+          "organisms": ["Bartonella henselae"],
+          "icd10_codes": ["A28.1"],
+          "icd10_patterns": ["A28.1"],
+          "first_line": [
+            {"agent": "azithromycin", "route": "PO", "duration_days": 5}
+          ],
+          "alternatives": [
+            {"agent": "TMP_SMX", "route": "PO"},
+            {"agent": "ciprofloxacin", "route": "PO"},
+            {"agent": "doxycycline", "route": "PO"},
+            {"agent": "rifampin", "route": "PO"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Common in axillary/epitrochlear (46%), neck (26%), inguinal (17%). Send Bartonella serologies.",
+          "consults": []
+        },
+        {
+          "disease_id": "necrotizing_fasciitis",
+          "name": "Necrotizing Fasciitis",
+          "organisms": ["S. aureus", "GAS", "Strep spp", "Clostridioides spp", "Klebsiella spp", "E. coli", "anaerobes"],
+          "icd10_codes": ["M72.6"],
+          "icd10_patterns": ["M72.6"],
+          "first_line": [
+            {"agent": "vancomycin", "route": "IV"},
+            {"agent": "piperacillin_tazobactam", "route": "IV", "add_to_first_line": true},
+            {"agent": "clindamycin", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "I&D, debridement, compartment release + antibiotics are mainstays. Suspect with acute swelling, erythema, tenderness, heat. Pain out of proportion to exam.",
+          "consults": ["Surgery", "ID"]
+        },
+        {
+          "disease_id": "impetigo",
+          "name": "Impetigo / Infected Eczema",
+          "organisms": ["beta-hemolytic streptococci", "Staph spp"],
+          "icd10_codes": ["L01.00", "L01.01", "L01.02", "L01.03", "L01.09"],
+          "icd10_patterns": ["L01"],
+          "first_line": [
+            {"agent": "mupirocin", "route": "topical", "duration_days": 5, "indication": "localized lesions"},
+            {"agent": "cephalexin", "route": "PO", "indication": "extensive lesions"}
+          ],
+          "alternatives": [
+            {"agent": "clindamycin", "route": "PO"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Bullous impetigo: most likely toxin-producing S. aureus. Nonbullous: Staphylococcus spp and/or GAS.",
+          "consults": []
+        }
+      ]
+    },
+    "ortho": {
+      "name": "Orthopedic",
+      "diseases": [
+        {
+          "disease_id": "osteomyelitis",
+          "name": "Osteomyelitis (Acute Hematogenous)",
+          "organisms": ["S. aureus", "GAS", "Kingella kingae", "Salmonella"],
+          "icd10_codes": ["M86.00", "M86.10", "M86.20", "M86.8X0", "M86.9"],
+          "icd10_patterns": ["M86"],
+          "first_line": [
+            {"agent": "cefazolin", "route": "IV", "indication": "MSSA"},
+            {"agent": "cephalexin", "route": "PO", "indication": "step-down", "dose": "50 mg/kg/dose Q8H"}
+          ],
+          "alternatives": [
+            {"agent": "vancomycin", "route": "IV", "indication": "MRSA or severe/toxic"},
+            {"agent": "clindamycin", "route": "PO", "indication": "MRSA step-down"}
+          ],
+          "age_modifications": [
+            {"age_group": "<5 years", "notes": "Consider Kingella kingae"},
+            {"age_group": "sickle cell", "notes": "Consider Salmonella, add gram-negative coverage"}
+          ],
+          "allergy_alternatives": [
+            {"agent": "clindamycin", "route": "IV"}
+          ],
+          "notes": "See CCHMC Acute Hematogenous Osteomyelitis Care Algorithm. Typically admitted to Hospital Medicine. IV to PO transition based on clinical improvement and inflammatory markers.",
+          "consults": ["Orthopedics", "ID"]
+        },
+        {
+          "disease_id": "septic_arthritis_young",
+          "name": "Septic Arthritis (<5 years)",
+          "organisms": ["S. aureus", "GAS", "Kingella kingae", "S. pneumoniae"],
+          "icd10_codes": ["M00.00", "M00.011", "M00.012", "M00.019", "M00.9"],
+          "icd10_patterns": ["M00"],
+          "first_line": [
+            {"agent": "cefazolin", "route": "IV"}
+          ],
+          "alternatives": [
+            {"agent": "ceftriaxone", "route": "IV", "indication": "severe, toxic, high-risk joint (shoulder/hip)"},
+            {"agent": "vancomycin", "route": "IV", "indication": "severe, toxic, high-risk joint", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "IV to PO switch after 72H of IV with clinical improvement, CRP decreased by 1/3 from peak.",
+          "consults": ["Orthopedics"]
+        },
+        {
+          "disease_id": "septic_arthritis_older",
+          "name": "Septic Arthritis (>=5 years)",
+          "organisms": ["S. aureus", "GAS"],
+          "icd10_codes": ["M00.00", "M00.011", "M00.012", "M00.019", "M00.9"],
+          "icd10_patterns": ["M00"],
+          "first_line": [
+            {"agent": "cefazolin", "route": "IV"}
+          ],
+          "alternatives": [
+            {"agent": "vancomycin", "route": "IV", "indication": "severe, toxic, or bacteremia", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "If clinically stable, consider oral step-down after 72h IV with improvement.",
+          "consults": ["Orthopedics"]
+        },
+        {
+          "disease_id": "septic_arthritis_puncture",
+          "name": "Septic Arthritis (Puncture Wound)",
+          "organisms": ["P. aeruginosa", "S. aureus", "GNR", "anaerobes"],
+          "icd10_codes": ["M00.00", "M00.011", "M00.012", "M00.019", "M00.9"],
+          "icd10_patterns": ["M00"],
+          "first_line": [
+            {"agent": "cefepime", "route": "IV"}
+          ],
+          "alternatives": [
+            {"agent": "piperacillin_tazobactam", "route": "IV"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Pseudomonas coverage needed for puncture wound-associated septic arthritis.",
+          "consults": ["Orthopedics"]
+        }
+      ]
+    },
+    "bites": {
+      "name": "Animal and Human Bites",
+      "diseases": [
+        {
+          "disease_id": "bite_cat",
+          "name": "Cat Bite",
+          "organisms": ["Pasteurella spp", "Actinomyces spp", "Propionibacterium spp", "Bacteroides spp", "Fusobacterium spp", "Staph spp", "Strep spp"],
+          "icd10_codes": ["W55.01XA", "W55.03XA"],
+          "icd10_patterns": ["W55.0"],
+          "first_line": [
+            {"agent": "amoxicillin_clavulanate", "route": "PO", "formulation": "400/57/5mL or 875/125 tablets"}
+          ],
+          "alternatives": [
+            {"agent": "ampicillin_sulbactam", "route": "IV"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "TMP_SMX", "route": "PO"},
+            {"agent": "metronidazole", "route": "PO", "add_to_first_line": true}
+          ],
+          "notes": "Indications for antibiotics: moderate/severe, crush injury, puncture wound, face/hand/genital, immunocompromised, near bone/joint. Prophylaxis 3-5 days, treatment 5-10 days.",
+          "consults": []
+        },
+        {
+          "disease_id": "bite_dog",
+          "name": "Dog Bite",
+          "organisms": ["Staphylococcus spp", "Streptococcus spp", "Eikenella spp", "Pasteurella spp", "Bacteroides spp", "Moraxella spp"],
+          "icd10_codes": ["W54.0XXA", "W54.1XXA"],
+          "icd10_patterns": ["W54"],
+          "first_line": [
+            {"agent": "amoxicillin_clavulanate", "route": "PO", "formulation": "400/57/5mL or 875/125 tablets"}
+          ],
+          "alternatives": [
+            {"agent": "ampicillin_sulbactam", "route": "IV"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "TMP_SMX", "route": "PO"},
+            {"agent": "metronidazole", "route": "PO", "add_to_first_line": true}
+          ],
+          "notes": "Low risk (no infection signs, immunocompetent): no prophylaxis. Assess tetanus status.",
+          "consults": []
+        },
+        {
+          "disease_id": "bite_human",
+          "name": "Human Bite",
+          "organisms": ["Streptococcus viridans group", "Streptococcus milleri group", "Staphylococcus spp", "Corynebacterium spp", "Eikenella corrodens", "anaerobes"],
+          "icd10_codes": ["W50.1XXA", "W50.3XXA"],
+          "icd10_patterns": ["W50"],
+          "first_line": [
+            {"agent": "amoxicillin_clavulanate", "route": "PO", "formulation": "400/57/5mL or 875/125 tablets"}
+          ],
+          "alternatives": [
+            {"agent": "ampicillin_sulbactam", "route": "IV"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [
+            {"agent": "TMP_SMX", "route": "PO"},
+            {"agent": "metronidazole", "route": "PO", "add_to_first_line": true}
+          ],
+          "notes": "Higher infection risk than animal bites. Consider HIV, hepatitis testing if concern. Assess tetanus status.",
+          "consults": []
+        }
+      ]
+    },
+    "neonatal": {
+      "name": "Neonatal Infections",
+      "diseases": [
+        {
+          "disease_id": "neonatal_sepsis",
+          "name": "Neonatal Sepsis",
+          "organisms": ["GBS", "E. coli", "Listeria monocytogenes", "S. aureus"],
+          "icd10_codes": ["P36.0", "P36.1", "P36.2", "P36.3", "P36.4", "P36.5", "P36.8", "P36.9"],
+          "icd10_patterns": ["P36"],
+          "first_line": [
+            {"agent": "ampicillin", "route": "IV"},
+            {"agent": "gentamicin", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [
+            {"agent": "cefotaxime", "route": "IV", "indication": "meningitis suspected, instead of gentamicin"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Early onset (<7 days): GBS, E. coli, Listeria. Late onset (>=7 days): add CONS, S. aureus. Consider HSV if risk factors.",
+          "consults": []
+        },
+        {
+          "disease_id": "neonatal_meningitis",
+          "name": "Neonatal Meningitis",
+          "organisms": ["GBS", "E. coli", "Listeria monocytogenes"],
+          "icd10_codes": ["G00.0", "G00.1", "G00.2", "G00.3", "G00.8", "G00.9", "P36.9"],
+          "icd10_patterns": ["G00", "P36"],
+          "first_line": [
+            {"agent": "ampicillin", "route": "IV", "dose": "meningitis dosing"},
+            {"agent": "cefotaxime", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [
+            {"agent": "gentamicin", "route": "IV", "indication": "if cefotaxime unavailable", "add_to_first_line": true}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Duration typically 14-21 days depending on organism. Consider HSV testing and acyclovir.",
+          "consults": ["ID"]
+        },
+        {
+          "disease_id": "neonatal_hsv",
+          "name": "Neonatal HSV",
+          "organisms": ["HSV-1", "HSV-2"],
+          "icd10_codes": ["P35.2"],
+          "icd10_patterns": ["P35.2"],
+          "first_line": [
+            {"agent": "acyclovir", "route": "IV", "dose": "20 mg/kg Q8H"}
+          ],
+          "alternatives": [],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Risk greatest <3 weeks. Greatest risk factor is primary maternal HSV at delivery. SEM: 14 days, CNS: 21 days, Disseminated: 21 days. All need suppressive therapy until 6 months after treatment.",
+          "duration_by_classification": {
+            "SEM": 14,
+            "CNS": 21,
+            "Disseminated": 21
+          },
+          "consults": ["ID", "Ophthalmology"]
+        },
+        {
+          "disease_id": "neonatal_nec",
+          "name": "Necrotizing Enterocolitis (NEC)",
+          "organisms": ["E. coli", "Klebsiella", "Enterobacter", "Pseudomonas", "anaerobes", "Clostridium"],
+          "icd10_codes": ["P77.1", "P77.2", "P77.3", "P77.9"],
+          "icd10_patterns": ["P77"],
+          "first_line": [
+            {"agent": "ampicillin", "route": "IV"},
+            {"agent": "gentamicin", "route": "IV", "add_to_first_line": true},
+            {"agent": "metronidazole", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [
+            {"agent": "piperacillin_tazobactam", "route": "IV"},
+            {"agent": "meropenem", "route": "IV", "indication": "severe or MDRO concern"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Duration depends on severity. Medical NEC typically 7-10 days. Surgical NEC: 10-14 days post-operative.",
+          "consults": ["Surgery", "ID"]
+        },
+        {
+          "disease_id": "neonatal_uti",
+          "name": "Neonatal UTI",
+          "organisms": ["E. coli", "Klebsiella", "Enterobacter", "GBS"],
+          "icd10_codes": ["N39.0", "P39.3"],
+          "icd10_patterns": ["N39.0", "P39.3"],
+          "first_line": [
+            {"agent": "ampicillin", "route": "IV"},
+            {"agent": "gentamicin", "route": "IV", "add_to_first_line": true}
+          ],
+          "alternatives": [
+            {"agent": "cefotaxime", "route": "IV"}
+          ],
+          "age_modifications": [],
+          "allergy_alternatives": [],
+          "notes": "Consider sepsis workup in febrile neonates with UTI. Duration typically 7-14 days.",
+          "consults": []
+        }
+      ]
+    }
+  },
+  "agent_normalization": {
+    "amoxicillin_clavulanate": ["augmentin", "amoxicillin/clavulanate", "amox/clav", "amox-clav"],
+    "ampicillin_sulbactam": ["unasyn", "ampicillin/sulbactam", "amp/sulb", "amp-sulb"],
+    "piperacillin_tazobactam": ["zosyn", "piperacillin/tazobactam", "pip/tazo", "pip-tazo"],
+    "TMP_SMX": ["bactrim", "septra", "trimethoprim/sulfamethoxazole", "trimethoprim-sulfamethoxazole", "tmp-smx", "tmp/smx", "cotrimoxazole"],
+    "ceftriaxone": ["rocephin"],
+    "cefepime": ["maxipime"],
+    "cefazolin": ["ancef", "kefzol"],
+    "cephalexin": ["keflex"],
+    "cefdinir": ["omnicef"],
+    "cefixime": ["suprax"],
+    "vancomycin": ["vancocin"],
+    "clindamycin": ["cleocin"],
+    "azithromycin": ["zithromax", "z-pak", "z-pack"],
+    "doxycycline": ["vibramycin", "doryx"],
+    "metronidazole": ["flagyl"],
+    "gentamicin": ["garamycin"],
+    "penicillin_vk": ["penicillin v", "pen vk", "veetids"],
+    "penicillin_g": ["penicillin g potassium", "penicillin g sodium"],
+    "penicillin_g_benzathine": ["bicillin", "bicillin la"],
+    "nafcillin": ["nallpen", "unipen"],
+    "ampicillin": ["principen"],
+    "amoxicillin": ["amoxil", "trimox"],
+    "meropenem": ["merrem"],
+    "acyclovir": ["zovirax"],
+    "fluconazole": ["diflucan"],
+    "micafungin": ["mycamine"],
+    "ciprofloxacin": ["cipro"],
+    "levofloxacin": ["levaquin"],
+    "rifampin": ["rifadin"],
+    "linezolid": ["zyvox"],
+    "nitrofurantoin": ["macrobid", "macrodantin"]
+  }
+}

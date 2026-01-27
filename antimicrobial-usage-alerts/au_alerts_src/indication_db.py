@@ -68,6 +68,10 @@ class IndicationDatabase:
             ("rxnorm_code", "ALTER TABLE indication_candidates ADD COLUMN rxnorm_code TEXT"),
             ("location", "ALTER TABLE indication_candidates ADD COLUMN location TEXT"),
             ("service", "ALTER TABLE indication_candidates ADD COLUMN service TEXT"),
+            ("cchmc_disease_matched", "ALTER TABLE indication_candidates ADD COLUMN cchmc_disease_matched TEXT"),
+            ("cchmc_agent_category", "ALTER TABLE indication_candidates ADD COLUMN cchmc_agent_category TEXT"),
+            ("cchmc_guideline_agents", "ALTER TABLE indication_candidates ADD COLUMN cchmc_guideline_agents TEXT"),
+            ("cchmc_recommendation", "ALTER TABLE indication_candidates ADD COLUMN cchmc_recommendation TEXT"),
         ]
 
         for col_name, sql in migrations:
@@ -127,6 +131,10 @@ class IndicationDatabase:
                         classification_source = ?,
                         status = ?,
                         alert_id = ?,
+                        cchmc_disease_matched = ?,
+                        cchmc_agent_category = ?,
+                        cchmc_guideline_agents = ?,
+                        cchmc_recommendation = ?,
                         updated_at = ?
                     WHERE medication_request_id = ?
                     """,
@@ -143,6 +151,10 @@ class IndicationDatabase:
                         candidate.classification_source,
                         candidate.status,
                         candidate.alert_id,
+                        candidate.cchmc_disease_matched,
+                        candidate.cchmc_agent_category,
+                        candidate.cchmc_guideline_agents,
+                        candidate.cchmc_recommendation,
                         datetime.now().isoformat(),
                         candidate.medication.fhir_id,
                     ),
@@ -159,8 +171,10 @@ class IndicationDatabase:
                         medication_name, rxnorm_code, order_date, location, service,
                         icd10_codes, icd10_classification, icd10_primary_indication,
                         llm_extracted_indication, llm_classification,
-                        final_classification, classification_source, status, alert_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        final_classification, classification_source, status, alert_id,
+                        cchmc_disease_matched, cchmc_agent_category,
+                        cchmc_guideline_agents, cchmc_recommendation
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         candidate_id,
@@ -183,6 +197,10 @@ class IndicationDatabase:
                         candidate.classification_source,
                         candidate.status,
                         candidate.alert_id,
+                        candidate.cchmc_disease_matched,
+                        candidate.cchmc_agent_category,
+                        candidate.cchmc_guideline_agents,
+                        candidate.cchmc_recommendation,
                     ),
                 )
                 conn.commit()
@@ -310,6 +328,13 @@ class IndicationDatabase:
         location = row["location"] if "location" in row.keys() else None
         service = row["service"] if "service" in row.keys() else None
 
+        # Get CCHMC fields safely (may not exist in older rows)
+        keys = row.keys()
+        cchmc_disease_matched = row["cchmc_disease_matched"] if "cchmc_disease_matched" in keys else None
+        cchmc_agent_category = row["cchmc_agent_category"] if "cchmc_agent_category" in keys else None
+        cchmc_guideline_agents = row["cchmc_guideline_agents"] if "cchmc_guideline_agents" in keys else None
+        cchmc_recommendation = row["cchmc_recommendation"] if "cchmc_recommendation" in keys else None
+
         return IndicationCandidate(
             id=row["id"],
             patient=patient,
@@ -325,6 +350,10 @@ class IndicationDatabase:
             alert_id=row["alert_id"],
             location=location,
             service=service,
+            cchmc_disease_matched=cchmc_disease_matched,
+            cchmc_agent_category=cchmc_agent_category,
+            cchmc_guideline_agents=cchmc_guideline_agents,
+            cchmc_recommendation=cchmc_recommendation,
         )
 
     def save_review(

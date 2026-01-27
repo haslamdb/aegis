@@ -777,6 +777,25 @@ FEBRILE_INFANT_BUNDLE = GuidelineBundle(
             data_source='notes',
             query_logic="documentation CONTAINS 'HSV' OR acyclovir_ordered"
         ),
+        BundleElement(
+            element_id='fi_hsv_acyclovir_if_risk',
+            name='Acyclovir if HSV risk factors (0-28 days)',
+            description='Start acyclovir if HSV risk factors present (maternal HSV, scalp electrode, vesicles, seizures, CSF pleocytosis, elevated LFTs)',
+            required=False,  # Conditional on risk factors
+            time_window_hours=1.0,
+            data_source='mar',
+            query_logic="IF hsv_risk_factors_present THEN acyclovir_administered"
+        ),
+        # Repeat inflammatory markers
+        BundleElement(
+            element_id='fi_repeat_ims_before_discharge',
+            name='Repeat IMs before discharge (22-60 days)',
+            description='If inflammatory markers initially abnormal, repeat before discharge',
+            required=False,  # Conditional on initial IMs abnormal
+            time_window_hours=None,  # Before discharge
+            data_source='lab_results',
+            query_logic="IF inflammatory_markers_initially_abnormal THEN repeat_IMs_obtained"
+        ),
         # Disposition elements
         BundleElement(
             element_id='fi_admit_8_21d',
@@ -816,6 +835,238 @@ FEBRILE_INFANT_BUNDLE = GuidelineBundle(
 )
 
 
+# -----------------------------------------------------------------------------
+# NEONATAL HSV BUNDLE (CCHMC 2024)
+# -----------------------------------------------------------------------------
+
+NEONATAL_HSV_BUNDLE = GuidelineBundle(
+    bundle_id='neonatal_hsv_2024',
+    name='Neonatal HSV Bundle',
+    description='Evidence-based bundle for evaluation and treatment of suspected HSV in neonates ≤21 days',
+    condition_icd10_codes=[
+        'P35.2',   # Congenital herpesviral [herpes simplex] infection
+        'B00.9',   # Herpesviral infection, unspecified
+        'B00.4',   # Herpesviral encephalitis
+        'B00.7',   # Disseminated herpesviral disease
+        'B00.1',   # Herpesviral vesicular dermatitis
+        'A60.0',   # Herpesviral infection of genitalia
+    ],
+    trigger_criteria={
+        'any_of': ['hsv_suspected', 'acyclovir_ordered', 'age_days <= 21', 'hsv_risk_factors']
+    },
+    elements=[
+        BundleElement(
+            element_id='hsv_csf_pcr',
+            name='CSF HSV PCR',
+            description='CSF HSV PCR obtained to evaluate for CNS involvement',
+            required=True,
+            time_window_hours=4.0,
+            data_source='lab_orders',
+            query_logic="order_code IN ('HSV_PCR_CSF', 'HSV_DNA_CSF') AND collected"
+        ),
+        BundleElement(
+            element_id='hsv_surface_cultures',
+            name='Surface cultures (SEM)',
+            description='HSV cultures from skin, eye, mouth (conjunctiva, oropharynx, nasopharynx, rectum)',
+            required=True,
+            time_window_hours=4.0,
+            data_source='lab_orders',
+            query_logic="order_code = 'HSV_CULTURE' AND site IN ('skin', 'eye', 'mouth', 'conjunctiva', 'oropharynx', 'rectum')"
+        ),
+        BundleElement(
+            element_id='hsv_blood_pcr',
+            name='Blood HSV PCR',
+            description='Blood HSV PCR to evaluate for disseminated disease',
+            required=True,
+            time_window_hours=4.0,
+            data_source='lab_orders',
+            query_logic="order_code IN ('HSV_PCR_BLOOD', 'HSV_DNA_BLOOD') AND collected"
+        ),
+        BundleElement(
+            element_id='hsv_lfts',
+            name='LFTs obtained',
+            description='ALT and AST obtained to evaluate for hepatic involvement (disseminated disease)',
+            required=True,
+            time_window_hours=4.0,
+            data_source='lab_results',
+            query_logic="test_code IN ('ALT', 'AST') AND result_time <= trigger_time + 4h"
+        ),
+        BundleElement(
+            element_id='hsv_acyclovir_started',
+            name='Acyclovir started',
+            description='IV acyclovir initiated within 1 hour of HSV suspicion',
+            required=True,
+            time_window_hours=1.0,
+            data_source='mar',
+            query_logic="medication = 'acyclovir' AND route = 'IV' AND admin_time <= trigger_time + 1h"
+        ),
+        BundleElement(
+            element_id='hsv_acyclovir_dose',
+            name='Acyclovir 60 mg/kg/day Q8H',
+            description='Acyclovir dosed at 20 mg/kg IV Q8H (60 mg/kg/day total)',
+            required=True,
+            time_window_hours=24.0,
+            data_source='medication_orders',
+            query_logic="medication = 'acyclovir' AND dose_mg_kg = 20 AND frequency = 'Q8H'"
+        ),
+        BundleElement(
+            element_id='hsv_id_consult',
+            name='ID consult',
+            description='Infectious Disease consult ordered for HSV management',
+            required=True,
+            time_window_hours=24.0,
+            data_source='orders',
+            query_logic="order_type = 'consult' AND specialty = 'Infectious Disease'"
+        ),
+        BundleElement(
+            element_id='hsv_ophthalmology',
+            name='Ophthalmology consult (if ocular)',
+            description='Ophthalmology consult if ocular involvement suspected',
+            required=False,  # Conditional on ocular involvement
+            time_window_hours=48.0,
+            data_source='orders',
+            query_logic="IF ocular_involvement THEN order_type = 'consult' AND specialty = 'Ophthalmology'"
+        ),
+        BundleElement(
+            element_id='hsv_neuroimaging',
+            name='Neuroimaging (if CNS)',
+            description='MRI brain if CNS involvement suspected (CSF positive or pleocytosis)',
+            required=False,  # Conditional on CNS involvement
+            time_window_hours=48.0,
+            data_source='imaging_orders',
+            query_logic="IF cns_involvement THEN order_code LIKE 'MRI_BRAIN%'"
+        ),
+        BundleElement(
+            element_id='hsv_treatment_duration',
+            name='Treatment duration',
+            description='Acyclovir treatment duration: SEM=14 days, CNS/Disseminated=21 days',
+            required=True,
+            time_window_hours=None,  # Assessed at end of therapy
+            data_source='medication_orders',
+            query_logic="acyclovir_duration_days >= required_duration"
+        ),
+        BundleElement(
+            element_id='hsv_suppressive_therapy',
+            name='Suppressive therapy follow-up',
+            description='Oral acyclovir suppressive therapy planned (6 months after treatment)',
+            required=True,
+            time_window_hours=None,  # Assessed at discharge
+            data_source='notes',
+            query_logic="documentation CONTAINS 'suppressive therapy' OR oral_acyclovir_prescribed"
+        ),
+    ],
+    references=[
+        'CCHMC Neonatal HSV Algorithm 2024',
+        'AAP Red Book 2021: Herpes Simplex',
+        'Kimberlin DW. Neonatal herpes simplex infection. Clin Microbiol Rev. 2004',
+        'Pinninti SG, Kimberlin DW. Neonatal herpes simplex virus infections. Semin Perinatol. 2018'
+    ],
+    version='2024.1',
+    last_updated='2024-01-01'
+)
+
+
+# -----------------------------------------------------------------------------
+# C. DIFF TESTING APPROPRIATENESS BUNDLE (CCHMC 2024)
+# -----------------------------------------------------------------------------
+
+CDIFF_TESTING_BUNDLE = GuidelineBundle(
+    bundle_id='cdiff_testing_2024',
+    name='C. diff Testing Appropriateness Bundle',
+    description='Diagnostic stewardship bundle to ensure C. diff testing criteria are met before ordering',
+    condition_icd10_codes=[
+        'A04.7',   # Enterocolitis due to Clostridium difficile (historical)
+        'A04.71',  # Enterocolitis due to Clostridium difficile, recurrent
+        'A04.72',  # Enterocolitis due to Clostridium difficile, not specified as recurrent
+    ],
+    trigger_criteria={
+        'any_of': ['cdiff_test_ordered']
+    },
+    elements=[
+        BundleElement(
+            element_id='cdiff_age_appropriate',
+            name='Age ≥3 years',
+            description='Patient age ≥3 years (asymptomatic carriage common in younger children)',
+            required=True,
+            time_window_hours=None,
+            data_source='patient',
+            query_logic="age_years >= 3 OR exception_documented"
+        ),
+        BundleElement(
+            element_id='cdiff_liquid_stools',
+            name='≥3 liquid stools/24h',
+            description='At least 3 liquid/watery stools in the past 24 hours',
+            required=True,
+            time_window_hours=None,
+            data_source='nursing_notes',
+            query_logic="stool_count >= 3 AND stool_consistency = 'liquid'"
+        ),
+        BundleElement(
+            element_id='cdiff_no_laxatives',
+            name='No laxatives 48h',
+            description='No laxatives administered in the past 48 hours',
+            required=True,
+            time_window_hours=None,
+            data_source='mar',
+            query_logic="NOT laxative_given_within_48h"
+        ),
+        BundleElement(
+            element_id='cdiff_no_contrast',
+            name='No enteral contrast 48h',
+            description='No enteral contrast administered in the past 48 hours',
+            required=True,
+            time_window_hours=None,
+            data_source='mar',
+            query_logic="NOT enteral_contrast_given_within_48h"
+        ),
+        BundleElement(
+            element_id='cdiff_no_tube_feed_changes',
+            name='No tube feed changes',
+            description='No recent changes in tube feeding formula or rate',
+            required=True,
+            time_window_hours=None,
+            data_source='nursing_notes',
+            query_logic="NOT tube_feed_changed_within_48h"
+        ),
+        BundleElement(
+            element_id='cdiff_no_gi_bleed',
+            name='No active GI bleed',
+            description='No active gastrointestinal bleeding',
+            required=True,
+            time_window_hours=None,
+            data_source='notes',
+            query_logic="NOT active_gi_bleed"
+        ),
+        BundleElement(
+            element_id='cdiff_risk_factor_present',
+            name='Risk factor present',
+            description='At least one C. diff risk factor present (antibiotics, hospitalization, PPI, gastrostomy, immunocompromised)',
+            required=True,
+            time_window_hours=None,
+            data_source='medication_orders',
+            query_logic="recent_antibiotics OR recent_hospitalization OR ppi_use OR gastrostomy OR immunocompromised"
+        ),
+        BundleElement(
+            element_id='cdiff_symptom_duration',
+            name='Symptoms persist 48h (if low-risk)',
+            description='For low-risk patients, symptoms should persist for at least 48 hours before testing',
+            required=False,  # Conditional on low-risk status
+            time_window_hours=None,
+            data_source='notes',
+            query_logic="IF low_risk_patient THEN symptom_duration_hours >= 48"
+        ),
+    ],
+    references=[
+        'CCHMC C. diff Testing Algorithm 2024',
+        'IDSA/SHEA Clinical Practice Guidelines for CDI 2018',
+        'Schutze GE, Willoughby RE. Clostridium difficile Infection in Infants and Children. Pediatrics. 2013',
+        'McDonald LC et al. Clinical Practice Guidelines for CDI. Clin Infect Dis. 2018'
+    ],
+    version='2024.1',
+    last_updated='2024-01-01'
+)
+
+
 # =============================================================================
 # ALL BUNDLES REGISTRY
 # =============================================================================
@@ -828,6 +1079,8 @@ GUIDELINE_BUNDLES: Dict[str, GuidelineBundle] = {
     'surgical_prophy_2024': SURGICAL_PROPHYLAXIS_BUNDLE,
     'fn_peds_2024': FEBRILE_NEUTROPENIA_BUNDLE,
     'febrile_infant_2024': FEBRILE_INFANT_BUNDLE,
+    'neonatal_hsv_2024': NEONATAL_HSV_BUNDLE,
+    'cdiff_testing_2024': CDIFF_TESTING_BUNDLE,
 }
 
 

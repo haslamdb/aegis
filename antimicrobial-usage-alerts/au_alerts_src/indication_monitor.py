@@ -37,6 +37,13 @@ except ImportError:
     AntibioticIndicationClassifier = None
     IndicationCategory = None
 
+try:
+    from cchmc_guidelines import CCHMCGuidelinesEngine, AgentCategory, AgentRecommendation
+except ImportError:
+    CCHMCGuidelinesEngine = None
+    AgentCategory = None
+    AgentRecommendation = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -67,6 +74,9 @@ class IndicationMonitor:
         self.db = db or IndicationDatabase()
         self._alerted_orders: set[str] = set()  # In-memory cache
 
+        # Initialize CCHMC guidelines engine for agent appropriateness checking
+        self.cchmc_engine = self._load_cchmc_engine()
+
     def _load_classifier(self) -> "AntibioticIndicationClassifier | None":
         """Load the antibiotic indication classifier from CSV."""
         if AntibioticIndicationClassifier is None:
@@ -85,6 +95,23 @@ class IndicationMonitor:
             return AntibioticIndicationClassifier(str(csv_path))
         except Exception as e:
             logger.error(f"Failed to load classifier: {e}")
+            return None
+
+    def _load_cchmc_engine(self) -> "CCHMCGuidelinesEngine | None":
+        """Load the CCHMC guidelines engine for agent appropriateness checking."""
+        if CCHMCGuidelinesEngine is None:
+            logger.info(
+                "CCHMCGuidelinesEngine not available. "
+                "CCHMC agent checking will be disabled."
+            )
+            return None
+
+        try:
+            engine = CCHMCGuidelinesEngine()
+            logger.info("Loaded CCHMC guidelines engine")
+            return engine
+        except Exception as e:
+            logger.warning(f"Failed to load CCHMC guidelines engine: {e}")
             return None
 
     def check_new_orders(self, since_hours: int = 24) -> list[IndicationAssessment]:
@@ -244,6 +271,47 @@ class IndicationMonitor:
             except Exception as e:
                 logger.warning(f"LLM extraction failed: {e}")
 
+        # CCHMC agent appropriateness check
+        # Only check if indication is present (A, S, P, FN)
+        cchmc_disease_matched = None
+        cchmc_agent_category = None
+        cchmc_guideline_agents = None
+        cchmc_recommendation = None
+        agent_alert_needed = False
+
+        if final_classification in ("A", "S", "P", "FN") and self.cchmc_engine:
+            try:
+                # Get patient age in months for age-specific recommendations
+                patient_age_months = self._get_patient_age_months(patient)
+
+                # Get patient allergies if available
+                patient_allergies = self.fhir_client.get_patient_allergies(order.patient_id) if hasattr(self.fhir_client, 'get_patient_allergies') else None
+
+                agent_rec = self.cchmc_engine.check_agent_appropriateness(
+                    icd10_codes=icd10_codes,
+                    prescribed_agent=order.medication_name,
+                    patient_age_months=patient_age_months,
+                    allergies=patient_allergies,
+                )
+
+                if agent_rec.disease_matched:
+                    cchmc_disease_matched = agent_rec.disease_matched
+                    cchmc_agent_category = agent_rec.current_agent_category.value
+                    cchmc_guideline_agents = ", ".join(agent_rec.first_line_agents[:3])  # Top 3
+                    cchmc_recommendation = agent_rec.recommendation
+
+                    # Generate agent alert if off-guideline
+                    if agent_rec.current_agent_category == AgentCategory.OFF_GUIDELINE:
+                        agent_alert_needed = True
+                        logger.info(
+                            f"Off-guideline agent detected: {order.medication_name} "
+                            f"for {cchmc_disease_matched}. "
+                            f"Recommended: {cchmc_guideline_agents}"
+                        )
+
+            except Exception as e:
+                logger.warning(f"CCHMC agent check failed: {e}")
+
         # Create candidate
         candidate = IndicationCandidate(
             id=str(uuid.uuid4()),
@@ -259,6 +327,10 @@ class IndicationMonitor:
             status="pending",
             location=location,
             service=service,
+            cchmc_disease_matched=cchmc_disease_matched,
+            cchmc_agent_category=cchmc_agent_category,
+            cchmc_guideline_agents=cchmc_guideline_agents,
+            cchmc_recommendation=cchmc_recommendation,
         )
 
         # Save candidate to database
@@ -363,6 +435,32 @@ class IndicationMonitor:
 
         # Inconclusive - return None to fall back to ICD-10
         return None
+
+    def _get_patient_age_months(self, patient: Patient) -> int | None:
+        """Calculate patient age in months from birth date.
+
+        Args:
+            patient: Patient object with birth_date.
+
+        Returns:
+            Age in months or None if birth date not available.
+        """
+        if not patient or not hasattr(patient, 'birth_date') or not patient.birth_date:
+            return None
+
+        try:
+            today = datetime.now().date()
+            birth = patient.birth_date
+            if isinstance(birth, datetime):
+                birth = birth.date()
+
+            # Calculate months
+            months = (today.year - birth.year) * 12 + (today.month - birth.month)
+            if today.day < birth.day:
+                months -= 1
+            return max(0, months)
+        except Exception:
+            return None
 
     def _extract_from_notes(
         self, order: MedicationOrder, patient: Patient

@@ -7,7 +7,7 @@ febrile infants 8-60 days old. Handles:
 - CSF-based decision branches
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Optional
 import logging
@@ -26,6 +26,28 @@ from ..config import config
 from .base import ElementChecker
 
 logger = logging.getLogger(__name__)
+
+
+# HSV risk factors for febrile infants (AAP 2021 / CCHMC guidelines)
+HSV_RISK_FACTORS = [
+    "maternal hsv",
+    "maternal herpes",
+    "genital lesion",
+    "scalp electrode",
+    "scalp monitor",
+    "fetal scalp",
+    "prolonged rupture",
+    "rom >",
+    "prom",
+    "vesicles",
+    "vesicular rash",
+    "ill-appearing",
+    "ill appearing",
+    "seizure",
+    "csf pleocytosis",
+    "elevated lfts",
+    "elevated transaminases",
+]
 
 
 class InfantAgeGroup(Enum):
@@ -130,6 +152,12 @@ class FebrileInfantChecker(ElementChecker):
         elif element_id == "fi_hsv_risk_assessment":
             return self._check_hsv_assessment(element, patient_id, trigger_time, context)
 
+        elif element_id == "fi_hsv_acyclovir_if_risk":
+            return self._check_hsv_acyclovir(element, patient_id, trigger_time, context)
+
+        elif element_id == "fi_repeat_ims_before_discharge":
+            return self._check_repeat_inflammatory_markers(element, patient_id, trigger_time, context)
+
         elif element_id.startswith("fi_admit"):
             return self._check_admission_element(element, patient_id, trigger_time, context)
 
@@ -169,6 +197,16 @@ class FebrileInfantChecker(ElementChecker):
             "lp_performed": False,
             "csf_pleocytosis": False,
             "disposition_home": False,
+            # HSV integration
+            "hsv_risk_factors": [],
+            "hsv_risk_present": False,
+            "acyclovir_ordered": False,
+            # Safe discharge checklist items
+            "followup_within_24h": False,
+            "phone_documented": False,
+            "transportation_confirmed": False,
+            "parent_education": False,
+            "return_precautions": False,
         }
 
         # Get patient info if age not provided
@@ -189,6 +227,15 @@ class FebrileInfantChecker(ElementChecker):
 
         # Check LP status
         context["lp_performed"] = self._is_lp_performed(patient_id, trigger_time)
+
+        # Check for CSF pleocytosis
+        context["csf_pleocytosis"] = self._has_csf_pleocytosis(patient_id, trigger_time)
+
+        # Check for HSV risk factors (for 8-28 day infants)
+        if context["age_group"] in [InfantAgeGroup.DAYS_8_21, InfantAgeGroup.DAYS_22_28]:
+            context["hsv_risk_factors"] = self._check_hsv_risk_factors(patient_id, trigger_time)
+            context["hsv_risk_present"] = len(context["hsv_risk_factors"]) > 0
+            context["acyclovir_ordered"] = self._is_acyclovir_ordered(patient_id, trigger_time)
 
         return context
 
@@ -216,11 +263,15 @@ class FebrileInfantChecker(ElementChecker):
             "fi_admit_8_21d": [InfantAgeGroup.DAYS_8_21],
             "fi_admit_22_28d_im_abnormal": [InfantAgeGroup.DAYS_22_28],
 
-            # HSV - 8-28 days
+            # HSV - 8-28 days (0-28d per CCHMC)
             "fi_hsv_risk_assessment": [InfantAgeGroup.DAYS_8_21, InfantAgeGroup.DAYS_22_28],
+            "fi_hsv_acyclovir_if_risk": [InfantAgeGroup.DAYS_8_21, InfantAgeGroup.DAYS_22_28],
 
             # PCT recommended for 29-60 days
             "fi_procalcitonin": [InfantAgeGroup.DAYS_29_60],
+
+            # Repeat IMs before discharge (22-60 days if initially abnormal)
+            "fi_repeat_ims_before_discharge": [InfantAgeGroup.DAYS_22_28, InfantAgeGroup.DAYS_29_60],
         }
 
         if element_id in age_requirements:
@@ -234,6 +285,10 @@ class FebrileInfantChecker(ElementChecker):
             "fi_admit_22_28d_im_abnormal": lambda: im_abnormal,
             "fi_urine_culture": lambda: ua_abnormal,
             "fi_safe_discharge_checklist": lambda: context.get("disposition_home", False),
+            # HSV acyclovir required if risk factors present
+            "fi_hsv_acyclovir_if_risk": lambda: context.get("hsv_risk_present", False),
+            # Repeat IMs required if initially abnormal
+            "fi_repeat_ims_before_discharge": lambda: im_abnormal,
         }
 
         if element_id in conditional_requirements:
@@ -599,37 +654,99 @@ class FebrileInfantChecker(ElementChecker):
         trigger_time: datetime,
         context: dict,
     ) -> ElementCheckResult:
-        """Check safe discharge checklist elements."""
-        # Check notes for follow-up documentation
+        """Check safe discharge checklist elements.
+
+        Per CCHMC guidelines, safe discharge requires:
+        1. Follow-up within 24h arranged
+        2. Working phone number documented
+        3. Reliable transportation confirmed
+        4. Parent education completed
+        5. Return precautions verbalized/documented
+        """
+        # Check notes for discharge documentation
         notes = self.fhir_client.get_recent_notes(
             patient_id=patient_id,
             since_time=trigger_time,
         )
 
-        discharge_keywords = ["follow-up", "followup", "return precautions",
-                            "phone number", "transportation"]
-        documented_items = 0
+        # Track which checklist items are documented
+        checklist_items = {
+            "followup_24h": False,
+            "phone_number": False,
+            "transportation": False,
+            "parent_education": False,
+            "return_precautions": False,
+        }
+
+        # Keywords for each checklist item
+        followup_keywords = [
+            "follow-up", "followup", "f/u", "pmd", "pediatrician",
+            "appointment", "return visit", "recheck", "within 24"
+        ]
+        phone_keywords = [
+            "phone", "telephone", "contact number", "cell", "callback",
+            "reach", "working phone"
+        ]
+        transport_keywords = [
+            "transportation", "transport", "ride", "car seat",
+            "vehicle", "driving", "reliable transport"
+        ]
+        education_keywords = [
+            "education", "educated", "teaching", "taught", "instructions",
+            "counseled", "discussed", "explained"
+        ]
+        precaution_keywords = [
+            "return precautions", "warning signs", "when to return",
+            "seek care if", "go to ed if", "emergency signs",
+            "call if", "verbalized understanding", "return if"
+        ]
 
         for note in notes:
             note_text = note.get("text", "").lower()
-            for kw in discharge_keywords:
-                if kw in note_text:
-                    documented_items += 1
-                    break
 
-        if documented_items >= 2:
+            # Check each checklist item
+            if any(kw in note_text for kw in followup_keywords):
+                checklist_items["followup_24h"] = True
+            if any(kw in note_text for kw in phone_keywords):
+                checklist_items["phone_number"] = True
+            if any(kw in note_text for kw in transport_keywords):
+                checklist_items["transportation"] = True
+            if any(kw in note_text for kw in education_keywords):
+                checklist_items["parent_education"] = True
+            if any(kw in note_text for kw in precaution_keywords):
+                checklist_items["return_precautions"] = True
+
+        # Count documented items
+        documented_count = sum(checklist_items.values())
+        missing_items = [k for k, v in checklist_items.items() if not v]
+
+        # Require at least 4 of 5 items (or adjust as needed)
+        required_count = 4
+
+        if documented_count >= required_count:
             return self._create_result(
                 element=element,
                 status=ElementCheckStatus.MET,
                 trigger_time=trigger_time,
-                notes="Discharge checklist items documented",
+                value=f"{documented_count}/5 items",
+                notes=f"Safe discharge checklist complete ({documented_count}/5 items documented)",
+            )
+
+        if documented_count >= 2:
+            return self._create_result(
+                element=element,
+                status=ElementCheckStatus.PENDING,
+                trigger_time=trigger_time,
+                value=f"{documented_count}/5 items",
+                notes=f"Safe discharge checklist partially complete. Missing: {', '.join(missing_items)}",
             )
 
         return self._create_result(
             element=element,
-            status=ElementCheckStatus.PENDING,
+            status=ElementCheckStatus.NOT_MET,
             trigger_time=trigger_time,
-            notes="Safe discharge checklist incomplete",
+            value=f"{documented_count}/5 items",
+            notes=f"Safe discharge checklist incomplete ({documented_count}/5). Missing: {', '.join(missing_items)}",
         )
 
     def _is_antibiotic(self, medication_name: str) -> bool:
@@ -641,6 +758,219 @@ class FebrileInfantChecker(ElementChecker):
         ]
         med_lower = medication_name.lower()
         return any(abx in med_lower for abx in antibiotic_keywords)
+
+    def _has_csf_pleocytosis(self, patient_id: str, trigger_time: datetime) -> bool:
+        """Check if CSF WBC is elevated (pleocytosis).
+
+        Pleocytosis threshold: CSF WBC > 15 cells/μL (AAP 2021)
+        """
+        csf_wbc_labs = self.fhir_client.get_lab_results(
+            patient_id=patient_id,
+            loinc_codes=[config.LOINC_CSF_WBC],
+            since_time=trigger_time,
+        )
+
+        for lab in csf_wbc_labs:
+            try:
+                value = float(lab.get("value", 0))
+                if value > config.FI_CSF_WBC_PLEOCYTOSIS:
+                    return True
+            except (ValueError, TypeError):
+                pass
+
+        return False
+
+    def _check_hsv_risk_factors(
+        self,
+        patient_id: str,
+        trigger_time: datetime
+    ) -> list:
+        """Check clinical documentation for HSV risk factors.
+
+        Returns:
+            List of identified HSV risk factors.
+        """
+        risk_factors_found = []
+
+        # Check notes for HSV risk factors
+        notes = self.fhir_client.get_recent_notes(
+            patient_id=patient_id,
+            since_time=trigger_time,
+        )
+
+        for note in notes:
+            note_text = note.get("text", "").lower()
+            for risk_factor in HSV_RISK_FACTORS:
+                if risk_factor in note_text and risk_factor not in risk_factors_found:
+                    risk_factors_found.append(risk_factor)
+
+        # Check for CSF pleocytosis as risk factor
+        if self._has_csf_pleocytosis(patient_id, trigger_time):
+            if "csf pleocytosis" not in risk_factors_found:
+                risk_factors_found.append("csf pleocytosis")
+
+        # Check for elevated LFTs
+        lft_labs = self.fhir_client.get_lab_results(
+            patient_id=patient_id,
+            loinc_codes=[config.LOINC_ALT, config.LOINC_AST],
+            since_time=trigger_time,
+        )
+
+        for lab in lft_labs:
+            try:
+                value = float(lab.get("value", 0))
+                # Elevated if >3x ULN (roughly >100 U/L in neonates)
+                if value > 100:
+                    if "elevated lfts" not in risk_factors_found:
+                        risk_factors_found.append("elevated lfts")
+                    break
+            except (ValueError, TypeError):
+                pass
+
+        return risk_factors_found
+
+    def _is_acyclovir_ordered(self, patient_id: str, trigger_time: datetime) -> bool:
+        """Check if acyclovir has been ordered or administered."""
+        med_admins = self.fhir_client.get_medication_administrations(
+            patient_id=patient_id,
+            since_time=trigger_time,
+        )
+
+        for admin in med_admins:
+            if "acyclovir" in admin.get("medication_name", "").lower():
+                return True
+
+        # Also check medication orders
+        med_orders = self.fhir_client.get_medication_orders(
+            patient_id=patient_id,
+            since_time=trigger_time,
+        )
+
+        for order in med_orders:
+            if "acyclovir" in order.get("medication_name", "").lower():
+                return True
+
+        return False
+
+    def _check_hsv_acyclovir(
+        self,
+        element: BundleElement,
+        patient_id: str,
+        trigger_time: datetime,
+        context: dict,
+    ) -> ElementCheckResult:
+        """Check if acyclovir is started for infants with HSV risk factors.
+
+        Required for febrile infants 0-28 days with HSV risk factors.
+        """
+        if not context.get("hsv_risk_present", False):
+            return self._create_result(
+                element=element,
+                status=ElementCheckStatus.NOT_APPLICABLE,
+                trigger_time=trigger_time,
+                notes="No HSV risk factors identified",
+            )
+
+        risk_factors = context.get("hsv_risk_factors", [])
+
+        # Check if acyclovir has been administered
+        med_admins = self.fhir_client.get_medication_administrations(
+            patient_id=patient_id,
+            since_time=trigger_time,
+        )
+
+        acyclovir_admins = [
+            ma for ma in med_admins
+            if "acyclovir" in ma.get("medication_name", "").lower()
+        ]
+
+        if acyclovir_admins:
+            admin = acyclovir_admins[0]
+            return self._create_result(
+                element=element,
+                status=ElementCheckStatus.MET,
+                trigger_time=trigger_time,
+                completed_at=admin.get("admin_time"),
+                value=", ".join(risk_factors),
+                notes=f"Acyclovir started for HSV risk factors: {', '.join(risk_factors)}",
+            )
+
+        if self._is_within_window(trigger_time, element.time_window_hours):
+            return self._create_result(
+                element=element,
+                status=ElementCheckStatus.PENDING,
+                trigger_time=trigger_time,
+                value=", ".join(risk_factors),
+                notes=f"HSV risk factors present ({', '.join(risk_factors)}) - acyclovir recommended",
+            )
+
+        return self._create_result(
+            element=element,
+            status=ElementCheckStatus.NOT_MET,
+            trigger_time=trigger_time,
+            value=", ".join(risk_factors),
+            notes=f"Acyclovir not started despite HSV risk factors: {', '.join(risk_factors)}",
+        )
+
+    def _check_repeat_inflammatory_markers(
+        self,
+        element: BundleElement,
+        patient_id: str,
+        trigger_time: datetime,
+        context: dict,
+    ) -> ElementCheckResult:
+        """Check if inflammatory markers were repeated before discharge.
+
+        For 22-60 day infants with initially abnormal IMs, repeat before discharge.
+        """
+        if not context.get("inflammatory_markers_abnormal", False):
+            return self._create_result(
+                element=element,
+                status=ElementCheckStatus.NOT_APPLICABLE,
+                trigger_time=trigger_time,
+                notes="Initial inflammatory markers normal - repeat not required",
+            )
+
+        # Look for repeat labs at least 24 hours after initial
+        window_start = trigger_time + timedelta(hours=24)
+
+        # Check for repeat PCT, ANC, or CRP
+        pct_labs = self.fhir_client.get_lab_results(
+            patient_id=patient_id,
+            loinc_codes=[config.LOINC_PROCALCITONIN],
+            since_time=window_start,
+        )
+
+        anc_labs = self.fhir_client.get_lab_results(
+            patient_id=patient_id,
+            loinc_codes=[config.LOINC_ANC],
+            since_time=window_start,
+        )
+
+        crp_labs = self.fhir_client.get_lab_results(
+            patient_id=patient_id,
+            loinc_codes=[config.LOINC_CRP],
+            since_time=window_start,
+        )
+
+        repeat_labs = pct_labs + anc_labs + crp_labs
+
+        if repeat_labs:
+            lab = repeat_labs[0]
+            return self._create_result(
+                element=element,
+                status=ElementCheckStatus.MET,
+                trigger_time=trigger_time,
+                completed_at=lab.get("effective_time"),
+                notes="Inflammatory markers repeated before discharge",
+            )
+
+        return self._create_result(
+            element=element,
+            status=ElementCheckStatus.PENDING,
+            trigger_time=trigger_time,
+            notes="Initially abnormal IMs - repeat recommended before discharge",
+        )
 
     def clear_patient_cache(self, patient_id: Optional[str] = None):
         """Clear cached patient context.

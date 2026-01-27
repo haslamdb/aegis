@@ -87,6 +87,11 @@ class IndicationCandidate:
     # Location/service for analytics
     location: str | None = None  # Unit/ward (PICU, 4 West, ED)
     service: str | None = None  # Ordering service (Hospitalist, Surgery)
+    # CCHMC guideline tracking
+    cchmc_disease_matched: str | None = None  # Matched CCHMC disease entity
+    cchmc_agent_category: str | None = None  # first_line, alternative, off_guideline
+    cchmc_guideline_agents: str | None = None  # Recommended agents from CCHMC
+    cchmc_recommendation: str | None = None  # Full recommendation text
 
 
 @dataclass

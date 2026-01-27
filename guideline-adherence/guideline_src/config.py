@@ -59,6 +59,18 @@ class Config:
     LOINC_CSF_RBC = "804-5"               # CSF RBC
     LOINC_CSF_CULTURE = "600-7"           # CSF culture (same as blood culture order)
 
+    # HSV-related LOINC codes
+    LOINC_HSV_PCR_CSF = "16955-7"         # HSV DNA by PCR in CSF
+    LOINC_HSV_PCR_BLOOD = "49986-3"       # HSV DNA by PCR in blood
+    LOINC_HSV_CULTURE = "5843-8"          # HSV culture (surface/SEM)
+    LOINC_ALT = "1742-6"                  # Alanine aminotransferase (ALT)
+    LOINC_AST = "1920-8"                  # Aspartate aminotransferase (AST)
+
+    # C. diff testing LOINC codes
+    LOINC_CDIFF_TOXIN = "34713-8"         # C. diff toxin A+B
+    LOINC_CDIFF_PCR = "54067-4"           # C. diff PCR/NAAT
+    LOINC_CDIFF_GDH = "29484-9"           # C. diff GDH antigen
+
     # Febrile infant inflammatory marker thresholds (AAP 2021)
     FI_PCT_ABNORMAL = 0.5                 # ng/mL
     FI_ANC_ABNORMAL = 4000                # cells/μL

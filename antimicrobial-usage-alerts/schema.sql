@@ -29,6 +29,12 @@ CREATE TABLE IF NOT EXISTS indication_candidates (
     final_classification TEXT NOT NULL,  -- A, S, N, P, FN, U
     classification_source TEXT NOT NULL,  -- icd10, llm, manual
 
+    -- CCHMC guideline tracking
+    cchmc_disease_matched TEXT,       -- Matched CCHMC disease entity
+    cchmc_agent_category TEXT,        -- first_line, alternative, off_guideline, not_assessed
+    cchmc_guideline_agents TEXT,      -- Recommended agents from CCHMC
+    cchmc_recommendation TEXT,        -- Full recommendation text
+
     -- Status tracking
     status TEXT DEFAULT 'pending',  -- pending, alerted, reviewed
     alert_id TEXT,  -- Links to common alert_store

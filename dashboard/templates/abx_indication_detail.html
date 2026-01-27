@@ -285,14 +285,16 @@
                     <input type="text" name="override_reason" id="override_reason" placeholder="Why are you overriding?" class="form-control">
                 </div>
             </div>
-        </div>
 
-        <div class="action-card">
-            <h3>Notes</h3>
-            <div class="form-group">
-                <textarea name="notes" id="notes" rows="4" class="form-textarea" placeholder="Add details about your review decision. These notes will be used for LLM fine-tuning..."></textarea>
+            <div class="form-group" style="margin-top: 1rem;">
+                <label for="notes">Notes (optional)</label>
+                <textarea name="notes" id="notes" rows="3" class="form-textarea" placeholder="Add details about your review decision..."></textarea>
+                <p class="form-help">Your notes help improve future AI classifications.</p>
             </div>
-            <p class="form-help">Your notes help improve future AI classifications.</p>
+
+            <button type="button" id="submit-review-btn" class="btn btn-primary btn-block" style="margin-top: 1rem; padding: 1rem; font-size: 1rem;">
+                Submit Review
+            </button>
         </div>
 
         <div id="review-result" class="hidden"></div>
@@ -334,15 +336,12 @@ document.querySelectorAll('.confirm-buttons button, .override-buttons button').f
     });
 });
 
-// Handle form submission on any button click
-document.querySelectorAll('.confirm-buttons button, .override-buttons button').forEach(btn => {
-    btn.addEventListener('dblclick', submitReview);
-});
+// Submit button click handler
+document.getElementById('submit-review-btn').addEventListener('click', submitReview);
 
-// Add a submit button functionality
 async function submitReview() {
     if (!selectedDecision) {
-        alert('Please select a decision first');
+        alert('Please select a decision first (click one of the buttons above)');
         return;
     }
 
@@ -394,13 +393,6 @@ async function submitReview() {
         resultDiv.classList.remove('hidden');
     }
 }
-
-// Add keyboard shortcut to submit (Enter in notes field)
-document.getElementById('notes').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && e.ctrlKey) {
-        submitReview();
-    }
-});
 </script>
 
 <style>
