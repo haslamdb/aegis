@@ -30,6 +30,44 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
+def _log_hai_activity(
+    activity_type: str,
+    entity_id: str,
+    entity_type: str,
+    action_taken: str,
+    provider_id: str | None = None,
+    provider_name: str | None = None,
+    patient_mrn: str | None = None,
+    location_code: str | None = None,
+    outcome: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Log activity to the unified metrics store.
+
+    This is a fire-and-forget operation - failures are logged but don't
+    interrupt the main operation.
+    """
+    try:
+        from common.metrics_store import MetricsStore, ModuleSource
+
+        store = MetricsStore()
+        store.log_activity(
+            activity_type=activity_type,
+            module=ModuleSource.HAI,
+            provider_id=provider_id,
+            provider_name=provider_name,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            action_taken=action_taken,
+            outcome=outcome,
+            patient_mrn=patient_mrn,
+            location_code=location_code,
+            details=details,
+        )
+    except Exception as e:
+        logger.debug(f"Failed to log activity to metrics store: {e}")
+
+
 class HAIDatabase:
     """SQLite database for HAI candidate and classification storage."""
 
@@ -802,6 +840,9 @@ class HAIDatabase:
         review_id = str(uuid.uuid4())
         now = datetime.now()
 
+        # Get candidate info for activity logging
+        candidate = self.get_candidate(candidate_id)
+
         with self._get_connection() as conn:
             conn.execute(
                 """
@@ -829,6 +870,26 @@ class HAIDatabase:
                 ),
             )
             conn.commit()
+
+        # Log to unified metrics store
+        activity_type = "override" if is_override else "review"
+        _log_hai_activity(
+            activity_type=activity_type,
+            entity_id=candidate_id,
+            entity_type="hai_candidate",
+            action_taken=decision.value,
+            provider_name=reviewer,
+            patient_mrn=candidate.patient.mrn if candidate else None,
+            outcome=decision.value,
+            details={
+                "hai_type": candidate.hai_type.value if candidate else None,
+                "llm_decision": llm_decision,
+                "is_override": is_override,
+                "override_reason": override_reason,
+                "is_completed": is_completed,
+            },
+        )
+
         return review_id
 
     def save_review_object(self, review: Review) -> None:
@@ -870,7 +931,17 @@ class HAIDatabase:
         notes: str | None = None,
     ) -> None:
         """Mark a review as complete."""
+        # Get review to find candidate_id for activity logging
+        candidate_id = None
         with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT candidate_id FROM hai_reviews WHERE id = ?",
+                (review_id,)
+            )
+            row = cursor.fetchone()
+            if row:
+                candidate_id = row["candidate_id"]
+
             conn.execute(
                 """
                 UPDATE hai_reviews
@@ -887,6 +958,24 @@ class HAIDatabase:
                 ),
             )
             conn.commit()
+
+        # Log to unified metrics store
+        if candidate_id:
+            candidate = self.get_candidate(candidate_id)
+            _log_hai_activity(
+                activity_type="review",
+                entity_id=candidate_id,
+                entity_type="hai_candidate",
+                action_taken=decision.value,
+                provider_name=reviewer,
+                patient_mrn=candidate.patient.mrn if candidate else None,
+                outcome=decision.value,
+                details={
+                    "hai_type": candidate.hai_type.value if candidate else None,
+                    "review_id": review_id,
+                    "notes": notes[:200] if notes else None,
+                },
+            )
 
     def supersede_old_reviews(self, candidate_id: str, superseding_review_id: str) -> int:
         """Mark any prior incomplete reviews for a candidate as superseded.

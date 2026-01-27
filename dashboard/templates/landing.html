@@ -9,6 +9,7 @@
 </div>
 
 <div class="section-cards">
+    <!-- Top row: ASP Alerts, HAI Detection, Antibiotic Indications, Guideline Adherence -->
     <a href="{{ url_for('asp_alerts.alerts_active') }}" class="section-card section-alerts">
         <div class="section-icon">&#x26A0;</div>
         <h2>ASP Alerts</h2>
@@ -29,29 +30,6 @@
             <span>CAUTI Detection</span>
             <span>Surveillance</span>
         </div>
-    </a>
-
-    <a href="{{ url_for('nhsn_reporting.dashboard') }}" class="section-card section-nhsn">
-        <div class="section-icon">&#x1F4CA;</div>
-        <h2>NHSN Reporting</h2>
-        <p>Antimicrobial usage and resistance reporting for NHSN AU/AR module.</p>
-        <div class="section-features">
-            <span>Usage Data</span>
-            <span>Resistance Data</span>
-            <span>CDA Export</span>
-        </div>
-    </a>
-
-    <a href="{{ url_for('dashboards.index') }}" class="section-card section-dashboards">
-        <div class="section-icon">&#x1F4C8;</div>
-        <h2>Dashboards</h2>
-        <p>Analytics dashboards for trends, outcomes, and operational insights.</p>
-        <div class="section-features">
-            <span>Trends</span>
-            <span>Analytics</span>
-            <span>Reports</span>
-        </div>
-        <div class="coming-soon-badge">Coming soon</div>
     </a>
 
     <a href="{{ url_for('abx_indications.dashboard') }}" class="section-card section-abx">
@@ -76,6 +54,7 @@
         </div>
     </a>
 
+    <!-- Bottom row: Surgical Prophylaxis, Drug-Bug Mismatch, NHSN Reporting, Dashboards -->
     <a href="{{ url_for('surgical_prophylaxis.dashboard') }}" class="section-card section-surgical">
         <div class="section-icon">&#x1FA7A;</div>
         <h2>Surgical Prophylaxis</h2>
@@ -95,6 +74,28 @@
             <span>Coverage Gaps</span>
             <span>Resistance Alerts</span>
             <span>De-escalation</span>
+        </div>
+    </a>
+
+    <a href="{{ url_for('nhsn_reporting.dashboard') }}" class="section-card section-nhsn">
+        <div class="section-icon">&#x1F4CA;</div>
+        <h2>NHSN Reporting</h2>
+        <p>Antimicrobial usage and resistance reporting for NHSN AU/AR module.</p>
+        <div class="section-features">
+            <span>Usage Data</span>
+            <span>Resistance Data</span>
+            <span>CDA Export</span>
+        </div>
+    </a>
+
+    <a href="{{ url_for('dashboards.index') }}" class="section-card section-dashboards">
+        <div class="section-icon">&#x1F4C8;</div>
+        <h2>Dashboards</h2>
+        <p>Analytics dashboards for trends, outcomes, and operational insights.</p>
+        <div class="section-features">
+            <span>Trends</span>
+            <span>Analytics</span>
+            <span>Reports</span>
         </div>
     </a>
 </div>
@@ -204,36 +205,36 @@
 }
 
 .section-nhsn {
-    border-left-color: #7C3AED;
+    border-left-color: #E11D48;
 }
 .section-nhsn:hover {
-    border-left-color: #7C3AED;
-    background: linear-gradient(135deg, var(--color-white) 0%, rgba(124, 58, 237, 0.1) 100%);
+    border-left-color: #E11D48;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(225, 29, 72, 0.1) 100%);
 }
 .section-nhsn .section-icon {
-    color: #7C3AED;
+    color: #E11D48;
 }
 
 .section-dashboards {
-    border-left-color: var(--color-primary);
-}
-.section-dashboards:hover {
-    border-left-color: var(--color-primary);
-    background: linear-gradient(135deg, var(--color-white) 0%, var(--color-info-light) 100%);
-}
-.section-dashboards .section-icon {
-    color: var(--color-primary);
-}
-
-.section-abx {
     border-left-color: #059669;
 }
-.section-abx:hover {
+.section-dashboards:hover {
     border-left-color: #059669;
     background: linear-gradient(135deg, var(--color-white) 0%, rgba(5, 150, 105, 0.1) 100%);
 }
-.section-abx .section-icon {
+.section-dashboards .section-icon {
     color: #059669;
+}
+
+.section-abx {
+    border-left-color: #7C3AED;
+}
+.section-abx:hover {
+    border-left-color: #7C3AED;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(124, 58, 237, 0.1) 100%);
+}
+.section-abx .section-icon {
+    color: #7C3AED;
 }
 
 .section-guidelines {
@@ -248,14 +249,14 @@
 }
 
 .section-surgical {
-    border-left-color: #E11D48;
+    border-left-color: #0891B2;
 }
 .section-surgical:hover {
-    border-left-color: #E11D48;
-    background: linear-gradient(135deg, var(--color-white) 0%, rgba(225, 29, 72, 0.1) 100%);
+    border-left-color: #0891B2;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(8, 145, 178, 0.1) 100%);
 }
 .section-surgical .section-icon {
-    color: #E11D48;
+    color: #0891B2;
 }
 
 .section-drugbug {

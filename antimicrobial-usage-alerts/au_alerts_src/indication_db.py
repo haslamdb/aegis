@@ -23,6 +23,46 @@ from .config import config
 logger = logging.getLogger(__name__)
 
 
+def _log_indication_activity(
+    activity_type: str,
+    entity_id: str,
+    entity_type: str,
+    action_taken: str,
+    provider_id: str | None = None,
+    provider_name: str | None = None,
+    patient_mrn: str | None = None,
+    location_code: str | None = None,
+    service: str | None = None,
+    outcome: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Log activity to the unified metrics store.
+
+    This is a fire-and-forget operation - failures are logged but don't
+    interrupt the main operation.
+    """
+    try:
+        from common.metrics_store import MetricsStore, ModuleSource
+
+        store = MetricsStore()
+        store.log_activity(
+            activity_type=activity_type,
+            module=ModuleSource.ABX_INDICATIONS,
+            provider_id=provider_id,
+            provider_name=provider_name,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            action_taken=action_taken,
+            outcome=outcome,
+            patient_mrn=patient_mrn,
+            location_code=location_code,
+            service=service,
+            details=details,
+        )
+    except Exception as e:
+        logger.debug(f"Failed to log activity to metrics store: {e}")
+
+
 class IndicationDatabase:
     """SQLite database for indication tracking."""
 
@@ -382,6 +422,9 @@ class IndicationDatabase:
         """
         review_id = str(uuid.uuid4())
 
+        # Get candidate info for activity logging
+        candidate = self.get_candidate(candidate_id)
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -410,6 +453,27 @@ class IndicationDatabase:
             )
 
             conn.commit()
+
+        # Log to unified metrics store
+        activity_type = "override" if is_override else "review"
+        _log_indication_activity(
+            activity_type=activity_type,
+            entity_id=candidate_id,
+            entity_type="indication_candidate",
+            action_taken=decision,
+            provider_name=reviewer,
+            patient_mrn=candidate.patient.mrn if candidate else None,
+            location_code=candidate.location if candidate else None,
+            service=candidate.service if candidate else None,
+            outcome=decision,
+            details={
+                "medication_name": candidate.medication.medication_name if candidate else None,
+                "llm_decision": llm_decision,
+                "final_classification": candidate.final_classification if candidate else None,
+                "is_override": is_override,
+                "override_reason": override_reason,
+            },
+        )
 
         return review_id
 

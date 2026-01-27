@@ -1,0 +1,486 @@
+{% extends "base.html" %}
+
+{% block title %}ASP/IP Metrics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>ASP/IP Unified Metrics</h1>
+    <div class="header-actions">
+        <select id="days-filter" onchange="window.location.href='?days=' + this.value">
+            <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+            <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
+            <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+        </select>
+        <a href="{{ url_for('main.landing') }}" class="btn btn-secondary">Back to Main</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error loading metrics:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Quick Navigation -->
+<div class="metric-nav">
+    <a href="{{ url_for('asp_metrics.workload') }}" class="metric-nav-item">
+        <span class="nav-icon">&#128100;</span>
+        Workload
+    </a>
+    <a href="{{ url_for('asp_metrics.targets') }}" class="metric-nav-item">
+        <span class="nav-icon">&#127919;</span>
+        Targets
+    </a>
+    <a href="{{ url_for('asp_metrics.trends') }}" class="metric-nav-item">
+        <span class="nav-icon">&#128200;</span>
+        Trends
+    </a>
+    <a href="{{ url_for('asp_metrics.interventions') }}" class="metric-nav-item">
+        <span class="nav-icon">&#128221;</span>
+        Interventions
+    </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ metrics.activity.total_activities | default(0) }}</div>
+        <div class="stat-label">Total Activities</div>
+        <div class="stat-sublabel">{{ days }} day period</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ metrics.activity.unique_providers | default(0) }}</div>
+        <div class="stat-label">Active Reviewers</div>
+    </div>
+    <div class="stat-card {% if metrics.active_targets|length > 0 %}stat-warning{% endif %}">
+        <div class="stat-value">{{ metrics.active_targets | length }}</div>
+        <div class="stat-label">Active Targets</div>
+        <div class="stat-sublabel">Needing intervention</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ metrics.interventions.total_sessions | default(0) }}</div>
+        <div class="stat-label">Intervention Sessions</div>
+        <div class="stat-sublabel">{{ metrics.interventions.outcomes.improvement_rate | default(0) }}% improved</div>
+    </div>
+</div>
+
+<!-- Activity by Module -->
+<div class="dashboard-grid">
+    <div class="dashboard-card">
+        <h3>Activity by Module</h3>
+        {% if metrics.activity.by_module %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Module</th>
+                    <th>Activities</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for module, count in metrics.activity.by_module.items() %}
+                <tr>
+                    <td>{{ module | replace('_', ' ') | title }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No activity data available</p>
+        {% endif %}
+    </div>
+
+    <div class="dashboard-card">
+        <h3>Activity by Type</h3>
+        {% if metrics.activity.by_activity_type %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for type, count in metrics.activity.by_activity_type.items() %}
+                <tr>
+                    <td>{{ type | replace('_', ' ') | title }}</td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No activity data available</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Resolution Patterns -->
+<div class="dashboard-card">
+    <h3>Alert Resolution Patterns</h3>
+    <div class="resolution-summary">
+        <div class="resolution-stat">
+            <span class="resolution-value">{{ resolution_patterns.total_resolved | default(0) }}</span>
+            <span class="resolution-label">Total Resolved</span>
+        </div>
+        <div class="resolution-stat">
+            <span class="resolution-value">{{ resolution_patterns.therapy_change_rate | default(0) }}%</span>
+            <span class="resolution-label">Therapy Change Rate</span>
+        </div>
+        <div class="resolution-stat">
+            <span class="resolution-value">
+                {% if resolution_patterns.avg_time_to_resolve_minutes %}
+                    {% if resolution_patterns.avg_time_to_resolve_minutes < 60 %}
+                        {{ resolution_patterns.avg_time_to_resolve_minutes | int }} min
+                    {% else %}
+                        {{ (resolution_patterns.avg_time_to_resolve_minutes / 60) | round(1) }} hrs
+                    {% endif %}
+                {% else %}
+                    --
+                {% endif %}
+            </span>
+            <span class="resolution-label">Avg Time to Resolve</span>
+        </div>
+    </div>
+    {% if resolution_patterns.breakdown %}
+    <h4>Resolution Breakdown</h4>
+    <div class="resolution-breakdown">
+        {% for reason, count in resolution_patterns.breakdown.items() %}
+        <div class="breakdown-item">
+            <span class="breakdown-label">{{ reason | replace('_', ' ') | title }}</span>
+            <span class="breakdown-value">{{ count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Locations Needing Attention -->
+<div class="dashboard-grid">
+    <div class="dashboard-card">
+        <h3>Locations by Priority Score</h3>
+        {% if location_scores %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Location</th>
+                    <th>Score</th>
+                    <th>Inappropriate Rate</th>
+                    <th>Issues</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loc in location_scores %}
+                <tr class="{% if loc.total_score > 15 %}row-warning{% endif %}">
+                    <td>{{ loc.location_code }}</td>
+                    <td>{{ loc.total_score | round(1) }}</td>
+                    <td>
+                        {% if loc.inappropriate_abx_rate is not none %}
+                            {{ loc.inappropriate_abx_rate }}%
+                        {% else %}
+                            --
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if loc.issues %}
+                            {{ loc.issues | length }} issue{{ 's' if loc.issues | length > 1 else '' }}
+                        {% else %}
+                            --
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No location data available</p>
+        {% endif %}
+    </div>
+
+    <div class="dashboard-card">
+        <h3>Services by Priority Score</h3>
+        {% if service_scores %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Score</th>
+                    <th>Inappropriate Rate</th>
+                    <th>Orders</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for svc in service_scores %}
+                <tr class="{% if svc.total_score > 15 %}row-warning{% endif %}">
+                    <td>{{ svc.service_name }}</td>
+                    <td>{{ svc.total_score | round(1) }}</td>
+                    <td>
+                        {% if svc.inappropriate_abx_rate is not none %}
+                            {{ svc.inappropriate_abx_rate }}%
+                        {% else %}
+                            --
+                        {% endif %}
+                    </td>
+                    <td>{{ svc.total_orders }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No service data available</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Active Intervention Targets -->
+<div class="dashboard-card">
+    <h3>Active Intervention Targets</h3>
+    {% if metrics.active_targets %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Target</th>
+                <th>Type</th>
+                <th>Issue</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Assigned To</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for target in metrics.active_targets %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('asp_metrics.target_detail', target_id=target.id) }}">
+                        {{ target.target_name or target.target_id }}
+                    </a>
+                </td>
+                <td>{{ target.target_type | replace('_', ' ') | title }}</td>
+                <td>{{ target.issue_type | replace('_', ' ') | title }}</td>
+                <td>
+                    <span class="priority-badge priority-{{ 'high' if target.priority_score > 10 else 'medium' if target.priority_score > 5 else 'low' }}">
+                        {{ target.priority_score | round(1) if target.priority_score else '--' }}
+                    </span>
+                </td>
+                <td>
+                    <span class="status-badge status-{{ target.status }}">
+                        {{ target.status | replace('_', ' ') | title }}
+                    </span>
+                </td>
+                <td>{{ target.assigned_to or '--' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('asp_metrics.targets') }}" class="btn btn-link">View All Targets</a>
+    {% else %}
+    <p class="empty-state">No active intervention targets</p>
+    <button onclick="identifyTargets()" class="btn btn-primary">Run Target Identification</button>
+    {% endif %}
+</div>
+
+<!-- Top Providers by Activity -->
+<div class="dashboard-card">
+    <h3>Top Reviewers</h3>
+    {% if metrics.provider_workload %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Provider</th>
+                <th>Role</th>
+                <th>Total Activities</th>
+                <th>Reviews</th>
+                <th>Active Days</th>
+                <th>Avg/Day</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for provider in metrics.provider_workload %}
+            <tr>
+                <td>{{ provider.provider_name or provider.provider_id or 'Unknown' }}</td>
+                <td>{{ provider.provider_role or '--' }}</td>
+                <td>{{ provider.total_activities }}</td>
+                <td>{{ provider.reviews }}</td>
+                <td>{{ provider.active_days }}</td>
+                <td>{{ provider.avg_per_day }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('asp_metrics.workload') }}" class="btn btn-link">View Full Workload Report</a>
+    {% else %}
+    <p class="empty-state">No provider activity data available</p>
+    {% endif %}
+</div>
+
+<script>
+function identifyTargets() {
+    fetch('{{ url_for("asp_metrics.identify_targets") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Identified ${data.new_targets} new intervention targets`);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
+</script>
+
+<style>
+.metric-nav {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.metric-nav-item {
+    flex: 1;
+    padding: 1rem;
+    background: #f3f4f6;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #1f2937;
+    text-align: center;
+    transition: background 0.2s;
+}
+
+.metric-nav-item:hover {
+    background: #e5e7eb;
+}
+
+.nav-icon {
+    display: block;
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.resolution-summary {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.resolution-stat {
+    text-align: center;
+}
+
+.resolution-value {
+    display: block;
+    font-size: 1.75rem;
+    font-weight: bold;
+    color: #0d9488;
+}
+
+.resolution-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.resolution-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.breakdown-item {
+    background: #f3f4f6;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.breakdown-label {
+    color: #4b5563;
+}
+
+.breakdown-value {
+    font-weight: bold;
+}
+
+.priority-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.priority-high {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.priority-medium {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+.priority-low {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.status-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.status-identified {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-planned {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-in_progress {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-completed {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.row-warning {
+    background: #fffbeb;
+}
+
+.stat-warning {
+    border-left: 4px solid #f59e0b;
+}
+
+.btn-link {
+    background: none;
+    color: #0d9488;
+    padding: 0.5rem 0;
+    text-decoration: underline;
+}
+
+.btn-link:hover {
+    color: #115e59;
+}
+
+.empty-state {
+    text-align: center;
+    color: #6b7280;
+    padding: 2rem;
+}
+</style>
+{% endblock %}

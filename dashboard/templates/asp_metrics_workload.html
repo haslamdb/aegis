@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Provider Workload - ASP/IP Metrics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Provider Workload</h1>
+    <div class="header-actions">
+        <select id="days-filter" onchange="window.location.href='?days=' + this.value">
+            <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+            <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
+            <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+        </select>
+        <a href="{{ url_for('asp_metrics.dashboard') }}" class="btn btn-secondary">Back to Metrics</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error loading workload data:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ activity_summary.total_activities | default(0) }}</div>
+        <div class="stat-label">Total Activities</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ activity_summary.unique_providers | default(0) }}</div>
+        <div class="stat-label">Active Providers</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">
+            {% if activity_summary.by_day %}
+                {{ (activity_summary.total_activities / activity_summary.by_day|length) | round(1) }}
+            {% else %}
+                0
+            {% endif %}
+        </div>
+        <div class="stat-label">Avg Activities/Day</div>
+    </div>
+</div>
+
+<!-- Provider Workload Table -->
+<div class="dashboard-card">
+    <h3>Provider Activity Summary</h3>
+    {% if provider_workload %}
+    <table class="data-table sortable">
+        <thead>
+            <tr>
+                <th>Provider</th>
+                <th>Role</th>
+                <th>Total Activities</th>
+                <th>Reviews</th>
+                <th>Acknowledgments</th>
+                <th>Resolutions</th>
+                <th>Interventions</th>
+                <th>Active Days</th>
+                <th>Avg/Day</th>
+                <th>Total Minutes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for provider in provider_workload %}
+            <tr>
+                <td><strong>{{ provider.provider_name or provider.provider_id or 'Unknown' }}</strong></td>
+                <td>{{ provider.provider_role or '--' }}</td>
+                <td>{{ provider.total_activities }}</td>
+                <td>{{ provider.reviews }}</td>
+                <td>{{ provider.acknowledgments }}</td>
+                <td>{{ provider.resolutions }}</td>
+                <td>{{ provider.interventions }}</td>
+                <td>{{ provider.active_days }}</td>
+                <td>{{ provider.avg_per_day }}</td>
+                <td>
+                    {% if provider.total_minutes %}
+                        {% if provider.total_minutes >= 60 %}
+                            {{ (provider.total_minutes / 60) | round(1) }} hrs
+                        {% else %}
+                            {{ provider.total_minutes }} min
+                        {% endif %}
+                    {% else %}
+                        --
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No provider workload data available for this period</p>
+    {% endif %}
+</div>
+
+<!-- Activity by Location -->
+<div class="dashboard-card">
+    <h3>Activity by Location</h3>
+    {% if activity_by_location %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Location</th>
+                <th>Total Activities</th>
+                <th>Unique Providers</th>
+                <th>Reviews</th>
+                <th>Interventions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for loc in activity_by_location %}
+            <tr>
+                <td>{{ loc.location_code }}</td>
+                <td>{{ loc.total_activities }}</td>
+                <td>{{ loc.unique_providers }}</td>
+                <td>{{ loc.reviews }}</td>
+                <td>{{ loc.interventions }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No location activity data available</p>
+    {% endif %}
+</div>
+
+<!-- Daily Activity Trend -->
+<div class="dashboard-card">
+    <h3>Daily Activity Trend</h3>
+    {% if activity_summary.by_day %}
+    <div class="activity-chart">
+        {% set max_count = activity_summary.by_day|map(attribute='count')|max %}
+        {% for day in activity_summary.by_day[-14:] %}
+        <div class="chart-bar-container" title="{{ day.date }}: {{ day.count }} activities">
+            <div class="chart-bar" style="height: {{ (day.count / max_count * 100) if max_count else 0 }}%"></div>
+            <span class="chart-label">{{ day.date[-5:] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-state">No daily activity data available</p>
+    {% endif %}
+</div>
+
+<!-- Activity by Type Breakdown -->
+<div class="dashboard-grid">
+    <div class="dashboard-card">
+        <h3>Activity by Type</h3>
+        {% if activity_summary.by_activity_type %}
+        <div class="breakdown-list">
+            {% for type, count in activity_summary.by_activity_type.items() %}
+            <div class="breakdown-row">
+                <span class="breakdown-label">{{ type | replace('_', ' ') | title }}</span>
+                <div class="breakdown-bar-container">
+                    <div class="breakdown-bar" style="width: {{ (count / activity_summary.total_activities * 100) if activity_summary.total_activities else 0 }}%"></div>
+                </div>
+                <span class="breakdown-value">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state">No activity type data available</p>
+        {% endif %}
+    </div>
+
+    <div class="dashboard-card">
+        <h3>Activity by Module</h3>
+        {% if activity_summary.by_module %}
+        <div class="breakdown-list">
+            {% for module, count in activity_summary.by_module.items() %}
+            <div class="breakdown-row">
+                <span class="breakdown-label">{{ module | replace('_', ' ') | title }}</span>
+                <div class="breakdown-bar-container">
+                    <div class="breakdown-bar" style="width: {{ (count / activity_summary.total_activities * 100) if activity_summary.total_activities else 0 }}%"></div>
+                </div>
+                <span class="breakdown-value">{{ count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-state">No module activity data available</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.activity-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 150px;
+    padding: 1rem 0;
+}
+
+.chart-bar-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+}
+
+.chart-bar {
+    width: 100%;
+    max-width: 30px;
+    background: linear-gradient(180deg, #0d9488 0%, #14b8a6 100%);
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    margin-top: auto;
+}
+
+.chart-label {
+    font-size: 0.625rem;
+    color: #6b7280;
+    margin-top: 4px;
+    transform: rotate(-45deg);
+    transform-origin: center center;
+}
+
+.breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.breakdown-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.breakdown-row .breakdown-label {
+    width: 120px;
+    flex-shrink: 0;
+    font-size: 0.875rem;
+}
+
+.breakdown-bar-container {
+    flex: 1;
+    height: 20px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.breakdown-bar {
+    height: 100%;
+    background: #0d9488;
+    border-radius: 4px;
+}
+
+.breakdown-row .breakdown-value {
+    width: 50px;
+    text-align: right;
+    font-weight: bold;
+}
+
+.empty-state {
+    text-align: center;
+    color: #6b7280;
+    padding: 2rem;
+}
+</style>
+{% endblock %}

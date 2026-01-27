@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}Interventions - ASP/IP Metrics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Intervention Sessions</h1>
+    <div class="header-actions">
+        <button onclick="showLogForm()" class="btn btn-primary">Log New Session</button>
+        <a href="{{ url_for('asp_metrics.dashboard') }}" class="btn btn-secondary">Back to Metrics</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error loading interventions:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ intervention_summary.total_sessions | default(0) }}</div>
+        <div class="stat-label">Total Sessions (90d)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ intervention_summary.outcomes.total | default(0) }}</div>
+        <div class="stat-label">Outcomes Tracked</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ intervention_summary.outcomes.improvement_rate | default(0) }}%</div>
+        <div class="stat-label">Improvement Rate</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ intervention_summary.outcomes.sustained_rate | default(0) }}%</div>
+        <div class="stat-label">Sustained at 90d</div>
+    </div>
+</div>
+
+<!-- Filter and Sessions List -->
+<div class="dashboard-card">
+    <div class="card-header">
+        <h3>Recent Sessions</h3>
+        <select id="type-filter" onchange="window.location.href='?session_type=' + this.value">
+            <option value="">All Types</option>
+            {% for value, label in intervention_types %}
+            <option value="{{ value }}" {% if session_type_filter == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {% if sessions %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Target</th>
+                <th>Topic</th>
+                <th>Conducted By</th>
+                <th>Attendees</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td>{{ session.session_date }}</td>
+                <td>
+                    <span class="type-badge type-{{ session.session_type }}">
+                        {{ session.session_type | replace('_', ' ') | title }}
+                    </span>
+                </td>
+                <td>
+                    <strong>{{ session.target_name or session.target_id or '--' }}</strong>
+                    <br>
+                    <small>{{ session.target_type | replace('_', ' ') | title }}</small>
+                </td>
+                <td>{{ session.topic or '--' }}</td>
+                <td>{{ session.conducted_by or '--' }}</td>
+                <td>{{ session.attendees | length if session.attendees else 0 }}</td>
+                <td>
+                    <a href="{{ url_for('asp_metrics.intervention_detail', session_id=session.id) }}" class="btn btn-sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No intervention sessions found</p>
+    {% endif %}
+</div>
+
+<!-- Sessions by Type -->
+{% if intervention_summary.sessions_by_type %}
+<div class="dashboard-card">
+    <h3>Sessions by Type</h3>
+    <div class="type-breakdown">
+        {% for type, count in intervention_summary.sessions_by_type.items() %}
+        <div class="type-item">
+            <span class="type-label">{{ type | replace('_', ' ') | title }}</span>
+            <span class="type-count">{{ count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Log Session Modal -->
+<div id="log-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Log Intervention Session</h3>
+            <button onclick="hideLogForm()" class="close-btn">&times;</button>
+        </div>
+        <form id="log-form" onsubmit="submitSession(event)">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Session Type*</label>
+                    <select name="session_type" required>
+                        {% for value, label in intervention_types %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Session Date*</label>
+                    <input type="date" name="session_date" required>
+                </div>
+                <div class="form-group">
+                    <label>Target Type*</label>
+                    <select name="target_type" required>
+                        {% for value, label in target_types %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Target ID</label>
+                    <input type="text" name="target_id" placeholder="e.g., A6N, PICU">
+                </div>
+                <div class="form-group">
+                    <label>Target Name</label>
+                    <input type="text" name="target_name" placeholder="e.g., 6 North, Pediatric ICU">
+                </div>
+                <div class="form-group">
+                    <label>Conducted By</label>
+                    <input type="text" name="conducted_by" placeholder="Your name">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Topic</label>
+                <input type="text" name="topic" placeholder="Main topic discussed">
+            </div>
+            <div class="form-group">
+                <label>Attendees (one per line)</label>
+                <textarea name="attendees_text" rows="3" placeholder="Enter attendee names, one per line"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea name="notes" rows="4" placeholder="Session notes, key points, action items..."></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" onclick="hideLogForm()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">Log Session</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Set default date to today
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelector('input[name="session_date"]').value = today;
+});
+
+function showLogForm() {
+    document.getElementById('log-modal').style.display = 'flex';
+}
+
+function hideLogForm() {
+    document.getElementById('log-modal').style.display = 'none';
+}
+
+function submitSession(e) {
+    e.preventDefault();
+
+    const form = document.getElementById('log-form');
+    const formData = new FormData(form);
+
+    // Parse attendees from textarea
+    const attendeesText = formData.get('attendees_text');
+    const attendees = attendeesText ? attendeesText.split('\n').filter(a => a.trim()) : [];
+
+    const data = {
+        session_type: formData.get('session_type'),
+        session_date: formData.get('session_date'),
+        target_type: formData.get('target_type'),
+        target_id: formData.get('target_id'),
+        target_name: formData.get('target_name'),
+        topic: formData.get('topic'),
+        attendees: attendees,
+        notes: formData.get('notes'),
+        conducted_by: formData.get('conducted_by'),
+    };
+
+    fetch('{{ url_for("asp_metrics.log_intervention") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            alert('Session logged successfully');
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
+
+// Close modal on click outside
+document.getElementById('log-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideLogForm();
+    }
+});
+</script>
+
+<style>
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.card-header h3 {
+    margin: 0;
+}
+
+.card-header select {
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+.type-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.type-unit_rounding {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.type-service_education {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.type-individual_feedback {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.type-committee {
+    background: #f3e8ff;
+    color: #6b21a8;
+}
+
+.type-policy_update {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.type-escalation {
+    background: #fce7f3;
+    color: #9d174d;
+}
+
+.type-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.type-item {
+    background: #f3f4f6;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.type-label {
+    color: #4b5563;
+}
+
+.type-count {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #0d9488;
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #6b7280;
+}
+
+.close-btn:hover {
+    color: #1f2937;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.empty-state {
+    text-align: center;
+    color: #6b7280;
+    padding: 2rem;
+}
+</style>
+{% endblock %}

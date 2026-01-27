@@ -1,0 +1,274 @@
+{% extends "base.html" %}
+
+{% block title %}Intervention Targets - ASP/IP Metrics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Intervention Targets</h1>
+    <div class="header-actions">
+        <select id="status-filter" onchange="window.location.href='?status=' + this.value">
+            <option value="" {% if not status_filter %}selected{% endif %}>Active Targets</option>
+            <option value="identified" {% if status_filter == 'identified' %}selected{% endif %}>Identified</option>
+            <option value="planned" {% if status_filter == 'planned' %}selected{% endif %}>Planned</option>
+            <option value="in_progress" {% if status_filter == 'in_progress' %}selected{% endif %}>In Progress</option>
+            <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+            <option value="dismissed" {% if status_filter == 'dismissed' %}selected{% endif %}>Dismissed</option>
+        </select>
+        <button onclick="identifyTargets()" class="btn btn-primary">Identify New Targets</button>
+        <a href="{{ url_for('asp_metrics.dashboard') }}" class="btn btn-secondary">Back to Metrics</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-error">
+    <strong>Error loading targets:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ intervention_summary.targets_by_status.identified | default(0) }}</div>
+        <div class="stat-label">Identified</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ intervention_summary.targets_by_status.planned | default(0) }}</div>
+        <div class="stat-label">Planned</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ intervention_summary.targets_by_status.in_progress | default(0) }}</div>
+        <div class="stat-label">In Progress</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ intervention_summary.targets_by_status.completed | default(0) }}</div>
+        <div class="stat-label">Completed</div>
+    </div>
+</div>
+
+<!-- Targets Table -->
+<div class="dashboard-card">
+    <h3>Intervention Targets</h3>
+    {% if targets %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Target</th>
+                <th>Type</th>
+                <th>Issue</th>
+                <th>Priority</th>
+                <th>Baseline</th>
+                <th>Target</th>
+                <th>Current</th>
+                <th>Status</th>
+                <th>Assigned To</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for target in targets %}
+            <tr class="target-row" data-target-id="{{ target.id }}">
+                <td>
+                    <a href="{{ url_for('asp_metrics.target_detail', target_id=target.id) }}">
+                        <strong>{{ target.target_name or target.target_id }}</strong>
+                    </a>
+                </td>
+                <td>
+                    <span class="type-badge">{{ target.target_type | replace('_', ' ') | title }}</span>
+                </td>
+                <td>{{ target.issue_type | replace('_', ' ') | title }}</td>
+                <td>
+                    <span class="priority-badge priority-{{ 'high' if target.priority_score and target.priority_score > 10 else 'medium' if target.priority_score and target.priority_score > 5 else 'low' }}">
+                        {{ target.priority_score | round(1) if target.priority_score else '--' }}
+                    </span>
+                </td>
+                <td>{{ target.baseline_value | round(1) if target.baseline_value is not none else '--' }}{{ target.metric_unit if target.metric_unit == 'percent' else '' }}</td>
+                <td>{{ target.target_value | round(1) if target.target_value is not none else '--' }}{{ '%' if target.metric_unit == 'percent' else '' }}</td>
+                <td>{{ target.current_value | round(1) if target.current_value is not none else '--' }}{{ '%' if target.metric_unit == 'percent' else '' }}</td>
+                <td>
+                    <select class="status-select" onchange="updateTargetStatus({{ target.id }}, this.value)">
+                        <option value="identified" {% if target.status == 'identified' %}selected{% endif %}>Identified</option>
+                        <option value="planned" {% if target.status == 'planned' %}selected{% endif %}>Planned</option>
+                        <option value="in_progress" {% if target.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+                        <option value="completed" {% if target.status == 'completed' %}selected{% endif %}>Completed</option>
+                        <option value="dismissed" {% if target.status == 'dismissed' %}selected{% endif %}>Dismissed</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" class="assign-input" placeholder="Assign to..."
+                           value="{{ target.assigned_to or '' }}"
+                           onchange="updateTargetAssignment({{ target.id }}, this.value)">
+                </td>
+                <td>
+                    <a href="{{ url_for('asp_metrics.target_detail', target_id=target.id) }}" class="btn btn-sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No intervention targets found for the selected filter</p>
+    <button onclick="identifyTargets()" class="btn btn-primary">Run Target Identification</button>
+    {% endif %}
+</div>
+
+<!-- Issue Type Breakdown -->
+{% if intervention_summary.targets_by_issue %}
+<div class="dashboard-card">
+    <h3>Targets by Issue Type</h3>
+    <div class="issue-breakdown">
+        {% for issue, count in intervention_summary.targets_by_issue.items() %}
+        <div class="issue-item">
+            <span class="issue-label">{{ issue | replace('_', ' ') | title }}</span>
+            <span class="issue-count">{{ count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+function identifyTargets() {
+    fetch('{{ url_for("asp_metrics.identify_targets") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Identified ${data.new_targets} new intervention targets`);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
+
+function updateTargetStatus(targetId, status) {
+    fetch(`/asp-metrics/targets/${targetId}/update`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: status })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
+
+function updateTargetAssignment(targetId, assignedTo) {
+    fetch(`/asp-metrics/targets/${targetId}/update`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ assigned_to: assignedTo })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error: ' + error);
+    });
+}
+</script>
+
+<style>
+.type-badge {
+    background: #e0f2fe;
+    color: #0369a1;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.priority-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.priority-high {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.priority-medium {
+    background: #fffbeb;
+    color: #d97706;
+}
+
+.priority-low {
+    background: #f0fdf4;
+    color: #16a34a;
+}
+
+.status-select {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    background: white;
+}
+
+.assign-input {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    width: 120px;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+}
+
+.issue-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.issue-item {
+    background: #f3f4f6;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.issue-label {
+    color: #4b5563;
+}
+
+.issue-count {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #0d9488;
+}
+
+.empty-state {
+    text-align: center;
+    color: #6b7280;
+    padding: 2rem;
+}
+</style>
+{% endblock %}

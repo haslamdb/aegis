@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Session Not Found - ASP/IP Metrics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Session Not Found</h1>
+</div>
+
+<div class="dashboard-card">
+    <div class="not-found">
+        <p>Intervention session <strong>#{{ session_id }}</strong> was not found.</p>
+        {% if error %}
+        <p class="error-detail">Error: {{ error }}</p>
+        {% endif %}
+        <a href="{{ url_for('asp_metrics.interventions') }}" class="btn btn-primary">Back to Interventions</a>
+    </div>
+</div>
+
+<style>
+.not-found {
+    text-align: center;
+    padding: 3rem;
+}
+
+.error-detail {
+    color: #dc2626;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
