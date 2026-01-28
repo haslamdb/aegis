@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .models import (
+    EvidenceSource,
     IndicationCandidate,
     IndicationExtraction,
     Patient,
@@ -99,12 +100,12 @@ class IndicationDatabase:
         """Add new columns to existing databases."""
         cursor = conn.cursor()
 
-        # Get existing columns
+        # Get existing columns for indication_candidates
         cursor.execute("PRAGMA table_info(indication_candidates)")
-        existing_cols = {row[1] for row in cursor.fetchall()}
+        candidates_cols = {row[1] for row in cursor.fetchall()}
 
-        # Migrations: add columns if they don't exist
-        migrations = [
+        # Migrations for indication_candidates
+        candidates_migrations = [
             ("rxnorm_code", "ALTER TABLE indication_candidates ADD COLUMN rxnorm_code TEXT"),
             ("location", "ALTER TABLE indication_candidates ADD COLUMN location TEXT"),
             ("service", "ALTER TABLE indication_candidates ADD COLUMN service TEXT"),
@@ -114,11 +115,30 @@ class IndicationDatabase:
             ("cchmc_recommendation", "ALTER TABLE indication_candidates ADD COLUMN cchmc_recommendation TEXT"),
         ]
 
-        for col_name, sql in migrations:
-            if col_name not in existing_cols:
+        for col_name, sql in candidates_migrations:
+            if col_name not in candidates_cols:
                 try:
                     cursor.execute(sql)
-                    logger.info(f"Migration: added column {col_name}")
+                    logger.info(f"Migration: added column {col_name} to indication_candidates")
+                except Exception as e:
+                    logger.debug(f"Migration skipped for {col_name}: {e}")
+
+        # Get existing columns for indication_extractions
+        cursor.execute("PRAGMA table_info(indication_extractions)")
+        extractions_cols = {row[1] for row in cursor.fetchall()}
+
+        # Migrations for indication_extractions (evidence source attribution)
+        extractions_migrations = [
+            ("evidence_sources", "ALTER TABLE indication_extractions ADD COLUMN evidence_sources TEXT"),
+            ("notes_filtered_count", "ALTER TABLE indication_extractions ADD COLUMN notes_filtered_count INTEGER"),
+            ("notes_total_count", "ALTER TABLE indication_extractions ADD COLUMN notes_total_count INTEGER"),
+        ]
+
+        for col_name, sql in extractions_migrations:
+            if col_name not in extractions_cols:
+                try:
+                    cursor.execute(sql)
+                    logger.info(f"Migration: added column {col_name} to indication_extractions")
                 except Exception as e:
                     logger.debug(f"Migration skipped for {col_name}: {e}")
 
@@ -499,6 +519,13 @@ class IndicationDatabase:
         confidence_map = {"HIGH": 0.9, "MEDIUM": 0.7, "LOW": 0.5}
         confidence = confidence_map.get(extraction.confidence.upper(), 0.5)
 
+        # Serialize evidence sources
+        evidence_sources_json = None
+        if extraction.evidence_sources:
+            evidence_sources_json = json.dumps(
+                [src.to_dict() for src in extraction.evidence_sources]
+            )
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
@@ -506,8 +533,9 @@ class IndicationDatabase:
                 INSERT INTO indication_extractions (
                     id, candidate_id, model_used, prompt_version,
                     extracted_indications, supporting_quotes, confidence,
+                    evidence_sources, notes_filtered_count, notes_total_count,
                     tokens_used, response_time_ms
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     extraction_id,
@@ -517,6 +545,9 @@ class IndicationDatabase:
                     json.dumps(extraction.found_indications),
                     json.dumps(extraction.supporting_quotes),
                     confidence,
+                    evidence_sources_json,
+                    extraction.notes_filtered_count,
+                    extraction.notes_total_count,
                     extraction.tokens_used,
                     response_time_ms,
                 ),
@@ -838,3 +869,211 @@ class IndicationDatabase:
                 "llm_classified": r["llm_classified"] or 0,
                 "icd10_classified": r["icd10_classified"] or 0,
             }
+
+    # ========================
+    # Deletion Methods
+    # ========================
+
+    def delete_candidate(
+        self,
+        candidate_id: str,
+        deleted_by: str,
+        reason: str | None = None,
+    ) -> bool:
+        """Delete a single reviewed candidate.
+
+        Only candidates with status='reviewed' can be deleted. This is a
+        hard delete - the candidate and associated reviews/extractions
+        are permanently removed.
+
+        Args:
+            candidate_id: The candidate to delete.
+            deleted_by: Who is performing the deletion.
+            reason: Optional reason for deletion.
+
+        Returns:
+            True if deleted, False if not found or not reviewed.
+        """
+        candidate = self.get_candidate(candidate_id)
+        if not candidate:
+            logger.warning(f"Cannot delete candidate {candidate_id}: not found")
+            return False
+
+        if candidate.status != "reviewed":
+            logger.warning(
+                f"Cannot delete candidate {candidate_id}: status is '{candidate.status}', "
+                "only 'reviewed' candidates can be deleted"
+            )
+            return False
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Delete associated extractions
+            cursor.execute(
+                "DELETE FROM indication_extractions WHERE candidate_id = ?",
+                (candidate_id,),
+            )
+            extractions_deleted = cursor.rowcount
+
+            # Delete associated reviews
+            cursor.execute(
+                "DELETE FROM indication_reviews WHERE candidate_id = ?",
+                (candidate_id,),
+            )
+            reviews_deleted = cursor.rowcount
+
+            # Delete the candidate
+            cursor.execute(
+                "DELETE FROM indication_candidates WHERE id = ?",
+                (candidate_id,),
+            )
+
+            conn.commit()
+
+        # Log the deletion
+        _log_indication_activity(
+            activity_type="deletion",
+            entity_id=candidate_id,
+            entity_type="indication_candidate",
+            action_taken="deleted",
+            provider_name=deleted_by,
+            patient_mrn=candidate.patient.mrn,
+            location_code=candidate.location,
+            service=candidate.service,
+            outcome="deleted",
+            details={
+                "medication_name": candidate.medication.medication_name,
+                "final_classification": candidate.final_classification,
+                "reason": reason,
+                "extractions_deleted": extractions_deleted,
+                "reviews_deleted": reviews_deleted,
+            },
+        )
+
+        logger.info(
+            f"Deleted candidate {candidate_id} ({candidate.medication.medication_name}) "
+            f"by {deleted_by}: {extractions_deleted} extractions, {reviews_deleted} reviews"
+        )
+        return True
+
+    def delete_reviewed_candidates(
+        self,
+        deleted_by: str,
+        older_than_days: int | None = None,
+        reason: str | None = None,
+    ) -> int:
+        """Delete all reviewed candidates, optionally filtered by age.
+
+        This permanently removes reviewed candidates and their associated
+        reviews and extractions. Use with caution.
+
+        Args:
+            deleted_by: Who is performing the deletion.
+            older_than_days: Only delete candidates reviewed more than this
+                many days ago. If None, deletes all reviewed candidates.
+            reason: Optional reason for bulk deletion.
+
+        Returns:
+            Number of candidates deleted.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Build the WHERE clause
+            if older_than_days is not None:
+                age_clause = f"AND updated_at < datetime('now', '-{older_than_days} days')"
+            else:
+                age_clause = ""
+
+            # Get candidates to delete (for logging)
+            cursor.execute(
+                f"""
+                SELECT id, patient_mrn, medication_name, final_classification
+                FROM indication_candidates
+                WHERE status = 'reviewed' {age_clause}
+                """,
+            )
+            candidates_to_delete = cursor.fetchall()
+
+            if not candidates_to_delete:
+                logger.info("No reviewed candidates to delete")
+                return 0
+
+            candidate_ids = [c["id"] for c in candidates_to_delete]
+            placeholders = ",".join("?" * len(candidate_ids))
+
+            # Delete extractions for these candidates
+            cursor.execute(
+                f"DELETE FROM indication_extractions WHERE candidate_id IN ({placeholders})",
+                candidate_ids,
+            )
+            extractions_deleted = cursor.rowcount
+
+            # Delete reviews for these candidates
+            cursor.execute(
+                f"DELETE FROM indication_reviews WHERE candidate_id IN ({placeholders})",
+                candidate_ids,
+            )
+            reviews_deleted = cursor.rowcount
+
+            # Delete the candidates
+            cursor.execute(
+                f"DELETE FROM indication_candidates WHERE id IN ({placeholders})",
+                candidate_ids,
+            )
+            candidates_deleted = cursor.rowcount
+
+            conn.commit()
+
+        # Log the bulk deletion
+        _log_indication_activity(
+            activity_type="bulk_deletion",
+            entity_id="bulk",
+            entity_type="indication_candidates",
+            action_taken="bulk_deleted",
+            provider_name=deleted_by,
+            outcome=f"deleted {candidates_deleted} candidates",
+            details={
+                "candidates_deleted": candidates_deleted,
+                "extractions_deleted": extractions_deleted,
+                "reviews_deleted": reviews_deleted,
+                "older_than_days": older_than_days,
+                "reason": reason,
+            },
+        )
+
+        logger.info(
+            f"Bulk deleted {candidates_deleted} reviewed candidates by {deleted_by}: "
+            f"{extractions_deleted} extractions, {reviews_deleted} reviews"
+        )
+        return candidates_deleted
+
+    def get_reviewed_candidates_count(self, older_than_days: int | None = None) -> int:
+        """Get count of reviewed candidates, optionally filtered by age.
+
+        Args:
+            older_than_days: Only count candidates reviewed more than this
+                many days ago. If None, counts all reviewed candidates.
+
+        Returns:
+            Number of reviewed candidates matching criteria.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            if older_than_days is not None:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) as count FROM indication_candidates
+                    WHERE status = 'reviewed'
+                    AND updated_at < datetime('now', ?)
+                    """,
+                    (f"-{older_than_days} days",),
+                )
+            else:
+                cursor.execute(
+                    "SELECT COUNT(*) as count FROM indication_candidates WHERE status = 'reviewed'"
+                )
+
+            return cursor.fetchone()["count"]

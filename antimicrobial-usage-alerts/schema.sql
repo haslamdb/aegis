@@ -80,6 +80,11 @@ CREATE TABLE IF NOT EXISTS indication_extractions (
     supporting_quotes TEXT,  -- JSON array of quotes from notes
     confidence REAL,  -- 0.0-1.0
 
+    -- Evidence sources with attribution (v2)
+    evidence_sources TEXT,  -- JSON array of {note_type, note_date, author, quotes, relevance}
+    notes_filtered_count INTEGER,  -- Notes included after filtering
+    notes_total_count INTEGER,  -- Total notes available
+
     -- Performance tracking
     tokens_used INTEGER,
     response_time_ms INTEGER,

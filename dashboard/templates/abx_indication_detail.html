@@ -19,80 +19,60 @@
             <span class="status-source">via {{ candidate.classification_source }}</span>
         </div>
 
-        <!-- Patient & Medication Info -->
+        <!-- Patient & Medication Info (info-grid pattern) -->
         <div class="alert-detail-card">
-            <div class="info-row-compact">
-                <div class="info-section">
-                    <h3>Patient</h3>
-                    <dl>
-                        <dt>MRN</dt>
-                        <dd><strong>{{ candidate.patient.mrn or 'N/A' }}</strong></dd>
-                        <dt>Name</dt>
-                        <dd>{{ candidate.patient.name or 'N/A' }}</dd>
-                        {% if candidate.location %}
-                        <dt>Location</dt>
-                        <dd>{{ candidate.location }}</dd>
-                        {% endif %}
-                        {% if candidate.service %}
-                        <dt>Service</dt>
-                        <dd>{{ candidate.service }}</dd>
-                        {% endif %}
-                    </dl>
+            <h3>Patient &amp; Order Information</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">PATIENT MRN</span>
+                    <span class="info-value patient-mrn">{{ candidate.patient.mrn or 'N/A' }}</span>
                 </div>
-
-                <div class="info-section">
-                    <h3>Antibiotic Order</h3>
-                    <dl>
-                        <dt>Medication</dt>
-                        <dd><strong>{{ candidate.medication.medication_name }}</strong></dd>
-                        {% if candidate.medication.rxnorm_code %}
-                        <dt>RxNorm</dt>
-                        <dd>{{ candidate.medication.rxnorm_code }}</dd>
-                        {% endif %}
-                        <dt>Order Date</dt>
-                        <dd>{{ candidate.medication.start_date.strftime('%Y-%m-%d %H:%M') if candidate.medication.start_date else 'Unknown' }}</dd>
-                        {% if candidate.medication.dose %}
-                        <dt>Dose</dt>
-                        <dd>{{ candidate.medication.dose }}</dd>
-                        {% endif %}
-                        {% if candidate.medication.route %}
-                        <dt>Route</dt>
-                        <dd>{{ candidate.medication.route }}</dd>
-                        {% endif %}
-                    </dl>
+                <div class="info-item">
+                    <span class="info-label">NAME</span>
+                    <span class="info-value">{{ candidate.patient.name or 'N/A' }}</span>
                 </div>
-            </div>
-        </div>
-
-        <!-- ICD-10 Classification -->
-        <div class="alert-detail-card">
-            <div class="info-section">
-                <h3>ICD-10 Assessment</h3>
-                <div class="classification-summary">
-                    <span class="badge badge-classification-{{ candidate.icd10_classification }}">
-                        {{ candidate.icd10_classification }}
-                    </span>
-                    {% if candidate.icd10_primary_indication %}
-                    <span class="primary-indication">{{ candidate.icd10_primary_indication }}</span>
-                    {% endif %}
+                {% if candidate.location %}
+                <div class="info-item">
+                    <span class="info-label">LOCATION</span>
+                    <span class="info-value">{{ candidate.location }}</span>
                 </div>
-
-                {% if candidate.icd10_codes %}
-                <div class="icd10-codes">
-                    <strong>ICD-10 Codes:</strong>
-                    <ul class="code-list">
-                        {% for code in candidate.icd10_codes %}
-                        <li><code>{{ code }}</code></li>
-                        {% endfor %}
-                    </ul>
+                {% endif %}
+                {% if candidate.service %}
+                <div class="info-item">
+                    <span class="info-label">SERVICE</span>
+                    <span class="info-value">{{ candidate.service }}</span>
                 </div>
-                {% else %}
-                <p class="text-muted">No ICD-10 codes found for this encounter.</p>
+                {% endif %}
+                <div class="info-item">
+                    <span class="info-label">MEDICATION</span>
+                    <span class="info-value medication-name">{{ candidate.medication.medication_name }}</span>
+                </div>
+                {% if candidate.medication.rxnorm_code %}
+                <div class="info-item">
+                    <span class="info-label">RXNORM</span>
+                    <span class="info-value">{{ candidate.medication.rxnorm_code }}</span>
+                </div>
+                {% endif %}
+                <div class="info-item">
+                    <span class="info-label">ORDER DATE</span>
+                    <span class="info-value">{{ candidate.medication.start_date.strftime('%Y-%m-%d %H:%M') if candidate.medication.start_date else 'Unknown' }}</span>
+                </div>
+                {% if candidate.medication.dose %}
+                <div class="info-item">
+                    <span class="info-label">DOSE</span>
+                    <span class="info-value">{{ candidate.medication.dose }}</span>
+                </div>
+                {% endif %}
+                {% if candidate.medication.route %}
+                <div class="info-item">
+                    <span class="info-label">ROUTE</span>
+                    <span class="info-value">{{ candidate.medication.route }}</span>
+                </div>
                 {% endif %}
             </div>
         </div>
 
-        <!-- LLM Extraction -->
+        <!-- LLM Extraction (primary classification source) -->
         <div class="alert-detail-card">
             <div class="info-section">
                 <h3>LLM Note Extraction</h3>
@@ -121,7 +101,36 @@
                     </div>
                     {% endif %}
 
-                    {% if extraction.supporting_quotes %}
+                    {# New v2: Evidence sources with attribution #}
+                    {% if extraction.evidence_sources %}
+                    <div class="extraction-section evidence-sources">
+                        <strong>Supporting Evidence with Sources:</strong>
+                        {% for source in extraction.evidence_sources %}
+                        <div class="evidence-item">
+                            <div class="evidence-header">
+                                <span class="badge badge-note-type">{{ source.note_type }}</span>
+                                {% if source.note_date %}
+                                <span class="evidence-date">{{ source.note_date }}</span>
+                                {% endif %}
+                                {% if source.author %}
+                                <span class="evidence-author">by {{ source.author }}</span>
+                                {% endif %}
+                            </div>
+                            {% if source.relevance %}
+                            <div class="evidence-relevance">{{ source.relevance }}</div>
+                            {% endif %}
+                            {% if source.quotes %}
+                            <ul class="evidence-quotes">
+                                {% for quote in source.quotes %}
+                                <li class="quote">"{{ quote }}"</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {# Fallback to old format if no evidence_sources #}
+                    {% elif extraction.supporting_quotes %}
                     <div class="extraction-section supporting-quotes">
                         <strong>Supporting Quotes from Notes:</strong>
                         <ul>
@@ -135,6 +144,9 @@
                     <div class="extraction-meta">
                         <span class="confidence">Confidence: {{ "%.0f"|format((extraction.confidence or 0) * 100) }}%</span>
                         <span class="model">Model: {{ extraction.model_used }}</span>
+                        {% if extraction.notes_filtered_count is not none and extraction.notes_total_count is not none %}
+                        <span class="notes-count">Notes: {{ extraction.notes_filtered_count }}/{{ extraction.notes_total_count }}</span>
+                        {% endif %}
                         {% if extraction.tokens_used %}
                         <span class="tokens">Tokens: {{ extraction.tokens_used }}</span>
                         {% endif %}
@@ -144,6 +156,34 @@
                 <p class="text-muted">No LLM extraction performed. Classification based on ICD-10 codes only.</p>
                 {% else %}
                 <p class="text-muted">No extraction details available.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ICD-10 Classification -->
+        <div class="alert-detail-card">
+            <div class="info-section">
+                <h3>ICD-10 Assessment</h3>
+                <div class="classification-summary">
+                    <span class="badge badge-classification-{{ candidate.icd10_classification }}">
+                        {{ candidate.icd10_classification }}
+                    </span>
+                    {% if candidate.icd10_primary_indication %}
+                    <span class="primary-indication">{{ candidate.icd10_primary_indication }}</span>
+                    {% endif %}
+                </div>
+
+                {% if candidate.icd10_codes %}
+                <div class="icd10-codes">
+                    <strong>ICD-10 Codes:</strong>
+                    <ul class="code-list">
+                        {% for code in candidate.icd10_codes %}
+                        <li><code>{{ code }}</code></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% else %}
+                <p class="text-muted">No ICD-10 codes found for this encounter.</p>
                 {% endif %}
             </div>
         </div>
@@ -460,6 +500,43 @@ async function acknowledgeCandidate() {
     font-size: 0.9rem;
 }
 
+/* Info grid pattern (like surgical prophylaxis) */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.info-value {
+    font-size: 0.875rem;
+    color: var(--color-gray-800);
+}
+
+.patient-mrn {
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.medication-name {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
 /* Classification badges */
 .badge-classification-A { background: var(--color-success); color: white; }
 .badge-classification-FN { background: var(--color-success); color: white; }
@@ -527,6 +604,78 @@ async function acknowledgeCandidate() {
     margin-bottom: 0.5rem;
 }
 
+/* Evidence sources with attribution */
+.evidence-sources {
+    border-left: 3px solid var(--color-success);
+}
+
+.evidence-item {
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.evidence-item:last-child {
+    margin-bottom: 0;
+}
+
+.evidence-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.badge-note-type {
+    background: var(--color-primary);
+    color: white;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.evidence-date {
+    font-size: 0.8rem;
+    color: var(--color-gray-600);
+}
+
+.evidence-author {
+    font-size: 0.8rem;
+    color: var(--color-gray-600);
+    font-style: italic;
+}
+
+.evidence-relevance {
+    font-size: 0.85rem;
+    color: var(--color-gray-700);
+    margin-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    border-left: 2px solid var(--color-gray-300);
+}
+
+.evidence-quotes {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.evidence-quotes .quote {
+    font-style: italic;
+    color: var(--color-gray-600);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+.notes-count {
+    background: var(--color-gray-100);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+}
+
 .extraction-meta {
     display: flex;
     gap: 1.5rem;
@@ -535,6 +684,7 @@ async function acknowledgeCandidate() {
     margin-top: 1rem;
     padding-top: 0.5rem;
     border-top: 1px solid var(--color-gray-200);
+    flex-wrap: wrap;
 }
 
 /* Comparison table */

@@ -477,6 +477,9 @@ class IndicationMonitor:
         if not self.llm_extractor:
             return None
 
+        # Import NoteWithMetadata here to avoid circular imports
+        from .llm_extractor import NoteWithMetadata
+
         # Get recent notes
         notes = self.fhir_client.get_recent_notes(
             patient_id=order.patient_id,
@@ -487,14 +490,41 @@ class IndicationMonitor:
             logger.debug(f"No notes found for patient {patient.mrn}")
             return None
 
-        # Extract text from notes
-        note_texts = [n.get("text", "") for n in notes if n.get("text")]
-        if not note_texts:
+        # Convert to NoteWithMetadata objects
+        notes_with_meta = []
+        for n in notes:
+            text = n.get("text", "")
+            if not text:
+                continue
+
+            # Extract metadata from FHIR note structure
+            note_type = n.get("type", n.get("category", "UNKNOWN"))
+            note_date = n.get("date")
+            author = n.get("author", n.get("practitioner"))
+            note_id = n.get("id")
+
+            # Normalize date format if needed
+            if note_date and hasattr(note_date, "isoformat"):
+                note_date = note_date.isoformat()[:10]
+            elif note_date and len(str(note_date)) > 10:
+                note_date = str(note_date)[:10]
+
+            notes_with_meta.append(
+                NoteWithMetadata(
+                    text=text,
+                    note_type=note_type,
+                    note_date=note_date,
+                    author=author,
+                    note_id=note_id,
+                )
+            )
+
+        if not notes_with_meta:
             return None
 
-        # Call LLM extractor
+        # Call LLM extractor with metadata
         return self.llm_extractor.extract(
-            notes=note_texts,
+            notes=notes_with_meta,
             medication=order.medication_name,
         )
 
