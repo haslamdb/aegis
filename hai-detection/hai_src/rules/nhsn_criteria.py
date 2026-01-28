@@ -1175,18 +1175,23 @@ CDI_RECURRENCE_MAX_DAYS = 56   # >56 days = new incident
 CDI_CO_HCFA_DISCHARGE_WINDOW_DAYS = 28  # 4 weeks for CO-HCFA
 
 # Valid test types for CDI LabID Event (not antigen-only)
+# Note: This facility uses NAAT/PCR-only testing (no toxin EIA or GDH screening)
 CDI_POSITIVE_TEST_TYPES = {
+    # Molecular tests (facility standard)
+    "pcr",
+    "naat",
+    "toxin_gene",
+    # Toxin EIA (supported but not used at this facility)
     "toxin_a",
     "toxin_b",
     "toxin_ab",
     "toxin_a_b",
-    "pcr",
-    "naat",
+    # Culture (rare)
     "culture_toxigenic",
-    "toxin_gene",
 }
 
-# Test types that do NOT qualify alone (antigen/GDH only)
+# Test types that do NOT qualify alone (antigen/GDH screening only)
+# Note: This facility does not perform GDH screening
 CDI_ANTIGEN_ONLY_TESTS = {
     "gdh",
     "antigen",
@@ -1243,9 +1248,12 @@ CDI_TREATMENT_MEDICATIONS = {
 def is_valid_cdi_test(test_type: str, result: str = "positive") -> bool:
     """Check if test qualifies for CDI LabID event.
 
-    CDI requires positive toxin A/B test or toxin-producing organism
-    detection (PCR, NAAT, toxigenic culture). Antigen-only tests (GDH)
-    do NOT qualify.
+    Qualifying tests (NHSN criteria):
+    - NAAT/PCR for toxin-producing C. difficile (facility standard)
+    - Toxin A/B EIA (positive)
+    - Toxigenic culture (positive)
+
+    Antigen-only tests (GDH) do NOT qualify.
 
     Args:
         test_type: Type of C. diff test performed

@@ -7,10 +7,13 @@ Creates scenarios:
 3. Not CDI - Negative test or asymptomatic colonization
 
 NHSN CDI Criteria:
-- Positive C. difficile toxin A/B test OR
-- Positive molecular test (PCR/NAAT) for toxin-producing C. diff
+- Positive NAAT/PCR for toxin-producing C. difficile, OR
+- Positive toxin A/B test (EIA)
 - HO-CDI: >3 days after admission (day 4+)
 - CO-CDI: ≤3 days after admission (day 1-3)
+
+Note: This facility uses NAAT/PCR-only testing (no toxin EIA or GDH screening).
+Demo scenarios default to PCR test type.
 
 Usage:
     # Create one HO-CDI + one CO-CDI case
@@ -172,11 +175,11 @@ def create_clinical_note(doc_id: str, patient_id: str, encounter_id: str,
 # Scenario definitions
 SCENARIOS = {
     "ho-cdi": {
-        "description": "Hospital-Onset CDI: Positive toxin test on day 5 of admission",
+        "description": "Hospital-Onset CDI: Positive PCR on day 5 of admission",
         "expected": "HO-CDI (Hospital Onset)",
         "admission_days": 5,  # How long ago patient was admitted
         "test_day": 5,        # Day of test (specimen day)
-        "test_type": "toxin",
+        "test_type": "pcr",   # NAAT-only testing per facility protocol
         "is_positive": True,
         "note": """Hospital Medicine Progress Note - Hospital Day 5
 
@@ -186,7 +189,7 @@ History:
 - Admitted day 1 for community-acquired pneumonia
 - Treated with ceftriaxone for 4 days
 - Day 4: Developed watery diarrhea (>6 BMs)
-- Day 5: C. diff toxin test POSITIVE
+- Day 5: C. diff PCR test POSITIVE
 
 Current Symptoms:
 - Profuse watery diarrhea (8 episodes yesterday)
@@ -199,13 +202,13 @@ Risk Factors:
 - Hospitalization
 
 Labs:
-- C. difficile toxin A+B: POSITIVE
+- C. difficile PCR (NAAT): POSITIVE
 - WBC: 15.8 (elevated)
 - Creatinine: normal
 
 Impression:
 Hospital-onset C. difficile infection (HO-CDI). Meets NHSN criteria as positive
-test obtained >3 calendar days after admission (specimen day 5).
+NAAT obtained >3 calendar days after admission (specimen day 5).
 
 Plan:
 - STOP ceftriaxone
@@ -257,11 +260,11 @@ Plan:
 """
     },
     "negative": {
-        "description": "Not CDI: Negative C. diff test despite diarrhea",
+        "description": "Not CDI: Negative C. diff PCR despite diarrhea",
         "expected": "Not CDI - negative test",
         "admission_days": 4,
         "test_day": 4,
-        "test_type": "toxin",
+        "test_type": "pcr",   # NAAT-only testing per facility protocol
         "is_positive": False,
         "note": """Hospital Medicine Progress Note - Day 4
 
@@ -278,11 +281,11 @@ Symptoms:
 - Tolerating oral intake
 
 Labs:
-- C. difficile toxin A+B: NEGATIVE
+- C. difficile PCR (NAAT): NEGATIVE
 - Stool culture: No enteric pathogens
 
 Impression:
-Antibiotic-associated diarrhea, NOT C. difficile. Negative toxin test rules out CDI.
+Antibiotic-associated diarrhea, NOT C. difficile. Negative PCR rules out CDI.
 
 Plan:
 - Continue antibiotics as indicated for febrile neutropenia

@@ -732,15 +732,18 @@ class CDITestResult:
     """C. difficile test result from laboratory.
 
     NHSN CDI LabID Event criteria:
-    - Positive C. difficile toxin A and/or B test result, OR
-    - Detection of toxin-producing C. difficile organism by culture/PCR
+    - Positive NAAT/PCR for toxin-producing C. difficile, OR
+    - Positive C. difficile toxin A and/or B test result (EIA), OR
+    - Positive toxigenic culture
     - Specimen must be unformed stool (including ostomy)
     - Antigen-only results (GDH) do NOT qualify
+
+    Note: This facility uses NAAT-only testing (no toxin EIA or GDH screening).
     """
     fhir_id: str
     patient_id: str
     test_date: datetime
-    test_type: str  # toxin_ab, toxin_a, toxin_b, pcr, naat, culture_toxigenic
+    test_type: str  # pcr, naat, toxin_ab, toxin_a, toxin_b, culture_toxigenic
     result: str  # positive, negative
     loinc_code: str | None = None
     specimen_type: str | None = None  # stool, ostomy

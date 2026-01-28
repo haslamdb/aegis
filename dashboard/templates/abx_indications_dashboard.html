@@ -6,6 +6,7 @@
 <div class="page-header">
     <h1>Antibiotic Indications</h1>
     <div class="header-actions">
+        <a href="{{ url_for('abx_indications.reviewed_list') }}" class="btn btn-secondary">Reviewed ({{ reviewed_count|default(0) }})</a>
         <a href="{{ url_for('abx_indications.analytics') }}" class="btn btn-secondary">Analytics</a>
     </div>
 </div>
@@ -43,7 +44,7 @@
 
 {% if recent_candidates %}
 <div class="recent-candidates">
-    <h2>Recent Assessments <span class="subtitle">(Last 7 days)</span></h2>
+    <h2>Pending Review <span class="subtitle">({{ recent_candidates|length }} episodes)</span></h2>
     <table class="data-table">
         <thead>
             <tr>

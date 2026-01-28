@@ -9,6 +9,12 @@ The rules engine receives:
 And produces:
 - CDIClassificationResult with classification, confidence, and reasoning
 
+Supported Testing Approaches:
+- NAAT/PCR-only (current facility configuration)
+- Toxin EIA
+- Multi-step algorithms (GDH screening → confirmatory testing)
+- Toxigenic culture
+
 NHSN CDI Classification (Time-Based):
 - Healthcare-Facility Onset (HO-CDI): Specimen >3 days after admission
 - Community Onset (CO-CDI): Specimen ≤3 days after admission
