@@ -1,8 +1,14 @@
 """CDI (Clostridioides difficile Infection) candidate detector.
 
-Detects CDI LabID event candidates based on:
-1. Positive C. difficile toxin A and/or B test, OR
-2. Positive molecular test (PCR/NAAT) for toxin-producing C. diff
+Detects CDI LabID event candidates based on positive C. difficile testing.
+
+Qualifying test types:
+- Molecular test (PCR/NAAT) for toxin-producing C. difficile
+- Toxin A and/or B test (EIA)
+- Toxigenic culture
+
+Note: This facility uses NAAT/PCR-only testing. The module supports all
+NHSN-qualifying test types for interoperability with other testing algorithms.
 
 Classification is time-based:
 - Healthcare-Facility Onset (HO-CDI): >3 days after admission

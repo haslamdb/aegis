@@ -280,12 +280,14 @@ The CDI module implements NHSN CDI LabID Event surveillance criteria for detecti
 ### CDI LabID Event Definition
 
 A positive laboratory test result for:
-- C. difficile toxin A and/or B, OR
-- Toxin-producing C. difficile by culture or PCR/NAAT
+- C. difficile toxin A and/or B (EIA), OR
+- Molecular detection (PCR/NAAT) of toxin-producing C. difficile
 
 On an **unformed stool specimen** (including ostomy collections).
 
 **Important**: GDH (glutamate dehydrogenase) antigen-only results do NOT qualify as a LabID event.
+
+> **Local Configuration**: This facility uses **NAAT/PCR-only** testing for C. difficile detection. No toxin EIA or GDH screening is performed.
 
 ### CDI Classification by Onset
 
@@ -307,20 +309,29 @@ CDI requires tracking of prior episodes to distinguish incident, recurrent, and 
 | 15-56 days | Recurrent | Reported as recurrent |
 | >56 days | New Incident | Reported as new event |
 
-### Test Type Hierarchy
+### Supported Testing Approaches
 
-For multi-step testing algorithms, the **last test performed** determines eligibility:
+This module supports various C. difficile testing strategies:
+
+| Testing Approach | Description | Supported |
+|------------------|-------------|-----------|
+| **NAAT-only** | Molecular test (PCR) as sole diagnostic | ✓ (current facility) |
+| **Toxin EIA** | Enzyme immunoassay for toxin A/B | ✓ |
+| **Multi-step algorithm** | GDH screening → toxin/NAAT confirmation | ✓ |
+| **Toxigenic culture** | Culture with toxin testing | ✓ |
+
+For multi-step testing algorithms, the **final confirmatory test** determines eligibility:
 
 | Test Type | Qualifies for LabID Event |
 |-----------|---------------------------|
-| Toxin A/B EIA | Yes (if positive) |
 | PCR/NAAT | Yes (if positive) |
+| Toxin A/B EIA | Yes (if positive) |
 | Toxigenic culture | Yes (if positive) |
-| GDH antigen only | No |
+| GDH antigen only | No (screening only) |
 
 ### CDI Detection Algorithm
 
-1. **Test Eligibility**: Positive C. diff toxin or PCR/NAAT test
+1. **Test Eligibility**: Positive C. diff NAAT/PCR or toxin test
 2. **Specimen Type**: Must be unformed stool (formed stool excluded)
 3. **Timing Calculation**: Calculate specimen day from admission date
 4. **Recurrence Check**: Query prior CDI episodes within 56 days
@@ -332,13 +343,14 @@ For multi-step testing algorithms, the **last test performed** determines eligib
 
 The following LOINC codes are used for C. diff test detection:
 
-| LOINC | Description |
-|-------|-------------|
-| 34713-8 | C. difficile toxin A |
-| 34714-6 | C. difficile toxin B |
-| 34712-0 | C. difficile toxin A+B |
-| 82197-9 | C. difficile toxin B gene (PCR) |
-| 80685-5 | C. difficile toxin genes (NAAT) |
+| LOINC | Description | Used at Facility |
+|-------|-------------|------------------|
+| 82197-9 | C. difficile toxin B gene (PCR) | ✓ Primary |
+| 80685-5 | C. difficile toxin genes (NAAT) | ✓ Primary |
+| 63588-5 | C. difficile toxin B gene (NAA) | ✓ Alternate |
+| 34712-0 | C. difficile toxin A+B (EIA) | — |
+| 34713-8 | C. difficile toxin A (EIA) | — |
+| 34714-6 | C. difficile toxin B (EIA) | — |
 
 ## Related Modules
 
