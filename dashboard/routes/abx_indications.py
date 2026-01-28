@@ -36,11 +36,12 @@ def dashboard():
     try:
         db = _get_indication_db()
 
-        # Get counts by classification (last 7 days)
-        counts = db.get_candidate_count_by_classification(days=7)
-
-        # Get recent candidates for the table
-        recent_candidates = db.list_candidates(limit=50)
+        # Get counts by classification (last 7 days) - for pending only
+        pending_candidates = db.list_candidates(status="pending", limit=100)
+        counts = {}
+        for c in pending_candidates:
+            cls = c.final_classification or "U"
+            counts[cls] = counts.get(cls, 0) + 1
 
         # Get override stats
         override_stats = db.get_override_stats(days=30)
@@ -48,19 +49,24 @@ def dashboard():
         # Get usage summary for analytics section
         usage_summary = db.get_usage_summary(days=30)
 
+        # Count reviewed for display
+        reviewed_count = db.get_reviewed_candidates_count()
+
     except Exception as e:
         logger.error(f"Error loading indication data: {e}")
         counts = {}
-        recent_candidates = []
+        pending_candidates = []
         override_stats = {}
         usage_summary = {}
+        reviewed_count = 0
 
     return render_template(
         "abx_indications_dashboard.html",
         counts=counts,
-        recent_candidates=recent_candidates,
+        recent_candidates=pending_candidates,  # Only show pending
         override_stats=override_stats,
         usage_summary=usage_summary,
+        reviewed_count=reviewed_count,
     )
 
 
@@ -68,6 +74,8 @@ def dashboard():
 def candidate_detail(candidate_id: str):
     """Render the candidate detail page for review."""
     try:
+        import json
+
         db = _get_indication_db()
         candidate = db.get_candidate(candidate_id)
 
@@ -91,7 +99,27 @@ def candidate_detail(candidate_id: str):
             )
             row = cursor.fetchone()
             if row:
-                import json
+                # Parse evidence sources (new v2 format)
+                evidence_sources = []
+                row_keys = row.keys()
+                if "evidence_sources" in row_keys and row["evidence_sources"]:
+                    try:
+                        raw_sources = json.loads(row["evidence_sources"])
+                        for src in raw_sources:
+                            evidence_sources.append({
+                                "note_type": src.get("note_type", "UNKNOWN"),
+                                "note_date": src.get("note_date"),
+                                "author": src.get("author"),
+                                "quotes": src.get("quotes", []),
+                                "relevance": src.get("relevance"),
+                            })
+                    except json.JSONDecodeError:
+                        pass
+
+                # Get note counts (new v2 fields)
+                notes_filtered_count = row["notes_filtered_count"] if "notes_filtered_count" in row_keys else None
+                notes_total_count = row["notes_total_count"] if "notes_total_count" in row_keys else None
+
                 extraction = {
                     "model_used": row["model_used"],
                     "prompt_version": row["prompt_version"],
@@ -101,6 +129,10 @@ def candidate_detail(candidate_id: str):
                     "tokens_used": row["tokens_used"],
                     "response_time_ms": row["response_time_ms"],
                     "created_at": row["created_at"],
+                    # New v2 fields
+                    "evidence_sources": evidence_sources,
+                    "notes_filtered_count": notes_filtered_count,
+                    "notes_total_count": notes_total_count,
                 }
 
         # Get review history
@@ -317,6 +349,39 @@ def acknowledge_all():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@abx_indications_bp.route("/reviewed")
+def reviewed_list():
+    """Show reviewed candidates (for reference/audit)."""
+    try:
+        db = _get_indication_db()
+
+        # Get reviewed candidates
+        reviewed_candidates = db.list_candidates(status="reviewed", limit=100)
+
+        # Get counts by classification for reviewed only
+        counts = {}
+        for c in reviewed_candidates:
+            cls = c.final_classification or "U"
+            counts[cls] = counts.get(cls, 0) + 1
+
+        return render_template(
+            "abx_indications_reviewed.html",
+            candidates=reviewed_candidates,
+            counts=counts,
+            total_reviewed=len(reviewed_candidates),
+        )
+
+    except Exception as e:
+        logger.error(f"Error loading reviewed candidates: {e}")
+        return render_template(
+            "abx_indications_reviewed.html",
+            candidates=[],
+            counts={},
+            total_reviewed=0,
+            error=str(e),
+        )
+
+
 @abx_indications_bp.route("/pending")
 def pending_list():
     """Show only pending candidates that need review."""
@@ -348,3 +413,118 @@ def pending_list():
             total_pending=0,
             error=str(e),
         )
+
+
+@abx_indications_bp.route("/candidate/<candidate_id>/delete", methods=["POST"])
+def delete_candidate(candidate_id: str):
+    """Delete a single reviewed candidate.
+
+    Only candidates that have been reviewed can be deleted.
+    """
+    try:
+        db = _get_indication_db()
+        data = request.get_json() or {}
+
+        deleted_by = data.get("deleted_by", "").strip()
+        reason = data.get("reason", "").strip()
+
+        if not deleted_by:
+            return jsonify({"success": False, "error": "deleted_by is required"}), 400
+
+        success = db.delete_candidate(
+            candidate_id=candidate_id,
+            deleted_by=deleted_by,
+            reason=reason or None,
+        )
+
+        if success:
+            return jsonify({
+                "success": True,
+                "message": f"Candidate {candidate_id} deleted successfully",
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Candidate not found or not reviewed (only reviewed candidates can be deleted)",
+            }), 400
+
+    except Exception as e:
+        logger.error(f"Error deleting candidate {candidate_id}: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@abx_indications_bp.route("/reviewed/delete", methods=["POST"])
+def delete_reviewed():
+    """Delete all reviewed candidates.
+
+    Optionally filter by age to only delete candidates reviewed more than
+    N days ago.
+    """
+    try:
+        db = _get_indication_db()
+        data = request.get_json() or {}
+
+        deleted_by = data.get("deleted_by", "").strip()
+        older_than_days = data.get("older_than_days")
+        reason = data.get("reason", "").strip()
+
+        if not deleted_by:
+            return jsonify({"success": False, "error": "deleted_by is required"}), 400
+
+        # Convert older_than_days to int if provided
+        if older_than_days is not None:
+            try:
+                older_than_days = int(older_than_days)
+            except (ValueError, TypeError):
+                return jsonify({
+                    "success": False,
+                    "error": "older_than_days must be an integer",
+                }), 400
+
+        count = db.delete_reviewed_candidates(
+            deleted_by=deleted_by,
+            older_than_days=older_than_days,
+            reason=reason or None,
+        )
+
+        return jsonify({
+            "success": True,
+            "deleted_count": count,
+            "message": f"Deleted {count} reviewed candidates",
+        })
+
+    except Exception as e:
+        logger.error(f"Error deleting reviewed candidates: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@abx_indications_bp.route("/reviewed/count")
+def reviewed_count():
+    """Get count of reviewed candidates that can be deleted.
+
+    Optionally filter by age with ?older_than_days=N query parameter.
+    """
+    try:
+        db = _get_indication_db()
+
+        older_than_days = request.args.get("older_than_days")
+        if older_than_days is not None:
+            try:
+                older_than_days = int(older_than_days)
+            except (ValueError, TypeError):
+                return jsonify({
+                    "success": False,
+                    "error": "older_than_days must be an integer",
+                }), 400
+
+        count = db.get_reviewed_candidates_count(older_than_days=older_than_days)
+
+        return jsonify({
+            "success": True,
+            "count": count,
+            "older_than_days": older_than_days,
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting reviewed count: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500

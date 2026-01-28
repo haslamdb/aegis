@@ -105,6 +105,41 @@ class IndicationAssessment:
 
 
 @dataclass
+class EvidenceSource:
+    """Source metadata for LLM-extracted evidence.
+
+    Tracks where in clinical notes the evidence was found,
+    including provider attribution and relevant quotes.
+    """
+    note_type: str  # PROGRESS_NOTE, ID_CONSULT, DISCHARGE_SUMMARY, etc.
+    note_date: str | None = None
+    author: str | None = None  # Provider name
+    quotes: list[str] = field(default_factory=list)
+    relevance: str | None = None  # Brief description of why relevant
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for JSON storage."""
+        return {
+            "note_type": self.note_type,
+            "note_date": self.note_date,
+            "author": self.author,
+            "quotes": self.quotes,
+            "relevance": self.relevance,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "EvidenceSource":
+        """Create from dictionary."""
+        return cls(
+            note_type=data.get("note_type", "UNKNOWN"),
+            note_date=data.get("note_date"),
+            author=data.get("author"),
+            quotes=data.get("quotes", []),
+            relevance=data.get("relevance"),
+        )
+
+
+@dataclass
 class IndicationExtraction:
     """LLM extraction result from clinical notes."""
     found_indications: list[str]
@@ -113,3 +148,7 @@ class IndicationExtraction:
     model_used: str
     prompt_version: str
     tokens_used: int | None = None
+    # New fields for evidence source attribution
+    evidence_sources: list[EvidenceSource] = field(default_factory=list)
+    notes_filtered_count: int | None = None  # Notes included after filtering
+    notes_total_count: int | None = None  # Total notes available

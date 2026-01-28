@@ -13,15 +13,82 @@ from typing import Any
 import requests
 
 from .config import config
-from .models import IndicationExtraction
+from .models import IndicationExtraction, EvidenceSource
 
 logger = logging.getLogger(__name__)
+
+# Note types that should always be included (high-value for indication review)
+HIGH_PRIORITY_NOTE_TYPES = {
+    "id_consult",
+    "id consult",
+    "infectious disease",
+    "discharge_summary",
+    "discharge summary",
+    "admission_note",
+    "admission note",
+    "h&p",
+    "history and physical",
+}
+
+# Common infection-related terms for note filtering
+INFECTION_KEYWORDS = {
+    "infection",
+    "pneumonia",
+    "sepsis",
+    "bacteremia",
+    "meningitis",
+    "cellulitis",
+    "abscess",
+    "uti",
+    "urinary tract",
+    "pyelonephritis",
+    "osteomyelitis",
+    "endocarditis",
+    "peritonitis",
+    "fever",
+    "antibiotic",
+    "antimicrobial",
+    "culture",
+    "empiric",
+    "treatment",
+    "started on",
+    "initiated",
+}
+
+
+class NoteWithMetadata:
+    """Clinical note with associated metadata."""
+
+    def __init__(
+        self,
+        text: str,
+        note_type: str | None = None,
+        note_date: str | None = None,
+        author: str | None = None,
+        note_id: str | None = None,
+    ):
+        self.text = text
+        self.note_type = note_type or "UNKNOWN"
+        self.note_date = note_date
+        self.author = author
+        self.note_id = note_id
+
+    def format_for_llm(self) -> str:
+        """Format note with metadata header for LLM context."""
+        header_parts = [f"[{self.note_type.upper()}"]
+        if self.note_date:
+            header_parts.append(f" - {self.note_date}")
+        if self.author:
+            header_parts.append(f" by {self.author}")
+        header_parts.append("]")
+        header = "".join(header_parts)
+        return f"{header}\n{self.text}"
 
 
 class IndicationExtractor:
     """Extract antibiotic indications from clinical notes using LLM."""
 
-    PROMPT_VERSION = "indication_extraction_v1"
+    PROMPT_VERSION = "indication_extraction_v2"
 
     def __init__(
         self,
@@ -95,13 +162,13 @@ Respond with JSON containing:
 
     def extract(
         self,
-        notes: list[str],
+        notes: list[str] | list[NoteWithMetadata],
         medication: str,
     ) -> IndicationExtraction:
         """Extract potential indications from notes.
 
         Args:
-            notes: List of clinical note texts.
+            notes: List of clinical note texts or NoteWithMetadata objects.
             medication: The antibiotic name.
 
         Returns:
@@ -109,8 +176,24 @@ Respond with JSON containing:
         """
         start_time = time.time()
 
-        # Combine notes with truncation
-        combined_notes = self._prepare_notes(notes)
+        # Convert to NoteWithMetadata if needed
+        if notes and isinstance(notes[0], str):
+            notes_with_meta = [NoteWithMetadata(text=n) for n in notes]
+        else:
+            notes_with_meta = notes
+
+        total_count = len(notes_with_meta)
+
+        # Filter notes by relevance
+        filtered_notes = self._filter_notes(notes_with_meta, medication)
+        filtered_count = len(filtered_notes)
+
+        logger.info(
+            f"Note filtering for {medication}: {filtered_count}/{total_count} notes included"
+        )
+
+        # Combine notes with metadata headers
+        combined_notes = self._prepare_notes_with_metadata(filtered_notes)
 
         # Build prompt
         prompt = self._prompt_template.format(
@@ -124,7 +207,13 @@ Respond with JSON containing:
             elapsed_ms = int((time.time() - start_time) * 1000)
 
             # Parse response
-            return self._parse_response(result, elapsed_ms)
+            extraction = self._parse_response(result, elapsed_ms)
+
+            # Add note counts
+            extraction.notes_filtered_count = filtered_count
+            extraction.notes_total_count = total_count
+
+            return extraction
 
         except Exception as e:
             logger.error(f"LLM extraction failed: {e}")
@@ -136,7 +225,89 @@ Respond with JSON containing:
                 confidence="LOW",
                 model_used=self.model,
                 prompt_version=self.PROMPT_VERSION,
+                notes_filtered_count=filtered_count,
+                notes_total_count=total_count,
             )
+
+    def _filter_notes(
+        self,
+        notes: list[NoteWithMetadata],
+        medication: str,
+    ) -> list[NoteWithMetadata]:
+        """Filter notes to those most relevant for indication extraction.
+
+        Always includes high-priority note types (ID consults, discharge summaries).
+        For other notes, filters by medication name or infection keywords.
+
+        Args:
+            notes: List of notes with metadata.
+            medication: The antibiotic name.
+
+        Returns:
+            Filtered list of relevant notes.
+        """
+        if not notes:
+            return []
+
+        # Build search terms from medication name
+        med_lower = medication.lower()
+        # Extract base drug name (e.g., "ceftriaxone" from "Ceftriaxone 1g IV")
+        med_parts = med_lower.split()
+        search_terms = {med_lower, med_parts[0]} if med_parts else {med_lower}
+
+        filtered = []
+        for note in notes:
+            # Always include high-priority note types
+            note_type_lower = (note.note_type or "").lower()
+            if any(hp in note_type_lower for hp in HIGH_PRIORITY_NOTE_TYPES):
+                filtered.append(note)
+                continue
+
+            # Check if note text contains relevant content
+            text_lower = note.text.lower()
+
+            # Check for medication name
+            if any(term in text_lower for term in search_terms):
+                filtered.append(note)
+                continue
+
+            # Check for infection keywords
+            if any(kw in text_lower for kw in INFECTION_KEYWORDS):
+                filtered.append(note)
+                continue
+
+        # If filtering removed everything, fall back to all notes
+        if not filtered and notes:
+            logger.debug("Note filtering too aggressive, including all notes")
+            return notes
+
+        return filtered
+
+    def _prepare_notes_with_metadata(
+        self,
+        notes: list[NoteWithMetadata],
+        max_chars: int = 24000,
+    ) -> str:
+        """Prepare notes with metadata headers for LLM input.
+
+        Args:
+            notes: List of notes with metadata.
+            max_chars: Maximum characters to include.
+
+        Returns:
+            Combined and truncated note text with metadata headers.
+        """
+        # Format each note with its metadata header
+        formatted = [note.format_for_llm() for note in notes]
+
+        # Join notes with separators
+        combined = "\n\n---\n\n".join(formatted)
+
+        # Truncate if needed
+        if len(combined) > max_chars:
+            combined = combined[:max_chars] + "\n\n[Note truncated...]"
+
+        return combined
 
     def _prepare_notes(self, notes: list[str], max_chars: int = 24000) -> str:
         """Prepare notes for LLM input with truncation.
@@ -286,6 +457,14 @@ Respond with JSON containing:
         if isinstance(supporting_quotes, str):
             supporting_quotes = [supporting_quotes]
 
+        # Parse evidence sources
+        evidence_sources = []
+        raw_sources = result.get("evidence_sources", [])
+        if isinstance(raw_sources, list):
+            for src in raw_sources:
+                if isinstance(src, dict):
+                    evidence_sources.append(EvidenceSource.from_dict(src))
+
         # Determine confidence
         confidence = "LOW"
         if overall.get("confidence"):
@@ -304,6 +483,7 @@ Respond with JSON containing:
             model_used=self.model,
             prompt_version=self.PROMPT_VERSION,
             tokens_used=None,  # Ollama doesn't always report this
+            evidence_sources=evidence_sources,
         )
 
 

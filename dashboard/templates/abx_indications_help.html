@@ -14,8 +14,8 @@
         <p>The Antibiotic Indications module provides automated classification of antibiotic indication appropriateness
            using a two-layer approach:</p>
         <ol>
-            <li><strong>ICD-10 Classification</strong> - Based on Chua et al. methodology with pediatric modifications</li>
-            <li><strong>LLM Note Extraction</strong> - AI-powered extraction from clinical notes that can override ICD-10</li>
+            <li><strong>LLM Note Extraction (Primary)</strong> - AI-powered extraction from clinical notes provides the most accurate, real-time classification</li>
+            <li><strong>ICD-10 Classification (Fallback)</strong> - Based on Chua et al. methodology, used when notes are unavailable</li>
         </ol>
         <p>This module implements <strong>Layer 1</strong> of the three-layer appropriateness model, answering:
            "Is there ANY indication for antibiotics?"</p>
@@ -35,16 +35,16 @@
             <div class="workflow-step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <strong>ICD-10 Classification</strong>
-                    <p>Patient's ICD-10 codes are mapped to appropriateness categories using Chua classification</p>
+                    <strong>LLM Note Extraction (Primary)</strong>
+                    <p>AI extracts indications from clinical notes (48h window) with provider attribution and supporting quotes</p>
                 </div>
             </div>
             <div class="workflow-arrow">&#8595;</div>
             <div class="workflow-step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                    <strong>LLM Note Extraction</strong>
-                    <p>AI extracts indications from clinical notes (48h window) with supporting quotes</p>
+                    <strong>ICD-10 Classification (Fallback)</strong>
+                    <p>Patient's ICD-10 codes mapped using Chua classification - used when notes unavailable</p>
                 </div>
             </div>
             <div class="workflow-arrow">&#8595;</div>
@@ -52,14 +52,14 @@
                 <div class="step-number">4</div>
                 <div class="step-content">
                     <strong>Final Classification</strong>
-                    <p>LLM result takes precedence over ICD-10 when available</p>
+                    <p>LLM result takes precedence; ICD-10 used only as fallback</p>
                 </div>
             </div>
             <div class="workflow-arrow">&#8595;</div>
             <div class="workflow-step">
                 <div class="step-number">5</div>
                 <div class="step-content">
-                    <strong>Pharmacist Review</strong>
+                    <strong>ASP Review</strong>
                     <p>Orders classified as "N" (Never Appropriate) generate alerts for review</p>
                 </div>
             </div>
@@ -119,19 +119,21 @@
     </div>
 
     <div class="help-card">
-        <h2>LLM Note Extraction</h2>
-        <p>When enabled, the system uses a local LLM (llama3.3:70b via Ollama) to extract indications from clinical notes:</p>
+        <h2>LLM Note Extraction (Primary Classification)</h2>
+        <p>The system uses a local LLM (llama3.2 via Ollama) to extract indications from clinical notes. This is the <strong>primary classification method</strong>:</p>
         <ul>
             <li><strong>Note Window:</strong> 48 hours before/after the antibiotic order</li>
-            <li><strong>Context Limit:</strong> Up to 24,000 characters of relevant notes</li>
-            <li><strong>Output:</strong> Extracted indications with supporting quotes from notes</li>
+            <li><strong>Note Filtering:</strong> Pre-filters notes by antibiotic name and infection keywords</li>
+            <li><strong>Priority Notes:</strong> ID consults, discharge summaries always included</li>
+            <li><strong>Evidence Sources:</strong> Tracks provider name, note type, date for each finding</li>
             <li><strong>Confidence:</strong> HIGH, MEDIUM, or LOW based on evidence quality</li>
         </ul>
-        <h3>Why LLM Takes Precedence</h3>
+        <h3>Why LLM is the Primary Source</h3>
         <ul>
             <li>ICD-10 codes may be stale (from previous encounters)</li>
             <li>Notes reflect real-time clinical reasoning</li>
             <li>Notes capture nuance that codes cannot (e.g., "viral illness, antibiotics not indicated")</li>
+            <li>Provider attribution allows verification of clinical decisions</li>
         </ul>
     </div>
 
@@ -139,9 +141,10 @@
         <h2>Reviewing Classifications</h2>
         <p>Click any row in the dashboard to open the detail page where you can:</p>
         <ol>
-            <li>View ICD-10 codes and their classification</li>
-            <li>View LLM extraction with supporting quotes from notes</li>
-            <li>Compare ICD-10 vs LLM classifications</li>
+            <li>View LLM extraction with evidence sources (provider, note type, date)</li>
+            <li>View supporting quotes from clinical notes</li>
+            <li>View ICD-10 codes (fallback classification)</li>
+            <li>Compare LLM vs ICD-10 classifications</li>
             <li><strong>Confirm</strong> or <strong>Override</strong> the final classification</li>
             <li>Add notes explaining your decision</li>
         </ol>
@@ -209,7 +212,7 @@
             <li><strong>By Antibiotic:</strong> Which medications are prescribed most/least appropriately</li>
             <li><strong>By Location:</strong> Which units have higher rates of inappropriate use</li>
             <li><strong>By Service:</strong> Which ordering services need targeted education</li>
-            <li><strong>Override Rate:</strong> How often pharmacists disagree with AI classifications</li>
+            <li><strong>Override Rate:</strong> How often ASP reviewers disagree with AI classifications</li>
         </ul>
     </div>
 
