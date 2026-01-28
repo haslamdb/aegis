@@ -370,7 +370,7 @@ def run_monitors(dry_run: bool = False, verbose: bool = False, skip_hai: bool = 
 
     # 2. Antimicrobial usage monitor
     print_step(2, "Running Antimicrobial Usage Monitor")
-    cmd = [sys.executable, "-m", "src.runner", "--once"]
+    cmd = [sys.executable, "-m", "au_alerts_src.runner", "--once"]
     if verbose:
         cmd.append("--verbose")
     results["usage"] = run_command(
@@ -383,7 +383,7 @@ def run_monitors(dry_run: bool = False, verbose: bool = False, skip_hai: bool = 
 
     # 3. Indication monitor
     print_step(3, "Running Indication Monitor")
-    cmd = [sys.executable, "-m", "src.runner", "--indication", "--once"]
+    cmd = [sys.executable, "-m", "au_alerts_src.runner", "--indication", "--once"]
     if verbose:
         cmd.append("--verbose")
     results["indication"] = run_command(
@@ -396,7 +396,7 @@ def run_monitors(dry_run: bool = False, verbose: bool = False, skip_hai: bool = 
 
     # 4. Guideline adherence monitor
     print_step(4, "Running Guideline Adherence Monitor")
-    cmd = [sys.executable, "-m", "src.runner", "--once"]
+    cmd = [sys.executable, "-m", "guideline_src.runner", "--once"]
     if verbose:
         cmd.append("--verbose")
     results["guideline"] = run_command(
@@ -427,7 +427,7 @@ def run_monitors(dry_run: bool = False, verbose: bool = False, skip_hai: bool = 
         results["hai"] = True  # Mark as success (skipped)
     else:
         print("  Note: LLM classification may take several minutes...")
-        cmd = [sys.executable, "-m", "src.runner", "--full"]
+        cmd = [sys.executable, "-m", "hai_src.runner", "--full"]
         results["hai"] = run_command(
             cmd,
             cwd=PROJECT_ROOT / "hai-detection",

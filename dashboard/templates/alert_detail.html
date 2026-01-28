@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/components.html" import detail_list %}
 
 {% block title %}Alert {{ alert.id[:8] }} - {{ app_name }}{% endblock %}
 
@@ -26,28 +27,24 @@
                 <div class="info-row-compact">
                     <div class="info-section">
                         <h3>Patient</h3>
-                        <dl>
-                            <dt>Name</dt>
-                            <dd><strong>{{ alert.patient_name or 'Unknown' }}</strong></dd>
-                            <dt>MRN</dt>
-                            <dd>{{ alert.patient_mrn or 'Unknown' }}</dd>
-                        </dl>
+                        {{ detail_list([
+                            {'label': 'Name', 'value': alert.patient_name or 'Unknown', 'bold': true},
+                            {'label': 'MRN', 'value': alert.patient_mrn or 'Unknown'}
+                        ], compact=true) }}
                     </div>
 
                     <div class="info-section">
                         <h3>Timeline</h3>
-                        <dl>
-                            <dt>Created</dt>
-                            <dd>{{ alert.created_at.strftime('%m/%d %H:%M') if alert.created_at else '-' }}</dd>
-                            {% if alert.acknowledged_at %}
-                            <dt>Ack'd</dt>
-                            <dd>{{ alert.acknowledged_at.strftime('%m/%d %H:%M') }}</dd>
-                            {% endif %}
-                            {% if alert.resolved_at %}
-                            <dt>Resolved</dt>
-                            <dd>{{ alert.resolved_at.strftime('%m/%d %H:%M') }}</dd>
-                            {% endif %}
-                        </dl>
+                        {% set timeline_items = [
+                            {'label': 'Created', 'value': alert.created_at.strftime('%m/%d %H:%M') if alert.created_at else '-'}
+                        ] %}
+                        {% if alert.acknowledged_at %}
+                            {% set _ = timeline_items.append({'label': "Ack'd", 'value': alert.acknowledged_at.strftime('%m/%d %H:%M')}) %}
+                        {% endif %}
+                        {% if alert.resolved_at %}
+                            {% set _ = timeline_items.append({'label': 'Resolved', 'value': alert.resolved_at.strftime('%m/%d %H:%M')}) %}
+                        {% endif %}
+                        {{ detail_list(timeline_items, compact=true) }}
                     </div>
                 </div>
 
@@ -277,20 +274,17 @@
         {% else %}
         <div class="action-card resolved-card">
             <h3>Resolution Details</h3>
-            <dl class="resolution-dl">
-                <dt>Resolved By</dt>
-                <dd>{{ alert.resolved_by or 'Unknown' }}</dd>
-                <dt>Resolved At</dt>
-                <dd>{{ alert.resolved_at.strftime('%Y-%m-%d %H:%M') if alert.resolved_at else '-' }}</dd>
-                {% if alert.resolution_reason %}
-                <dt>Reason</dt>
-                <dd>{{ ResolutionReason.display_name(alert.resolution_reason) }}</dd>
-                {% endif %}
-                {% if alert.notes %}
-                <dt>Notes</dt>
-                <dd><pre class="notes-content-small">{{ alert.notes }}</pre></dd>
-                {% endif %}
-            </dl>
+            {% set resolution_items = [
+                {'label': 'Resolved By', 'value': alert.resolved_by or 'Unknown'},
+                {'label': 'Resolved At', 'value': alert.resolved_at.strftime('%Y-%m-%d %H:%M') if alert.resolved_at else '-'}
+            ] %}
+            {% if alert.resolution_reason %}
+                {% set _ = resolution_items.append({'label': 'Reason', 'value': ResolutionReason.display_name(alert.resolution_reason)}) %}
+            {% endif %}
+            {% if alert.notes %}
+                {% set _ = resolution_items.append({'label': 'Notes', 'value': '<pre class="notes-content-small">' ~ alert.notes ~ '</pre>', 'raw': true}) %}
+            {% endif %}
+            {{ detail_list(resolution_items) }}
         </div>
         {% endif %}
     </div>

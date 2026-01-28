@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/components.html" import info_grid, evidence_sources_simple, extraction_meta, status_badge, hai_type_details %}
+{% from "macros/components.html" import info_grid, detail_list, evidence_sources_simple, extraction_meta, status_badge, hai_type_details %}
 
 {% block title %}Candidate Detail - {{ app_name }}{% endblock %}
 
@@ -30,20 +30,20 @@
             {{ status_badge(candidate.status.value, size='lg') }}
         </div>
 
-        <!-- Patient & Culture Info using info-grid -->
+        <!-- Patient & Culture Info -->
         <div class="alert-detail-card">
             <h3>Patient Information</h3>
-            {{ info_grid([
-                {'label': 'Patient Name', 'value': candidate.patient.name},
+            {{ detail_list([
+                {'label': 'Patient Name', 'value': candidate.patient.name, 'bold': true},
                 {'label': 'MRN', 'value': candidate.patient.mrn, 'class': 'patient-mrn'},
                 {'label': 'Location', 'value': candidate.patient.location}
             ]) }}
 
-            <h3>{% if candidate.hai_type.value == 'ssi' %}Specimen{% else %}Culture{% endif %} Information</h3>
-            {{ info_grid([
-                {'label': 'Organism', 'value': candidate.culture.organism or 'Pending'},
+            <h3>{% if candidate.hai_type.value == 'ssi' %}Specimen{% elif candidate.hai_type.value == 'cdi' %}Test{% else %}Culture{% endif %} Information</h3>
+            {{ detail_list([
+                {'label': 'Organism', 'value': candidate.culture.organism or 'Pending', 'bold': true},
                 {'label': 'Collected', 'value': candidate.culture.collection_date.strftime('%m/%d/%Y %H:%M')},
-                {'label': 'Source', 'value': candidate.culture.specimen_source or 'Blood'}
+                {'label': 'Source', 'value': candidate.culture.specimen_source or ('Stool' if candidate.hai_type.value == 'cdi' else ('Urine' if candidate.hai_type.value == 'cauti' else 'Blood'))}
             ]) }}
 
             {# HAI Type-Specific Details - uses centralized macro #}

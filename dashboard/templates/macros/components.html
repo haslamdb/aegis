@@ -26,6 +26,37 @@
 {% endmacro %}
 
 
+{# Detail List Macro
+   Renders a definition list (dl/dt/dd) for detail pages - consistent across ASP and HAI
+   This provides a stacked vertical format ideal for detail pages.
+
+   Usage:
+   {% from "macros/components.html" import detail_list %}
+   {{ detail_list([
+       {'label': 'Patient Name', 'value': patient.name, 'bold': true},
+       {'label': 'MRN', 'value': patient.mrn},
+       {'label': 'Location', 'value': patient.location},
+       {'label': 'Status', 'value': '<span class="badge badge-success">Active</span>', 'raw': true}
+   ]) }}
+#}
+{% macro detail_list(items, compact=false) %}
+<dl class="detail-list {{ 'detail-list-compact' if compact else '' }}">
+    {% for item in items %}
+    <dt>{{ item.label }}</dt>
+    <dd class="{{ item.class or '' }}">
+        {% if item.raw %}
+            {{ item.value | safe if item.value is not none and item.value != '' else '-' }}
+        {% elif item.bold %}
+            <strong>{{ item.value if item.value is not none and item.value != '' else '-' }}</strong>
+        {% else %}
+            {{ item.value if item.value is not none and item.value != '' else '-' }}
+        {% endif %}
+    </dd>
+    {% endfor %}
+</dl>
+{% endmacro %}
+
+
 {# Evidence Sources Macro (Full Attribution Format)
    Renders LLM evidence with note type badges, dates, authors, and quotes
 

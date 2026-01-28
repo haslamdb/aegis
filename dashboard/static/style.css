@@ -2186,6 +2186,38 @@ table a.btn:hover {
 }
 
 /* ============================================
+   Detail List Pattern (dl/dt/dd)
+   Used by: ASP Alerts, HAI Candidate Detail
+   ============================================ */
+.detail-list {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.5rem 1rem;
+    margin: 0;
+}
+
+.detail-list dt {
+    font-weight: 500;
+    color: var(--color-gray-600);
+    font-size: 0.875rem;
+}
+
+.detail-list dd {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-gray-800);
+}
+
+.detail-list-compact {
+    gap: 0.25rem 0.75rem;
+}
+
+.detail-list-compact dt,
+.detail-list-compact dd {
+    font-size: 0.8rem;
+}
+
+/* ============================================
    Shared Evidence Sources Pattern
    Used by: ABX Indications, HAI Detection
    ============================================ */
@@ -2736,13 +2768,30 @@ table a.btn:hover {
 .data-table {
     width: 100%;
     border-collapse: collapse;
+    table-layout: auto;
 }
 
 .data-table th,
 .data-table td {
-    padding: 0.75rem;
+    padding: 0.75rem 1rem;
     text-align: left;
     border-bottom: 1px solid var(--color-gray-200);
+}
+
+/* Ensure table fills available width in containers */
+.section .data-table {
+    min-width: 100%;
+}
+
+/* Allow first column (Patient) to take more space */
+.data-table td:first-child,
+.data-table th:first-child {
+    min-width: 150px;
+}
+
+/* Make Organism and other text columns expand */
+.data-table td:nth-child(3) {
+    min-width: 120px;
 }
 
 .data-table th {
@@ -2750,6 +2799,7 @@ table a.btn:hover {
     font-weight: 600;
     font-size: 0.85rem;
     color: var(--color-gray-600);
+    white-space: nowrap;
 }
 
 .data-table tr:hover {
@@ -2936,6 +2986,11 @@ table a.btn:hover {
    ============================================ */
 .section {
     margin-bottom: 2rem;
+    margin-top: 2rem;
+}
+
+.section:first-of-type {
+    margin-top: 0;
 }
 
 .section h2 {
