@@ -16,6 +16,7 @@ from hai_src.models import (
     HAIType, CandidateStatus, ClassificationDecision,
     ReviewQueueType, ReviewerDecision, HAICandidate
 )
+from dashboard.services.user import get_user_from_request
 
 hai_detection_bp = Blueprint("hai_detection", __name__, url_prefix="/hai-detection")
 
@@ -287,7 +288,7 @@ def api_complete_review(review_id):
         db = get_hai_db()
 
         data = request.json or {}
-        reviewer = data.get("reviewer", "dashboard_user")
+        reviewer = get_user_from_request(default="dashboard_user")
         decision = data.get("decision")
         notes = data.get("notes")
 
@@ -315,7 +316,7 @@ def api_submit_review(candidate_id):
         import uuid
 
         data = request.json or {}
-        reviewer = data.get("reviewer")
+        reviewer = get_user_from_request()
         decision = data.get("decision")
         notes = data.get("notes", "")
         override_reason = data.get("override_reason")  # Optional categorized reason

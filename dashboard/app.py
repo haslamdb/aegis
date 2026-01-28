@@ -62,9 +62,11 @@ def create_app(config=None):
     # Context processor for templates
     @app.context_processor
     def inject_globals():
+        from .services.user import get_current_user
         return {
             "app_name": "AEGIS",
             "base_url": app.config.get("DASHBOARD_BASE_URL", ""),
+            "current_user": get_current_user(),
         }
 
     return app

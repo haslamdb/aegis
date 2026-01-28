@@ -818,3 +818,30 @@
     {{ caller() }}
 </div>
 {% endmacro %}
+
+
+{# ==============================================
+   Form Input Macros
+   ============================================== #}
+
+{# Reviewer Input Macro
+   Renders a text input for reviewer name that pre-populates with the
+   remembered user name from the session.
+
+   Usage:
+   {% from "macros/components.html" import reviewer_input %}
+   {{ reviewer_input() }}
+   {{ reviewer_input(label="Your Name", required=true, id="reviewer-name") }}
+#}
+{% macro reviewer_input(label="Reviewer Name", name="reviewer", id="reviewer", required=true, placeholder="Enter your name", class="form-control") %}
+<div class="form-group">
+    <label for="{{ id }}">{{ label }}</label>
+    <input type="text"
+           name="{{ name }}"
+           id="{{ id }}"
+           value="{{ current_user or '' }}"
+           {% if required %}required{% endif %}
+           placeholder="{{ placeholder }}"
+           class="{{ class }}">
+</div>
+{% endmacro %}

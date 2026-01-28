@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/components.html" import reviewer_input %}
 
 {% block title %}Indication Review - {{ candidate.medication.medication_name }} - {{ app_name }}{% endblock %}
 
@@ -263,10 +264,7 @@
         <div class="action-card">
             <h3>Submit Review</h3>
 
-            <div class="form-group">
-                <label for="reviewer">Reviewer Name</label>
-                <input type="text" name="reviewer" id="reviewer" required placeholder="Enter your name" class="form-control">
-            </div>
+            {{ reviewer_input() }}
 
             <div class="classification-divider">
                 <span>Confirm Classification:</span>
