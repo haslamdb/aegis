@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/components.html" import info_grid, detail_list, evidence_sources_simple, extraction_meta, status_badge, hai_type_details %}
+{% from "macros/components.html" import info_grid, detail_list, evidence_sources_simple, extraction_meta, status_badge, hai_type_details, reviewer_input %}
 
 {% block title %}Candidate Detail - {{ app_name }}{% endblock %}
 
@@ -163,10 +163,7 @@
         {% if candidate.status.value in ['pending_review', 'classified', 'pending'] %}
         <div class="action-card">
             <h3>Classification Decision</h3>
-            <div class="form-group">
-                <label for="reviewer">Reviewer Name</label>
-                <input type="text" name="reviewer" id="reviewer" required placeholder="Enter your name" class="form-control">
-            </div>
+            {{ reviewer_input() }}
 
             {% if candidate.hai_type.value == 'ssi' %}
             <!-- SSI-specific classification buttons -->

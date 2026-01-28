@@ -10,6 +10,8 @@ from pathlib import Path
 
 from flask import Blueprint, render_template, request, jsonify
 
+from dashboard.services.user import get_user_from_request
+
 logger = logging.getLogger(__name__)
 
 # Add antimicrobial-usage-alerts to path for au_alerts_src package
@@ -180,7 +182,7 @@ def submit_review(candidate_id: str):
         db = _get_indication_db()
         data = request.get_json()
 
-        reviewer = data.get("reviewer", "").strip()
+        reviewer = get_user_from_request()
         decision = data.get("decision", "").strip()
         notes = data.get("notes", "").strip()
 
@@ -284,7 +286,7 @@ def acknowledge_candidate(candidate_id: str):
         db = _get_indication_db()
         data = request.get_json() or {}
 
-        reviewer = data.get("reviewer", "system").strip()
+        reviewer = get_user_from_request(default="system")
         notes = data.get("notes", "Acknowledged without detailed review").strip()
 
         candidate = db.get_candidate(candidate_id)
@@ -321,7 +323,7 @@ def acknowledge_all():
         db = _get_indication_db()
         data = request.get_json() or {}
 
-        reviewer = data.get("reviewer", "system").strip()
+        reviewer = get_user_from_request(default="system")
         notes = data.get("notes", "Bulk acknowledged").strip()
 
         # Get all pending candidates
@@ -425,7 +427,7 @@ def delete_candidate(candidate_id: str):
         db = _get_indication_db()
         data = request.get_json() or {}
 
-        deleted_by = data.get("deleted_by", "").strip()
+        deleted_by = get_user_from_request(json_key="deleted_by")
         reason = data.get("reason", "").strip()
 
         if not deleted_by:
@@ -464,7 +466,7 @@ def delete_reviewed():
         db = _get_indication_db()
         data = request.get_json() or {}
 
-        deleted_by = data.get("deleted_by", "").strip()
+        deleted_by = get_user_from_request(json_key="deleted_by")
         older_than_days = data.get("older_than_days")
         reason = data.get("reason", "").strip()
 

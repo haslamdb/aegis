@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request, redirect, url_for, current_app
 
 from common.alert_store import AlertStatus
 from common.channels.teams import TeamsWebhookChannel
+from dashboard.services.user import get_user_from_request
 
 api_bp = Blueprint("api", __name__)
 
@@ -71,8 +72,8 @@ def acknowledge_alert(alert_id):
     """
     store = current_app.alert_store
 
-    # Get username from query param or header
-    acknowledged_by = request.args.get("user") or request.headers.get("X-User", "David Haslam")
+    # Get username from request sources (query, form, session, header)
+    acknowledged_by = get_user_from_request(json_key="acknowledged_by", default="Unknown")
 
     success = store.acknowledge(alert_id, acknowledged_by=acknowledged_by)
 
@@ -129,7 +130,8 @@ def snooze_alert(alert_id):
     if hours is None:
         hours = 4
 
-    snoozed_by = request.args.get("user") or request.headers.get("X-User", "David Haslam")
+    # Get username from request sources (query, form, session, header)
+    snoozed_by = get_user_from_request(json_key="snoozed_by", default="Unknown")
 
     success = store.snooze(alert_id, hours=hours, snoozed_by=snoozed_by)
 
@@ -183,12 +185,8 @@ def resolve_alert(alert_id):
     else:
         data = request.json or {}
 
-    # Get parameters from query string (GET) or body (POST)
-    resolved_by = (
-        request.args.get("user") or
-        data.get("resolved_by") or
-        request.headers.get("X-User", "David Haslam")
-    )
+    # Get username from request sources (query, form, session, header)
+    resolved_by = get_user_from_request(json_key="resolved_by", default="Unknown")
     resolution_reason = request.args.get("reason") or data.get("resolution_reason")
     notes = request.args.get("notes") or data.get("notes")
 
@@ -291,7 +289,7 @@ def update_status(alert_id):
 
     data = request.json or {}
     new_status = data.get("status")
-    user = data.get("user") or request.headers.get("X-User", "API User")
+    user = get_user_from_request(default="API User")
 
     if not new_status:
         return jsonify({"error": "status field required"}), 400
@@ -342,11 +340,10 @@ def add_note(alert_id):
     # Handle form or JSON data
     if request.form:
         note = request.form.get("note")
-        user = request.form.get("user") or "David Haslam"
     else:
         data = request.json or {}
         note = data.get("note")
-        user = data.get("user") or request.headers.get("X-User", "API User")
+    user = get_user_from_request(default="API User")
 
     if not note:
         # For form submissions, redirect back with error
