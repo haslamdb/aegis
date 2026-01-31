@@ -411,6 +411,172 @@ Catch obvious extraction errors before they reach the rules engine.
 
 ---
 
+## Phase 8: Advanced Optimizations (If Needed)
+
+### 8.1 Embedding-Based Note Retrieval
+
+If keyword filtering isn't sufficient, implement semantic retrieval.
+
+**Architecture:**
+```
+Clinical Notes → Chunk (512 tokens) → Embed → Vector Store
+                                              ↓
+Query: "CLABSI evidence for patient X" → Embed → Similarity Search
+                                              ↓
+                                    Top-K relevant chunks → LLM
+```
+
+**Task for Claude CLI:**
+> Create `hai-detection/hai_src/notes/embedding_retriever.py`:
+> 1. Use sentence-transformers (e.g., `all-MiniLM-L6-v2`) for embedding
+> 2. Store embeddings in ChromaDB or FAISS (persistent, patient-indexed)
+> 3. Implement `retrieve_relevant_chunks(patient_id, hai_type, k=10) -> list[str]`
+> 4. Build HAI-type-specific query templates:
+>    - CLABSI: "central line infection, bacteremia, exit site, blood culture"
+>    - CAUTI: "urinary catheter infection, UTI symptoms, urine culture"
+>    - etc.
+> 5. Return only semantically relevant chunks to reduce context
+
+**Estimated impact:** Could reduce context from 24K → 4K tokens while improving signal-to-noise.
+
+### 8.2 llama.cpp with Tensor Split (Heterogeneous GPUs)
+
+If Ollama isn't efficiently using both GPUs, try llama.cpp directly.
+
+```bash
+# Build llama.cpp with CUDA
+git clone https://github.com/ggerganov/llama.cpp
+cd llama.cpp
+make LLAMA_CUDA=1
+
+# Run server with tensor split for A6000 (48GB) + A5000 (24GB)
+# Ratio: 48:24 = 2:1 = 0.67:0.33
+./llama-server \
+    -m /path/to/llama-3.3-70b-instruct-q4_k_m.gguf \
+    --host 0.0.0.0 \
+    --port 8080 \
+    -ngl 99 \
+    --tensor-split 0.67,0.33 \
+    -c 8192 \
+    -b 512 \
+    --flash-attn
+```
+
+**Task for Claude CLI:**
+> Create `hai-detection/hai_src/llm/llamacpp_client.py`:
+> 1. HTTP client compatible with llama.cpp server API
+> 2. Implement same interface as OllamaClient
+> 3. Add health check and automatic retry logic
+
+---
+
+## Appendix A: IS Meeting Quick Reference
+
+### Security & Compliance Responses
+
+**"Where does PHI go?"**
+> All PHI stays within the CCHMC network. The LLM runs locally on hospital-owned infrastructure. No patient data is sent to external APIs or cloud services.
+
+**"What AI services are you calling?"**
+> None externally. We run open-source models (Llama 3.3) locally via Ollama or llama.cpp. The model weights are downloaded once and run entirely on-premises.
+
+**"How is access controlled?"**
+> Role-based access integrated with hospital AD/SSO. Only authorized ASP team members can access the dashboard. All queries and user actions are logged.
+
+**"Is this just ChatGPT?"**
+> No. We use locally-hosted open-source models with no data leaving the network. The architecture separates fact extraction (LLM) from classification (deterministic NHSN rules), so the AI isn't making clinical decisions—it's reading notes and the rules engine applies CDC criteria.
+
+**"What about audit trails?"**
+> Every classification includes: the extracted facts, which NHSN criteria were evaluated, the reasoning chain, timestamps, and user who reviewed. Full audit trail for compliance.
+
+### Deployment Options to Propose
+
+| Option | Pros | Cons |
+|--------|------|------|
+| VM in CCHMC data center | Cleanest from IS perspective, standard infrastructure | Need GPU passthrough or dedicated GPU server |
+| Dedicated divisional workstation | Full control, can support multiple projects (AEGIS, BioGPU, metagenomics) | Physical security, maintenance |
+| Research computing HPC | May already have GPUs, shared resource | Scheduling, may not have appropriate models |
+
+### Pilot Proposal (6-month)
+
+**Ask:**
+1. Read-only FHIR API access to Epic (same scope as existing analytics)
+2. VM or workstation with GPU (even consumer RTX 4090 works)
+3. Run in parallel with Vigilanz for validation
+
+**Deliverable:**
+- Accuracy comparison vs Vigilanz
+- Processing time metrics
+- IP team feedback on usability
+
+**Risk mitigation:**
+- No workflow changes during pilot
+- No PHI leaves network
+- Can shut down instantly if issues
+
+---
+
+## Appendix B: Hardware Upgrade Path
+
+If pilot succeeds and we need production hardware:
+
+| Configuration | Cost | Capability | Notes |
+|--------------|------|------------|-------|
+| Dual RTX 4090 | ~$4-5K | 48GB VRAM, 70B Q4 | Consumer cards, good value |
+| Dual RTX A6000 | ~$12-15K | 96GB VRAM, 70B FP16 | Pro cards, better for 24/7 |
+| Single H100 PCIe | ~$25-30K | 80GB HBM3, fastest inference | Purpose-built for LLMs |
+| Dual A100 80GB | ~$25-30K | 160GB VRAM, largest models | Common in research |
+
+**Recommendation:** Start pilot on existing basement hardware. If successful, request dual A6000 workstation that can serve multiple division projects (AEGIS, BioGPU, metagenomics analysis, trainee research).
+
+---
+
+## Appendix C: Current Architecture Reference
+
+Based on code review, the current AEGIS structure:
+
+```
+hai-detection/
+├── hai_src/
+│   ├── candidates/          # Rule-based candidate detection (no LLM)
+│   │   ├── clabsi_detector.py
+│   │   ├── cauti_detector.py
+│   │   └── ...
+│   ├── extraction/          # LLM-based fact extraction
+│   │   ├── clabsi_extractor.py   # Builds prompt, calls LLM, parses response
+│   │   ├── cauti_extractor.py
+│   │   └── ...
+│   ├── rules/               # Deterministic NHSN criteria
+│   │   ├── clabsi_rules.py       # Applies CDC criteria to extracted facts
+│   │   ├── schemas.py            # Pydantic models for extractions
+│   │   └── ...
+│   ├── classifiers/         # Orchestration layer
+│   │   ├── clabsi_classifier_v2.py
+│   │   └── ...
+│   ├── notes/
+│   │   ├── chunker.py           # NoteChunker.extract_relevant_context()
+│   │   └── retriever.py         # NoteRetriever (has use_keyword_filter)
+│   ├── llm/
+│   │   ├── ollama.py            # OllamaClient
+│   │   └── factory.py           # get_llm_client()
+│   └── data/
+│       ├── fhir_source.py       # FHIR data access
+│       └── factory.py
+├── prompts/                 # Extraction prompt templates
+│   ├── clabsi_extraction_v1.txt
+│   └── ...
+└── tests/
+```
+
+**Key integration points for optimization:**
+
+1. **Note preprocessing**: `hai_src/notes/chunker.py` - currently truncates individual notes but concatenates many
+2. **Structured data**: `_build_structured_data()` methods in classifiers - expand FHIR extraction here
+3. **LLM call**: Extractors call `self.llm_client.generate()` - this is where latency happens
+4. **Context assembly**: Extractors have `_build_prompt()` methods - reduce context here
+
+---
+
 ## Notes
 
 Use this section to track observations and decisions as you work through optimizations.
