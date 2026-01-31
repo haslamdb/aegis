@@ -30,6 +30,7 @@ The landing page provides access to the following modules:
 | Section | URL | Description |
 |---------|-----|-------------|
 | **ASP Alerts** | [/asp-alerts/](https://aegis-asp.com/asp-alerts/) | Antimicrobial stewardship alerts (bacteremia, usage, indications) |
+| **Antibiotic Approvals** | [/abx-approvals/](https://aegis-asp.com/abx-approvals/) | Phone-based antibiotic approval workflow with clinical context |
 | **HAI Detection** | [/hai-detection/](https://aegis-asp.com/hai-detection/) | CLABSI and SSI candidate screening with IP review workflow |
 | **NHSN Reporting** | [/nhsn-reporting/](https://aegis-asp.com/nhsn-reporting/) | AU, AR, and HAI data aggregation with NHSN submission |
 | **Guideline Adherence** | [/guideline-adherence/](https://aegis-asp.com/guideline-adherence/) | Bundle compliance monitoring (Sepsis, Febrile Infant, CAP, etc.) |
@@ -43,7 +44,8 @@ The demo environment includes synthetic patient data for testing alert, HAI dete
 aegis/
 ├── common/                         # Shared infrastructure
 │   ├── channels/                   # Email, Teams webhooks
-│   └── alert_store/                # Persistent alert tracking (SQLite)
+│   ├── alert_store/                # Persistent alert tracking (SQLite)
+│   └── abx_approvals/              # Antibiotic approval request storage
 ├── dashboard/                      # Web dashboard for alert management
 ├── asp-bacteremia-alerts/          # Blood culture coverage monitoring
 ├── antimicrobial-usage-alerts/     # Broad-spectrum usage monitoring
@@ -99,6 +101,35 @@ Monitors antimicrobial usage patterns including broad-spectrum duration and anti
 - Override tracking for pharmacist disagreements
 
 **[Documentation →](antimicrobial-usage-alerts/README.md)**
+
+### antibiotic-approvals
+
+Phone-based antibiotic approval workflow for pharmacists handling prospective review requests. When prescribers call requesting extended use of broad-spectrum antibiotics (e.g., meropenem past 72 hours), pharmacists use this module to review clinical context and document decisions.
+
+**Features:**
+- Patient search by MRN or name via FHIR
+- **Clinical context display** - MDR history, drug allergies, renal function
+- Current antibiotics and recent culture susceptibilities
+- Allergy-aware susceptibility flagging
+- Decision tracking (Approved, Changed Therapy, Deny, Defer)
+- Audit trail for compliance reporting
+- Analytics dashboard with approval metrics
+
+**Clinical Alerts:**
+| Alert Type | Description |
+|------------|-------------|
+| **MDR History** | MRSA, VRE, CRE, ESBL from past year cultures |
+| **Drug Allergies** | Documented allergies with severity (anaphylaxis flagged) |
+| **Renal Function** | CKD stage, dialysis status, GFR for dose adjustments |
+
+**Workflow:**
+1. Receive call from prescriber
+2. Search patient by MRN
+3. Review clinical alerts and culture data
+4. Enter antibiotic and duration
+5. Make and document decision
+
+**[Documentation →](docs/abx-approvals.md)**
 
 ### guideline-adherence
 
@@ -189,6 +220,7 @@ Web-based dashboard providing a unified interface for all AEGIS modules. The lan
 
 **Sections:**
 - **ASP Alerts** (`/asp-alerts/`) - Antimicrobial stewardship alert management
+- **Antibiotic Approvals** (`/abx-approvals/`) - Phone-based approval workflow with clinical context
 - **HAI Detection** (`/hai-detection/`) - CLABSI and SSI candidate screening and IP review workflow
 - **NHSN Reporting** (`/nhsn-reporting/`) - AU, AR, and HAI data aggregation with NHSN submission
 - **Guideline Adherence** (`/guideline-adherence/`) - Bundle compliance monitoring and metrics
@@ -514,10 +546,13 @@ aegis/
 │   ├── channels/              # Notification channels
 │   │   ├── email.py
 │   │   └── teams.py
-│   └── alert_store/           # Persistent alert storage
+│   ├── alert_store/           # Persistent alert storage
+│   │   ├── models.py
+│   │   ├── store.py
+│   │   └── schema.sql
+│   └── abx_approvals/         # Antibiotic approval storage
 │       ├── models.py
-│       ├── store.py
-│       └── schema.sql
+│       └── store.py
 ├── dashboard/
 │   ├── app.py                 # Flask application
 │   ├── routes/                # API and view routes
@@ -569,7 +604,8 @@ aegis/
 │   ├── demo_ssi.py            # SSI candidate generator
 │   └── generate_pediatric_data.py
 └── docs/                      # Documentation
-    └── demo-workflow.md       # Complete demo guide
+    ├── demo-workflow.md       # Complete demo guide
+    └── abx-approvals.md       # Antibiotic approvals workflow
 ```
 
 ## License
