@@ -219,6 +219,16 @@ def candidate_detail(candidate_id):
                         "location": getattr(ep, "location", None),
                     })
 
+        # Get extraction data from the latest classification for review
+        extraction_data = None
+        rules_result = None
+        strictness_level = None
+        if classifications:
+            latest = classifications[0]
+            extraction_data = latest.extraction_data
+            rules_result = latest.rules_result
+            strictness_level = latest.strictness_level
+
         return render_template(
             "hai_candidate_detail.html",
             candidate=candidate,
@@ -227,6 +237,9 @@ def candidate_detail(candidate_id):
             cdi_data=cdi_data,
             cauti_data=cauti_data,
             vae_data=vae_data,
+            extraction_data=extraction_data,
+            rules_result=rules_result,
+            strictness_level=strictness_level,
         )
     except Exception as e:
         current_app.logger.error(f"Error loading candidate {candidate_id}: {e}")
@@ -319,7 +332,9 @@ def api_submit_review(candidate_id):
         reviewer = get_user_from_request()
         decision = data.get("decision")
         notes = data.get("notes", "")
-        override_reason = data.get("override_reason")  # Optional categorized reason
+        override_reason = data.get("override_reason")  # Optional free-text reason
+        override_reason_category = data.get("override_reason_category")  # Structured category
+        extraction_corrections = data.get("extraction_corrections")  # {field: {old, new}}
 
         if not reviewer:
             return jsonify({"error": "reviewer is required"}), 400
@@ -422,6 +437,8 @@ def api_submit_review(candidate_id):
             llm_decision=llm_decision,
             is_override=is_override,
             override_reason=override_reason,
+            override_reason_category=override_reason_category if is_override else None,
+            extraction_corrections=extraction_corrections if is_override else None,
         )
 
         # Only update candidate status for final decisions
