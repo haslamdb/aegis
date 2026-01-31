@@ -92,6 +92,9 @@ class BundleTriggerMonitor:
         self._running = True
         logger.info("Bundle Trigger Monitor starting...")
 
+        # On startup, process any episodes that don't have assessments yet
+        self._assess_unprocessed_episodes()
+
         # Counter for periodic reassessment (every ~12 hours at 60s intervals)
         reassessment_counter = 0
         REASSESSMENT_CYCLES = 720  # 12 hours * 60 minutes
@@ -849,6 +852,33 @@ class BundleTriggerMonitor:
             reasons.append(f"Elements: {met} met, {not_met} not met, {pending} pending")
 
         return "; ".join(reasons) if reasons else "Assessment completed"
+
+    def _assess_unprocessed_episodes(self):
+        """Run LLM assessment on episodes that don't have any assessments yet.
+
+        Called on startup to process episodes that may have been created
+        directly in the database (e.g., demo data) without going through
+        the normal trigger flow.
+        """
+        # Get active episodes without assessments
+        episodes = self.db.get_active_episodes()
+        unprocessed = []
+
+        for episode in episodes:
+            assessments = self.db.get_assessments_for_episode(episode.id)
+            if not assessments:
+                unprocessed.append(episode)
+
+        if not unprocessed:
+            logger.debug("No unprocessed episodes found")
+            return
+
+        logger.info(f"Processing {len(unprocessed)} episodes without assessments")
+        for episode in unprocessed:
+            try:
+                self._run_episode_assessment(episode)
+            except Exception as e:
+                logger.warning(f"Assessment failed for episode {episode.id}: {e}")
 
     def _reassess_active_episodes(self):
         """Re-run LLM assessment on episodes that may have new notes.

@@ -186,11 +186,6 @@ def active_episodes():
     db = get_episode_db()
     bundle_filter = request.args.get("bundle")
 
-    # Get training collector for extraction status
-    collector = None
-    if TRAINING_COLLECTOR_AVAILABLE:
-        collector = get_training_collector()
-
     episodes = []
     if db:
         try:
@@ -201,7 +196,7 @@ def active_episodes():
             if bundle_filter:
                 raw_episodes = [ep for ep in raw_episodes if ep.bundle_id == bundle_filter]
 
-            # Enrich with latest results and extraction status
+            # Enrich with latest results and LLM assessment status
             for ep in raw_episodes:
                 results = db.get_element_results(ep.id)
                 result_list = []
@@ -213,16 +208,30 @@ def active_episodes():
                         "checked_at": r.created_at.isoformat() if r.created_at else None,
                     })
 
-                # Check extraction status
+                # Get LLM assessment status from episode_assessments
                 extraction_status = "not_analyzed"
-                extraction_record = None
-                if collector:
-                    extraction_record = collector.get_record_by_episode(ep.id)
-                    if extraction_record:
-                        if extraction_record.human_reviewed:
-                            extraction_status = "reviewed"
-                        else:
-                            extraction_status = "pending_review"
+                extracted_appearance = None
+                extraction_confidence = None
+                primary_determination = None
+
+                assessments = db.get_assessments_for_episode(ep.id)
+                if assessments:
+                    # Use most recent assessment
+                    latest = assessments[0]
+                    extraction_status = "pending_review"
+
+                    # Check if there's a human review
+                    reviews = db.get_reviews_for_episode(ep.id)
+                    if reviews:
+                        extraction_status = "reviewed"
+
+                    # Extract appearance from extraction_data
+                    if latest.extraction_data:
+                        extracted_appearance = latest.extraction_data.get("appearance")
+                        if isinstance(extracted_appearance, dict):
+                            extracted_appearance = extracted_appearance.get("value", extracted_appearance)
+                    extraction_confidence = latest.confidence
+                    primary_determination = latest.primary_determination
 
                 episodes.append({
                     "id": ep.id,
@@ -236,8 +245,9 @@ def active_episodes():
                     "trigger_time": ep.trigger_time.isoformat() if ep.trigger_time else None,
                     "results": result_list,
                     "extraction_status": extraction_status,
-                    "extracted_appearance": extraction_record.extracted_appearance if extraction_record else None,
-                    "extraction_confidence": extraction_record.extraction_confidence if extraction_record else None,
+                    "extracted_appearance": extracted_appearance,
+                    "extraction_confidence": extraction_confidence,
+                    "primary_determination": primary_determination,
                 })
 
         except Exception as e:
@@ -483,6 +493,14 @@ def api_submit_episode_review(episode_id):
 
         review_id = db.save_review(review)
 
+        # Update episode status to completed (remove from active list)
+        episode = db.get_episode(episode_id)
+        if episode:
+            episode.status = "completed"
+            episode.review_status = "reviewed"
+            episode.overall_determination = decision
+            db.save_episode(episode)
+
         # Log training data if override
         if is_override and TRAINING_COLLECTOR_AVAILABLE and assessments:
             try:
@@ -626,49 +644,69 @@ def bundle_detail(bundle_id):
     )
 
 
-@guideline_adherence_bp.route("/review")
-def review_queue():
-    """Show the clinical appearance review queue."""
-    if not TRAINING_COLLECTOR_AVAILABLE:
-        return render_template(
-            "guideline_adherence_review.html",
-            queue=[],
-            stats=None,
-            error="Training collector not available",
-        )
+@guideline_adherence_bp.route("/history")
+def episode_history():
+    """Show history of all episodes (active and completed)."""
+    db = get_episode_db()
+    bundle_filter = request.args.get("bundle")
+    status_filter = request.args.get("status")
 
-    try:
-        collector = get_training_collector()
-        queue = collector.get_review_queue(limit=50)
-        stats = collector.get_stats()
+    episodes = []
+    if db:
+        try:
+            # Get all episodes (not just active)
+            with db._get_connection() as conn:
+                cursor = conn.cursor()
 
-        # Enrich queue with episode details
-        db = get_episode_db()
-        if db:
-            for item in queue:
-                if item.get("episode_id"):
-                    ep = db.get_episode(item["episode_id"])
-                    if ep:
-                        item["patient_mrn"] = ep.patient_mrn
-                        item["bundle_name"] = ep.bundle_name
-                        item["trigger_time"] = ep.trigger_time.isoformat() if ep.trigger_time else None
+                query = "SELECT * FROM bundle_episodes ORDER BY created_at DESC LIMIT 200"
+                cursor.execute(query)
+                raw_episodes = [db._row_to_episode(row) for row in cursor.fetchall()]
 
-        return render_template(
-            "guideline_adherence_review.html",
-            queue=queue,
-            stats=stats,
-            error=None,
-        )
-    except Exception as e:
-        current_app.logger.error(f"Error loading review queue: {e}")
-        import traceback
-        traceback.print_exc()
-        return render_template(
-            "guideline_adherence_review.html",
-            queue=[],
-            stats=None,
-            error=str(e),
-        )
+            # Apply filters
+            if bundle_filter:
+                raw_episodes = [ep for ep in raw_episodes if ep.bundle_id == bundle_filter]
+            if status_filter:
+                raw_episodes = [ep for ep in raw_episodes if ep.status == status_filter]
+
+            # Build episode list with assessment info
+            for ep in raw_episodes:
+                # Get assessment status
+                assessments = db.get_assessments_for_episode(ep.id)
+                reviews = db.get_reviews_for_episode(ep.id)
+
+                review_status = "not_reviewed"
+                reviewer_decision = None
+                if reviews:
+                    review_status = "reviewed"
+                    reviewer_decision = reviews[0].reviewer_decision
+
+                episodes.append({
+                    "id": ep.id,
+                    "patient_id": ep.patient_id,
+                    "patient_mrn": ep.patient_mrn or ep.patient_id,
+                    "bundle_id": ep.bundle_id,
+                    "bundle_name": ep.bundle_name,
+                    "status": ep.status,
+                    "adherence_pct": ep.adherence_percentage or 0,
+                    "trigger_time": ep.trigger_time,
+                    "created_at": ep.created_at,
+                    "review_status": review_status,
+                    "reviewer_decision": reviewer_decision,
+                    "has_assessment": len(assessments) > 0,
+                })
+
+        except Exception as e:
+            current_app.logger.error(f"Error loading episode history: {e}")
+            import traceback
+            traceback.print_exc()
+
+    return render_template(
+        "guideline_adherence_history.html",
+        episodes=episodes,
+        bundles=GUIDELINE_BUNDLES,
+        current_bundle=bundle_filter,
+        current_status=status_filter,
+    )
 
 
 @guideline_adherence_bp.route("/episode/<int:episode_id>/review", methods=["GET", "POST"])

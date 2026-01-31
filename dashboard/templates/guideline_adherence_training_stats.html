@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+
+{% block title %}Training Statistics - Guideline Adherence - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Clinical Appearance Training Statistics</h1>
+    <div class="header-actions">
+        <a href="{{ url_for('guideline_adherence.episode_history') }}" class="btn btn-secondary">History</a>
+        <a href="{{ url_for('guideline_adherence.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{% if stats %}
+<!-- Overview Stats -->
+<div class="stats-grid">
+    <div class="stat-card primary">
+        <div class="stat-value">{{ stats.total_extractions }}</div>
+        <div class="stat-label">Total Extractions</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.human_reviewed }}</div>
+        <div class="stat-label">Human Reviewed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ (stats.review_rate * 100)|round(1) }}%</div>
+        <div class="stat-label">Review Rate</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.corrections }}</div>
+        <div class="stat-label">Corrections</div>
+    </div>
+    <div class="stat-card {% if stats.correction_rate > 0.2 %}warning{% endif %}">
+        <div class="stat-value">{{ (stats.correction_rate * 100)|round(1) }}%</div>
+        <div class="stat-label">Correction Rate</div>
+    </div>
+</div>
+
+<!-- Triage Stats -->
+<div class="section">
+    <h2>Triage Performance</h2>
+    <div class="triage-stats">
+        <div class="triage-stat">
+            <div class="triage-bar">
+                <div class="bar-fill fast-path" style="width: {{ (stats.triage_stats.fast_path_rate * 100)|round }}%;"></div>
+            </div>
+            <div class="triage-details">
+                <span class="triage-label">Fast Path (Triage Only)</span>
+                <span class="triage-value">{{ stats.triage_stats.triage_only }} ({{ (stats.triage_stats.fast_path_rate * 100)|round(1) }}%)</span>
+            </div>
+        </div>
+        <div class="triage-stat">
+            <div class="triage-bar">
+                <div class="bar-fill escalated" style="width: {{ ((1 - stats.triage_stats.fast_path_rate) * 100)|round }}%;"></div>
+            </div>
+            <div class="triage-details">
+                <span class="triage-label">Escalated to Full Model</span>
+                <span class="triage-value">{{ stats.triage_stats.triage_escalated }} ({{ ((1 - stats.triage_stats.fast_path_rate) * 100)|round(1) }}%)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="triage-meta">
+        <p>
+            <strong>Target:</strong> 40-60% fast path rate
+            {% if stats.triage_stats.fast_path_rate >= 0.4 and stats.triage_stats.fast_path_rate <= 0.6 %}
+            <span class="badge badge-success">On Target</span>
+            {% elif stats.triage_stats.fast_path_rate < 0.4 %}
+            <span class="badge badge-warning">Below Target (consider adjusting escalation thresholds)</span>
+            {% else %}
+            <span class="badge badge-info">Above Target (may be missing edge cases)</span>
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Response Times -->
+<div class="section">
+    <h2>Response Times</h2>
+    <div class="time-stats">
+        <div class="time-stat">
+            <div class="time-value">{{ stats.response_times.triage_avg_ms|round|int }}ms</div>
+            <div class="time-label">Average Triage Time</div>
+            <div class="time-target">Target: &lt;2000ms</div>
+        </div>
+        <div class="time-stat">
+            <div class="time-value">{{ stats.response_times.full_avg_ms|round|int }}ms</div>
+            <div class="time-label">Average Full Extraction Time</div>
+            <div class="time-target">Target: &lt;60000ms</div>
+        </div>
+    </div>
+</div>
+
+<!-- Appearance Distribution -->
+<div class="section">
+    <h2>Appearance Distribution</h2>
+    {% if stats.appearance_distribution %}
+    <div class="distribution-chart">
+        {% set total = stats.appearance_distribution.values()|sum %}
+        {% for appearance, count in stats.appearance_distribution.items() %}
+        <div class="distribution-row">
+            <div class="distribution-label">{{ appearance|title }}</div>
+            <div class="distribution-bar-container">
+                <div class="distribution-bar appearance-{{ appearance }}" style="width: {{ (count / total * 100)|round }}%;"></div>
+            </div>
+            <div class="distribution-count">{{ count }} ({{ (count / total * 100)|round(1) }}%)</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">No appearance data available yet.</p>
+    {% endif %}
+</div>
+
+<!-- Missed Findings -->
+{% if stats.missed_findings_distribution %}
+<div class="section">
+    <h2>Missed Findings (Error Analysis)</h2>
+    <p class="section-desc">Findings that reviewers identified as missed by the LLM extraction.</p>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Finding</th>
+                <th>Count</th>
+                <th>Prevalence</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for finding, count in stats.missed_findings_distribution|dictsort(by='value', reverse=true) %}
+            <tr>
+                <td>{{ finding|replace('_', ' ')|title }}</td>
+                <td>{{ count }}</td>
+                <td>
+                    {% if stats.human_reviewed > 0 %}
+                    {{ (count / stats.human_reviewed * 100)|round(1) }}% of reviewed
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Override Reasons -->
+{% if stats.override_reason_distribution %}
+<div class="section">
+    <h2>Override Reasons</h2>
+    <p class="section-desc">Reasons given when reviewers corrected the LLM's assessment.</p>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Reason</th>
+                <th>Count</th>
+                <th>% of Corrections</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reason, count in stats.override_reason_distribution|dictsort(by='value', reverse=true) %}
+            <tr>
+                <td>{{ reason|replace('_', ' ')|title }}</td>
+                <td>{{ count }}</td>
+                <td>
+                    {% if stats.corrections > 0 %}
+                    {{ (count / stats.corrections * 100)|round(1) }}%
+                    {% else %}
+                    -
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Training Readiness -->
+<div class="section">
+    <h2>Training Data Readiness</h2>
+    <div class="readiness-info">
+        <p>
+            <strong>Human-reviewed records:</strong> {{ stats.human_reviewed }} / {{ stats.total_extractions }}
+        </p>
+        <p>
+            <strong>Corrected records:</strong> {{ stats.corrections }}
+            (important for training the model to recognize its mistakes)
+        </p>
+
+        {% if stats.human_reviewed >= 100 %}
+        <div class="readiness-status good">
+            Sufficient data for initial fine-tuning experiments.
+        </div>
+        {% elif stats.human_reviewed >= 50 %}
+        <div class="readiness-status moderate">
+            Approaching minimum data for fine-tuning. Continue reviewing.
+        </div>
+        {% else %}
+        <div class="readiness-status insufficient">
+            More reviewed data needed for fine-tuning. Target: 100+ reviewed records.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% else %}
+<div class="empty-state">
+    <h2>No Training Data Available</h2>
+    <p>Training data collection will begin when clinical impressions are extracted.</p>
+    <a href="{{ url_for('guideline_adherence.active_episodes') }}" class="btn btn-primary">View Active Episodes</a>
+</div>
+{% endif %}
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: var(--color-white);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+}
+
+.stat-card.primary {
+    background: var(--color-primary);
+    color: white;
+}
+
+.stat-card.primary .stat-label {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.stat-card.warning .stat-value {
+    color: var(--color-warning-dark);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-gray-800);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--color-gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+}
+
+.section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+
+.section h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.section-desc {
+    color: var(--color-gray-600);
+    margin-bottom: 1rem;
+}
+
+.triage-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.triage-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.triage-bar {
+    height: 24px;
+    background: var(--color-gray-200);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: var(--radius-sm);
+    transition: width 0.3s ease;
+}
+
+.bar-fill.fast-path {
+    background: var(--color-success);
+}
+
+.bar-fill.escalated {
+    background: var(--color-warning);
+}
+
+.triage-details {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+}
+
+.triage-label {
+    color: var(--color-gray-700);
+}
+
+.triage-value {
+    font-weight: 600;
+}
+
+.triage-meta {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-gray-200);
+}
+
+.time-stats {
+    display: flex;
+    gap: 2rem;
+}
+
+.time-stat {
+    flex: 1;
+    text-align: center;
+    padding: 1rem;
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+}
+
+.time-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.time-label {
+    color: var(--color-gray-700);
+    margin-top: 0.25rem;
+}
+
+.time-target {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+    margin-top: 0.5rem;
+}
+
+.distribution-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.distribution-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.distribution-label {
+    width: 100px;
+    font-weight: 500;
+    color: var(--color-gray-700);
+}
+
+.distribution-bar-container {
+    flex: 1;
+    height: 20px;
+    background: var(--color-gray-200);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.distribution-bar {
+    height: 100%;
+    border-radius: var(--radius-sm);
+}
+
+.distribution-bar.appearance-well {
+    background: var(--color-success);
+}
+
+.distribution-bar.appearance-ill {
+    background: var(--color-warning);
+}
+
+.distribution-bar.appearance-toxic {
+    background: var(--color-danger);
+}
+
+.distribution-bar.appearance-unknown {
+    background: var(--color-gray-500);
+}
+
+.distribution-count {
+    width: 100px;
+    text-align: right;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.data-table th {
+    background: var(--color-gray-50);
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--color-gray-700);
+}
+
+.readiness-info {
+    line-height: 1.8;
+}
+
+.readiness-status {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+}
+
+.readiness-status.good {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.readiness-status.moderate {
+    background: var(--color-warning-light);
+    color: var(--color-warning-dark);
+}
+
+.readiness-status.insufficient {
+    background: var(--color-gray-100);
+    color: var(--color-gray-700);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+}
+
+.badge-success { background: var(--color-success-light); color: var(--color-success); }
+.badge-warning { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.badge-info { background: var(--color-primary-light); color: var(--color-primary); }
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+.empty-state h2 {
+    margin-top: 0;
+    color: var(--color-gray-700);
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+}
+
+.alert-danger {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+}
+
+.text-muted {
+    color: var(--color-gray-500);
+}
+</style>
+{% endblock %}

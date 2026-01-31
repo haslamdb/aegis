@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Episode History - Guideline Adherence - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Episode History</h1>
+    <div class="stats-summary">
+        <span class="stat">
+            <span class="stat-number">{{ episodes|length }}</span>
+            <span class="stat-label">Total Episodes</span>
+        </span>
+        <span class="stat">
+            <span class="stat-number">{{ episodes|selectattr('review_status', 'equalto', 'reviewed')|list|length }}</span>
+            <span class="stat-label">Reviewed</span>
+        </span>
+    </div>
+</div>
+
+<div class="filters">
+    <form method="get" class="filter-form">
+        <label>
+            Bundle:
+            <select name="bundle" onchange="this.form.submit()">
+                <option value="">All Bundles</option>
+                {% for bundle_id, bundle in bundles.items() %}
+                <option value="{{ bundle_id }}" {% if current_bundle == bundle_id %}selected{% endif %}>{{ bundle.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Status:
+            <select name="status" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
+                <option value="completed" {% if current_status == 'completed' %}selected{% endif %}>Completed</option>
+            </select>
+        </label>
+        {% if current_bundle or current_status %}
+        <a href="{{ url_for('guideline_adherence.episode_history') }}" class="btn btn-link btn-small">Clear Filters</a>
+        {% endif %}
+    </form>
+</div>
+
+{% if episodes %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Patient</th>
+            <th>Bundle</th>
+            <th>Trigger Time</th>
+            <th>Adherence</th>
+            <th>Status</th>
+            <th>Review</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for ep in episodes %}
+        <tr class="{% if ep.status == 'completed' %}row-completed{% endif %}">
+            <td class="patient-info">
+                <span class="patient-name">{{ ep.patient_mrn or 'Unknown' }}</span>
+            </td>
+            <td>{{ ep.bundle_name or ep.bundle_id }}</td>
+            <td>
+                <span class="time-relative">
+                    {{ ep.trigger_time.strftime('%Y-%m-%d %H:%M') if ep.trigger_time else '-' }}
+                </span>
+            </td>
+            <td>
+                <span class="compliance-badge {% if ep.adherence_pct >= 90 %}success{% elif ep.adherence_pct >= 70 %}warning{% else %}danger{% endif %}">
+                    {{ ep.adherence_pct|round(0)|int }}%
+                </span>
+            </td>
+            <td>
+                <span class="badge badge-status-{{ ep.status }}">{{ ep.status|title }}</span>
+            </td>
+            <td>
+                {% if ep.review_status == 'reviewed' %}
+                    {% if ep.reviewer_decision == 'guideline_appropriate' %}
+                        <span class="badge badge-success">Appropriate</span>
+                    {% elif ep.reviewer_decision == 'guideline_deviation' %}
+                        <span class="badge badge-danger">Deviation</span>
+                    {% else %}
+                        <span class="badge badge-warning">{{ ep.reviewer_decision|title }}</span>
+                    {% endif %}
+                {% elif ep.has_assessment %}
+                    <span class="badge badge-info">Pending Review</span>
+                {% else %}
+                    <span class="badge badge-secondary">Not Analyzed</span>
+                {% endif %}
+            </td>
+            <td class="actions">
+                <a href="{{ url_for('guideline_adherence.episode_detail_full', episode_id=ep.id) }}" class="btn btn-small btn-secondary">View</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>No episodes found.</p>
+    {% if current_bundle or current_status %}
+    <p style="margin-top: 0.5rem; font-size: 0.875rem;">Try adjusting your filters.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.stats-summary {
+    display: flex;
+    gap: 2rem;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+    text-transform: uppercase;
+}
+
+.filters {
+    margin-bottom: 1.5rem;
+}
+
+.filter-form {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.filter-form label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.filter-form select {
+    padding: 0.5rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+}
+
+.data-table {
+    width: 100%;
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    border-collapse: collapse;
+    overflow: hidden;
+}
+
+.data-table th,
+.data-table td {
+    padding: 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.data-table th {
+    background: var(--color-gray-50);
+    font-weight: 600;
+    color: var(--color-gray-600);
+    font-size: 0.875rem;
+}
+
+.data-table tr:last-child td {
+    border-bottom: none;
+}
+
+.row-completed {
+    background: var(--color-gray-50);
+}
+
+.patient-name {
+    font-weight: 500;
+}
+
+.compliance-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.compliance-badge.success {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.compliance-badge.warning {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.compliance-badge.danger {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.badge-status-active {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.badge-status-completed {
+    background: var(--color-gray-200);
+    color: var(--color-gray-600);
+}
+
+.badge-secondary {
+    background: var(--color-gray-200);
+    color: var(--color-gray-600);
+}
+
+.badge-info {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    color: var(--color-gray-500);
+}
+
+.actions {
+    white-space: nowrap;
+}
+</style>
+{% endblock %}

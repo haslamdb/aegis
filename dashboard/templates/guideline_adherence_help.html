@@ -641,22 +641,227 @@ python demo_patients.py</pre>
     </div>
 
     <div class="help-card">
-        <h2>Dashboard Features</h2>
-        <h3>Compliance Metrics</h3>
+        <h2>LLM Review Workflow</h2>
+        <p>The system uses an <strong>HAI-style automated review workflow</strong> with LLM-based analysis and human oversight.</p>
+
+        <h3>Automatic Analysis</h3>
+        <p>When a guideline episode is created, the system automatically:</p>
+        <ol>
+            <li>Retrieves clinical notes from FHIR (DocumentReference resources)</li>
+            <li>Runs LLM analysis using tiered extraction (fast 7B triage → optional 70B full analysis)</li>
+            <li>Determines overall guideline adherence (appropriate, deviation, or pending)</li>
+            <li>Saves assessment with confidence level and supporting evidence</li>
+        </ol>
+        <p>No manual "Run LLM" button required - analysis happens on episode creation and can be re-run periodically.</p>
+
+        <h3>Episode Review Interface</h3>
+        <p>The episode detail page provides an HAI-style two-column layout:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Left Column (Information)</th>
+                    <th>Right Column (Actions)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Patient information (MRN, age, location)</td>
+                    <td>Reviewer name input</td>
+                </tr>
+                <tr>
+                    <td>Bundle information (trigger, time)</td>
+                    <td>Decision buttons (Appropriate / Deviation / Needs Info)</td>
+                </tr>
+                <tr>
+                    <td>LLM assessment (determination, confidence, reasoning)</td>
+                    <td>Override reason dropdown (when applicable)</td>
+                </tr>
+                <tr>
+                    <td>Bundle elements (met/not_met/pending status)</td>
+                    <td>Deviation type dropdown (for deviations)</td>
+                </tr>
+                <tr>
+                    <td>Review history</td>
+                    <td>Notes and submit button</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Override Detection</h3>
+        <p>The system automatically detects when human judgment differs from automated assessment:</p>
         <ul>
-            <li>Overall compliance rate by bundle</li>
-            <li>Element-level compliance breakdown</li>
-            <li>Trend over time (7/30/90 days)</li>
-            <li>Active episodes being monitored</li>
+            <li><strong>Direct Override:</strong> LLM says "appropriate" but human says "deviation" (or vice versa)</li>
+            <li><strong>System Override:</strong> LLM says "pending" but there are not_met elements, and human says "appropriate"</li>
+        </ul>
+        <p>When an override is detected, the system shows an <strong>Override Reason dropdown</strong> to capture why the human disagrees. This data is logged for training improvement.</p>
+
+        <h3>Override Reason Categories</h3>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Extraction Error</td>
+                    <td>LLM misread clinical documentation</td>
+                </tr>
+                <tr>
+                    <td>Element Detection Error</td>
+                    <td>LLM missed or incorrectly detected an element</td>
+                </tr>
+                <tr>
+                    <td>Timing Error</td>
+                    <td>LLM got timing/sequence wrong</td>
+                </tr>
+                <tr>
+                    <td>Clinical Judgment</td>
+                    <td>Clinical context not captured in notes</td>
+                </tr>
+                <tr>
+                    <td>Documentation Gap</td>
+                    <td>Key documentation not available</td>
+                </tr>
+                <tr>
+                    <td>Rule Interpretation</td>
+                    <td>Different interpretation of guideline</td>
+                </tr>
+                <tr>
+                    <td>Patient Specific</td>
+                    <td>Patient-specific factors justify deviation</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Training Data Collection</h2>
+        <p>The system captures training data for future LLM fine-tuning, following the same pattern as HAI Detection.</p>
+
+        <h3>What Gets Logged</h3>
+        <ul>
+            <li><strong>Clinical Appearance Extractions:</strong> Every LLM extraction is logged to <code>clinical_appearance_{YYYY_MM}.jsonl</code></li>
+            <li><strong>Guideline Reviews:</strong> Human review decisions are logged to <code>guideline_reviews_{YYYY_MM}.jsonl</code></li>
+            <li><strong>Overrides:</strong> Discrepancies between LLM and human are flagged for training priority</li>
         </ul>
 
-        <h3>Episode Detail View</h3>
+        <h3>Training Stats Dashboard</h3>
+        <p>Access via: <a href="/guideline-adherence/training/stats">/guideline-adherence/training/stats</a></p>
+        <p>The training stats page shows:</p>
         <ul>
-            <li>Element timeline with status indicators</li>
-            <li>Completion timestamps and values</li>
-            <li>Deviation history and alerts</li>
-            <li>Bundle reference information</li>
+            <li><strong>Total Extractions:</strong> Number of LLM extractions performed</li>
+            <li><strong>Human Reviewed:</strong> Count and percentage of extractions reviewed by humans</li>
+            <li><strong>Correction Rate:</strong> Percentage of reviewed cases where human corrected the LLM</li>
+            <li><strong>Triage Performance:</strong> Fast path rate (7B model sufficient) vs escalated (needed 70B)</li>
+            <li><strong>Response Times:</strong> Average triage and full extraction latency</li>
+            <li><strong>Appearance Distribution:</strong> Well/Ill/Toxic breakdown</li>
+            <li><strong>Override Reasons:</strong> Distribution of why humans disagreed with LLM</li>
+            <li><strong>Training Readiness:</strong> Whether enough data exists for fine-tuning (target: 100+ reviewed)</li>
         </ul>
+
+        <h3>Export for Fine-Tuning</h3>
+        <pre class="code-block">
+cd /home/david/projects/aegis/guideline-adherence
+
+# Export clinical appearance training data
+python -c "
+from guideline_src.nlp.training_collector import get_training_collector
+collector = get_training_collector()
+count = collector.export_training_data('training_export.jsonl', reviewed_only=True)
+print(f'Exported {count} training examples')
+"
+
+# Export guideline review data
+python -c "
+from guideline_src.nlp.training_collector import get_guideline_review_collector
+collector = get_guideline_review_collector()
+count = collector.export_training_data('guideline_reviews_export.jsonl')
+print(f'Exported {count} guideline reviews')
+"</pre>
+    </div>
+
+    <div class="help-card">
+        <h2>Dashboard Pages</h2>
+
+        <h3>Active Episodes</h3>
+        <p>URL: <a href="/guideline-adherence/active">/guideline-adherence/active</a></p>
+        <p>Shows episodes currently being monitored (not yet reviewed). Features:</p>
+        <ul>
+            <li>Filter by bundle type</li>
+            <li>Patient info, bundle, trigger time</li>
+            <li>Adherence percentage (color-coded: green ≥90%, yellow ≥70%, red &lt;70%)</li>
+            <li>LLM Analysis status (determination + confidence, or "Not Analyzed")</li>
+            <li>Review and Details action buttons</li>
+        </ul>
+        <p><strong>Note:</strong> Reviewed episodes are automatically removed from this list.</p>
+
+        <h3>History</h3>
+        <p>URL: <a href="/guideline-adherence/history">/guideline-adherence/history</a></p>
+        <p>Shows all episodes (both active and completed). Features:</p>
+        <ul>
+            <li>Filter by bundle type and status (all/active/completed)</li>
+            <li>Same columns as Active Episodes plus review status</li>
+            <li>Useful for auditing past cases</li>
+        </ul>
+
+        <h3>Compliance Metrics</h3>
+        <p>URL: <a href="/guideline-adherence/metrics">/guideline-adherence/metrics</a></p>
+        <ul>
+            <li>Filter by bundle and time period (7/30/90/365 days)</li>
+            <li>Episode counts (total, active, completed)</li>
+            <li>Element-level compliance rates <strong>grouped by bundle</strong></li>
+            <li>Visual compliance bars (color-coded by rate)</li>
+        </ul>
+
+        <h3>Episode Detail / Review</h3>
+        <p>URL: <code>/guideline-adherence/episode/{id}/detail</code></p>
+        <p>HAI-style review interface with:</p>
+        <ul>
+            <li>Full patient and bundle information</li>
+            <li>LLM assessment with reasoning and evidence</li>
+            <li>Element-by-element status with values and notes</li>
+            <li>Review decision workflow with override detection</li>
+            <li>Success state after submission</li>
+        </ul>
+
+        <h3>Training Stats</h3>
+        <p>URL: <a href="/guideline-adherence/training/stats">/guideline-adherence/training/stats</a></p>
+        <p>Analytics for LLM training data collection (see Training Data Collection section above).</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Running the Assessment Monitor</h2>
+        <p>The assessment monitor runs LLM analysis on episodes. Use the <code>run_monitor.py</code> script:</p>
+
+        <pre class="code-block">
+cd /home/david/projects/aegis/guideline-adherence
+
+# Run assessment on all unprocessed episodes (one-time)
+python run_monitor.py --assess
+
+# Run full monitor (trigger detection + assessment)
+python run_monitor.py --once
+
+# Run as daemon with periodic reassessment
+python run_monitor.py --interval 60
+
+# Options:
+#   --assess   Only run LLM assessment on pending episodes
+#   --once     Run once and exit
+#   --interval Run continuously with N second interval</pre>
+
+        <h3>Demo Data with FHIR Notes</h3>
+        <p>Create demo patients with clinical notes stored in FHIR for LLM parsing:</p>
+        <pre class="code-block">
+cd /home/david/projects/aegis/guideline-adherence
+
+# Create demo patients with FHIR clinical notes
+python demo_patients.py --persist --fhir --clear
+
+# Then run assessment
+python run_monitor.py --assess</pre>
     </div>
 
     <div class="help-card">

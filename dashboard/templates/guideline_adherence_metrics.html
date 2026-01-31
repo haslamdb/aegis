@@ -48,8 +48,9 @@
     </div>
 </div>
 
-<!-- Element Compliance Rates -->
-{% if metrics.element_rates %}
+<!-- Element Compliance Rates - Grouped by Bundle when no filter -->
+{% if current_bundle and metrics.element_rates %}
+<!-- Single bundle view - show flat list -->
 <div class="section">
     <h2>Element Compliance Rates</h2>
     <table class="data-table">
@@ -76,41 +77,55 @@
         </tbody>
     </table>
 </div>
+{% elif bundle_metrics %}
+<!-- All bundles view - show grouped by bundle -->
+{% for bm in bundle_metrics %}
+{% if bm.metrics and bm.metrics.element_rates %}
+<div class="section bundle-section">
+    <div class="bundle-section-header">
+        <h2>{{ bm.bundle_name }}</h2>
+        {% set total_rate = namespace(sum=0, count=0) %}
+        {% for er in bm.metrics.element_rates %}
+            {% set total_rate.sum = total_rate.sum + er.compliance_rate %}
+            {% set total_rate.count = total_rate.count + 1 %}
+        {% endfor %}
+        {% set avg = (total_rate.sum / total_rate.count)|round(1) if total_rate.count > 0 else 0 %}
+        <span class="bundle-avg-badge {% if avg >= 90 %}success{% elif avg >= 70 %}warning{% else %}danger{% endif %}">
+            {{ avg }}% avg
+        </span>
+        <span class="bundle-episode-count">{{ bm.metrics.episode_counts.total }} episodes</span>
+    </div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Element</th>
+                <th>Compliance Rate</th>
+                <th>Assessments</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for er in bm.metrics.element_rates|sort(attribute='compliance_rate') %}
+            <tr>
+                <td>{{ er.element_name or er.element_id }}</td>
+                <td>
+                    <div class="compliance-bar">
+                        <div class="bar-fill {% if er.compliance_rate >= 90 %}success{% elif er.compliance_rate >= 70 %}warning{% else %}danger{% endif %}" style="width: {{ er.compliance_rate }}%"></div>
+                        <span class="bar-label">{{ er.compliance_rate }}%</span>
+                    </div>
+                </td>
+                <td>{{ er.total_assessed }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endif %}
+{% endfor %}
 {% else %}
 <div class="empty-state">
     <p>No compliance data available for the selected filters.</p>
 </div>
 {% endif %}
-
-<!-- Per-Bundle Breakdown -->
-{% if bundle_metrics and not current_bundle %}
-<div class="section">
-    <h2>Compliance by Bundle</h2>
-    <div class="bundle-grid">
-        {% for bm in bundle_metrics %}
-        <a href="{{ url_for('guideline_adherence.bundle_detail', bundle_id=bm.bundle_id) }}" class="bundle-card">
-            <h3>{{ bm.bundle_name }}</h3>
-            {% if bm.metrics and bm.metrics.element_rates %}
-                {% set total_rate = namespace(sum=0, count=0) %}
-                {% for er in bm.metrics.element_rates %}
-                    {% set total_rate.sum = total_rate.sum + er.compliance_rate %}
-                    {% set total_rate.count = total_rate.count + 1 %}
-                {% endfor %}
-                {% set avg = (total_rate.sum / total_rate.count)|round(1) if total_rate.count > 0 else 0 %}
-                <div class="bundle-compliance {% if avg >= 90 %}success{% elif avg >= 70 %}warning{% else %}danger{% endif %}">
-                    {{ avg }}%
-                </div>
-            {% else %}
-                <div class="bundle-compliance">--</div>
-            {% endif %}
-            <div class="bundle-episodes">
-                {{ bm.metrics.episode_counts.total if bm.metrics else 0 }} episodes
-            </div>
-        </a>
-        {% endfor %}
-    </div>
-</div>
 {% endif %}
 
 <style>
@@ -267,6 +282,51 @@
     padding: 3rem;
     background: var(--color-white);
     border-radius: var(--radius-lg);
+    color: var(--color-gray-500);
+}
+
+.bundle-section {
+    border-left: 4px solid var(--color-primary);
+}
+
+.bundle-section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.bundle-section-header h2 {
+    margin: 0;
+    flex: 1;
+}
+
+.bundle-avg-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.bundle-avg-badge.success {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.bundle-avg-badge.warning {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.bundle-avg-badge.danger {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+.bundle-episode-count {
+    font-size: 0.875rem;
     color: var(--color-gray-500);
 }
 </style>

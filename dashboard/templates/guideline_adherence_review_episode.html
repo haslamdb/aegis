@@ -1,0 +1,543 @@
+{% extends "base.html" %}
+
+{% block title %}Review Episode #{{ episode.id }} - Guideline Adherence - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Review Clinical Appearance</h1>
+    <a href="{{ url_for('guideline_adherence.review_queue') }}" class="btn btn-secondary">Back to Queue</a>
+</div>
+
+<!-- Episode Info -->
+<div class="episode-info">
+    <div class="info-item">
+        <span class="info-label">Episode</span>
+        <span class="info-value">#{{ episode.id }}</span>
+    </div>
+    <div class="info-item">
+        <span class="info-label">Patient</span>
+        <span class="info-value">{{ episode.patient_mrn or episode.patient_id }}</span>
+    </div>
+    <div class="info-item">
+        <span class="info-label">Bundle</span>
+        <span class="info-value">{{ episode.bundle_name }}</span>
+    </div>
+    <div class="info-item">
+        <span class="info-label">Trigger Time</span>
+        <span class="info-value">{{ episode.trigger_time[:16] if episode.trigger_time else '-' }}</span>
+    </div>
+</div>
+
+{% if not record %}
+<div class="alert alert-warning">
+    No extraction record found for this episode. The clinical appearance may not have been analyzed yet.
+</div>
+<a href="{{ url_for('guideline_adherence.episode_detail', episode_id=episode.id) }}" class="btn btn-primary">View Episode Details</a>
+{% else %}
+
+<!-- Current LLM Assessment -->
+<div class="section">
+    <h2>LLM Assessment</h2>
+    <div class="assessment-display">
+        <div class="assessment-main">
+            <span class="appearance-badge badge-{{ 'danger' if record.extracted_appearance in ['ill', 'toxic'] else 'success' if record.extracted_appearance == 'well' else 'warning' }}">
+                {{ record.extracted_appearance|title if record.extracted_appearance else 'Unknown' }}
+            </span>
+            <span class="confidence-label">{{ record.extraction_confidence|upper if record.extraction_confidence else 'LOW' }} confidence</span>
+        </div>
+
+        <div class="extraction-meta">
+            <div class="meta-row">
+                <span class="meta-label">Triage Model:</span>
+                <span class="meta-value">{{ record.triage_model or 'N/A' }}</span>
+            </div>
+            {% if record.triage_escalated %}
+            <div class="meta-row">
+                <span class="meta-label">Full Model:</span>
+                <span class="meta-value">{{ record.full_model or 'N/A' }}</span>
+            </div>
+            <div class="meta-row">
+                <span class="meta-label">Escalation Reasons:</span>
+                <span class="meta-value">{{ record.triage_escalation_reasons|join(', ') if record.triage_escalation_reasons else 'N/A' }}</span>
+            </div>
+            {% else %}
+            <div class="meta-row">
+                <span class="meta-label">Path:</span>
+                <span class="meta-value"><span class="badge badge-info">Fast Path (Triage Only)</span></span>
+            </div>
+            {% endif %}
+            <div class="meta-row">
+                <span class="meta-label">Response Time:</span>
+                <span class="meta-value">
+                    {{ record.triage_response_time_ms }}ms (triage)
+                    {% if record.full_response_time_ms %}
+                    + {{ record.full_response_time_ms }}ms (full)
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        {% if record.concerning_signs %}
+        <div class="findings-box concerning">
+            <strong>Concerning Signs:</strong>
+            <ul>
+                {% for sign in record.concerning_signs %}
+                <li>{{ sign }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if record.reassuring_signs %}
+        <div class="findings-box reassuring">
+            <strong>Reassuring Signs:</strong>
+            <ul>
+                {% for sign in record.reassuring_signs %}
+                <li>{{ sign }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if record.supporting_quotes %}
+        <div class="findings-box quotes">
+            <strong>Supporting Quotes:</strong>
+            <ul>
+                {% for quote in record.supporting_quotes %}
+                <li>"{{ quote }}"</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Review Form -->
+<div class="section">
+    <h2>Submit Review</h2>
+
+    <form method="POST" class="review-form">
+        <!-- Reviewer ID -->
+        <div class="form-group">
+            <label for="reviewer_id">Reviewer ID</label>
+            <input type="text" id="reviewer_id" name="reviewer_id" class="form-control"
+                   placeholder="e.g., dr_smith" required>
+        </div>
+
+        <!-- Appearance Decision -->
+        <div class="form-group">
+            <label>Clinical Appearance Decision</label>
+            <div class="radio-group">
+                <label class="radio-option">
+                    <input type="radio" name="appearance_decision" value="confirm" checked>
+                    <span class="radio-label">
+                        <strong>Confirm</strong>
+                        <span class="radio-desc">LLM assessment is correct ({{ record.extracted_appearance|title }})</span>
+                    </span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="appearance_decision" value="override_well">
+                    <span class="radio-label">
+                        <strong>Override to Well-Appearing</strong>
+                        <span class="radio-desc">Infant appears well based on clinical notes</span>
+                    </span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="appearance_decision" value="override_ill">
+                    <span class="radio-label">
+                        <strong>Override to Ill-Appearing</strong>
+                        <span class="radio-desc">Infant appears ill based on clinical notes</span>
+                    </span>
+                </label>
+                <label class="radio-option">
+                    <input type="radio" name="appearance_decision" value="override_toxic">
+                    <span class="radio-label">
+                        <strong>Override to Toxic-Appearing</strong>
+                        <span class="radio-desc">Infant appears toxic/severely ill</span>
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Override Reason (shown when override selected) -->
+        <div class="form-group override-section" id="override-reason-section" style="display: none;">
+            <label for="override_reason">Override Reason</label>
+            <select id="override_reason" name="override_reason" class="form-control">
+                <option value="">Select reason...</option>
+                {% for code, description in override_reasons.items() %}
+                <option value="{{ code }}">{{ description }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group override-section" id="override-text-section" style="display: none;">
+            <label for="override_reason_text">Other Reason (please specify)</label>
+            <textarea id="override_reason_text" name="override_reason_text" class="form-control"
+                      rows="2" placeholder="Explain why the LLM assessment was incorrect..."></textarea>
+        </div>
+
+        <!-- Missed Findings -->
+        <div class="form-group">
+            <label>Missed Findings (select all that apply)</label>
+            <p class="form-help">Check any findings the LLM failed to identify from the notes.</p>
+            <div class="checkbox-grid">
+                {% for finding in missed_finding_options %}
+                <label class="checkbox-option">
+                    <input type="checkbox" name="missed_findings" value="{{ finding }}">
+                    <span>{{ finding|replace('_', ' ')|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- False Positives -->
+        <div class="form-group">
+            <label>False Positives (select all that apply)</label>
+            <p class="form-help">Check any findings the LLM incorrectly identified.</p>
+            <div class="checkbox-grid">
+                {% for finding in missed_finding_options %}
+                <label class="checkbox-option">
+                    <input type="checkbox" name="false_positives" value="{{ finding }}">
+                    <span>{{ finding|replace('_', ' ')|title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Review Notes -->
+        <div class="form-group">
+            <label for="review_notes">Additional Notes (optional)</label>
+            <textarea id="review_notes" name="review_notes" class="form-control"
+                      rows="3" placeholder="Any additional context or observations..."></textarea>
+        </div>
+
+        <!-- Submit -->
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Submit Review</button>
+            <a href="{{ url_for('guideline_adherence.episode_detail', episode_id=episode.id) }}" class="btn btn-secondary">View Episode</a>
+            <a href="{{ url_for('guideline_adherence.review_queue') }}" class="btn btn-link">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const radioButtons = document.querySelectorAll('input[name="appearance_decision"]');
+    const overrideReasonSection = document.getElementById('override-reason-section');
+    const overrideTextSection = document.getElementById('override-text-section');
+    const overrideReasonSelect = document.getElementById('override_reason');
+
+    function updateOverrideSections() {
+        const selected = document.querySelector('input[name="appearance_decision"]:checked');
+        const isOverride = selected && selected.value !== 'confirm';
+
+        if (overrideReasonSection) {
+            overrideReasonSection.style.display = isOverride ? 'block' : 'none';
+        }
+    }
+
+    function updateOtherTextSection() {
+        const isOther = overrideReasonSelect && overrideReasonSelect.value === 'other';
+        const isVisible = overrideReasonSection && overrideReasonSection.style.display !== 'none';
+
+        if (overrideTextSection) {
+            overrideTextSection.style.display = (isOther && isVisible) ? 'block' : 'none';
+        }
+    }
+
+    radioButtons.forEach(function(radio) {
+        radio.addEventListener('change', function() {
+            updateOverrideSections();
+            updateOtherTextSection();
+        });
+    });
+
+    if (overrideReasonSelect) {
+        overrideReasonSelect.addEventListener('change', updateOtherTextSection);
+    }
+
+    // Initialize on page load
+    updateOverrideSections();
+    updateOtherTextSection();
+});
+</script>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.episode-info {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem 1.5rem;
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-label {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.info-value {
+    font-weight: 600;
+    color: var(--color-gray-800);
+}
+
+.section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+
+.section h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.assessment-display {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.assessment-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.appearance-badge {
+    font-size: 1.25rem;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+}
+
+.badge-success { background: var(--color-success-light); color: var(--color-success); }
+.badge-danger { background: var(--color-danger-light); color: var(--color-danger); }
+.badge-warning { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.badge-info { background: var(--color-primary-light); color: var(--color-primary); }
+
+.confidence-label {
+    font-weight: 600;
+    color: var(--color-gray-700);
+}
+
+.extraction-meta {
+    background: var(--color-gray-50);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+}
+
+.meta-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.meta-row:last-child {
+    margin-bottom: 0;
+}
+
+.meta-label {
+    font-weight: 500;
+    color: var(--color-gray-600);
+    min-width: 150px;
+}
+
+.meta-value {
+    color: var(--color-gray-800);
+}
+
+.findings-box {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--color-gray-300);
+}
+
+.findings-box.concerning {
+    background: var(--color-danger-light);
+    border-left-color: var(--color-danger);
+}
+
+.findings-box.reassuring {
+    background: var(--color-success-light);
+    border-left-color: var(--color-success);
+}
+
+.findings-box.quotes {
+    background: var(--color-primary-light);
+    border-left-color: var(--color-primary);
+}
+
+.findings-box ul {
+    margin: 0.5rem 0 0 1.5rem;
+    padding: 0;
+}
+
+.findings-box li {
+    margin-bottom: 0.25rem;
+}
+
+.review-form {
+    max-width: 800px;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--color-gray-800);
+}
+
+.form-help {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: var(--radius-md);
+    background: var(--color-white);
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-light);
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.radio-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.radio-option:hover {
+    background: var(--color-gray-50);
+}
+
+.radio-option input[type="radio"]:checked + .radio-label {
+    color: var(--color-primary);
+}
+
+.radio-option:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+.radio-label {
+    display: flex;
+    flex-direction: column;
+}
+
+.radio-label strong {
+    color: var(--color-gray-800);
+}
+
+.radio-desc {
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.5rem;
+}
+
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+.checkbox-option:hover {
+    background: var(--color-gray-50);
+}
+
+.checkbox-option:has(input:checked) {
+    border-color: var(--color-primary);
+    background: var(--color-primary-light);
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-gray-200);
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--color-gray-600);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+.btn-link:hover {
+    color: var(--color-gray-800);
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+}
+
+.alert-warning {
+    background: var(--color-warning-light);
+    color: var(--color-warning-dark);
+    border: 1px solid var(--color-warning);
+}
+
+.override-section {
+    padding-left: 1.5rem;
+    border-left: 3px solid var(--color-warning);
+}
+</style>
+{% endblock %}

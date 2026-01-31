@@ -200,65 +200,99 @@
 
     <!-- Right Column: Review Actions -->
     <div class="alert-detail-sidebar">
-        {% if episode.review_status != 'reviewed' or True %}
-        <div class="action-card">
-            <h3>Review Decision</h3>
-            {{ reviewer_input() }}
+        {% if reviews %}
+        <!-- Already reviewed - show success state -->
+        <div class="action-card submitted-state">
+            <div class="submitted-success">
+                <div class="success-icon">✓</div>
+                <h3>Review Submitted</h3>
+                <p>This episode has been reviewed.</p>
+                {% if reviews[0].reviewer_decision == 'guideline_appropriate' %}
+                    <span class="badge badge-success">Guideline Appropriate</span>
+                {% elif reviews[0].reviewer_decision == 'guideline_deviation' %}
+                    <span class="badge badge-danger">Guideline Deviation</span>
+                {% else %}
+                    <span class="badge badge-warning">{{ reviews[0].reviewer_decision|title }}</span>
+                {% endif %}
+                <p class="reviewer-info">by {{ reviews[0].reviewer }} on {{ reviews[0].reviewed_at.strftime('%Y-%m-%d %H:%M') if reviews[0].reviewed_at else '' }}</p>
+            </div>
+            <a href="{{ url_for('guideline_adherence.active_episodes') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
+                Return to Active Episodes
+            </a>
+        </div>
+        {% else %}
+        <!-- Not yet reviewed - show review form -->
+        <div id="review-form-container">
+            <div class="action-card">
+                <h3>Review Decision</h3>
+                {{ reviewer_input() }}
 
-            <div class="decision-buttons">
-                <button type="button" class="btn btn-guideline-appropriate btn-block" data-decision="guideline_appropriate">
-                    Guideline Appropriate
+                <div class="decision-buttons">
+                    <button type="button" class="btn btn-guideline-appropriate btn-block" data-decision="guideline_appropriate">
+                        Guideline Appropriate
+                    </button>
+                    <button type="button" class="btn btn-guideline-deviation btn-block" data-decision="guideline_deviation">
+                        Guideline Deviation
+                    </button>
+                    <button type="button" class="btn btn-needs-info btn-block" data-decision="needs_more_info">
+                        Needs More Info
+                    </button>
+                </div>
+            </div>
+
+            <!-- Override Reason Section (shown when disagreeing with LLM or system detection) -->
+            <div class="action-card hidden" id="override-reason-section">
+                <h3>Override Reason</h3>
+                <p class="text-muted override-message" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                    You are overriding the automated assessment. Please indicate why:
+                </p>
+                <div class="form-group">
+                    <select id="override-reason-category" class="form-control">
+                        <option value="">-- Select a reason --</option>
+                        {% for key, label in override_reasons.items() %}
+                        <option value="{{ key }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Deviation Type Section (shown for deviations) -->
+            <div class="action-card hidden" id="deviation-type-section">
+                <h3>Deviation Type</h3>
+                <div class="form-group">
+                    <select id="deviation-type" class="form-control">
+                        <option value="">-- Select type --</option>
+                        {% for key, label in deviation_types.items() %}
+                        <option value="{{ key }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="action-card" id="notes-section">
+                <h3>Notes</h3>
+                <div class="form-group">
+                    <textarea name="notes" id="notes" rows="3" class="form-textarea" placeholder="Additional notes about your decision..."></textarea>
+                </div>
+                <button type="button" class="btn btn-submit-review btn-block" id="submit-review-btn">
+                    Submit Review
                 </button>
-                <button type="button" class="btn btn-guideline-deviation btn-block" data-decision="guideline_deviation">
-                    Guideline Deviation
-                </button>
-                <button type="button" class="btn btn-needs-info btn-block" data-decision="needs_more_info">
-                    Needs More Info
-                </button>
             </div>
         </div>
 
-        <!-- Override Reason Section (shown when disagreeing with LLM) -->
-        <div class="action-card hidden" id="override-reason-section">
-            <h3>Override Reason</h3>
-            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
-                You are overriding the LLM assessment. Please indicate why:
-            </p>
-            <div class="form-group">
-                <select id="override-reason-category" class="form-control">
-                    <option value="">-- Select a reason --</option>
-                    {% for key, label in override_reasons.items() %}
-                    <option value="{{ key }}">{{ label }}</option>
-                    {% endfor %}
-                </select>
+        <!-- Success state (shown after submission) -->
+        <div id="review-success-container" class="hidden">
+            <div class="action-card submitted-state">
+                <div class="submitted-success">
+                    <div class="success-icon">✓</div>
+                    <h3>Review Submitted</h3>
+                    <p id="success-message">Your review has been recorded.</p>
+                </div>
+                <a href="{{ url_for('guideline_adherence.active_episodes') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
+                    Return to Active Episodes
+                </a>
             </div>
         </div>
-
-        <!-- Deviation Type Section (shown for deviations) -->
-        <div class="action-card hidden" id="deviation-type-section">
-            <h3>Deviation Type</h3>
-            <div class="form-group">
-                <select id="deviation-type" class="form-control">
-                    <option value="">-- Select type --</option>
-                    {% for key, label in deviation_types.items() %}
-                    <option value="{{ key }}">{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-
-        <div class="action-card" id="notes-section">
-            <h3>Notes</h3>
-            <div class="form-group">
-                <textarea name="notes" id="notes" rows="3" class="form-textarea" placeholder="Additional notes about your decision..."></textarea>
-            </div>
-            <button type="button" class="btn btn-submit-review btn-block" id="submit-review-btn">
-                Submit Review
-            </button>
-        </div>
-
-        <div id="review-result" class="hidden"></div>
-
         {% endif %}
     </div>
 </div>
@@ -268,15 +302,30 @@
     // LLM's determination
     const llmDetermination = '{{ latest_assessment.primary_determination if latest_assessment else "" }}';
 
+    // Check if there are not_met elements (indicates deviation even if LLM said "pending")
+    const hasNotMetElements = {{ 'true' if results|selectattr('status', 'equalto', 'not_met')|list|length > 0 else 'false' }};
+
     // Currently selected decision
     let selectedDecision = null;
 
-    // Check if decision is an override
+    // Check if decision is an override or needs explanation
     function isOverride(decision) {
-        if (!llmDetermination || llmDetermination === 'pending') {
+        if (!llmDetermination) {
             return false;
         }
-        return llmDetermination !== decision && decision !== 'needs_more_info';
+
+        // If LLM made a definitive call and human disagrees
+        if (llmDetermination !== 'pending' && llmDetermination !== decision && decision !== 'needs_more_info') {
+            return true;
+        }
+
+        // If LLM said "pending" but there are not_met elements, and human says "appropriate"
+        // This is an override because the system detected deviations
+        if (llmDetermination === 'pending' && hasNotMetElements && decision === 'guideline_appropriate') {
+            return true;
+        }
+
+        return false;
     }
 
     // Update UI based on selected decision
@@ -315,22 +364,38 @@
         });
     });
 
+    // Show error message
+    function showError(message) {
+        // Remove any existing error
+        const existing = document.querySelector('.submit-error');
+        if (existing) existing.remove();
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger submit-error';
+        errorDiv.textContent = message;
+        document.getElementById('notes-section').insertBefore(
+            errorDiv,
+            document.getElementById('submit-review-btn')
+        );
+    }
+
     // Handle submit
     document.getElementById('submit-review-btn').addEventListener('click', async function() {
         const reviewer = document.getElementById('reviewer').value;
         const notes = document.getElementById('notes').value;
-        const resultDiv = document.getElementById('review-result');
+
+        // Remove any existing error
+        const existing = document.querySelector('.submit-error');
+        if (existing) existing.remove();
 
         if (!reviewer.trim()) {
-            resultDiv.innerHTML = '<div class="alert alert-danger">Please enter your name</div>';
-            resultDiv.classList.remove('hidden');
+            showError('Please enter your name');
             document.getElementById('reviewer').focus();
             return;
         }
 
         if (!selectedDecision) {
-            resultDiv.innerHTML = '<div class="alert alert-danger">Please select a decision</div>';
-            resultDiv.classList.remove('hidden');
+            showError('Please select a decision');
             return;
         }
 
@@ -366,20 +431,24 @@
             const result = await response.json();
 
             if (result.success) {
-                let msg = 'Review submitted successfully!';
+                // Hide the form and show success state
+                document.getElementById('review-form-container').classList.add('hidden');
+
+                let msg = 'Your review has been recorded.';
                 if (result.is_override) {
-                    msg += ' (Override logged for training)';
+                    msg = 'Your review has been recorded. Override logged for training.';
                 }
-                resultDiv.innerHTML = '<div class="alert alert-success">' + msg + '</div>';
-                resultDiv.classList.remove('hidden');
-                setTimeout(() => window.location.reload(), 1500);
+                document.getElementById('success-message').textContent = msg;
+                document.getElementById('review-success-container').classList.remove('hidden');
             } else {
-                resultDiv.innerHTML = '<div class="alert alert-danger">Error: ' + result.error + '</div>';
-                resultDiv.classList.remove('hidden');
+                // Show error inline
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger';
+                errorDiv.textContent = 'Error: ' + result.error;
+                document.getElementById('notes-section').appendChild(errorDiv);
             }
         } catch (err) {
-            resultDiv.innerHTML = '<div class="alert alert-danger">Failed to submit: ' + err.message + '</div>';
-            resultDiv.classList.remove('hidden');
+            showError('Failed to submit: ' + err.message);
         }
     });
 })();
@@ -757,6 +826,53 @@
     background: #f0fdf4;
     border: 1px solid #10b981;
     color: #065f46;
+}
+
+/* Submitted State */
+.submitted-state {
+    text-align: center;
+}
+
+.submitted-success {
+    padding: 1.5rem 1rem;
+}
+
+.submitted-success .success-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--color-success);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 1rem;
+}
+
+.submitted-success h3 {
+    border: none;
+    padding: 0;
+    margin: 0 0 0.5rem 0;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 1.25rem;
+    color: var(--color-gray-900);
+}
+
+.submitted-success p {
+    color: var(--color-gray-600);
+    margin: 0.5rem 0;
+}
+
+.submitted-success .badge {
+    margin-top: 0.75rem;
+}
+
+.submitted-success .reviewer-info {
+    font-size: 0.85rem;
+    color: var(--color-gray-500);
+    margin-top: 0.75rem;
 }
 
 .hidden {

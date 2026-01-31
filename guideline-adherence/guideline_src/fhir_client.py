@@ -610,6 +610,238 @@ class HAPIGuidelineFHIRClient(GuidelineFHIRClient):
         response.raise_for_status()
         return response.json()
 
+    def post(self, resource_type: str, resource: dict) -> dict:
+        """POST a new resource to FHIR server."""
+        response = self.session.post(
+            f"{self.base_url}/{resource_type}",
+            json=resource,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def put(self, resource_path: str, resource: dict) -> dict:
+        """PUT (update) a resource on FHIR server."""
+        response = self.session.put(
+            f"{self.base_url}/{resource_path}",
+            json=resource,
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def delete(self, resource_path: str) -> bool:
+        """DELETE a resource from FHIR server."""
+        response = self.session.delete(f"{self.base_url}/{resource_path}")
+        response.raise_for_status()
+        return True
+
+    def create_patient(
+        self,
+        mrn: str,
+        given_name: str,
+        family_name: str,
+        birth_date: str,
+        gender: str = "unknown",
+    ) -> dict:
+        """Create a Patient resource.
+
+        Args:
+            mrn: Medical record number.
+            given_name: First name.
+            family_name: Last name.
+            birth_date: Birth date (YYYY-MM-DD).
+            gender: Gender (male, female, other, unknown).
+
+        Returns:
+            Created Patient resource with server-assigned ID.
+        """
+        patient = {
+            "resourceType": "Patient",
+            "identifier": [
+                {
+                    "type": {
+                        "coding": [
+                            {
+                                "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+                                "code": "MR",
+                                "display": "Medical Record Number",
+                            }
+                        ]
+                    },
+                    "value": mrn,
+                }
+            ],
+            "name": [
+                {
+                    "use": "official",
+                    "family": family_name,
+                    "given": [given_name],
+                }
+            ],
+            "birthDate": birth_date,
+            "gender": gender,
+        }
+        return self.post("Patient", patient)
+
+    def create_clinical_note(
+        self,
+        patient_id: str,
+        note_text: str,
+        note_type: str = "Progress note",
+        note_type_code: str = "11506-3",
+        author_name: str | None = None,
+        note_date: datetime | None = None,
+    ) -> dict:
+        """Create a DocumentReference (clinical note) resource.
+
+        Args:
+            patient_id: FHIR Patient ID.
+            note_text: The clinical note content.
+            note_type: Display name for note type.
+            note_type_code: LOINC code for note type.
+            author_name: Optional author name.
+            note_date: Optional note date (defaults to now).
+
+        Returns:
+            Created DocumentReference resource with server-assigned ID.
+        """
+        import base64
+
+        if not note_date:
+            note_date = datetime.now()
+
+        doc_ref = {
+            "resourceType": "DocumentReference",
+            "status": "current",
+            "type": {
+                "coding": [
+                    {
+                        "system": "http://loinc.org",
+                        "code": note_type_code,
+                        "display": note_type,
+                    }
+                ]
+            },
+            "subject": {"reference": f"Patient/{patient_id}"},
+            "date": note_date.isoformat(),
+            "content": [
+                {
+                    "attachment": {
+                        "contentType": "text/plain",
+                        "data": base64.b64encode(note_text.encode("utf-8")).decode("ascii"),
+                    }
+                }
+            ],
+        }
+
+        if author_name:
+            doc_ref["author"] = [{"display": author_name}]
+
+        return self.post("DocumentReference", doc_ref)
+
+    def create_condition(
+        self,
+        patient_id: str,
+        icd10_code: str,
+        display: str,
+        encounter_id: str | None = None,
+        onset_datetime: datetime | None = None,
+    ) -> dict:
+        """Create a Condition resource.
+
+        Args:
+            patient_id: FHIR Patient ID.
+            icd10_code: ICD-10-CM code.
+            display: Display name for condition.
+            encounter_id: Optional Encounter ID.
+            onset_datetime: Optional onset time (defaults to now).
+
+        Returns:
+            Created Condition resource.
+        """
+        if not onset_datetime:
+            onset_datetime = datetime.now()
+
+        condition = {
+            "resourceType": "Condition",
+            "clinicalStatus": {
+                "coding": [
+                    {
+                        "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",
+                        "code": "active",
+                    }
+                ]
+            },
+            "code": {
+                "coding": [
+                    {
+                        "system": "http://hl7.org/fhir/sid/icd-10-cm",
+                        "code": icd10_code,
+                        "display": display,
+                    }
+                ]
+            },
+            "subject": {"reference": f"Patient/{patient_id}"},
+            "onsetDateTime": onset_datetime.isoformat(),
+        }
+
+        if encounter_id:
+            condition["encounter"] = {"reference": f"Encounter/{encounter_id}"}
+
+        return self.post("Condition", condition)
+
+    def find_patient_by_mrn(self, mrn: str) -> dict | None:
+        """Find a patient by MRN.
+
+        Returns:
+            Patient dict or None if not found.
+        """
+        params = {"identifier": mrn, "_count": "1"}
+        try:
+            response = self.get("Patient", params)
+            entries = self._extract_entries(response)
+            if entries:
+                return self._resource_to_patient(entries[0])
+        except Exception as e:
+            logger.debug(f"Could not find patient by MRN {mrn}: {e}")
+        return None
+
+    def delete_patient_cascade(self, patient_id: str) -> bool:
+        """Delete a patient and all associated resources.
+
+        Args:
+            patient_id: FHIR Patient ID.
+
+        Returns:
+            True if deleted.
+        """
+        # Delete DocumentReferences
+        try:
+            docs = self.get("DocumentReference", {"patient": patient_id, "_count": "100"})
+            for entry in docs.get("entry", []):
+                doc_id = entry.get("resource", {}).get("id")
+                if doc_id:
+                    self.delete(f"DocumentReference/{doc_id}")
+        except Exception as e:
+            logger.debug(f"Error deleting DocumentReferences: {e}")
+
+        # Delete Conditions
+        try:
+            conds = self.get("Condition", {"patient": patient_id, "_count": "100"})
+            for entry in conds.get("entry", []):
+                cond_id = entry.get("resource", {}).get("id")
+                if cond_id:
+                    self.delete(f"Condition/{cond_id}")
+        except Exception as e:
+            logger.debug(f"Error deleting Conditions: {e}")
+
+        # Delete Patient
+        try:
+            self.delete(f"Patient/{patient_id}")
+            return True
+        except Exception as e:
+            logger.warning(f"Error deleting Patient {patient_id}: {e}")
+            return False
+
 
 class EpicGuidelineFHIRClient(GuidelineFHIRClient):
     """Client for Epic FHIR API with OAuth 2.0."""
@@ -697,8 +929,215 @@ class EpicGuidelineFHIRClient(GuidelineFHIRClient):
         return response.json()
 
 
-def get_fhir_client() -> GuidelineFHIRClient:
-    """Factory function - returns appropriate client based on config."""
+class DemoGuidelineFHIRClient(GuidelineFHIRClient):
+    """Demo FHIR client with sample data for testing.
+
+    Provides realistic clinical notes for febrile infant scenarios without
+    requiring a real FHIR server.
+    """
+
+    # Sample clinical notes for different patient scenarios
+    DEMO_NOTES = {
+        # Well-appearing febrile infant
+        "well_infant": [
+            {
+                "type": "Physical Exam",
+                "date": None,  # Will be set dynamically
+                "author": "Dr. Smith",
+                "text": """Physical Exam:
+General: Well-appearing, alert, active infant
+Vitals: T 38.1, HR 145, RR 36, SpO2 99% RA
+Skin: Pink, warm, well-perfused, cap refill <2 sec
+HEENT: Fontanelle soft and flat, TMs clear
+Lungs: Clear to auscultation bilaterally, no distress
+CV: Regular rate and rhythm, no murmur
+Abdomen: Soft, non-tender
+Neuro: Alert, good tone, strong suck reflex
+
+Assessment: Well-appearing febrile infant""",
+            },
+            {
+                "type": "Nursing Note",
+                "date": None,
+                "author": "RN Jones",
+                "text": """Nursing Note (0830):
+Baby feeding well, took 60ml formula without difficulty.
+Active, alert, making good eye contact with parents.
+Consolable when fussy. Parents reassured by baby's activity level.
+Good urine output, wet diaper x3 this shift.""",
+            },
+        ],
+        # Ill-appearing febrile infant
+        "ill_infant": [
+            {
+                "type": "Physical Exam",
+                "date": None,
+                "author": "Dr. Johnson",
+                "text": """Physical Exam:
+General: Ill-appearing, lethargic infant
+Vitals: T 39.2, HR 180, RR 52, SpO2 94% RA
+Skin: Mottled appearance on trunk and extremities, delayed cap refill 4 sec
+HEENT: Fontanelle flat, decreased tearing
+Lungs: Grunting respirations, mild retractions
+CV: Tachycardic, thready pulses
+Neuro: Hypotonic, poor suck, difficult to arouse
+
+Assessment: Ill-appearing febrile infant, concern for sepsis""",
+            },
+            {
+                "type": "Nursing Note",
+                "date": None,
+                "author": "RN Adams",
+                "text": """Nursing Note:
+Baby very sleepy, difficult to wake for feeds. Only took 15ml before
+falling back asleep. Weak cry. Color pale with mottling on legs.
+Parents very concerned - say baby is "not himself."
+Poor urine output - only 1 wet diaper in 8 hours.""",
+            },
+        ],
+        # Ambiguous case
+        "ambiguous_infant": [
+            {
+                "type": "Physical Exam",
+                "date": None,
+                "author": "Dr. Williams",
+                "text": """Physical Exam:
+General: Infant appears alert but somewhat irritable
+Vitals: T 38.6, HR 160, RR 42
+Skin: Good color centrally, some mottling on feet (? cold room)
+HEENT: Fontanelle flat
+Lungs: Clear
+CV: Tachycardic but good pulses
+Neuro: Good tone, active
+
+Assessment: Febrile infant, clinical appearance somewhat reassuring
+but tachycardic and irritable""",
+            },
+            {
+                "type": "Nursing Note",
+                "date": None,
+                "author": "RN Chen",
+                "text": """Nursing Note:
+Baby fed 45ml but then vomited. Now taking sips of pedialyte.
+Fusses when examined but quiets when held. Some mottling noted
+on legs but improves with warming. Parents report baby was
+playful this morning but now seems tired.""",
+            },
+        ],
+        # Default fallback
+        "default": [
+            {
+                "type": "Progress Note",
+                "date": None,
+                "author": "Provider",
+                "text": """Progress Note:
+Febrile infant presenting for evaluation.
+Clinical assessment pending.""",
+            },
+        ],
+    }
+
+    # Patient ID to scenario mapping for demo
+    PATIENT_SCENARIOS = {
+        "patient-demo-001": "well_infant",
+        "patient-demo-002": "ill_infant",
+        "patient-demo-003": "ambiguous_infant",
+        "demo-well": "well_infant",
+        "demo-ill": "ill_infant",
+        "demo-ambiguous": "ambiguous_infant",
+    }
+
+    def __init__(self):
+        """Initialize demo client."""
+        pass
+
+    def get(self, resource_path: str, params: dict | None = None) -> dict:
+        """Return empty bundle for unsupported queries."""
+        return {"resourceType": "Bundle", "entry": []}
+
+    def get_patient(self, patient_id: str) -> dict | None:
+        """Return a demo patient."""
+        return {
+            "fhir_id": patient_id,
+            "mrn": f"MRN-{patient_id[-3:]}",
+            "name": f"Demo Patient {patient_id[-3:]}",
+            "birth_date": "2024-12-15",  # ~45 days old
+            "gender": "male",
+        }
+
+    def get_recent_notes(
+        self,
+        patient_id: str,
+        since_hours: int = 48,
+        note_types: list[str] | None = None,
+        since_time: datetime | None = None,
+    ) -> list[dict]:
+        """Return demo clinical notes based on patient scenario.
+
+        Maps patient_id to a scenario, or uses round-robin for unknown patients.
+        """
+        # Determine scenario
+        scenario = self.PATIENT_SCENARIOS.get(patient_id)
+
+        if not scenario:
+            # Use hash of patient_id to consistently assign scenario
+            scenarios = list(self.DEMO_NOTES.keys())
+            scenarios.remove("default")
+            idx = hash(patient_id) % len(scenarios)
+            scenario = scenarios[idx]
+
+        notes = self.DEMO_NOTES.get(scenario, self.DEMO_NOTES["default"])
+
+        # Set timestamps
+        from datetime import datetime, timedelta
+        base_time = since_time or datetime.now()
+        result = []
+        for i, note in enumerate(notes):
+            note_copy = note.copy()
+            note_copy["date"] = (base_time - timedelta(hours=i * 2)).isoformat()
+            result.append(note_copy)
+
+        return result
+
+    def get_lab_results(
+        self,
+        patient_id: str,
+        loinc_codes: list[str],
+        since_time: datetime | None = None,
+        since_hours: int | None = None,
+    ) -> list[dict]:
+        """Return empty list - demo doesn't include lab data."""
+        return []
+
+    def get_vital_signs(
+        self,
+        patient_id: str,
+        since_time: datetime | None = None,
+        since_hours: int = 24,
+    ) -> list[dict]:
+        """Return empty list - demo doesn't include vital signs."""
+        return []
+
+    def get_medication_administrations(
+        self,
+        patient_id: str,
+        since_time: datetime | None = None,
+        since_hours: int = 24,
+    ) -> list[dict]:
+        """Return empty list - demo doesn't include medications."""
+        return []
+
+
+def get_fhir_client(demo_mode: bool = False) -> GuidelineFHIRClient:
+    """Factory function - returns appropriate client based on config.
+
+    Args:
+        demo_mode: If True, return demo client with sample data.
+    """
+    if demo_mode:
+        logger.info("Using demo FHIR client with sample data")
+        return DemoGuidelineFHIRClient()
+
     if config.is_epic_configured():
         logger.info("Using Epic FHIR client")
         return EpicGuidelineFHIRClient()
