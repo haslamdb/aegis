@@ -11,33 +11,35 @@
     </div>
 </div>
 
+<div class="top-syndromes-section">
+    <h2>Top Clinical Syndromes <span class="subtitle">(Last 7 Days)</span></h2>
+    {% if top_syndromes %}
+    <div class="syndrome-cards">
+        {% for syndrome in top_syndromes %}
+        <div class="syndrome-card">
+            <div class="syndrome-count">{{ syndrome.count }}</div>
+            <div class="syndrome-name">{{ syndrome.display or syndrome.syndrome }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">No reviewed syndromes in the last 7 days</p>
+    {% endif %}
+</div>
+
 <div class="dashboard-summary">
+    <div class="summary-card">
+        <div class="summary-icon" style="color: var(--color-warning);">&#x23F3;</div>
+        <div class="summary-content">
+            <div class="summary-value">{{ recent_candidates|length }}</div>
+            <div class="summary-label">Pending Review</div>
+        </div>
+    </div>
     <div class="summary-card">
         <div class="summary-icon" style="color: var(--color-success);">&#x2705;</div>
         <div class="summary-content">
-            <div class="summary-value">{{ counts.get('A', 0) + counts.get('FN', 0) }}</div>
-            <div class="summary-label">Always Indicated</div>
-        </div>
-    </div>
-    <div class="summary-card">
-        <div class="summary-icon" style="color: var(--color-warning);">&#x26A0;</div>
-        <div class="summary-content">
-            <div class="summary-value">{{ counts.get('S', 0) }}</div>
-            <div class="summary-label">Sometimes Indicated</div>
-        </div>
-    </div>
-    <div class="summary-card">
-        <div class="summary-icon" style="color: var(--color-danger);">&#x274C;</div>
-        <div class="summary-content">
-            <div class="summary-value">{{ counts.get('N', 0) }}</div>
-            <div class="summary-label">Never Indicated</div>
-        </div>
-    </div>
-    <div class="summary-card">
-        <div class="summary-icon" style="color: var(--color-primary);">&#x1F3E5;</div>
-        <div class="summary-content">
-            <div class="summary-value">{{ counts.get('P', 0) }}</div>
-            <div class="summary-label">Prophylaxis</div>
+            <div class="summary-value">{{ reviewed_count|default(0) }}</div>
+            <div class="summary-label">Reviewed</div>
         </div>
     </div>
 </div>
@@ -182,6 +184,51 @@
 {% endif %}
 
 <style>
+.top-syndromes-section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 2rem;
+}
+
+.top-syndromes-section h2 {
+    margin: 0 0 1rem 0;
+    color: var(--color-gray-800);
+}
+
+.top-syndromes-section .subtitle {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--color-gray-500);
+}
+
+.syndrome-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.syndrome-card {
+    background: var(--color-info-light);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    text-align: center;
+}
+
+.syndrome-count {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.syndrome-name {
+    font-size: 0.875rem;
+    color: var(--color-gray-700);
+    margin-top: 0.25rem;
+}
+
 .dashboard-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));

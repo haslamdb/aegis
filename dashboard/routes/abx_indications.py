@@ -55,6 +55,9 @@ def dashboard():
         # Count reviewed for display
         reviewed_count = db.get_reviewed_candidates_count()
 
+        # Get top clinical syndromes (last 7 days)
+        top_syndromes = db.get_top_clinical_syndromes(days=7, limit=5)
+
     except Exception as e:
         logger.error(f"Error loading indication data: {e}")
         counts = {}
@@ -62,6 +65,7 @@ def dashboard():
         override_stats = {}
         usage_summary = {}
         reviewed_count = 0
+        top_syndromes = []
 
     return render_template(
         "abx_indications_dashboard.html",
@@ -70,6 +74,7 @@ def dashboard():
         override_stats=override_stats,
         usage_summary=usage_summary,
         reviewed_count=reviewed_count,
+        top_syndromes=top_syndromes,
     )
 
 

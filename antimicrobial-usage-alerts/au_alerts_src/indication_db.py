@@ -1215,3 +1215,80 @@ class IndicationDatabase:
             logger.info(f"Auto-accepted {auto_accepted} candidates older than {hours} hours")
 
         return auto_accepted
+
+    def get_top_clinical_syndromes(self, days: int = 7, limit: int = 5) -> list[dict]:
+        """Get the top clinical syndromes by count.
+
+        Args:
+            days: Number of days to look back.
+            limit: Maximum number of syndromes to return.
+
+        Returns:
+            List of dicts with syndrome info and counts.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT
+                    clinical_syndrome,
+                    clinical_syndrome_display,
+                    syndrome_category,
+                    COUNT(*) as count
+                FROM indication_candidates
+                WHERE created_at >= datetime('now', ?)
+                AND clinical_syndrome IS NOT NULL
+                AND clinical_syndrome != ''
+                GROUP BY clinical_syndrome
+                ORDER BY count DESC
+                LIMIT ?
+                """,
+                (f"-{days} days", limit),
+            )
+
+            results = []
+            for row in cursor.fetchall():
+                results.append({
+                    "syndrome": row["clinical_syndrome"],
+                    "display": row["clinical_syndrome_display"] or row["clinical_syndrome"],
+                    "category": row["syndrome_category"],
+                    "count": row["count"],
+                })
+
+            return results
+
+    def get_syndrome_stats(self, days: int = 7) -> dict:
+        """Get statistics about clinical syndromes.
+
+        Args:
+            days: Number of days to look back.
+
+        Returns:
+            Dict with syndrome statistics.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Total candidates with syndromes
+            cursor.execute(
+                """
+                SELECT COUNT(*) as total,
+                       SUM(CASE WHEN clinical_syndrome IS NOT NULL AND clinical_syndrome != '' THEN 1 ELSE 0 END) as with_syndrome,
+                       SUM(CASE WHEN likely_viral = 1 THEN 1 ELSE 0 END) as viral_flags,
+                       SUM(CASE WHEN asymptomatic_bacteriuria = 1 THEN 1 ELSE 0 END) as asb_flags,
+                       SUM(CASE WHEN indication_not_documented = 1 THEN 1 ELSE 0 END) as no_indication_flags
+                FROM indication_candidates
+                WHERE created_at >= datetime('now', ?)
+                """,
+                (f"-{days} days",),
+            )
+            row = cursor.fetchone()
+
+            return {
+                "total": row["total"] or 0,
+                "with_syndrome": row["with_syndrome"] or 0,
+                "viral_flags": row["viral_flags"] or 0,
+                "asb_flags": row["asb_flags"] or 0,
+                "no_indication_flags": row["no_indication_flags"] or 0,
+                "days": days,
+            }
