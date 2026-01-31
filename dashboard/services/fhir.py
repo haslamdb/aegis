@@ -538,9 +538,10 @@ class FHIRService:
         cutoff_str = cutoff.strftime("%Y-%m-%d")
 
         # Query DiagnosticReport for microbiology cultures
+        # Use HL7 v2 diagnostic service section code "MB" (Microbiology)
         bundle = self._get("DiagnosticReport", {
             "patient": patient_id,
-            "category": "microbiology",
+            "category": "http://terminology.hl7.org/CodeSystem/v2-0074|MB",
             "date": f"ge{cutoff_str}",
             "_count": "50",
             "_sort": "-date",

@@ -925,6 +925,168 @@
 
 
 {# ==============================================
+   Culture & Susceptibility Macros
+   Used for displaying microbiology culture results consistently
+   ============================================== #}
+
+{# Culture Card Macro
+   Renders a culture result with organism, dates, and susceptibility table.
+   Supports allergy exclusions when allergy_excluded list is provided.
+
+   Expected culture structure:
+   {
+       organism: str,
+       collected_at: datetime|None,
+       resulted_at: datetime|None,
+       susceptibilities: list[{antibiotic: str, result: str, mic: str|None}],
+       _allergy_excluded: list[str]|None,  # Optional: antibiotics excluded due to allergies
+       _has_allergy_conflicts: bool|None   # Optional: whether any exclusions exist
+   }
+
+   Usage:
+   {% from "macros/components.html" import culture_card %}
+   {{ culture_card(culture) }}
+   {{ culture_card(culture, show_dates=false, compact=true) }}
+#}
+{% macro culture_card(culture, show_dates=true, compact=false) %}
+<div class="culture-card {{ 'culture-card-compact' if compact else '' }}">
+    <div class="culture-header">
+        <span class="organism-name">{{ culture.organism }}</span>
+        {% if show_dates and culture.collected_at %}
+        <span class="culture-date">{{ culture.collected_at.strftime('%m/%d/%Y') }}</span>
+        {% endif %}
+    </div>
+
+    {% if culture.susceptibilities %}
+    <table class="susceptibility-table">
+        <thead>
+            <tr>
+                <th>Antibiotic</th>
+                <th>Result</th>
+                <th>MIC</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sus in culture.susceptibilities %}
+            {% set is_excluded = culture._allergy_excluded is defined and sus.antibiotic in culture._allergy_excluded %}
+            <tr class="susc-{{ sus.result|lower }} {{ 'allergy-excluded' if is_excluded else '' }}">
+                <td>
+                    {{ sus.antibiotic }}
+                    {% if is_excluded %}
+                    <span class="allergy-icon" title="Excluded due to patient allergy">&#x26A0;</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="susc-result">
+                        {% if is_excluded %}
+                        <span class="susc-badge susc-{{ sus.result|lower }}" style="text-decoration: line-through; opacity: 0.6;">{{ sus.result }}</span>
+                        {% else %}
+                        <span class="susc-badge susc-{{ sus.result|lower }}">{{ sus.result }}</span>
+                        {% endif %}
+                        <span class="susc-text">
+                            {% if sus.result == 'S' %}Susceptible
+                            {% elif sus.result == 'I' %}Intermediate
+                            {% elif sus.result == 'R' %}Resistant
+                            {% endif %}
+                        </span>
+                    </div>
+                </td>
+                <td>{{ sus.mic or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if culture._has_allergy_conflicts is defined and culture._has_allergy_conflicts %}
+    <div class="allergy-note">
+        <small>&#x26A0; Some options excluded due to patient allergies</small>
+    </div>
+    {% endif %}
+    {% else %}
+    <p class="no-data">No susceptibility data available.</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{# Culture List Macro
+   Renders a list of cultures with a header.
+
+   Usage:
+   {% from "macros/components.html" import culture_list %}
+   {{ culture_list(cultures, title="Recent Cultures (30 days)") }}
+#}
+{% macro culture_list(cultures, title="Recent Cultures", empty_message="No cultures found.") %}
+<div class="culture-list">
+    <h3>{{ title }}</h3>
+    {% if cultures %}
+        {% for culture in cultures %}
+        {{ culture_card(culture) }}
+        {% endfor %}
+    {% else %}
+    <p class="text-muted">{{ empty_message }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{# Susceptibility Table Macro
+   Renders just a susceptibility table (for embedding in other contexts).
+   Used when you have a list of susceptibilities without full culture context.
+
+   Expected susceptibility structure:
+   {antibiotic: str, result: str, mic: str|None}
+
+   Usage:
+   {% from "macros/components.html" import susceptibility_table %}
+   {{ susceptibility_table(susceptibilities) }}
+#}
+{% macro susceptibility_table(susceptibilities, allergy_excluded=none) %}
+{% if susceptibilities %}
+<table class="susceptibility-table">
+    <thead>
+        <tr>
+            <th>Antibiotic</th>
+            <th>Result</th>
+            <th>MIC</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sus in susceptibilities %}
+        {% set is_excluded = allergy_excluded and sus.antibiotic in allergy_excluded %}
+        <tr class="susc-{{ sus.result|lower }} {{ 'allergy-excluded' if is_excluded else '' }}">
+            <td>
+                {{ sus.antibiotic }}
+                {% if is_excluded %}
+                <span class="allergy-icon" title="Excluded due to patient allergy">&#x26A0;</span>
+                {% endif %}
+            </td>
+            <td>
+                <div class="susc-result">
+                    {% if is_excluded %}
+                    <span class="susc-badge susc-{{ sus.result|lower }}" style="text-decoration: line-through; opacity: 0.6;">{{ sus.result }}</span>
+                    {% else %}
+                    <span class="susc-badge susc-{{ sus.result|lower }}">{{ sus.result }}</span>
+                    {% endif %}
+                    <span class="susc-text">
+                        {% if sus.result == 'S' %}Susceptible
+                        {% elif sus.result == 'I' %}Intermediate
+                        {% elif sus.result == 'R' %}Resistant
+                        {% endif %}
+                    </span>
+                </div>
+            </td>
+            <td>{{ sus.mic or '-' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="no-data">No susceptibility data available.</p>
+{% endif %}
+{% endmacro %}
+
+
+{# ==============================================
    Form Input Macros
    ============================================== #}
 

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/components.html" import info_grid, reviewer_input, clinical_context_card %}
+{% from "macros/components.html" import info_grid, reviewer_input, clinical_context_card, culture_list %}
 
 {% block title %}Approval Request - {{ patient.name if patient else 'Unknown' }} - {{ app_name }}{% endblock %}
 
@@ -70,59 +70,7 @@
 
         <!-- Recent Cultures -->
         <div class="alert-detail-card">
-            <h3>Recent Cultures (30 days)</h3>
-            {% if cultures %}
-            {% for culture in cultures %}
-            <div class="culture-item">
-                <div class="culture-header">
-                    <span class="organism-name">{{ culture.organism }}</span>
-                    <span class="culture-date">{{ culture.collected_at.strftime('%m/%d/%Y') if culture.collected_at else 'Unknown date' }}</span>
-                </div>
-                {% if culture.susceptibilities %}
-                <div class="susceptibilities">
-                    <table class="susceptibility-table">
-                        <tbody>
-                            {% for sus in culture.susceptibilities %}
-                            {% set is_excluded = culture._allergy_excluded is defined and sus.antibiotic in culture._allergy_excluded %}
-                            <tr class="{{ 'allergy-excluded' if is_excluded else '' }}">
-                                <td>
-                                    {{ sus.antibiotic }}
-                                    {% if is_excluded %}
-                                    <span class="allergy-icon" title="Excluded due to patient allergy">&#x26A0;</span>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if is_excluded %}
-                                    <span class="badge badge-danger" style="text-decoration: line-through; opacity: 0.6;">
-                                        {{ sus.result }}
-                                    </span>
-                                    {% else %}
-                                    <span class="badge badge-{{ 'success' if sus.result == 'S' else 'danger' if sus.result == 'R' else 'warning' }}">
-                                        {{ sus.result }}
-                                    </span>
-                                    {% endif %}
-                                </td>
-                                {% if sus.mic %}
-                                <td class="mic-value">MIC: {{ sus.mic }}</td>
-                                {% endif %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    {% if culture._has_allergy_conflicts is defined and culture._has_allergy_conflicts %}
-                    <div class="allergy-note">
-                        <small>&#x26A0; Some options excluded due to patient allergies</small>
-                    </div>
-                    {% endif %}
-                </div>
-                {% else %}
-                <p class="text-muted">No susceptibility data available.</p>
-                {% endif %}
-            </div>
-            {% endfor %}
-            {% else %}
-            <p class="text-muted">No cultures found in the last 30 days.</p>
-            {% endif %}
+            {{ culture_list(cultures, title="Recent Cultures (30 days)", empty_message="No cultures found in the last 30 days.") }}
         </div>
 
         <!-- Recent Approvals for This Patient -->
@@ -248,7 +196,7 @@
                     Change Therapy
                 </button>
                 <button type="button" class="btn btn-deny btn-block" data-decision="denied">
-                    Deny
+                    Recommend ID Consult
                 </button>
                 <button type="button" class="btn btn-defer btn-block" data-decision="deferred">
                     Defer (Need More Info)

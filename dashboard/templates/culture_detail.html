@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "macros/components.html" import susceptibility_table %}
 
 {% block title %}Culture Result - {{ culture.patient_name }} - {{ app_name }}{% endblock %}
 
@@ -42,33 +43,7 @@
 
     <div class="susceptibilities-card">
         <h3>Antimicrobial Susceptibilities</h3>
-        {% if culture.susceptibilities %}
-        <table class="susceptibility-table">
-            <thead>
-                <tr>
-                    <th>Antibiotic</th>
-                    <th>Result</th>
-                    <th>MIC</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for susc in culture.susceptibilities %}
-                <tr>
-                    <td>{{ susc.antibiotic }}</td>
-                    <td>
-                        <span class="susc-badge susc-{{ susc.result|lower }}">
-                            {{ susc.result }}
-                        </span>
-                        <span class="susc-text">{{ susc.result_display }}</span>
-                    </td>
-                    <td>{{ susc.mic or '-' }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <p class="no-data">No susceptibility data available.</p>
-        {% endif %}
+        {{ susceptibility_table(culture.susceptibilities) }}
     </div>
 </div>
 
