@@ -89,7 +89,7 @@ class Susceptibility:
 
 @dataclass
 class CultureResult:
-    """Blood culture result with susceptibilities."""
+    """Culture result with susceptibilities."""
     id: str
     patient_id: str
     patient_name: str
@@ -99,6 +99,7 @@ class CultureResult:
     collected_at: Optional[datetime]
     resulted_at: Optional[datetime]
     susceptibilities: list[Susceptibility]
+    specimen_type: Optional[str] = None  # e.g., "Blood Culture", "Urine Culture"
 
 
 @dataclass
@@ -217,15 +218,38 @@ class FHIRService:
                             patient_mrn = ident.get("value", "Unknown")
                             break
 
-        # Extract organism from conclusionCode
-        organism = report.get("conclusion", "Unknown organism")
+        # Extract specimen type from code (e.g., "Blood Culture", "Urine Culture")
+        specimen_type = None
+        code_obj = report.get("code", {})
+        specimen_type = code_obj.get("text")
+        if not specimen_type:
+            code_coding = code_obj.get("coding", [])
+            if code_coding:
+                specimen_type = code_coding[0].get("display")
+
+        # Extract organism - prefer conclusionCode.text over conclusion
+        # (conclusion may contain full susceptibility text)
+        organism = "Unknown organism"
         organism_code = None
         conclusion_codes = report.get("conclusionCode", [])
         if conclusion_codes:
-            coding = conclusion_codes[0].get("coding", [])
-            if coding:
-                organism = coding[0].get("display", organism)
-                organism_code = coding[0].get("code")
+            # First try the text field
+            organism = conclusion_codes[0].get("text", "")
+            # Then try coding display
+            if not organism:
+                coding = conclusion_codes[0].get("coding", [])
+                if coding:
+                    organism = coding[0].get("display", "")
+                    organism_code = coding[0].get("code")
+        # Fall back to conclusion only if it doesn't look like a full report
+        if not organism or organism == "Unknown organism":
+            conclusion = report.get("conclusion", "")
+            # Only use conclusion if it's short (likely just organism name)
+            if conclusion and len(conclusion) < 100:
+                organism = conclusion
+            elif conclusion:
+                # Try to extract just the organism name from the beginning
+                organism = conclusion.split(".")[0].strip() if "." in conclusion else "Unknown organism"
 
         # Parse dates
         collected_at = None
@@ -247,7 +271,7 @@ class FHIRService:
 
         # Get susceptibility Observations
         # These are linked via note field containing "Culture: {culture_id}"
-        susceptibilities = self._get_susceptibilities_for_culture(culture_id)
+        susceptibilities = self._get_susceptibilities_for_culture(culture_id, patient_id)
 
         return CultureResult(
             id=culture_id,
@@ -259,9 +283,10 @@ class FHIRService:
             collected_at=collected_at,
             resulted_at=resulted_at,
             susceptibilities=susceptibilities,
+            specimen_type=specimen_type,
         )
 
-    def _get_susceptibilities_for_culture(self, culture_id: str) -> list[Susceptibility]:
+    def _get_susceptibilities_for_culture(self, culture_id: str, patient_id: str = None) -> list[Susceptibility]:
         """Get susceptibility Observations for a culture.
 
         In our demo data, these are linked via note field.
@@ -272,10 +297,14 @@ class FHIRService:
         # Search for Observations that reference this culture in notes
         # This is a workaround since HAPI FHIR doesn't support derivedFrom to DiagnosticReport
         # We search for lab Observations and filter by note content
-        bundle = self._get("Observation", {
+        params = {
             "category": "laboratory",
-            "_count": "100",
-        })
+            "_count": "200",
+        }
+        if patient_id:
+            params["patient"] = patient_id
+
+        bundle = self._get("Observation", params)
 
         observations = self._extract_entries(bundle)
 

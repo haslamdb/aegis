@@ -33,8 +33,8 @@ def get_current_user() -> Optional[str]:
     if "current_user" in session:
         return session["current_user"]
 
-    # Fall back to X-User header (for API clients)
-    x_user = request.headers.get("X-User")
+    # Fall back to X-User or X-User-Name header (for API clients)
+    x_user = request.headers.get("X-User") or request.headers.get("X-User-Name")
     if x_user:
         return x_user
 
