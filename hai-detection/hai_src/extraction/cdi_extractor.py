@@ -166,6 +166,7 @@ class CDIExtractor:
                 prompt=prompt,
                 output_schema=CDI_EXTRACTION_SCHEMA,
                 temperature=0.0,  # Deterministic extraction
+                profile_context="cdi_extraction",
             )
             extraction = self._parse_response(result)
         except ValueError as e:

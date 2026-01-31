@@ -284,6 +284,7 @@ Respond with JSON matching the SSIExtraction schema."""
                 prompt=prompt,
                 output_schema=SSI_EXTRACTION_OUTPUT_SCHEMA,
                 temperature=0.0,  # Deterministic extraction
+                profile_context="ssi_extraction",
             )
 
             elapsed_ms = int((time.time() - start_time) * 1000)

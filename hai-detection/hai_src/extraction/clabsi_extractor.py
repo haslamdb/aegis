@@ -244,6 +244,7 @@ Respond with JSON matching the ClinicalExtraction schema."""
                 prompt=prompt,
                 output_schema=EXTRACTION_OUTPUT_SCHEMA,
                 temperature=0.0,  # Deterministic extraction
+                profile_context="clabsi_extraction",
             )
 
             elapsed_ms = int((time.time() - start_time) * 1000)

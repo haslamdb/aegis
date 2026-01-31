@@ -87,11 +87,13 @@ Monitors antimicrobial usage patterns including broad-spectrum duration and anti
 - Severity escalation (warning at threshold, critical at 2x threshold)
 
 **Antibiotic Indication Monitoring:**
-- Validates documented indications for antibiotic orders using ICD-10 classification (Chua et al.)
-- LLM extraction from clinical notes when ICD-10 codes are inconclusive
-- Notes take priority over ICD-10 codes (codes may be stale or inaccurate)
-- Only "Never appropriate" (N) classifications generate ASP alerts
+- Extracts clinical syndrome/indication from notes (e.g., "CAP", "UTI", "sepsis")
+- Compares prescribed agent to local guidelines for that syndrome
+- LLM extraction from clinical notes for indication identification
+- Only cases with no documented indication or guideline discordance generate ASP alerts
 - Supports nightly batch runs via cron
+
+> **Note:** Per Joint Commission MM.09.01.01 EP 13-15, the required "indication" is the clinical syndrome (e.g., "community-acquired pneumonia"), NOT an ICD-10 code. See [docs/ABX_INDICATION_JC_REQUIREMENTS.md](docs/ABX_INDICATION_JC_REQUIREMENTS.md) for details.
 
 **Features:**
 - Duration-based alerting for broad-spectrum antibiotics
@@ -605,8 +607,45 @@ aegis/
 │   └── generate_pediatric_data.py
 └── docs/                      # Documentation
     ├── demo-workflow.md       # Complete demo guide
-    └── abx-approvals.md       # Antibiotic approvals workflow
+    ├── abx-approvals.md       # Antibiotic approvals workflow
+    ├── ABX_INDICATION_JC_REQUIREMENTS.md  # Joint Commission indication requirements
+    └── AEGIS_OPTIMIZATION_GUIDE.md        # LLM performance optimization
 ```
+
+## Model Training & Continuous Improvement
+
+AEGIS uses local LLMs for clinical classification. We collect training data from expert reviews to continuously improve model accuracy.
+
+### Training Data Collection
+
+Every LLM classification is logged for future model fine-tuning:
+
+| Module | Data Collected | Use Case |
+|--------|----------------|----------|
+| **HAI Detection** | 70B extractions + IP review decisions | Train specialized HAI classifier |
+| **ABX Indications** | Syndrome extraction + ASP corrections | Train indication extractor |
+| **Guideline Adherence** | Bundle assessments + overrides | Train compliance evaluator |
+
+### Two-Stage Pipeline
+
+For performance optimization, we use a two-stage triage approach:
+
+```
+Stage 1: Fast Triage (Qwen2.5-7B, ~1 second)
+    ↓ escalate?
+Stage 2: Full Extraction (Llama 70B, ~60 seconds)
+```
+
+Clear cases are classified in ~1 second. Complex cases escalate to the full 70B model.
+
+### Fine-Tuning Strategy
+
+After collecting ~500+ reviewed cases per module, we plan to:
+1. Fine-tune smaller models (7B) using QLoRA on collected data
+2. Validate against gold-standard cases
+3. Replace the 70B model for production use
+
+See [hai-detection/docs/TWO_STAGE_PIPELINE.md](hai-detection/docs/TWO_STAGE_PIPELINE.md) for technical details.
 
 ## License
 

@@ -113,3 +113,22 @@ CREATE INDEX IF NOT EXISTS idx_extractions_candidate ON indication_extractions(c
 -- Migration: Add new columns if they don't exist (for existing databases)
 -- SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we use a workaround
 -- These will fail silently if columns already exist (handled in Python)
+
+-- v2: Add JC-compliant clinical syndrome fields to candidates
+-- ALTER TABLE indication_candidates ADD COLUMN clinical_syndrome TEXT;
+-- ALTER TABLE indication_candidates ADD COLUMN clinical_syndrome_display TEXT;
+-- ALTER TABLE indication_candidates ADD COLUMN syndrome_category TEXT;
+-- ALTER TABLE indication_candidates ADD COLUMN syndrome_confidence TEXT;
+-- ALTER TABLE indication_candidates ADD COLUMN therapy_intent TEXT;
+-- ALTER TABLE indication_candidates ADD COLUMN guideline_disease_ids TEXT;
+-- ALTER TABLE indication_candidates ADD COLUMN likely_viral BOOLEAN DEFAULT 0;
+-- ALTER TABLE indication_candidates ADD COLUMN asymptomatic_bacteriuria BOOLEAN DEFAULT 0;
+-- ALTER TABLE indication_candidates ADD COLUMN indication_not_documented BOOLEAN DEFAULT 0;
+-- ALTER TABLE indication_candidates ADD COLUMN never_appropriate BOOLEAN DEFAULT 0;
+
+-- v2: Add syndrome and agent review fields to reviews
+-- ALTER TABLE indication_reviews ADD COLUMN syndrome_decision TEXT;
+-- ALTER TABLE indication_reviews ADD COLUMN confirmed_syndrome TEXT;
+-- ALTER TABLE indication_reviews ADD COLUMN confirmed_syndrome_display TEXT;
+-- ALTER TABLE indication_reviews ADD COLUMN agent_decision TEXT;
+-- ALTER TABLE indication_reviews ADD COLUMN agent_notes TEXT;

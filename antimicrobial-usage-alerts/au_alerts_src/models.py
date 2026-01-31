@@ -12,6 +12,29 @@ class AlertSeverity(Enum):
     CRITICAL = "critical"
 
 
+class SyndromeReviewDecision(Enum):
+    """Human review decisions for clinical syndrome verification.
+
+    Used when reviewing LLM-extracted indications per JC requirements.
+    """
+    CONFIRM_SYNDROME = "confirm_syndrome"  # LLM extraction is correct
+    CORRECT_SYNDROME = "correct_syndrome"  # Change to different syndrome
+    NO_INDICATION = "no_indication"        # No valid indication documented
+    VIRAL_ILLNESS = "viral_illness"        # Viral illness, antibiotics not indicated
+    ASYMPTOMATIC_BACTERIURIA = "asymptomatic_bacteriuria"  # ASB, no treatment needed
+
+
+class AgentReviewDecision(Enum):
+    """Human review decisions for antibiotic appropriateness.
+
+    Assesses whether the prescribed antibiotic is appropriate for the syndrome.
+    """
+    APPROPRIATE = "agent_appropriate"        # Good choice for this syndrome
+    ACCEPTABLE = "agent_acceptable"          # Not first-line but reasonable
+    INAPPROPRIATE = "agent_inappropriate"    # Wrong antibiotic for syndrome
+    SKIP = "agent_skip"                      # Not reviewed (optional field)
+
+
 @dataclass
 class Patient:
     """Patient information."""
@@ -92,6 +115,18 @@ class IndicationCandidate:
     cchmc_agent_category: str | None = None  # first_line, alternative, off_guideline
     cchmc_guideline_agents: str | None = None  # Recommended agents from CCHMC
     cchmc_recommendation: str | None = None  # Full recommendation text
+    # JC-compliant clinical syndrome tracking (from taxonomy-based extraction)
+    clinical_syndrome: str | None = None  # Canonical ID (e.g., "cap", "uti_complicated")
+    clinical_syndrome_display: str | None = None  # Human-readable (e.g., "Community-Acquired Pneumonia")
+    syndrome_category: str | None = None  # respiratory, urinary, bloodstream, etc.
+    syndrome_confidence: str | None = None  # definite, probable, unclear
+    therapy_intent: str | None = None  # empiric, directed, prophylaxis
+    guideline_disease_ids: list[str] | None = None  # Maps to cchmc_disease_guidelines.json
+    # Red flags for ASP review
+    likely_viral: bool = False  # Notes suggest viral illness
+    asymptomatic_bacteriuria: bool = False  # Positive UA without symptoms
+    indication_not_documented: bool = False  # No indication found in notes
+    never_appropriate: bool = False  # Indication where abx rarely/never appropriate
 
 
 @dataclass

@@ -2,6 +2,8 @@
 
 This document describes how to configure and switch between LLM backends for HAI classification.
 
+> **See Also**: [Two-Stage Pipeline](TWO_STAGE_PIPELINE.md) for the optimized triage + full extraction architecture.
+
 ## Supported Backends
 
 | Backend | Description | Use Case |
@@ -180,6 +182,47 @@ vllm serve <org>/<model-name> --tensor-parallel-size 2
 | `meta-llama/Llama-3.1-70B-Instruct` | 70B | Alternative to 3.3 |
 | `mistralai/Mixtral-8x22B-Instruct-v0.1` | 141B (MoE) | May need more VRAM |
 | `Qwen/Qwen2.5-32B-Instruct` | 32B | Faster, fits single GPU |
+
+### Two-Stage Pipeline Models (January 2026)
+
+For the two-stage triage pipeline, we use a smaller model for fast screening:
+
+| Role | Model | Speed | Use Case |
+|------|-------|-------|----------|
+| Triage | `qwen2.5:7b` | 119 tok/s | Fast screening (~1s) |
+| Triage (alt) | `gemma2:27b` | 38 tok/s | Fallback (~4s) |
+| Full Extraction | `llama3.3:70b` | 15 tok/s | Complex cases (~60s) |
+
+```bash
+# Pull triage model
+ollama pull qwen2.5:7b
+```
+
+See [TWO_STAGE_PIPELINE.md](TWO_STAGE_PIPELINE.md) for details.
+
+---
+
+## Profiling
+
+Use the profiling script to analyze LLM performance:
+
+```bash
+# Run profiling demo
+python scripts/profile_llm.py demo --scenario clabsi -n 5
+
+# View summary
+python scripts/profile_llm.py summary
+
+# Context size benchmark
+python scripts/profile_llm.py benchmark
+```
+
+### Key Metrics
+
+From profiling, we found:
+- **Generation speed** is the bottleneck (~85-90% of time)
+- **Context size** has minimal impact on latency
+- **Cold starts** add 6-8 seconds (model loading)
 
 ---
 

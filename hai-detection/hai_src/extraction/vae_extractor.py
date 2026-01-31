@@ -263,6 +263,7 @@ Respond with JSON matching the VAEExtraction schema."""
                 prompt=prompt,
                 output_schema=VAE_EXTRACTION_OUTPUT_SCHEMA,
                 temperature=0.0,  # Deterministic extraction
+                profile_context="vae_extraction",
             )
 
             elapsed_ms = int((time.time() - start_time) * 1000)

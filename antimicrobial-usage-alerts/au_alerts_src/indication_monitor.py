@@ -44,6 +44,17 @@ except ImportError:
     AgentCategory = None
     AgentRecommendation = None
 
+# New taxonomy-based extraction (JC-compliant)
+try:
+    from indication_extractor import IndicationExtractor as TaxonomyExtractor
+    from indication_taxonomy import get_indication_by_synonym, get_never_appropriate_indications
+    TAXONOMY_AVAILABLE = True
+except ImportError:
+    TaxonomyExtractor = None
+    get_indication_by_synonym = None
+    get_never_appropriate_indications = None
+    TAXONOMY_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,17 +66,22 @@ class IndicationMonitor:
         fhir_client: FHIRClient | None = None,
         classifier: "AntibioticIndicationClassifier | None" = None,
         llm_extractor=None,
+        taxonomy_extractor=None,
         alert_store: AlertStore | None = None,
         db: IndicationDatabase | None = None,
+        use_taxonomy_first: bool = True,
     ):
         """Initialize the indication monitor.
 
         Args:
             fhir_client: FHIR client for queries. Uses factory default if None.
             classifier: Antibiotic indication classifier. Loads from CSV if None.
-            llm_extractor: LLM extractor for note analysis. Optional.
+            llm_extractor: Legacy LLM extractor for note analysis. Optional.
+            taxonomy_extractor: JC-compliant taxonomy extractor. Loads default if None.
             alert_store: Alert store for persisting alerts. Uses default if None.
             db: Database for indication tracking. Uses default if None.
+            use_taxonomy_first: If True, use taxonomy extraction as primary (JC-compliant).
+                              If False, use ICD-10 as primary (legacy behavior).
         """
         self.fhir_client = fhir_client or get_fhir_client()
         self.classifier = classifier or self._load_classifier()
@@ -73,6 +89,10 @@ class IndicationMonitor:
         self.alert_store = alert_store or AlertStore(db_path=config.ALERT_DB_PATH)
         self.db = db or IndicationDatabase()
         self._alerted_orders: set[str] = set()  # In-memory cache
+        self.use_taxonomy_first = use_taxonomy_first
+
+        # Initialize taxonomy extractor (JC-compliant clinical syndrome extraction)
+        self.taxonomy_extractor = taxonomy_extractor or self._load_taxonomy_extractor()
 
         # Initialize CCHMC guidelines engine for agent appropriateness checking
         self.cchmc_engine = self._load_cchmc_engine()
@@ -112,6 +132,27 @@ class IndicationMonitor:
             return engine
         except Exception as e:
             logger.warning(f"Failed to load CCHMC guidelines engine: {e}")
+            return None
+
+    def _load_taxonomy_extractor(self) -> "TaxonomyExtractor | None":
+        """Load the JC-compliant taxonomy extractor for clinical syndrome extraction.
+
+        This extractor uses LLM to identify clinical syndromes (CAP, UTI, sepsis)
+        from notes, meeting Joint Commission requirements for indication documentation.
+        """
+        if not TAXONOMY_AVAILABLE or TaxonomyExtractor is None:
+            logger.info(
+                "Taxonomy extractor not available. "
+                "Will use legacy ICD-10 classification."
+            )
+            return None
+
+        try:
+            extractor = TaxonomyExtractor()
+            logger.info("Loaded JC-compliant taxonomy extractor")
+            return extractor
+        except Exception as e:
+            logger.warning(f"Failed to load taxonomy extractor: {e}")
             return None
 
     def check_new_orders(self, since_hours: int = 24) -> list[IndicationAssessment]:
@@ -198,10 +239,12 @@ class IndicationMonitor:
     def _assess_order(self, order: MedicationOrder) -> IndicationAssessment | None:
         """Assess a single medication order.
 
+        Uses taxonomy-based extraction (JC-compliant) as primary, with ICD-10 fallback.
         Clinical notes take priority over ICD-10 codes because:
         - ICD-10 codes may be stale (from previous encounters)
         - Notes reflect real-time clinical reasoning
         - Notes capture nuance that codes cannot
+        - Joint Commission requires clinical syndrome documentation at order entry
 
         Args:
             order: The medication order to assess.
@@ -224,44 +267,90 @@ class IndicationMonitor:
         location = encounter_info.get("location")
         service = encounter_info.get("service")
 
-        # Get patient's ICD-10 codes
+        # Get patient's ICD-10 codes (for fallback and validation)
         icd10_codes = self.fhir_client.get_patient_conditions(order.patient_id)
         logger.debug(f"Patient {patient.mrn}: {len(icd10_codes)} ICD-10 codes")
 
-        # Classify with Chua (ICD-10 based)
-        classification_result = self.classifier.classify(
-            icd10_codes=icd10_codes,
-            cpt_codes=[],  # Could add procedure codes if available
-            fever_present=False,  # Could detect from vital signs
-        )
+        # ICD-10 classification as baseline/fallback
+        icd10_classification = "U"  # Unknown
+        icd10_primary = None
+        classification_result = None
 
-        icd10_classification = classification_result.overall_category.value
-        icd10_primary = classification_result.primary_indication
+        if self.classifier:
+            classification_result = self.classifier.classify(
+                icd10_codes=icd10_codes,
+                cpt_codes=[],
+                fever_present=False,
+            )
+            icd10_classification = classification_result.overall_category.value
+            icd10_primary = classification_result.primary_indication
 
-        # Start with ICD-10 classification as baseline
+        # Initialize taxonomy extraction results
+        clinical_syndrome = None
+        clinical_syndrome_display = None
+        syndrome_category = None
+        syndrome_confidence = None
+        therapy_intent = None
+        guideline_disease_ids = None
+        likely_viral = False
+        asymptomatic_bacteriuria = False
+        indication_not_documented = False
+        never_appropriate = False
+
+        # Initialize final classification
         final_classification = icd10_classification
         classification_source = "icd10"
-
         llm_extracted = None
         llm_classification = None
 
-        # ALWAYS attempt LLM extraction if extractor available
-        # Notes take priority over ICD-10 codes
-        if self.llm_extractor:
-            logger.debug(f"Attempting LLM extraction for {order.fhir_id}")
+        # TAXONOMY EXTRACTION (JC-compliant) - PRIMARY METHOD
+        if self.use_taxonomy_first and self.taxonomy_extractor:
+            logger.debug(f"Attempting taxonomy extraction for {order.fhir_id}")
+            try:
+                taxonomy_result = self._extract_with_taxonomy(order, patient)
+                if taxonomy_result:
+                    clinical_syndrome = taxonomy_result.primary_indication
+                    clinical_syndrome_display = taxonomy_result.primary_indication_display
+                    syndrome_category = taxonomy_result.indication_category
+                    syndrome_confidence = taxonomy_result.indication_confidence
+                    therapy_intent = taxonomy_result.therapy_intent
+                    guideline_disease_ids = taxonomy_result.guideline_disease_ids
+                    likely_viral = taxonomy_result.likely_viral
+                    asymptomatic_bacteriuria = taxonomy_result.asymptomatic_bacteriuria
+                    indication_not_documented = taxonomy_result.indication_not_documented
+                    never_appropriate = taxonomy_result.never_appropriate
+
+                    # Map to legacy classification for compatibility
+                    llm_classification = self._taxonomy_to_classification(taxonomy_result)
+                    llm_extracted = clinical_syndrome_display
+
+                    if llm_classification:
+                        final_classification = llm_classification
+                        classification_source = "taxonomy"
+
+                        if llm_classification != icd10_classification:
+                            logger.info(
+                                f"Taxonomy overrides ICD-10 for {order.medication_name}: "
+                                f"{icd10_classification} -> {llm_classification} "
+                                f"(syndrome: {clinical_syndrome}, confidence: {syndrome_confidence})"
+                            )
+
+            except Exception as e:
+                logger.warning(f"Taxonomy extraction failed: {e}")
+
+        # LEGACY LLM EXTRACTION - only if taxonomy not used or failed
+        elif self.llm_extractor:
+            logger.debug(f"Attempting legacy LLM extraction for {order.fhir_id}")
             try:
                 extraction = self._extract_from_notes(order, patient)
                 if extraction:
                     llm_extracted = "; ".join(extraction.found_indications) if extraction.found_indications else None
-
-                    # Determine LLM classification based on extraction
                     llm_classification = self._classify_from_extraction(extraction, order.medication_name)
 
                     if llm_classification:
-                        # Notes override ICD-10
                         if llm_classification != icd10_classification:
                             logger.info(
-                                f"Note overrides ICD-10 for {order.medication_name}: "
+                                f"LLM overrides ICD-10 for {order.medication_name}: "
                                 f"{icd10_classification} -> {llm_classification} "
                                 f"(confidence: {extraction.confidence})"
                             )
@@ -272,19 +361,15 @@ class IndicationMonitor:
                 logger.warning(f"LLM extraction failed: {e}")
 
         # CCHMC agent appropriateness check
-        # Only check if indication is present (A, S, P, FN)
+        # Use guideline_disease_ids from taxonomy if available, else fall back to ICD-10
         cchmc_disease_matched = None
         cchmc_agent_category = None
         cchmc_guideline_agents = None
         cchmc_recommendation = None
-        agent_alert_needed = False
 
         if final_classification in ("A", "S", "P", "FN") and self.cchmc_engine:
             try:
-                # Get patient age in months for age-specific recommendations
                 patient_age_months = self._get_patient_age_months(patient)
-
-                # Get patient allergies if available
                 patient_allergies = self.fhir_client.get_patient_allergies(order.patient_id) if hasattr(self.fhir_client, 'get_patient_allergies') else None
 
                 agent_rec = self.cchmc_engine.check_agent_appropriateness(
@@ -297,14 +382,12 @@ class IndicationMonitor:
                 if agent_rec.disease_matched:
                     cchmc_disease_matched = agent_rec.disease_matched
                     cchmc_agent_category = agent_rec.current_agent_category.value
-                    cchmc_guideline_agents = ", ".join(agent_rec.first_line_agents[:3])  # Top 3
+                    cchmc_guideline_agents = ", ".join(agent_rec.first_line_agents[:3])
                     cchmc_recommendation = agent_rec.recommendation
 
-                    # Generate agent alert if off-guideline
                     if agent_rec.current_agent_category == AgentCategory.OFF_GUIDELINE:
-                        agent_alert_needed = True
                         logger.info(
-                            f"Off-guideline agent detected: {order.medication_name} "
+                            f"Off-guideline agent: {order.medication_name} "
                             f"for {cchmc_disease_matched}. "
                             f"Recommended: {cchmc_guideline_agents}"
                         )
@@ -312,7 +395,7 @@ class IndicationMonitor:
             except Exception as e:
                 logger.warning(f"CCHMC agent check failed: {e}")
 
-        # Create candidate
+        # Create candidate with all fields
         candidate = IndicationCandidate(
             id=str(uuid.uuid4()),
             patient=patient,
@@ -331,23 +414,43 @@ class IndicationMonitor:
             cchmc_agent_category=cchmc_agent_category,
             cchmc_guideline_agents=cchmc_guideline_agents,
             cchmc_recommendation=cchmc_recommendation,
+            # JC-compliant taxonomy fields
+            clinical_syndrome=clinical_syndrome,
+            clinical_syndrome_display=clinical_syndrome_display,
+            syndrome_category=syndrome_category,
+            syndrome_confidence=syndrome_confidence,
+            therapy_intent=therapy_intent,
+            guideline_disease_ids=guideline_disease_ids,
+            likely_viral=likely_viral,
+            asymptomatic_bacteriuria=asymptomatic_bacteriuria,
+            indication_not_documented=indication_not_documented,
+            never_appropriate=never_appropriate,
         )
 
         # Save candidate to database
         self.db.save_candidate(candidate)
 
-        # Determine if alert needed (only for N classifications)
-        requires_alert = final_classification == "N"
+        # Determine if alert needed
+        # Alert for N classifications OR red flags (even if classification is S or A)
+        requires_alert = (
+            final_classification == "N"
+            or never_appropriate
+            or likely_viral
+            or asymptomatic_bacteriuria
+        )
 
         # Generate recommendation
-        recommendation = self._generate_recommendation(
-            order, icd10_classification, icd10_primary, classification_result.recommendations
+        recommendation = self._generate_recommendation_v2(
+            order=order,
+            candidate=candidate,
+            classification_result=classification_result,
         )
 
         # Determine severity
         severity = AlertSeverity.WARNING
-        if icd10_classification == "N" and not icd10_codes:
-            # No ICD-10 codes at all - more concerning
+        if never_appropriate or likely_viral:
+            severity = AlertSeverity.CRITICAL
+        elif final_classification == "N" and not icd10_codes:
             severity = AlertSeverity.CRITICAL
 
         return IndicationAssessment(
@@ -435,6 +538,162 @@ class IndicationMonitor:
 
         # Inconclusive - return None to fall back to ICD-10
         return None
+
+    def _extract_with_taxonomy(self, order: MedicationOrder, patient: Patient):
+        """Extract indication using JC-compliant taxonomy extractor.
+
+        Args:
+            order: The medication order.
+            patient: The patient.
+
+        Returns:
+            IndicationExtraction from taxonomy extractor or None.
+        """
+        if not self.taxonomy_extractor:
+            return None
+
+        # Get recent notes
+        notes = self.fhir_client.get_recent_notes(
+            patient_id=order.patient_id,
+            since_hours=48,
+        )
+
+        if not notes:
+            logger.debug(f"No notes found for patient {patient.mrn}")
+            return None
+
+        # Extract note texts
+        note_texts = [n.get("text", "") for n in notes if n.get("text")]
+        if not note_texts:
+            return None
+
+        # Use taxonomy extractor
+        return self.taxonomy_extractor.extract(
+            notes=note_texts,
+            antibiotic=order.medication_name,
+            order_date=order.start_date.isoformat() if order.start_date else None,
+        )
+
+    def _taxonomy_to_classification(self, taxonomy_result) -> str | None:
+        """Map taxonomy extraction to legacy A/S/N/P/FN classification.
+
+        Args:
+            taxonomy_result: Result from taxonomy extractor.
+
+        Returns:
+            Classification string or None if inconclusive.
+        """
+        if not taxonomy_result:
+            return None
+
+        # Red flags always result in N (no appropriate indication)
+        if taxonomy_result.never_appropriate:
+            return "N"
+        if taxonomy_result.likely_viral:
+            return "N"
+        if taxonomy_result.asymptomatic_bacteriuria:
+            return "N"
+        if taxonomy_result.indication_not_documented:
+            return "N"
+
+        # Empiric unknown with unclear confidence = no determination
+        if taxonomy_result.primary_indication == "empiric_unknown":
+            if taxonomy_result.indication_confidence == "unclear":
+                return None  # Fall back to ICD-10
+            return "S"  # Sometimes appropriate for documented empiric therapy
+
+        # Prophylaxis category
+        if taxonomy_result.indication_category == "prophylaxis":
+            return "P"
+
+        # Febrile neutropenia
+        if taxonomy_result.primary_indication == "febrile_neutropenia":
+            return "FN"
+
+        # Map confidence to classification
+        confidence = taxonomy_result.indication_confidence
+        if confidence == "definite":
+            return "A"  # Always appropriate
+        elif confidence == "probable":
+            return "S"  # Sometimes appropriate
+        else:
+            return None  # Fall back to ICD-10
+
+    def _generate_recommendation_v2(
+        self,
+        order: MedicationOrder,
+        candidate: IndicationCandidate,
+        classification_result=None,
+    ) -> str:
+        """Generate recommendation using taxonomy data.
+
+        Args:
+            order: The medication order.
+            candidate: The indication candidate with all fields.
+            classification_result: ICD-10 classification result (optional).
+
+        Returns:
+            Recommendation string.
+        """
+        med_name = order.medication_name
+
+        # Red flag recommendations take priority
+        if candidate.never_appropriate:
+            return (
+                f"⚠️ {med_name} prescribed for {candidate.clinical_syndrome_display or 'indication'} "
+                f"where antibiotics are rarely/never appropriate. Consider discontinuation."
+            )
+
+        if candidate.likely_viral:
+            return (
+                f"⚠️ Notes suggest viral illness. {med_name} may not be indicated. "
+                "Review for possible discontinuation."
+            )
+
+        if candidate.asymptomatic_bacteriuria:
+            return (
+                f"⚠️ Possible asymptomatic bacteriuria. {med_name} may not be indicated "
+                "unless patient is pregnant or pre-urologic procedure."
+            )
+
+        if candidate.indication_not_documented:
+            return (
+                f"No documented indication for {med_name}. "
+                "Per Joint Commission, document clinical syndrome at order entry."
+            )
+
+        # Classification-based recommendations
+        final = candidate.final_classification
+
+        if final == "N":
+            return (
+                f"No documented indication for {med_name}. "
+                "Consider discontinuation or document indication."
+            )
+
+        if final == "U":
+            return (
+                f"Unable to classify indication for {med_name}. "
+                "Manual review required."
+            )
+
+        # For documented indications (A, S, P, FN)
+        if candidate.clinical_syndrome_display:
+            syndrome = candidate.clinical_syndrome_display
+            confidence = candidate.syndrome_confidence or "documented"
+
+            if final in ("A", "FN"):
+                return f"{med_name} indicated for {syndrome} ({confidence})."
+            elif final == "S":
+                return f"{med_name} may be appropriate for {syndrome}. Clinical review recommended."
+            elif final == "P":
+                return f"{med_name} prescribed for prophylaxis ({syndrome})."
+
+        # Fallback to ICD-10 based recommendation
+        if candidate.icd10_primary_indication:
+            return f"{med_name} indicated for {candidate.icd10_primary_indication}."
+
+        return f"Unable to assess indication for {med_name}."
 
     def _get_patient_age_months(self, patient: Patient) -> int | None:
         """Calculate patient age in months from birth date.

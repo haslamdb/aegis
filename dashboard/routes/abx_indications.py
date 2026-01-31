@@ -190,28 +190,98 @@ def candidate_detail(candidate_id: str):
 
 @abx_indications_bp.route("/candidate/<candidate_id>/review", methods=["POST"])
 def submit_review(candidate_id: str):
-    """Submit a review decision for a candidate."""
+    """Submit a review decision for a candidate.
+
+    Supports both legacy (A/S/N/P) and new JC-compliant (syndrome) review workflows.
+    The new workflow focuses on syndrome verification and optional agent appropriateness.
+    """
     try:
         db = _get_indication_db()
         data = request.get_json()
 
         reviewer = get_user_from_request()
-        decision = data.get("decision", "").strip()
         notes = data.get("notes", "").strip()
 
         if not reviewer:
             return jsonify({"success": False, "error": "Reviewer name required"}), 400
 
-        if not decision:
-            return jsonify({"success": False, "error": "Decision required"}), 400
-
-        # Get current candidate to check for override
+        # Get current candidate
         candidate = db.get_candidate(candidate_id)
         if not candidate:
             return jsonify({"success": False, "error": "Candidate not found"}), 404
 
-        # Determine if this is an override
-        # Map decision to classification
+        # Check for new syndrome-based review (JC-compliant)
+        syndrome_decision = data.get("syndrome_decision", "").strip()
+        agent_decision = data.get("agent_decision", "").strip() or None
+        agent_notes = data.get("agent_notes", "").strip() or None
+
+        if syndrome_decision:
+            # New JC-compliant syndrome review workflow
+            confirmed_syndrome = data.get("confirmed_syndrome", "").strip() or None
+            confirmed_syndrome_display = data.get("confirmed_syndrome_display", "").strip() or None
+
+            # Determine if syndrome was corrected
+            is_override = (
+                syndrome_decision == "correct_syndrome"
+                or syndrome_decision == "no_indication"
+                or syndrome_decision == "viral_illness"
+            )
+
+            # Map to legacy decision for backward compatibility
+            legacy_decision = {
+                "confirm_syndrome": "confirm_appropriate",
+                "correct_syndrome": "override_to_appropriate",
+                "no_indication": "confirm_inappropriate",
+                "viral_illness": "confirm_inappropriate",
+                "asymptomatic_bacteriuria": "confirm_inappropriate",
+            }.get(syndrome_decision, syndrome_decision)
+
+            review_id = db.save_review(
+                candidate_id=candidate_id,
+                reviewer=reviewer,
+                decision=legacy_decision,
+                is_override=is_override,
+                override_reason=f"Syndrome: {syndrome_decision}" if is_override else None,
+                llm_decision=candidate.clinical_syndrome,
+                notes=notes,
+                # v2 fields
+                syndrome_decision=syndrome_decision,
+                confirmed_syndrome=confirmed_syndrome or candidate.clinical_syndrome,
+                confirmed_syndrome_display=confirmed_syndrome_display or candidate.clinical_syndrome_display,
+                agent_decision=agent_decision,
+                agent_notes=agent_notes,
+            )
+
+            # Log to training collector if available
+            try:
+                from abx_indications.training_collector import get_abx_training_collector
+                collector = get_abx_training_collector()
+                collector.log_human_review(
+                    candidate_id=candidate_id,
+                    reviewer=reviewer,
+                    syndrome_decision=syndrome_decision,
+                    confirmed_syndrome=confirmed_syndrome,
+                    confirmed_syndrome_display=confirmed_syndrome_display,
+                    agent_decision=agent_decision,
+                    agent_notes=agent_notes,
+                )
+            except Exception as e:
+                logger.debug(f"Training collector not available: {e}")
+
+            return jsonify({
+                "success": True,
+                "review_id": review_id,
+                "is_override": is_override,
+                "syndrome_confirmed": confirmed_syndrome or candidate.clinical_syndrome,
+                "agent_decision": agent_decision,
+                "message": "Review submitted successfully",
+            })
+
+        # Legacy A/S/N/P review workflow (backward compatibility)
+        decision = data.get("decision", "").strip()
+        if not decision:
+            return jsonify({"success": False, "error": "Decision required"}), 400
+
         decision_to_classification = {
             "confirm_appropriate": "A",
             "confirm_sometimes": "S",
@@ -224,11 +294,8 @@ def submit_review(candidate_id: str):
 
         new_classification = decision_to_classification.get(decision)
         is_override = new_classification and new_classification != candidate.final_classification
-
-        # Require override reason if overriding
         override_reason = data.get("override_reason", "").strip() if is_override else None
 
-        # Save the review
         review_id = db.save_review(
             candidate_id=candidate_id,
             reviewer=reviewer,

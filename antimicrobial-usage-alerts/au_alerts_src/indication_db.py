@@ -113,6 +113,17 @@ class IndicationDatabase:
             ("cchmc_agent_category", "ALTER TABLE indication_candidates ADD COLUMN cchmc_agent_category TEXT"),
             ("cchmc_guideline_agents", "ALTER TABLE indication_candidates ADD COLUMN cchmc_guideline_agents TEXT"),
             ("cchmc_recommendation", "ALTER TABLE indication_candidates ADD COLUMN cchmc_recommendation TEXT"),
+            # v2: JC-compliant clinical syndrome fields
+            ("clinical_syndrome", "ALTER TABLE indication_candidates ADD COLUMN clinical_syndrome TEXT"),
+            ("clinical_syndrome_display", "ALTER TABLE indication_candidates ADD COLUMN clinical_syndrome_display TEXT"),
+            ("syndrome_category", "ALTER TABLE indication_candidates ADD COLUMN syndrome_category TEXT"),
+            ("syndrome_confidence", "ALTER TABLE indication_candidates ADD COLUMN syndrome_confidence TEXT"),
+            ("therapy_intent", "ALTER TABLE indication_candidates ADD COLUMN therapy_intent TEXT"),
+            ("guideline_disease_ids", "ALTER TABLE indication_candidates ADD COLUMN guideline_disease_ids TEXT"),
+            ("likely_viral", "ALTER TABLE indication_candidates ADD COLUMN likely_viral BOOLEAN DEFAULT 0"),
+            ("asymptomatic_bacteriuria", "ALTER TABLE indication_candidates ADD COLUMN asymptomatic_bacteriuria BOOLEAN DEFAULT 0"),
+            ("indication_not_documented", "ALTER TABLE indication_candidates ADD COLUMN indication_not_documented BOOLEAN DEFAULT 0"),
+            ("never_appropriate", "ALTER TABLE indication_candidates ADD COLUMN never_appropriate BOOLEAN DEFAULT 0"),
         ]
 
         for col_name, sql in candidates_migrations:
@@ -139,6 +150,27 @@ class IndicationDatabase:
                 try:
                     cursor.execute(sql)
                     logger.info(f"Migration: added column {col_name} to indication_extractions")
+                except Exception as e:
+                    logger.debug(f"Migration skipped for {col_name}: {e}")
+
+        # Get existing columns for indication_reviews
+        cursor.execute("PRAGMA table_info(indication_reviews)")
+        reviews_cols = {row[1] for row in cursor.fetchall()}
+
+        # v2: Syndrome and agent review fields
+        reviews_migrations = [
+            ("syndrome_decision", "ALTER TABLE indication_reviews ADD COLUMN syndrome_decision TEXT"),
+            ("confirmed_syndrome", "ALTER TABLE indication_reviews ADD COLUMN confirmed_syndrome TEXT"),
+            ("confirmed_syndrome_display", "ALTER TABLE indication_reviews ADD COLUMN confirmed_syndrome_display TEXT"),
+            ("agent_decision", "ALTER TABLE indication_reviews ADD COLUMN agent_decision TEXT"),
+            ("agent_notes", "ALTER TABLE indication_reviews ADD COLUMN agent_notes TEXT"),
+        ]
+
+        for col_name, sql in reviews_migrations:
+            if col_name not in reviews_cols:
+                try:
+                    cursor.execute(sql)
+                    logger.info(f"Migration: added column {col_name} to indication_reviews")
                 except Exception as e:
                     logger.debug(f"Migration skipped for {col_name}: {e}")
 
@@ -425,17 +457,32 @@ class IndicationDatabase:
         override_reason: str | None = None,
         llm_decision: str | None = None,
         notes: str | None = None,
+        # v2: Syndrome review fields (JC-compliant)
+        syndrome_decision: str | None = None,
+        confirmed_syndrome: str | None = None,
+        confirmed_syndrome_display: str | None = None,
+        # v2: Agent appropriateness review
+        agent_decision: str | None = None,
+        agent_notes: str | None = None,
     ) -> str:
         """Save an indication review.
 
         Args:
             candidate_id: The candidate being reviewed.
             reviewer: Who performed the review.
-            decision: The review decision (confirmed_n, override_to_a, etc.).
+            decision: Legacy decision (confirmed_n, override_to_a, etc.).
+                Use syndrome_decision for new JC-compliant workflow.
             is_override: Whether this disagrees with the system classification.
             override_reason: Reason for override if applicable.
             llm_decision: What the LLM said (for comparison).
             notes: Additional notes.
+            syndrome_decision: Syndrome review decision (confirm_syndrome,
+                correct_syndrome, no_indication, viral_illness).
+            confirmed_syndrome: The confirmed/corrected syndrome ID.
+            confirmed_syndrome_display: Human-readable syndrome name.
+            agent_decision: Agent appropriateness decision (agent_appropriate,
+                agent_acceptable, agent_inappropriate).
+            agent_notes: Notes about agent appropriateness.
 
         Returns:
             The review ID.
@@ -451,8 +498,10 @@ class IndicationDatabase:
                 """
                 INSERT INTO indication_reviews (
                     id, candidate_id, reviewer, reviewer_decision,
-                    llm_decision, is_override, override_reason, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    llm_decision, is_override, override_reason, notes,
+                    syndrome_decision, confirmed_syndrome, confirmed_syndrome_display,
+                    agent_decision, agent_notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     review_id,
@@ -463,6 +512,11 @@ class IndicationDatabase:
                     1 if is_override else 0,
                     override_reason,
                     notes,
+                    syndrome_decision,
+                    confirmed_syndrome,
+                    confirmed_syndrome_display,
+                    agent_decision,
+                    agent_notes,
                 ),
             )
 
@@ -480,18 +534,21 @@ class IndicationDatabase:
             activity_type=activity_type,
             entity_id=candidate_id,
             entity_type="indication_candidate",
-            action_taken=decision,
+            action_taken=syndrome_decision or decision,
             provider_name=reviewer,
             patient_mrn=candidate.patient.mrn if candidate else None,
             location_code=candidate.location if candidate else None,
             service=candidate.service if candidate else None,
-            outcome=decision,
+            outcome=syndrome_decision or decision,
             details={
                 "medication_name": candidate.medication.medication_name if candidate else None,
                 "llm_decision": llm_decision,
                 "final_classification": candidate.final_classification if candidate else None,
                 "is_override": is_override,
                 "override_reason": override_reason,
+                "syndrome_decision": syndrome_decision,
+                "confirmed_syndrome": confirmed_syndrome,
+                "agent_decision": agent_decision,
             },
         )
 
