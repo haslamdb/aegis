@@ -336,6 +336,10 @@ def analytics():
         daily_trend = db.get_daily_usage_trend(days=30)
         override_stats = db.get_override_stats(days=30)
 
+        # Get syndrome analytics
+        top_syndromes = db.get_top_clinical_syndromes(days=30, limit=10)
+        syndrome_stats = db.get_syndrome_stats(days=30)
+
         return render_template(
             "abx_indications_analytics.html",
             summary=summary,
@@ -344,6 +348,8 @@ def analytics():
             by_service=by_service,
             daily_trend=daily_trend,
             override_stats=override_stats,
+            top_syndromes=top_syndromes,
+            syndrome_stats=syndrome_stats,
         )
 
     except Exception as e:
@@ -445,16 +451,13 @@ def reviewed_list():
         # Get reviewed candidates
         reviewed_candidates = db.list_candidates(status="reviewed", limit=100)
 
-        # Get counts by classification for reviewed only
-        counts = {}
-        for c in reviewed_candidates:
-            cls = c.final_classification or "U"
-            counts[cls] = counts.get(cls, 0) + 1
+        # Get top clinical syndromes for reviewed candidates
+        top_syndromes = db.get_top_clinical_syndromes(days=30, limit=10)
 
         return render_template(
             "abx_indications_reviewed.html",
             candidates=reviewed_candidates,
-            counts=counts,
+            top_syndromes=top_syndromes,
             total_reviewed=len(reviewed_candidates),
         )
 
@@ -463,7 +466,7 @@ def reviewed_list():
         return render_template(
             "abx_indications_reviewed.html",
             candidates=[],
-            counts={},
+            top_syndromes=[],
             total_reviewed=0,
             error=str(e),
         )
