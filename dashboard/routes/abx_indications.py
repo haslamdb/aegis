@@ -340,6 +340,9 @@ def analytics():
         top_syndromes = db.get_top_clinical_syndromes(days=30, limit=10)
         syndrome_stats = db.get_syndrome_stats(days=30)
 
+        # Get agent appropriateness stats (only for assessed cases)
+        agent_stats = db.get_agent_appropriateness_stats(days=30)
+
         return render_template(
             "abx_indications_analytics.html",
             summary=summary,
@@ -350,6 +353,7 @@ def analytics():
             override_stats=override_stats,
             top_syndromes=top_syndromes,
             syndrome_stats=syndrome_stats,
+            agent_stats=agent_stats,
         )
 
     except Exception as e:

@@ -74,6 +74,32 @@
 </div>
 {% endif %}
 
+<!-- Agent Appropriateness (only shown when assessed) -->
+{% if agent_stats and agent_stats.get('total_assessed', 0) > 0 %}
+<div class="analytics-section">
+    <h2>Agent Appropriateness <span class="section-note">({{ agent_stats.get('total_assessed', 0) }} assessed)</span></h2>
+    <div class="appropriateness-grid">
+        <div class="appropriateness-card appropriate">
+            <div class="appropriateness-value">{{ agent_stats.get('appropriate', 0) }}</div>
+            <div class="appropriateness-label">Appropriate</div>
+        </div>
+        <div class="appropriateness-card acceptable">
+            <div class="appropriateness-value">{{ agent_stats.get('acceptable', 0) }}</div>
+            <div class="appropriateness-label">Acceptable</div>
+        </div>
+        <div class="appropriateness-card inappropriate">
+            <div class="appropriateness-value">{{ agent_stats.get('inappropriate', 0) }}</div>
+            <div class="appropriateness-label">Inappropriate</div>
+        </div>
+        <div class="appropriateness-card rate">
+            <div class="appropriateness-value">{{ "%.0f"|format(agent_stats.get('appropriate_rate', 0) * 100) }}%</div>
+            <div class="appropriateness-label">Appropriate/Acceptable Rate</div>
+        </div>
+    </div>
+    <p class="section-footnote">Only includes cases where agent appropriateness was assessed during review.</p>
+</div>
+{% endif %}
+
 <!-- By Antibiotic -->
 {% if by_antibiotic %}
 <div class="analytics-section">
@@ -305,6 +331,81 @@
 }
 
 .flag-label {
+    font-size: 0.75rem;
+    color: var(--color-gray-600);
+    margin-top: 0.25rem;
+}
+
+/* Section note and footnote */
+.section-note {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--color-gray-500);
+}
+
+.section-footnote {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+    font-style: italic;
+    margin-top: 1rem;
+    margin-bottom: 0;
+}
+
+/* Appropriateness grid */
+.appropriateness-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.appropriateness-card {
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    text-align: center;
+}
+
+.appropriateness-card.appropriate {
+    background: var(--color-success-light);
+    border: 1px solid var(--color-success);
+}
+
+.appropriateness-card.appropriate .appropriateness-value {
+    color: var(--color-success);
+}
+
+.appropriateness-card.acceptable {
+    background: var(--color-info-light);
+    border: 1px solid var(--color-primary);
+}
+
+.appropriateness-card.acceptable .appropriateness-value {
+    color: var(--color-primary);
+}
+
+.appropriateness-card.inappropriate {
+    background: var(--color-danger-light);
+    border: 1px solid var(--color-danger);
+}
+
+.appropriateness-card.inappropriate .appropriateness-value {
+    color: var(--color-danger);
+}
+
+.appropriateness-card.rate {
+    background: var(--color-gray-100);
+    border: 1px solid var(--color-gray-300);
+}
+
+.appropriateness-card.rate .appropriateness-value {
+    color: var(--color-gray-800);
+}
+
+.appropriateness-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+.appropriateness-label {
     font-size: 0.75rem;
     color: var(--color-gray-600);
     margin-top: 0.25rem;
