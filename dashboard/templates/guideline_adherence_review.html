@@ -1,0 +1,309 @@
+{% extends "base.html" %}
+
+{% block title %}Clinical Appearance Review Queue - Guideline Adherence - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Clinical Appearance Review Queue</h1>
+    <div class="header-actions">
+        <a href="{{ url_for('guideline_adherence.training_stats') }}" class="btn btn-secondary">Training Stats</a>
+        <a href="{{ url_for('guideline_adherence.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    </div>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+<!-- Stats Summary -->
+{% if stats %}
+<div class="stats-summary">
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.total_extractions }}</div>
+        <div class="stat-label">Total Extractions</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.human_reviewed }}</div>
+        <div class="stat-label">Reviewed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ (stats.review_rate * 100)|round(1) }}%</div>
+        <div class="stat-label">Review Rate</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ (stats.triage_stats.fast_path_rate * 100)|round(1) }}%</div>
+        <div class="stat-label">Fast Path Rate</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ stats.corrections }}</div>
+        <div class="stat-label">Corrections</div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Review Queue -->
+<div class="section">
+    <h2>Pending Reviews ({{ queue|length }})</h2>
+
+    {% if queue %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Episode</th>
+                <th>Patient</th>
+                <th>Bundle</th>
+                <th>Extracted Appearance</th>
+                <th>Confidence</th>
+                <th>Triage</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in queue %}
+            <tr>
+                <td>
+                    {% if item.episode_id %}
+                    <a href="{{ url_for('guideline_adherence.episode_detail', episode_id=item.episode_id) }}">
+                        #{{ item.episode_id }}
+                    </a>
+                    {% else %}
+                    {{ item.id[:8] }}
+                    {% endif %}
+                </td>
+                <td>{{ item.patient_mrn or item.patient_id or '-' }}</td>
+                <td>{{ item.bundle_name or '-' }}</td>
+                <td>
+                    <span class="badge badge-{{ 'danger' if item.extracted_appearance in ['ill', 'toxic'] else 'success' if item.extracted_appearance == 'well' else 'secondary' }}">
+                        {{ item.extracted_appearance|title if item.extracted_appearance else 'Unknown' }}
+                    </span>
+                </td>
+                <td>{{ item.extraction_confidence|upper if item.extraction_confidence else '-' }}</td>
+                <td>
+                    {% if item.triage_escalated %}
+                    <span class="badge badge-warning">Escalated</span>
+                    {% else %}
+                    <span class="badge badge-info">Fast Path</span>
+                    {% endif %}
+                </td>
+                <td>{{ item.created_at[:16] if item.created_at else '-' }}</td>
+                <td>
+                    {% if item.episode_id %}
+                    <a href="{{ url_for('guideline_adherence.episode_review', episode_id=item.episode_id) }}" class="btn btn-sm btn-primary">
+                        Review
+                    </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>No extractions pending review.</p>
+        <p class="text-muted">New extractions will appear here as clinical impressions are analyzed.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Signs Overview -->
+{% if queue %}
+<div class="section">
+    <h3>Findings Summary</h3>
+    <div class="findings-overview">
+        <div class="findings-column">
+            <h4>Concerning Signs</h4>
+            {% set all_concerning = [] %}
+            {% for item in queue %}
+                {% for sign in item.concerning_signs or [] %}
+                    {% if sign not in all_concerning %}
+                        {% set _ = all_concerning.append(sign) %}
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+            {% if all_concerning %}
+            <ul class="findings-list concerning">
+                {% for sign in all_concerning[:10] %}
+                <li>{{ sign }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted">No concerning signs in queue</p>
+            {% endif %}
+        </div>
+        <div class="findings-column">
+            <h4>Reassuring Signs</h4>
+            {% set all_reassuring = [] %}
+            {% for item in queue %}
+                {% for sign in item.reassuring_signs or [] %}
+                    {% if sign not in all_reassuring %}
+                        {% set _ = all_reassuring.append(sign) %}
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+            {% if all_reassuring %}
+            <ul class="findings-list reassuring">
+                {% for sign in all_reassuring[:10] %}
+                <li>{{ sign }}</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted">No reassuring signs in queue</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.stats-summary {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.stat-card {
+    background: var(--color-white);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.5rem;
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+    min-width: 120px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: var(--color-gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+
+.section h2,
+.section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.data-table th {
+    background: var(--color-gray-50);
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--color-gray-700);
+}
+
+.data-table tbody tr:hover {
+    background: var(--color-gray-50);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+}
+
+.badge-success { background: var(--color-success-light); color: var(--color-success); }
+.badge-danger { background: var(--color-danger-light); color: var(--color-danger); }
+.badge-warning { background: var(--color-warning-light); color: var(--color-warning-dark); }
+.badge-info { background: var(--color-primary-light); color: var(--color-primary); }
+.badge-secondary { background: var(--color-gray-200); color: var(--color-gray-700); }
+
+.btn-sm {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-gray-600);
+}
+
+.findings-overview {
+    display: flex;
+    gap: 2rem;
+}
+
+.findings-column {
+    flex: 1;
+}
+
+.findings-column h4 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    color: var(--color-gray-700);
+}
+
+.findings-list {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.findings-list li {
+    margin-bottom: 0.25rem;
+    font-size: 0.875rem;
+}
+
+.findings-list.concerning li {
+    color: var(--color-danger);
+}
+
+.findings-list.reassuring li {
+    color: var(--color-success);
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+}
+
+.alert-danger {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+}
+</style>
+{% endblock %}

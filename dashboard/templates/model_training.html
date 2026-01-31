@@ -104,11 +104,30 @@
             <span class="module-icon">&#128203;</span>
             <div class="module-title">
                 <h3>Guideline Adherence</h3>
-                <span class="module-status planned">Planned</span>
+                <span class="module-status collecting">Collecting Data</span>
             </div>
         </div>
         <div class="module-body">
-            <p>Future collection will capture bundle element compliance assessments and clinical reasoning for guideline deviations.</p>
+            <p><strong>What we capture:</strong></p>
+            <ul>
+                <li><strong>Clinical notes</strong> - Relevant notes used for clinical appearance assessment</li>
+                <li><strong>Tiered extraction</strong> - Fast triage (7B model) and full analysis (70B model) results:
+                    <ul>
+                        <li><em>Triage decision</em> - Clear well, clear ill, or needs full analysis</li>
+                        <li><em>Escalation reasons</em> - Why triage escalated to full model</li>
+                        <li><em>Response times</em> - Performance metrics for optimization</li>
+                    </ul>
+                </li>
+                <li><strong>Appearance decision</strong> - Your validation of the clinical appearance:
+                    <ul>
+                        <li><em>Confirm</em> - LLM assessment was correct</li>
+                        <li><em>Override to Well/Ill/Toxic</em> - Correct the appearance classification</li>
+                    </ul>
+                </li>
+                <li><strong>Missed findings</strong> - Specific clinical signs the LLM failed to identify (lethargy, mottling, poor feeding, etc.)</li>
+                <li><strong>Override reasons</strong> - Why the LLM was wrong (missed lethargy, overinterpreted, documentation ambiguous, etc.)</li>
+            </ul>
+            <p class="training-note">This feedback trains the model to better recognize clinical appearance indicators in febrile infant documentation.</p>
         </div>
     </div>
 </div>
@@ -157,6 +176,13 @@
                 <div class="progress-bar" style="width: 5%;"></div>
             </div>
             <div class="progress-text">~25 / 500 cases</div>
+        </div>
+        <div class="progress-item">
+            <div class="progress-label">Guideline Adherence</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: 3%;"></div>
+            </div>
+            <div class="progress-text">~15 / 500 cases</div>
         </div>
     </div>
     <p class="progress-note">Progress updates automatically as you review cases. Fine-tuning begins after reaching 500 expert-reviewed cases per module.</p>

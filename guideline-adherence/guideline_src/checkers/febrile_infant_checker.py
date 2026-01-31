@@ -32,12 +32,16 @@ try:
         ClinicalImpressionExtractor,
         ClinicalAppearance,
         get_clinical_impression_extractor,
+        TieredClinicalImpressionExtractor,
+        get_tiered_clinical_impression_extractor,
     )
     NLP_AVAILABLE = True
 except ImportError:
     NLP_AVAILABLE = False
     ClinicalImpressionExtractor = None
     ClinicalAppearance = None
+    TieredClinicalImpressionExtractor = None
+    get_tiered_clinical_impression_extractor = None
 
 logger = logging.getLogger(__name__)
 
@@ -100,12 +104,13 @@ class FebrileInfantChecker(ElementChecker):
         "fi_urine_culture": [config.LOINC_URINE_CULTURE],
     }
 
-    def __init__(self, fhir_client, use_nlp: bool = True):
+    def __init__(self, fhir_client, use_nlp: bool = True, use_triage: bool = True):
         """Initialize with FHIR client.
 
         Args:
             fhir_client: FHIR client for data retrieval.
             use_nlp: Whether to use NLP for clinical impression extraction.
+            use_triage: Whether to use fast triage model (7B) before full model (70B).
         """
         super().__init__(fhir_client)
         # Cache for patient context
@@ -113,11 +118,24 @@ class FebrileInfantChecker(ElementChecker):
 
         # Initialize NLP extractor if available and requested
         self._nlp_extractor = None
+        self._use_triage = use_triage
+
         if use_nlp and NLP_AVAILABLE:
             try:
-                self._nlp_extractor = get_clinical_impression_extractor()
-                if self._nlp_extractor:
-                    logger.info("NLP clinical impression extractor initialized")
+                # Try to get tiered extractor (with fast triage)
+                if use_triage and get_tiered_clinical_impression_extractor is not None:
+                    self._nlp_extractor = get_tiered_clinical_impression_extractor(
+                        use_triage=True,
+                        collect_training_data=True,
+                    )
+                    if self._nlp_extractor:
+                        logger.info("Tiered clinical impression extractor initialized (with triage)")
+
+                # Fall back to standard extractor
+                if self._nlp_extractor is None:
+                    self._nlp_extractor = get_clinical_impression_extractor()
+                    if self._nlp_extractor:
+                        logger.info("Standard clinical impression extractor initialized")
             except Exception as e:
                 logger.warning(f"Failed to initialize NLP extractor: {e}")
 
@@ -127,6 +145,7 @@ class FebrileInfantChecker(ElementChecker):
         patient_id: str,
         trigger_time: datetime,
         age_days: Optional[int] = None,
+        episode_id: Optional[int] = None,
     ) -> ElementCheckResult:
         """Check if a febrile infant bundle element has been completed.
 
@@ -135,6 +154,7 @@ class FebrileInfantChecker(ElementChecker):
             patient_id: FHIR patient ID.
             trigger_time: When the bundle was triggered.
             age_days: Patient age in days (required for age-stratified elements).
+            episode_id: Bundle episode ID for training data collection.
 
         Returns:
             ElementCheckResult with status.
@@ -144,7 +164,7 @@ class FebrileInfantChecker(ElementChecker):
         # Get patient context if not cached
         if patient_id not in self._patient_context:
             self._patient_context[patient_id] = self._build_patient_context(
-                patient_id, trigger_time, age_days
+                patient_id, trigger_time, age_days, episode_id
             )
 
         context = self._patient_context[patient_id]
@@ -206,7 +226,8 @@ class FebrileInfantChecker(ElementChecker):
         self,
         patient_id: str,
         trigger_time: datetime,
-        age_days: Optional[int] = None
+        age_days: Optional[int] = None,
+        episode_id: Optional[int] = None,
     ) -> dict:
         """Build patient context for conditional element evaluation.
 
@@ -214,6 +235,7 @@ class FebrileInfantChecker(ElementChecker):
             patient_id: FHIR patient ID.
             trigger_time: When the bundle was triggered.
             age_days: Patient age in days (if known).
+            episode_id: Bundle episode ID for training data collection.
 
         Returns:
             Dict with patient context for element evaluation.
@@ -273,7 +295,7 @@ class FebrileInfantChecker(ElementChecker):
 
         # Determine clinical impression (ill-appearing vs well-appearing)
         # This is critical for risk stratification per AAP 2021
-        context.update(self._assess_clinical_impression(patient_id, trigger_time))
+        context.update(self._assess_clinical_impression(patient_id, trigger_time, episode_id))
 
         return context
 
@@ -281,6 +303,7 @@ class FebrileInfantChecker(ElementChecker):
         self,
         patient_id: str,
         trigger_time: datetime,
+        episode_id: int | None = None,
     ) -> dict:
         """Assess clinical impression using NLP or keyword matching.
 
@@ -289,6 +312,7 @@ class FebrileInfantChecker(ElementChecker):
         Args:
             patient_id: FHIR patient ID.
             trigger_time: When the bundle was triggered.
+            episode_id: Bundle episode ID for training data collection.
 
         Returns:
             Dict with clinical impression fields.
@@ -309,12 +333,27 @@ class FebrileInfantChecker(ElementChecker):
         if not notes:
             return result
 
+        # Get patient context for training data
+        context = self._patient_context.get(patient_id, {})
+        patient_age_days = context.get("age_days")
+
         # Try NLP-based extraction first
         if self._nlp_extractor:
             try:
                 note_texts = [n.get("text", "") for n in notes if n.get("text")]
                 if note_texts:
-                    impression = self._nlp_extractor.extract(note_texts)
+                    # Check if using tiered extractor (has episode_id parameter)
+                    if isinstance(self._nlp_extractor, TieredClinicalImpressionExtractor):
+                        impression = self._nlp_extractor.extract(
+                            notes=note_texts,
+                            episode_id=episode_id,
+                            patient_id=patient_id,
+                            patient_age_days=patient_age_days,
+                        )
+                    else:
+                        # Standard extractor
+                        impression = self._nlp_extractor.extract(note_texts)
+
                     result["clinical_impression"] = impression
                     result["is_ill_appearing"] = impression.is_high_risk()
                     result["clinical_impression_confidence"] = impression.confidence

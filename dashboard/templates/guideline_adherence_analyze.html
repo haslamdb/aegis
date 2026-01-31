@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block title %}Analyze Episode #{{ episode.id }} - Guideline Adherence - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Analyze Clinical Appearance</h1>
+    <a href="{{ url_for('guideline_adherence.active_episodes') }}" class="btn btn-secondary">Back to Episodes</a>
+</div>
+
+<!-- Episode Info -->
+<div class="episode-info">
+    <div class="info-item">
+        <span class="info-label">Episode</span>
+        <span class="info-value">#{{ episode.id }}</span>
+    </div>
+    <div class="info-item">
+        <span class="info-label">Patient</span>
+        <span class="info-value">{{ episode.patient_mrn or episode.patient_id }}</span>
+    </div>
+    <div class="info-item">
+        <span class="info-label">Bundle</span>
+        <span class="info-value">{{ episode.bundle_name }}</span>
+    </div>
+    {% if episode.patient_age_days %}
+    <div class="info-item">
+        <span class="info-label">Age</span>
+        <span class="info-value">{{ episode.patient_age_days }} days</span>
+    </div>
+    {% endif %}
+</div>
+
+{% if existing_record %}
+<div class="alert alert-info">
+    <strong>Already Analyzed:</strong> This episode was analyzed previously.
+    Result: <strong>{{ existing_record.extracted_appearance|title }}</strong> ({{ existing_record.extraction_confidence }} confidence).
+    {% if existing_record.human_reviewed %}
+    <span class="badge badge-success">Reviewed</span>
+    {% else %}
+    <a href="{{ url_for('guideline_adherence.episode_review', episode_id=episode.id) }}" class="btn btn-small btn-primary">Review Now</a>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Analysis Section -->
+<div class="section">
+    <h2>Run LLM Analysis</h2>
+    <p class="section-desc">
+        The system will automatically retrieve clinical notes from the EHR and analyze them using the tiered LLM system.
+        Fast triage (7B model) handles clear cases; ambiguous cases are escalated to full analysis (70B model).
+    </p>
+
+    {% if notes_available %}
+    <!-- Notes Preview -->
+    <div class="notes-preview">
+        <h3>Notes to be Analyzed</h3>
+        <p class="preview-desc">{{ notes_preview|length }} clinical note(s) found for this patient:</p>
+
+        <div class="notes-list">
+            {% for note in notes_preview %}
+            <div class="note-preview-item">
+                <div class="note-header">
+                    <span class="note-type">{{ note.type }}</span>
+                    {% if note.author %}<span class="note-author">{{ note.author }}</span>{% endif %}
+                    {% if note.date %}<span class="note-date">{{ note.date[:16] }}</span>{% endif %}
+                </div>
+                <div class="note-text">{{ note.text_preview }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <form method="POST" class="analyze-form">
+        <input type="hidden" name="use_demo" value="false">
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary btn-lg">
+                Run Analysis
+            </button>
+            <a href="{{ url_for('guideline_adherence.episode_detail', episode_id=episode.id) }}" class="btn btn-secondary">
+                Cancel
+            </a>
+        </div>
+    </form>
+    {% else %}
+    <!-- No Notes Found - Offer Demo Mode -->
+    <div class="no-notes-warning">
+        <div class="warning-icon">&#9888;</div>
+        <div class="warning-content">
+            <h3>No Clinical Notes Found</h3>
+            <p>No clinical notes were found in the EHR for this patient. This may be because:</p>
+            <ul>
+                <li>The FHIR server is not connected</li>
+                <li>Notes haven't been documented yet</li>
+                <li>Notes are in a different time window</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="demo-option">
+        <h3>Use Demo Data</h3>
+        <p>For testing purposes, you can run the analysis using sample clinical notes:</p>
+
+        <form method="POST" class="analyze-form">
+            <input type="hidden" name="use_demo" value="true">
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">
+                    Run Analysis with Demo Notes
+                </button>
+                <a href="{{ url_for('guideline_adherence.episode_detail', episode_id=episode.id) }}" class="btn btn-secondary">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+<!-- How It Works -->
+<div class="section">
+    <h2>How Analysis Works</h2>
+    <div class="analysis-steps">
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h4>Note Retrieval</h4>
+                <p>Clinical notes are automatically retrieved from the EHR for the 24-48 hours around the trigger time.</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h4>Fast Triage</h4>
+                <p>The 7B model quickly identifies clear well-appearing or ill-appearing cases (~2-3 seconds).</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h4>Full Analysis</h4>
+                <p>Ambiguous cases are escalated to the 70B model for detailed extraction (~15-30 seconds).</p>
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">4</div>
+            <div class="step-content">
+                <h4>Review Queue</h4>
+                <p>Results are added to the review queue for expert validation and training data capture.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.episode-info {
+    display: flex;
+    gap: 2rem;
+    padding: 1rem 1.5rem;
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-label {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.info-value {
+    font-weight: 600;
+    color: var(--color-gray-800);
+}
+
+.section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    margin-bottom: 1.5rem;
+}
+
+.section h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.section-desc {
+    color: var(--color-gray-600);
+    margin-bottom: 1.5rem;
+}
+
+.notes-preview {
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.notes-preview h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.preview-desc {
+    color: var(--color-gray-600);
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.note-preview-item {
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem;
+}
+
+.note-header {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+}
+
+.note-type {
+    font-weight: 600;
+    color: var(--color-primary);
+}
+
+.note-author, .note-date {
+    color: var(--color-gray-500);
+}
+
+.note-text {
+    font-family: monospace;
+    font-size: 0.8125rem;
+    color: var(--color-gray-700);
+    white-space: pre-wrap;
+    max-height: 100px;
+    overflow: hidden;
+}
+
+.form-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+}
+
+.no-notes-warning {
+    display: flex;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+}
+
+.warning-icon {
+    font-size: 2rem;
+    color: #b45309;
+}
+
+.warning-content h3 {
+    margin: 0 0 0.5rem 0;
+    color: #92400e;
+}
+
+.warning-content p {
+    margin: 0 0 0.5rem 0;
+    color: var(--color-gray-700);
+}
+
+.warning-content ul {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--color-gray-600);
+}
+
+.demo-option {
+    background: var(--color-info-light);
+    border-left: 4px solid var(--color-primary);
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+}
+
+.demo-option h3 {
+    margin: 0 0 0.5rem 0;
+}
+
+.demo-option p {
+    color: var(--color-gray-700);
+    margin-bottom: 1rem;
+}
+
+.analysis-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.step {
+    display: flex;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+}
+
+.step-number {
+    background: var(--color-primary);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.step-content h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 0.9375rem;
+}
+
+.step-content p {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--color-gray-600);
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.alert-info {
+    background: var(--color-primary-light);
+    border: 1px solid var(--color-primary);
+    color: var(--color-gray-800);
+}
+
+.badge-success {
+    background: var(--color-success);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.btn-small {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

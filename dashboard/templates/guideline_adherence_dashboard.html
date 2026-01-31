@@ -6,7 +6,8 @@
 <div class="page-header">
     <h1>Guideline Adherence</h1>
     <div class="header-actions">
-        <a href="{{ url_for('guideline_adherence.active_episodes') }}" class="btn btn-primary">View Active Episodes</a>
+        <a href="{{ url_for('guideline_adherence.active_episodes') }}" class="btn btn-primary">Active Episodes</a>
+        <a href="{{ url_for('guideline_adherence.episode_history') }}" class="btn btn-secondary">History</a>
         <a href="{{ url_for('guideline_adherence.compliance_metrics') }}" class="btn btn-secondary">Metrics</a>
         <a href="{{ url_for('guideline_adherence.help_page') }}" class="btn btn-secondary">Help</a>
     </div>
@@ -52,27 +53,6 @@
         </div>
     </div>
 </div>
-
-<!-- Bundle Stats -->
-{% if bundle_stats %}
-<div class="section">
-    <h2>Bundle Compliance</h2>
-    <div class="guideline-cards">
-        {% for bs in bundle_stats %}
-        <a href="{{ url_for('guideline_adherence.bundle_detail', bundle_id=bs.bundle_id) }}" class="guideline-card">
-            <h4>{{ bs.bundle_name }}</h4>
-            <div class="bundle-stat">
-                <span class="compliance-badge {% if bs.avg_compliance >= 90 %}success{% elif bs.avg_compliance >= 70 %}warning{% else %}danger{% endif %}">
-                    {{ bs.avg_compliance }}%
-                </span>
-            </div>
-            <p>{{ bs.total_episodes }} episodes, {{ bs.active_episodes }} active</p>
-            <span class="element-count">{{ bs.element_count }} elements</span>
-        </a>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
 
 <!-- Active Episodes -->
 {% if active_episodes %}
@@ -121,19 +101,26 @@
 </div>
 {% endif %}
 
-<!-- Available Guidelines -->
+<!-- Bundle Stats -->
+{% if bundle_stats %}
 <div class="section">
-    <h2>Available Guidelines</h2>
+    <h2>Bundle Compliance</h2>
     <div class="guideline-cards">
-        {% for bundle_id, bundle in bundles.items() %}
-        <a href="{{ url_for('guideline_adherence.bundle_detail', bundle_id=bundle_id) }}" class="guideline-card">
-            <h4>{{ bundle.name }}</h4>
-            <p>{{ bundle.description[:80] }}{% if bundle.description|length > 80 %}...{% endif %}</p>
-            <span class="element-count">{{ bundle.elements|length }} elements</span>
+        {% for bs in bundle_stats %}
+        <a href="{{ url_for('guideline_adherence.bundle_detail', bundle_id=bs.bundle_id) }}" class="guideline-card">
+            <h4>{{ bs.bundle_name }}</h4>
+            <div class="bundle-stat">
+                <span class="compliance-badge {% if bs.avg_compliance >= 90 %}success{% elif bs.avg_compliance >= 70 %}warning{% else %}danger{% endif %}">
+                    {{ bs.avg_compliance }}%
+                </span>
+            </div>
+            <p>{{ bs.total_episodes }} episodes, {{ bs.active_episodes }} active</p>
+            <span class="element-count">{{ bs.element_count }} elements</span>
         </a>
         {% endfor %}
     </div>
 </div>
+{% endif %}
 
 <style>
 .header-actions {

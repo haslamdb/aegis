@@ -234,7 +234,7 @@ Tracking file for implementing the AEGIS expansion plan. See `aegis_implementati
 
 ## Guideline Adherence Module
 
-**Status:** Complete (2026-01-24)
+**Status:** Complete (2026-01-31)
 
 ### Core Infrastructure
 - [x] Created guideline-adherence/src/ module structure
@@ -279,6 +279,45 @@ Tracking file for implementing the AEGIS expansion plan. See `aegis_implementati
 - [x] `--dry-run` for no alerts
 - [x] `--daemon` for continuous monitoring
 - [x] `--verbose` for detailed output
+
+### LLM Review Workflow (2026-01-31)
+- [x] **Automatic LLM Analysis:** Episodes auto-analyzed on creation via bundle_monitor
+- [x] `_assess_unprocessed_episodes()` runs on monitor startup to catch pending episodes
+- [x] `run_monitor.py` script with `--assess` flag for manual assessment runs
+- [x] Clinical notes automatically retrieved from FHIR for LLM parsing
+- [x] Tiered extraction: fast 7B triage model → optional 70B full analysis
+
+### HAI-Style Review Interface (2026-01-31)
+- [x] **Episode Detail Page:** Two-column layout (patient info left, review actions right)
+- [x] LLM assessment display with determination, confidence, reasoning, supporting evidence
+- [x] Bundle element status with met/not_met/pending indicators
+- [x] Decision buttons: "Guideline Appropriate", "Guideline Deviation", "Needs More Info"
+- [x] **Override Detection:** Auto-shows override reason dropdown when human disagrees with LLM
+- [x] Override triggers when: (a) LLM definitive + human disagrees, or (b) LLM pending + not_met elements + human says appropriate
+- [x] Success state after submission with "Return to Active Episodes" button
+- [x] Reviewed episodes automatically removed from Active Episodes (status → completed)
+
+### Training Data Capture (2026-01-31)
+- [x] **ClinicalAppearanceTrainingCollector:** Logs LLM extractions to `clinical_appearance_{YYYY_MM}.jsonl`
+- [x] **GuidelineReviewCollector:** Logs human reviews to `guideline_reviews_{YYYY_MM}.jsonl`
+- [x] Override reason taxonomy (extraction_error, element_detection_error, timing_error, clinical_judgment, etc.)
+- [x] Deviation type taxonomy (documentation, timing, missing_element, clinical_judgment)
+- [x] Training Stats dashboard page with:
+  - Total extractions, human reviewed count, review rate
+  - Correction rate and override reason distribution
+  - Triage performance (fast path vs escalated)
+  - Response times (triage avg, full extraction avg)
+  - Appearance distribution
+  - Training data readiness indicator
+
+### Dashboard Improvements (2026-01-31)
+- [x] **Active Episodes:** Shows LLM Analysis column with determination and confidence
+- [x] Adherence percentage rounded (no long decimals)
+- [x] Action buttons always visible (not hover-only)
+- [x] **History Page:** Shows all episodes (active + completed) with filters
+- [x] **Metrics Page:** Element compliance rates grouped by bundle (not mixed)
+- [x] Dashboard reorganization: Recent Active Episodes above Bundle Compliance
+- [x] Removed redundant Available Guidelines section from dashboard
 
 ---
 
@@ -463,4 +502,12 @@ The plan proposes separate model classes for each HAI type. Our existing `HAICan
 | 2026-01-24 | 5 | 6-element bundle evaluation: indication, agent, timing, dosing, redosing, discontinuation |
 | 2026-01-24 | 5 | Added SURGICAL_PROPHYLAXIS to AlertType enum in common/alert_store/models.py |
 | 2026-01-24 | 5 | Database schema with surgical_cases, prophylaxis_evaluations, prophylaxis_alerts tables |
+| 2026-01-31 | 6 | **Guideline Adherence LLM Review Workflow:** Automatic analysis on episode creation |
+| 2026-01-31 | 6 | Added `run_monitor.py` with `--assess` flag, `_assess_unprocessed_episodes()` runs on startup |
+| 2026-01-31 | 6 | HAI-style episode review interface with two-column layout and decision buttons |
+| 2026-01-31 | 6 | Override detection: shows reason dropdown when human disagrees with LLM/system |
+| 2026-01-31 | 6 | Training data capture: `ClinicalAppearanceTrainingCollector`, `GuidelineReviewCollector` |
+| 2026-01-31 | 6 | Training Stats dashboard page with extraction/review/correction metrics |
+| 2026-01-31 | 6 | Dashboard improvements: History page, metrics grouped by bundle, rounded adherence % |
+| 2026-01-31 | 6 | Fixed button visibility on Active Episodes, updated help page with new features |
 
