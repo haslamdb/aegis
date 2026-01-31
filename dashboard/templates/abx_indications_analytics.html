@@ -21,12 +21,12 @@
         <div class="summary-label">Total Orders (30 days)</div>
     </div>
     <div class="summary-card">
-        <div class="summary-value">{{ "%.1f"|format(summary.get('appropriate_rate', 0) * 100) }}%</div>
-        <div class="summary-label">Appropriate Rate (A + FN)</div>
+        <div class="summary-value">{{ syndrome_stats.get('with_syndrome', 0) }}</div>
+        <div class="summary-label">With Documented Syndrome</div>
     </div>
     <div class="summary-card">
-        <div class="summary-value">{{ "%.1f"|format(summary.get('inappropriate_rate', 0) * 100) }}%</div>
-        <div class="summary-label">Inappropriate Rate (N)</div>
+        <div class="summary-value">{{ syndrome_stats.get('no_indication_flags', 0) }}</div>
+        <div class="summary-label">No Indication Documented</div>
     </div>
     <div class="summary-card">
         <div class="summary-value">{{ "%.1f"|format(override_stats.get('override_rate', 0) * 100) }}%</div>
@@ -34,37 +34,45 @@
     </div>
 </div>
 
-<!-- Classification Breakdown -->
+<!-- Top Clinical Syndromes -->
+{% if top_syndromes %}
 <div class="analytics-section">
-    <h2>Classification Breakdown</h2>
-    <div class="classification-bars">
-        {% set total = summary.get('total_orders', 1) or 1 %}
-        {% set appropriate = summary.get('appropriate', 0) %}
-        {% set inappropriate = summary.get('inappropriate', 0) %}
-        {% set unknown = summary.get('unknown', 0) %}
+    <h2>Top Clinical Syndromes (30 Days)</h2>
+    <div class="syndrome-bars">
+        {% set max_count = top_syndromes[0].count if top_syndromes else 1 %}
+        {% for syndrome in top_syndromes %}
         <div class="bar-row">
-            <span class="bar-label">Appropriate (A, S, P)</span>
+            <span class="bar-label syndrome-label">{{ syndrome.display or syndrome.syndrome }}</span>
             <div class="bar-container">
-                <div class="bar bar-success" style="width: {{ (appropriate / total * 100)|round(1) }}%;"></div>
+                <div class="bar bar-info" style="width: {{ (syndrome.count / max_count * 100)|round(1) }}%;"></div>
             </div>
-            <span class="bar-value">{{ appropriate }} ({{ "%.1f"|format(appropriate / total * 100) }}%)</span>
+            <span class="bar-value">{{ syndrome.count }}</span>
         </div>
-        <div class="bar-row">
-            <span class="bar-label">Inappropriate (N)</span>
-            <div class="bar-container">
-                <div class="bar bar-danger" style="width: {{ (inappropriate / total * 100)|round(1) }}%;"></div>
-            </div>
-            <span class="bar-value">{{ inappropriate }} ({{ "%.1f"|format(inappropriate / total * 100) }}%)</span>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Indication Flags -->
+{% if syndrome_stats %}
+<div class="analytics-section">
+    <h2>Indication Quality Flags</h2>
+    <div class="flag-grid">
+        <div class="flag-card">
+            <div class="flag-value">{{ syndrome_stats.get('viral_flags', 0) }}</div>
+            <div class="flag-label">Likely Viral Illness</div>
         </div>
-        <div class="bar-row">
-            <span class="bar-label">Unknown (U, FN)</span>
-            <div class="bar-container">
-                <div class="bar bar-warning" style="width: {{ (unknown / total * 100)|round(1) }}%;"></div>
-            </div>
-            <span class="bar-value">{{ unknown }} ({{ "%.1f"|format(unknown / total * 100) }}%)</span>
+        <div class="flag-card">
+            <div class="flag-value">{{ syndrome_stats.get('asb_flags', 0) }}</div>
+            <div class="flag-label">Asymptomatic Bacteriuria</div>
+        </div>
+        <div class="flag-card">
+            <div class="flag-value">{{ syndrome_stats.get('no_indication_flags', 0) }}</div>
+            <div class="flag-label">No Indication Found</div>
         </div>
     </div>
 </div>
+{% endif %}
 
 <!-- By Antibiotic -->
 {% if by_antibiotic %}
@@ -75,10 +83,6 @@
             <tr>
                 <th>Antibiotic</th>
                 <th>Total Orders</th>
-                <th>Appropriate</th>
-                <th>Inappropriate</th>
-                <th>Unknown</th>
-                <th>Appropriate %</th>
             </tr>
         </thead>
         <tbody>
@@ -86,15 +90,6 @@
             <tr>
                 <td>{{ row['medication_name'] }}</td>
                 <td>{{ row['total_orders'] }}</td>
-                <td>{{ row.get('appropriate', 0) }}</td>
-                <td>{{ row.get('inappropriate', 0) }}</td>
-                <td>{{ row.get('unknown', 0) }}</td>
-                <td>
-                    {% set rate = row.get('appropriate_rate', 0) * 100 %}
-                    <span class="rate-badge {% if rate >= 80 %}rate-good{% elif rate >= 60 %}rate-ok{% else %}rate-poor{% endif %}">
-                        {{ "%.0f"|format(rate) }}%
-                    </span>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -111,10 +106,6 @@
             <tr>
                 <th>Location</th>
                 <th>Total Orders</th>
-                <th>Appropriate</th>
-                <th>Inappropriate</th>
-                <th>Unknown</th>
-                <th>Appropriate %</th>
             </tr>
         </thead>
         <tbody>
@@ -122,15 +113,6 @@
             <tr>
                 <td>{{ row.get('location') or 'Unknown' }}</td>
                 <td>{{ row['total_orders'] }}</td>
-                <td>{{ row.get('appropriate', 0) }}</td>
-                <td>{{ row.get('inappropriate', 0) }}</td>
-                <td>{{ row.get('unknown', 0) }}</td>
-                <td>
-                    {% set rate = row.get('appropriate_rate', 0) * 100 %}
-                    <span class="rate-badge {% if rate >= 80 %}rate-good{% elif rate >= 60 %}rate-ok{% else %}rate-poor{% endif %}">
-                        {{ "%.0f"|format(rate) }}%
-                    </span>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -147,10 +129,6 @@
             <tr>
                 <th>Service</th>
                 <th>Total Orders</th>
-                <th>Appropriate</th>
-                <th>Inappropriate</th>
-                <th>Unknown</th>
-                <th>Appropriate %</th>
             </tr>
         </thead>
         <tbody>
@@ -158,15 +136,6 @@
             <tr>
                 <td>{{ row.get('service') or 'Unknown' }}</td>
                 <td>{{ row['total_orders'] }}</td>
-                <td>{{ row.get('appropriate', 0) }}</td>
-                <td>{{ row.get('inappropriate', 0) }}</td>
-                <td>{{ row.get('unknown', 0) }}</td>
-                <td>
-                    {% set rate = row.get('appropriate_rate', 0) * 100 %}
-                    <span class="rate-badge {% if rate >= 80 %}rate-good{% elif rate >= 60 %}rate-ok{% else %}rate-poor{% endif %}">
-                        {{ "%.0f"|format(rate) }}%
-                    </span>
-                </td>
             </tr>
             {% endfor %}
         </tbody>
@@ -301,6 +270,45 @@
 .bar-warning { background: var(--color-warning); }
 .bar-danger { background: var(--color-danger); }
 .bar-info { background: var(--color-primary); }
+
+/* Syndrome bars */
+.syndrome-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.syndrome-label {
+    width: 220px;
+    font-size: 0.8rem;
+}
+
+/* Flag grid */
+.flag-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.flag-card {
+    background: var(--color-warning-light);
+    border: 1px solid var(--color-warning);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    text-align: center;
+}
+
+.flag-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-gray-800);
+}
+
+.flag-label {
+    font-size: 0.75rem;
+    color: var(--color-gray-600);
+    margin-top: 0.25rem;
+}
 
 .bar-value {
     width: 120px;
