@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+
+{% block title %}Model Training - AEGIS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>AEGIS Model Training</h1>
+    <a href="{{ url_for('main.landing') }}" class="btn btn-secondary">Back to Home</a>
+</div>
+
+<div class="training-intro">
+    <p>AEGIS uses local large language models (LLMs) for clinical classification. Your expert reviews create high-quality training data that improves these models over time, resulting in faster and more accurate classifications tailored to your institution.</p>
+</div>
+
+<!-- Training Pipeline -->
+<div class="training-section">
+    <h2>How It Works</h2>
+    <div class="training-pipeline">
+        <div class="pipeline-step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <h4>LLM Classification</h4>
+                <p>Clinical cases are processed by our 70B parameter model running locally. The model extracts relevant information from clinical notes and makes initial classifications.</p>
+            </div>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <h4>Expert Review</h4>
+                <p>IP/ASP team members review each classification, confirming correct decisions or providing corrections with clinical reasoning.</p>
+            </div>
+        </div>
+        <div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <h4>Model Fine-Tuning</h4>
+                <p>After collecting ~500 expert-reviewed cases, we fine-tune a smaller, faster model specifically for your institution's patterns.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Data Collection Details -->
+<div class="training-section">
+    <h2>Training Data Collection</h2>
+
+    <div class="collection-module">
+        <div class="module-header">
+            <span class="module-icon">&#128657;</span>
+            <div class="module-title">
+                <h3>HAI Detection</h3>
+                <span class="module-status collecting">Collecting Data</span>
+            </div>
+        </div>
+        <div class="module-body">
+            <p><strong>What we capture:</strong></p>
+            <ul>
+                <li><strong>Clinical note text</strong> - The relevant portions of notes used for classification</li>
+                <li><strong>LLM extraction</strong> - Extracted clinical findings (symptoms, device info, lab values)</li>
+                <li><strong>LLM classification</strong> - The model's initial HAI determination (Confirmed/Suspected/Ruled Out)</li>
+                <li><strong>Expert decision</strong> - Your confirmed classification</li>
+                <li><strong>Override reason</strong> - When you correct the LLM, why it was wrong:
+                    <ul>
+                        <li><em>Extraction error</em> - Model missed or misread clinical data (symptoms, dates, sources)</li>
+                        <li><em>Rules error</em> - Model applied NHSN criteria incorrectly</li>
+                    </ul>
+                </li>
+            </ul>
+            <p class="training-note">This feedback helps the model learn both <em>what</em> to extract and <em>how</em> to apply surveillance definitions.</p>
+        </div>
+    </div>
+
+    <div class="collection-module">
+        <div class="module-header">
+            <span class="module-icon">&#128138;</span>
+            <div class="module-title">
+                <h3>Antibiotic Indications</h3>
+                <span class="module-status collecting">Collecting Data</span>
+            </div>
+        </div>
+        <div class="module-body">
+            <p><strong>What we capture:</strong></p>
+            <ul>
+                <li><strong>Clinical context</strong> - Relevant notes, labs, and diagnoses at time of antibiotic order</li>
+                <li><strong>LLM extraction</strong> - Extracted clinical syndrome and supporting evidence</li>
+                <li><strong>Syndrome decision</strong> - Your validation of the indication:
+                    <ul>
+                        <li><em>Confirm syndrome</em> - LLM identified the correct clinical syndrome</li>
+                        <li><em>Correct syndrome</em> - You specify the actual syndrome (training signal)</li>
+                        <li><em>No indication</em> - No documented reason for antibiotics</li>
+                        <li><em>Viral illness / ASB</em> - Common inappropriate indications</li>
+                    </ul>
+                </li>
+                <li><strong>Agent appropriateness</strong> - Whether the specific antibiotic was appropriate for the syndrome</li>
+            </ul>
+            <p class="training-note">Syndrome corrections are particularly valuable - they teach the model to recognize clinical patterns it missed.</p>
+        </div>
+    </div>
+
+    <div class="collection-module">
+        <div class="module-header">
+            <span class="module-icon">&#128203;</span>
+            <div class="module-title">
+                <h3>Guideline Adherence</h3>
+                <span class="module-status planned">Planned</span>
+            </div>
+        </div>
+        <div class="module-body">
+            <p>Future collection will capture bundle element compliance assessments and clinical reasoning for guideline deviations.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Why Local Models -->
+<div class="training-section">
+    <h2>Why Local Models?</h2>
+    <div class="benefits-grid">
+        <div class="benefit-card">
+            <span class="benefit-icon">&#128274;</span>
+            <h4>Data Privacy</h4>
+            <p>PHI never leaves your network. All processing happens on local infrastructure.</p>
+        </div>
+        <div class="benefit-card">
+            <span class="benefit-icon">&#9889;</span>
+            <h4>Speed</h4>
+            <p>Fine-tuned smaller models run faster than general-purpose large models.</p>
+        </div>
+        <div class="benefit-card">
+            <span class="benefit-icon">&#127919;</span>
+            <h4>Accuracy</h4>
+            <p>Models trained on your data learn your institution's documentation patterns.</p>
+        </div>
+        <div class="benefit-card">
+            <span class="benefit-icon">&#128176;</span>
+            <h4>Cost</h4>
+            <p>No per-query API costs. Run unlimited classifications on your hardware.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Progress -->
+<div class="training-section">
+    <h2>Training Progress</h2>
+    <div class="progress-grid">
+        <div class="progress-item">
+            <div class="progress-label">HAI Detection</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: 10%;"></div>
+            </div>
+            <div class="progress-text">~50 / 500 cases</div>
+        </div>
+        <div class="progress-item">
+            <div class="progress-label">ABX Indications</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" style="width: 5%;"></div>
+            </div>
+            <div class="progress-text">~25 / 500 cases</div>
+        </div>
+    </div>
+    <p class="progress-note">Progress updates automatically as you review cases. Fine-tuning begins after reaching 500 expert-reviewed cases per module.</p>
+</div>
+
+<style>
+.training-intro {
+    background: var(--color-info-light);
+    border-left: 4px solid var(--color-primary);
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 2rem;
+}
+
+.training-intro p {
+    margin: 0;
+    color: var(--color-gray-700);
+    line-height: 1.6;
+}
+
+.training-section {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--shadow-md);
+}
+
+.training-section h2 {
+    color: var(--color-gray-800);
+    margin: 0 0 1.5rem 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid var(--color-primary);
+}
+
+/* Pipeline */
+.training-pipeline {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.pipeline-step {
+    display: flex;
+    gap: 0.75rem;
+    background: var(--color-gray-50);
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    max-width: 280px;
+    border: 1px solid var(--color-gray-200);
+}
+
+.step-number {
+    background: var(--color-primary);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.step-content h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--color-gray-800);
+    font-size: 1rem;
+}
+
+.step-content p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+    line-height: 1.5;
+}
+
+.pipeline-arrow {
+    font-size: 1.5rem;
+    color: var(--color-primary);
+    align-self: center;
+}
+
+/* Collection modules */
+.collection-module {
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    margin-bottom: 1.5rem;
+}
+
+.collection-module:last-child {
+    margin-bottom: 0;
+}
+
+.module-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: var(--color-gray-50);
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.module-icon {
+    font-size: 1.75rem;
+}
+
+.module-title {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.module-title h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    color: var(--color-gray-800);
+}
+
+.module-status {
+    font-size: 0.625rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 0.25rem 0.5rem;
+    border-radius: 10px;
+}
+
+.module-status.collecting {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.module-status.planned {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.module-body {
+    padding: 1.5rem;
+}
+
+.module-body p {
+    margin: 0 0 0.75rem 0;
+    color: var(--color-gray-700);
+}
+
+.module-body ul {
+    margin: 0 0 1rem 0;
+    padding-left: 1.25rem;
+}
+
+.module-body li {
+    margin-bottom: 0.5rem;
+    color: var(--color-gray-700);
+    font-size: 0.9375rem;
+}
+
+.module-body li ul {
+    margin-top: 0.5rem;
+    margin-bottom: 0;
+}
+
+.module-body li ul li {
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.training-note {
+    background: #fffbeb;
+    border-left: 3px solid #f59e0b;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: var(--color-gray-700);
+    margin-bottom: 0 !important;
+}
+
+/* Benefits grid */
+.benefits-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.benefit-card {
+    background: var(--color-gray-50);
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+    text-align: center;
+}
+
+.benefit-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.75rem;
+}
+
+.benefit-card h4 {
+    margin: 0 0 0.5rem 0;
+    color: var(--color-gray-800);
+}
+
+.benefit-card p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+/* Progress */
+.progress-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.progress-item {
+    display: grid;
+    grid-template-columns: 140px 1fr 100px;
+    align-items: center;
+    gap: 1rem;
+}
+
+.progress-label {
+    font-weight: 600;
+    color: var(--color-gray-700);
+}
+
+.progress-bar-container {
+    height: 20px;
+    background: var(--color-gray-200);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary) 0%, #0ea5e9 100%);
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+    text-align: right;
+}
+
+.progress-note {
+    font-size: 0.875rem;
+    color: var(--color-gray-500);
+    font-style: italic;
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .pipeline-arrow {
+        transform: rotate(90deg);
+    }
+
+    .progress-item {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .progress-text {
+        text-align: left;
+    }
+}
+</style>
+{% endblock %}
