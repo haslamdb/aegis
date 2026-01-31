@@ -87,6 +87,11 @@ class BundleEpisode:
     # NLP/Clinical Assessment Context (JSON string)
     clinical_context: Optional[str] = None
 
+    # Review workflow fields
+    review_status: str = "pending"  # 'pending', 'reviewed'
+    overall_determination: Optional[str] = None  # 'guideline_appropriate', 'guideline_deviation'
+    last_assessment_at: Optional[datetime] = None
+
     # Timestamps
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
@@ -160,6 +165,52 @@ class BundleTrigger:
     id: Optional[int] = None
 
 
+@dataclass
+class EpisodeAssessment:
+    """LLM assessment of an episode."""
+
+    episode_id: int
+    assessment_type: str  # 'clinical_impression', 'overall_adherence'
+
+    # Extraction data
+    extraction_data: Optional[dict] = None
+    primary_determination: Optional[str] = None  # 'guideline_appropriate', 'guideline_deviation', 'pending'
+    confidence: Optional[str] = None  # 'HIGH', 'MEDIUM', 'LOW'
+    reasoning: Optional[str] = None
+    supporting_evidence: list = field(default_factory=list)
+
+    # LLM metadata
+    model_used: Optional[str] = None
+    prompt_version: Optional[str] = None
+    response_time_ms: int = 0
+
+    # Database fields
+    id: Optional[int] = None
+    created_at: Optional[datetime] = None
+
+
+@dataclass
+class EpisodeReview:
+    """Human review of an episode (HAI-style)."""
+
+    episode_id: int
+    reviewer: str
+    reviewer_decision: str  # 'guideline_appropriate', 'guideline_deviation', 'needs_more_info'
+
+    # Optional fields
+    deviation_type: Optional[str] = None  # 'documentation', 'timing', 'missing_element', 'clinical_judgment'
+    llm_decision: Optional[str] = None
+    is_override: bool = False
+    override_reason_category: Optional[str] = None
+    extraction_corrections: Optional[dict] = None
+    notes: Optional[str] = None
+    assessment_id: Optional[int] = None
+
+    # Database fields
+    id: Optional[int] = None
+    reviewed_at: Optional[datetime] = None
+
+
 class EpisodeDB:
     """Database operations for bundle episode tracking."""
 
@@ -193,6 +244,40 @@ class EpisodeDB:
             with open(schema_path, "r") as f:
                 conn.executescript(f.read())
             conn.commit()
+
+            # Run migrations for new columns (safe to run multiple times)
+            self._run_migrations(conn)
+
+    def _run_migrations(self, conn):
+        """Run schema migrations for new columns.
+
+        SQLite doesn't support IF NOT EXISTS for ALTER TABLE,
+        so we check if columns exist first.
+        """
+        cursor = conn.cursor()
+
+        # Check existing columns in bundle_episodes
+        cursor.execute("PRAGMA table_info(bundle_episodes)")
+        existing_columns = {row[1] for row in cursor.fetchall()}
+
+        # Add new columns if they don't exist
+        migrations = [
+            ("review_status", "TEXT DEFAULT 'pending'"),
+            ("overall_determination", "TEXT"),
+            ("last_assessment_at", "TIMESTAMP"),
+        ]
+
+        for col_name, col_def in migrations:
+            if col_name not in existing_columns:
+                try:
+                    cursor.execute(
+                        f"ALTER TABLE bundle_episodes ADD COLUMN {col_name} {col_def}"
+                    )
+                    logger.info(f"Added column {col_name} to bundle_episodes")
+                except Exception as e:
+                    logger.debug(f"Column {col_name} may already exist: {e}")
+
+        conn.commit()
 
     # =========================================================================
     # EPISODE OPERATIONS
@@ -356,12 +441,12 @@ class EpisodeDB:
 
     def _row_to_episode(self, row: sqlite3.Row) -> BundleEpisode:
         """Convert database row to BundleEpisode."""
-        # Handle clinical_context column which may not exist in older schemas
-        clinical_context = None
-        try:
-            clinical_context = row["clinical_context"]
-        except (KeyError, IndexError):
-            pass
+        # Helper to safely get optional columns (may not exist in older schemas)
+        def safe_get(key, default=None):
+            try:
+                return row[key]
+            except (KeyError, IndexError):
+                return default
 
         return BundleEpisode(
             id=row["id"],
@@ -386,7 +471,10 @@ class EpisodeDB:
             elements_pending=row["elements_pending"],
             adherence_percentage=row["adherence_percentage"],
             adherence_level=row["adherence_level"],
-            clinical_context=clinical_context,
+            clinical_context=safe_get("clinical_context"),
+            review_status=safe_get("review_status", "pending"),
+            overall_determination=safe_get("overall_determination"),
+            last_assessment_at=datetime.fromisoformat(safe_get("last_assessment_at")) if safe_get("last_assessment_at") else None,
             created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None,
             updated_at=datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else None,
             completed_at=datetime.fromisoformat(row["completed_at"]) if row["completed_at"] else None,
@@ -886,3 +974,319 @@ class EpisodeDB:
                 }
                 for row in cursor.fetchall()
             ]
+
+    # =========================================================================
+    # ASSESSMENT OPERATIONS
+    # =========================================================================
+
+    def save_assessment(self, assessment: EpisodeAssessment) -> int:
+        """Save an episode assessment.
+
+        Args:
+            assessment: EpisodeAssessment to save.
+
+        Returns:
+            Assessment ID.
+        """
+        import json
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO episode_assessments (
+                    episode_id, assessment_type, extraction_data,
+                    primary_determination, confidence, reasoning,
+                    supporting_evidence, model_used, prompt_version, response_time_ms
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    assessment.episode_id,
+                    assessment.assessment_type,
+                    json.dumps(assessment.extraction_data) if assessment.extraction_data else None,
+                    assessment.primary_determination,
+                    assessment.confidence,
+                    assessment.reasoning,
+                    json.dumps(assessment.supporting_evidence) if assessment.supporting_evidence else None,
+                    assessment.model_used,
+                    assessment.prompt_version,
+                    assessment.response_time_ms,
+                ),
+            )
+            conn.commit()
+            assessment_id = cursor.lastrowid
+
+            # Update episode's last_assessment_at
+            cursor.execute(
+                """
+                UPDATE bundle_episodes SET
+                    last_assessment_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (assessment.episode_id,),
+            )
+            conn.commit()
+
+            return assessment_id
+
+    def get_assessments_for_episode(self, episode_id: int) -> list[EpisodeAssessment]:
+        """Get all assessments for an episode, newest first."""
+        import json
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM episode_assessments
+                WHERE episode_id = ?
+                ORDER BY created_at DESC
+                """,
+                (episode_id,),
+            )
+            return [self._row_to_assessment(row) for row in cursor.fetchall()]
+
+    def get_latest_assessment(self, episode_id: int) -> Optional[EpisodeAssessment]:
+        """Get the most recent assessment for an episode."""
+        assessments = self.get_assessments_for_episode(episode_id)
+        return assessments[0] if assessments else None
+
+    def _row_to_assessment(self, row: sqlite3.Row) -> EpisodeAssessment:
+        """Convert database row to EpisodeAssessment."""
+        import json
+
+        extraction_data = None
+        if row["extraction_data"]:
+            try:
+                extraction_data = json.loads(row["extraction_data"])
+            except json.JSONDecodeError:
+                pass
+
+        supporting_evidence = []
+        if row["supporting_evidence"]:
+            try:
+                supporting_evidence = json.loads(row["supporting_evidence"])
+            except json.JSONDecodeError:
+                pass
+
+        return EpisodeAssessment(
+            id=row["id"],
+            episode_id=row["episode_id"],
+            assessment_type=row["assessment_type"],
+            extraction_data=extraction_data,
+            primary_determination=row["primary_determination"],
+            confidence=row["confidence"],
+            reasoning=row["reasoning"],
+            supporting_evidence=supporting_evidence,
+            model_used=row["model_used"],
+            prompt_version=row["prompt_version"],
+            response_time_ms=row["response_time_ms"] or 0,
+            created_at=datetime.fromisoformat(row["created_at"]) if row["created_at"] else None,
+        )
+
+    # =========================================================================
+    # REVIEW OPERATIONS
+    # =========================================================================
+
+    def save_review(self, review: EpisodeReview) -> int:
+        """Save an episode review.
+
+        Args:
+            review: EpisodeReview to save.
+
+        Returns:
+            Review ID.
+        """
+        import json
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO episode_reviews (
+                    episode_id, assessment_id, reviewer,
+                    reviewer_decision, deviation_type,
+                    llm_decision, is_override, override_reason_category,
+                    extraction_corrections, notes
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    review.episode_id,
+                    review.assessment_id,
+                    review.reviewer,
+                    review.reviewer_decision,
+                    review.deviation_type,
+                    review.llm_decision,
+                    review.is_override,
+                    review.override_reason_category,
+                    json.dumps(review.extraction_corrections) if review.extraction_corrections else None,
+                    review.notes,
+                ),
+            )
+            conn.commit()
+            review_id = cursor.lastrowid
+
+            # Update episode review status
+            cursor.execute(
+                """
+                UPDATE bundle_episodes SET
+                    review_status = 'reviewed',
+                    overall_determination = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                (review.reviewer_decision, review.episode_id),
+            )
+            conn.commit()
+
+            # Log activity to metrics store
+            episode = self.get_episode(review.episode_id)
+            _log_guideline_activity(
+                activity_type="review",
+                entity_id=str(review.episode_id),
+                entity_type="bundle_episode",
+                action_taken=review.reviewer_decision,
+                provider_name=review.reviewer,
+                patient_mrn=episode.patient_mrn if episode else None,
+                outcome="override" if review.is_override else "confirmed",
+                details={
+                    "bundle_id": episode.bundle_id if episode else None,
+                    "llm_decision": review.llm_decision,
+                    "is_override": review.is_override,
+                    "override_reason": review.override_reason_category,
+                    "deviation_type": review.deviation_type,
+                },
+            )
+
+            return review_id
+
+    def get_reviews_for_episode(self, episode_id: int) -> list[EpisodeReview]:
+        """Get all reviews for an episode, newest first."""
+        import json
+
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM episode_reviews
+                WHERE episode_id = ?
+                ORDER BY reviewed_at DESC
+                """,
+                (episode_id,),
+            )
+            return [self._row_to_review(row) for row in cursor.fetchall()]
+
+    def _row_to_review(self, row: sqlite3.Row) -> EpisodeReview:
+        """Convert database row to EpisodeReview."""
+        import json
+
+        extraction_corrections = None
+        if row["extraction_corrections"]:
+            try:
+                extraction_corrections = json.loads(row["extraction_corrections"])
+            except json.JSONDecodeError:
+                pass
+
+        return EpisodeReview(
+            id=row["id"],
+            episode_id=row["episode_id"],
+            assessment_id=row["assessment_id"],
+            reviewer=row["reviewer"],
+            reviewer_decision=row["reviewer_decision"],
+            deviation_type=row["deviation_type"],
+            llm_decision=row["llm_decision"],
+            is_override=bool(row["is_override"]),
+            override_reason_category=row["override_reason_category"],
+            extraction_corrections=extraction_corrections,
+            notes=row["notes"],
+            reviewed_at=datetime.fromisoformat(row["reviewed_at"]) if row["reviewed_at"] else None,
+        )
+
+    def get_pending_review_episodes(self, limit: int = 100) -> list[BundleEpisode]:
+        """Get episodes that need review (have assessment but not reviewed).
+
+        Args:
+            limit: Maximum number of episodes to return.
+
+        Returns:
+            List of BundleEpisode objects pending review.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT e.* FROM bundle_episodes e
+                WHERE e.status = 'active'
+                  AND e.review_status = 'pending'
+                  AND EXISTS (
+                      SELECT 1 FROM episode_assessments a WHERE a.episode_id = e.id
+                  )
+                ORDER BY e.trigger_time DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+            return [self._row_to_episode(row) for row in cursor.fetchall()]
+
+    def get_episodes_needing_reassessment(self, hours: float = 12) -> list[BundleEpisode]:
+        """Get active episodes that need reassessment.
+
+        Args:
+            hours: Hours since last assessment to trigger reassessment.
+
+        Returns:
+            List of BundleEpisode objects needing reassessment.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM bundle_episodes
+                WHERE status = 'active'
+                  AND (
+                      last_assessment_at IS NULL
+                      OR julianday('now') - julianday(last_assessment_at) > ?
+                  )
+                ORDER BY last_assessment_at ASC NULLS FIRST
+                """,
+                (hours / 24.0,),  # Convert hours to days for julianday
+            )
+            return [self._row_to_episode(row) for row in cursor.fetchall()]
+
+    def get_review_stats(self, days: int = 30) -> dict:
+        """Get review statistics for the last N days.
+
+        Args:
+            days: Number of days to look back.
+
+        Returns:
+            Dict with review statistics.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT
+                    COUNT(*) as total_reviews,
+                    SUM(CASE WHEN is_override THEN 1 ELSE 0 END) as overrides,
+                    SUM(CASE WHEN reviewer_decision = 'guideline_appropriate' THEN 1 ELSE 0 END) as appropriate,
+                    SUM(CASE WHEN reviewer_decision = 'guideline_deviation' THEN 1 ELSE 0 END) as deviations,
+                    SUM(CASE WHEN reviewer_decision = 'needs_more_info' THEN 1 ELSE 0 END) as needs_info
+                FROM episode_reviews
+                WHERE reviewed_at >= datetime('now', ?)
+                """,
+                (f"-{days} days",),
+            )
+            row = cursor.fetchone()
+
+            total = row["total_reviews"] or 0
+            overrides = row["overrides"] or 0
+
+            return {
+                "total_reviews": total,
+                "overrides": overrides,
+                "appropriate": row["appropriate"] or 0,
+                "deviations": row["deviations"] or 0,
+                "needs_more_info": row["needs_info"] or 0,
+                "override_rate": round(overrides / total * 100, 1) if total > 0 else 0,
+            }

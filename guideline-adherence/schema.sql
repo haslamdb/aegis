@@ -47,6 +47,11 @@ CREATE TABLE IF NOT EXISTS bundle_episodes (
     -- Stores clinical impression, GI symptoms, and other NLP extraction results
     clinical_context TEXT,
 
+    -- Review workflow fields
+    review_status TEXT DEFAULT 'pending',  -- 'pending', 'reviewed'
+    overall_determination TEXT,            -- 'guideline_appropriate', 'guideline_deviation'
+    last_assessment_at TIMESTAMP,          -- When LLM last analyzed this episode
+
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -375,3 +380,152 @@ FROM bundle_episodes
 WHERE created_at >= datetime('now', '-30 days')
   AND status IN ('completed', 'closed')
 GROUP BY bundle_id, bundle_name;
+
+
+-- ============================================================================
+-- EPISODE ASSESSMENTS (LLM analysis results)
+-- ============================================================================
+-- Stores LLM-generated assessments for episodes (clinical impression, adherence)
+
+CREATE TABLE IF NOT EXISTS episode_assessments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Link to episode
+    episode_id INTEGER NOT NULL,
+
+    -- Assessment type
+    assessment_type TEXT NOT NULL,  -- 'clinical_impression', 'overall_adherence'
+
+    -- Extraction data (JSON)
+    extraction_data TEXT,           -- Full extraction result as JSON
+
+    -- Primary determination
+    primary_determination TEXT,     -- 'guideline_appropriate', 'guideline_deviation', 'pending'
+    confidence TEXT,                -- 'HIGH', 'MEDIUM', 'LOW'
+    reasoning TEXT,                 -- LLM reasoning for determination
+
+    -- Supporting evidence (JSON array)
+    supporting_evidence TEXT,       -- JSON array of evidence items
+
+    -- LLM metadata
+    model_used TEXT,
+    prompt_version TEXT,
+    response_time_ms INTEGER,
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (episode_id) REFERENCES bundle_episodes(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_episode_assessments_episode ON episode_assessments(episode_id);
+CREATE INDEX IF NOT EXISTS idx_episode_assessments_type ON episode_assessments(assessment_type);
+CREATE INDEX IF NOT EXISTS idx_episode_assessments_created ON episode_assessments(created_at);
+
+
+-- ============================================================================
+-- EPISODE REVIEWS (human decisions)
+-- ============================================================================
+-- Stores human review decisions for episodes (HAI-style workflow)
+
+CREATE TABLE IF NOT EXISTS episode_reviews (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Link to episode and assessment
+    episode_id INTEGER NOT NULL,
+    assessment_id INTEGER,          -- The assessment being reviewed
+
+    -- Reviewer info
+    reviewer TEXT NOT NULL,
+
+    -- Review decision
+    reviewer_decision TEXT NOT NULL,  -- 'guideline_appropriate', 'guideline_deviation', 'needs_more_info'
+    deviation_type TEXT,              -- 'documentation', 'timing', 'missing_element', 'clinical_judgment'
+
+    -- LLM comparison (for training data)
+    llm_decision TEXT,              -- What the LLM said
+    is_override BOOLEAN DEFAULT FALSE,  -- Did reviewer disagree with LLM?
+    override_reason_category TEXT,  -- Structured override reason
+
+    -- Corrections (for fine-tuning)
+    extraction_corrections TEXT,    -- JSON: {field: {old: x, new: y}}
+
+    -- Notes
+    notes TEXT,
+
+    -- Timestamps
+    reviewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (episode_id) REFERENCES bundle_episodes(id) ON DELETE CASCADE,
+    FOREIGN KEY (assessment_id) REFERENCES episode_assessments(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_episode_reviews_episode ON episode_reviews(episode_id);
+CREATE INDEX IF NOT EXISTS idx_episode_reviews_reviewer ON episode_reviews(reviewer);
+CREATE INDEX IF NOT EXISTS idx_episode_reviews_override ON episode_reviews(is_override);
+CREATE INDEX IF NOT EXISTS idx_episode_reviews_reviewed_at ON episode_reviews(reviewed_at);
+
+
+-- ============================================================================
+-- MIGRATIONS (for existing databases)
+-- ============================================================================
+-- Add new columns to bundle_episodes if they don't exist
+-- SQLite doesn't support IF NOT EXISTS for ALTER TABLE, so we use a workaround
+
+-- These will fail silently if columns already exist (handled in Python)
+-- ALTER TABLE bundle_episodes ADD COLUMN review_status TEXT DEFAULT 'pending';
+-- ALTER TABLE bundle_episodes ADD COLUMN overall_determination TEXT;
+-- ALTER TABLE bundle_episodes ADD COLUMN last_assessment_at TIMESTAMP;
+
+
+-- ============================================================================
+-- VIEWS FOR REVIEW WORKFLOW
+-- ============================================================================
+
+-- Episodes pending review (have assessment but not reviewed)
+CREATE VIEW IF NOT EXISTS v_pending_review_episodes AS
+SELECT
+    e.id,
+    e.patient_id,
+    e.patient_mrn,
+    e.encounter_id,
+    e.bundle_id,
+    e.bundle_name,
+    e.trigger_time,
+    e.patient_age_days,
+    e.status,
+    e.adherence_percentage,
+    e.review_status,
+    e.last_assessment_at,
+    a.primary_determination as llm_determination,
+    a.confidence as llm_confidence,
+    a.created_at as assessment_time
+FROM bundle_episodes e
+LEFT JOIN episode_assessments a ON e.id = a.episode_id
+    AND a.id = (SELECT MAX(id) FROM episode_assessments WHERE episode_id = e.id)
+WHERE e.status = 'active'
+  AND e.review_status = 'pending'
+  AND a.id IS NOT NULL
+ORDER BY e.trigger_time DESC;
+
+
+-- Episodes needing reassessment (active, last assessment > N hours ago)
+CREATE VIEW IF NOT EXISTS v_episodes_needing_reassessment AS
+SELECT
+    e.id,
+    e.patient_id,
+    e.patient_mrn,
+    e.encounter_id,
+    e.bundle_id,
+    e.bundle_name,
+    e.trigger_time,
+    e.status,
+    e.last_assessment_at,
+    ROUND((julianday('now') - julianday(e.last_assessment_at)) * 24, 1) as hours_since_assessment
+FROM bundle_episodes e
+WHERE e.status = 'active'
+  AND (
+      e.last_assessment_at IS NULL
+      OR julianday('now') - julianday(e.last_assessment_at) > 0.5  -- 12 hours
+  )
+ORDER BY e.last_assessment_at ASC NULLS FIRST;

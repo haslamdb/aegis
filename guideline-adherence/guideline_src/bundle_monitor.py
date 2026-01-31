@@ -27,7 +27,7 @@ if str(GUIDELINE_ADHERENCE_PATH) not in sys.path:
 from guideline_adherence import GUIDELINE_BUNDLES, GuidelineBundle, BundleElement
 
 from .config import config
-from .episode_db import EpisodeDB, BundleEpisode, ElementResult, BundleAlert, BundleTrigger
+from .episode_db import EpisodeDB, BundleEpisode, ElementResult, BundleAlert, BundleTrigger, EpisodeAssessment
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +92,10 @@ class BundleTriggerMonitor:
         self._running = True
         logger.info("Bundle Trigger Monitor starting...")
 
+        # Counter for periodic reassessment (every ~12 hours at 60s intervals)
+        reassessment_counter = 0
+        REASSESSMENT_CYCLES = 720  # 12 hours * 60 minutes
+
         while self._running:
             try:
                 cycle_start = datetime.now()
@@ -106,6 +110,12 @@ class BundleTriggerMonitor:
 
                 # Check for overdue elements and generate alerts
                 self._check_overdue_elements()
+
+                # Periodic LLM reassessment of active episodes
+                reassessment_counter += 1
+                if reassessment_counter >= REASSESSMENT_CYCLES:
+                    self._reassess_active_episodes()
+                    reassessment_counter = 0
 
                 if once:
                     break
@@ -473,6 +483,9 @@ class BundleTriggerMonitor:
         # Initialize element results
         self._initialize_element_results(episode, bundle)
 
+        # Trigger automatic LLM analysis
+        self._run_episode_assessment(episode)
+
         return episode
 
     def _initialize_element_results(self, episode: BundleEpisode, bundle: GuidelineBundle):
@@ -658,6 +671,200 @@ class BundleTriggerMonitor:
                 f"Alert: {result.element_name} overdue for patient "
                 f"{episode.patient_mrn or episode.patient_id}"
             )
+
+    # =========================================================================
+    # LLM ASSESSMENT
+    # =========================================================================
+
+    def _run_episode_assessment(self, episode: BundleEpisode):
+        """Run LLM assessment on an episode's clinical notes.
+
+        Automatically retrieves notes from FHIR and runs tiered LLM analysis.
+        Saves assessment to database.
+
+        Args:
+            episode: Episode to assess.
+        """
+        checker = self._checkers.get(episode.bundle_id)
+
+        # Check if checker has NLP extractor
+        extractor = None
+        if checker and hasattr(checker, "_nlp_extractor"):
+            extractor = checker._nlp_extractor
+        else:
+            # Try to get tiered extractor directly
+            try:
+                from .nlp.clinical_impression import get_tiered_clinical_impression_extractor
+                extractor = get_tiered_clinical_impression_extractor()
+            except ImportError:
+                logger.debug("Clinical impression extractor not available")
+                return
+
+        if not extractor:
+            logger.debug(f"No NLP extractor available for bundle {episode.bundle_id}")
+            return
+
+        # Get clinical notes from FHIR
+        try:
+            notes = self.fhir_client.get_recent_notes(
+                patient_id=episode.patient_id,
+                since_time=episode.trigger_time - timedelta(hours=24) if episode.trigger_time else None,
+                since_hours=48,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to get notes for episode {episode.id}: {e}")
+            return
+
+        if not notes:
+            logger.debug(f"No clinical notes found for episode {episode.id}")
+            return
+
+        # Extract note texts
+        note_texts = [n.get("text", "") for n in notes if n.get("text")]
+        if not note_texts:
+            logger.debug(f"No text content in notes for episode {episode.id}")
+            return
+
+        # Run tiered extraction
+        try:
+            result = extractor.extract(
+                notes=note_texts,
+                episode_id=episode.id,
+                patient_id=episode.patient_id,
+                patient_mrn=episode.patient_mrn,
+                patient_age_days=episode.patient_age_days,
+            )
+        except Exception as e:
+            logger.warning(f"LLM extraction failed for episode {episode.id}: {e}")
+            return
+
+        # Determine overall guideline adherence status
+        determination = self._determine_overall_status(episode, result)
+
+        # Save assessment
+        assessment = EpisodeAssessment(
+            episode_id=episode.id,
+            assessment_type="clinical_impression",
+            extraction_data=result.to_dict() if hasattr(result, "to_dict") else None,
+            primary_determination=determination,
+            confidence=result.confidence if hasattr(result, "confidence") else None,
+            reasoning=self._build_assessment_reasoning(episode, result),
+            supporting_evidence=result.supporting_quotes if hasattr(result, "supporting_quotes") else [],
+            model_used=result.model_used if hasattr(result, "model_used") else None,
+            response_time_ms=result.response_time_ms if hasattr(result, "response_time_ms") else 0,
+        )
+
+        self.db.save_assessment(assessment)
+        logger.info(
+            f"Assessment saved for episode {episode.id}: {determination} "
+            f"({result.response_time_ms}ms)"
+        )
+
+    def _determine_overall_status(self, episode: BundleEpisode, extraction_result) -> str:
+        """Determine overall guideline adherence status.
+
+        Combines element completion status with clinical impression to determine
+        if the episode represents appropriate guideline adherence.
+
+        Args:
+            episode: The episode being assessed.
+            extraction_result: LLM extraction result.
+
+        Returns:
+            'guideline_appropriate', 'guideline_deviation', or 'pending'
+        """
+        # Get element results
+        element_results = self.db.get_element_results(episode.id)
+
+        # Count element statuses
+        met_count = sum(1 for e in element_results if e.status == "met")
+        not_met_count = sum(1 for e in element_results if e.status == "not_met")
+        pending_count = sum(1 for e in element_results if e.status == "pending")
+        applicable_count = met_count + not_met_count + pending_count
+
+        # If still pending elements, assessment is pending
+        if pending_count > 0:
+            return "pending"
+
+        # Check clinical appearance (for febrile infant)
+        appearance = None
+        if hasattr(extraction_result, "appearance"):
+            appearance = extraction_result.appearance
+            if hasattr(appearance, "value"):
+                appearance = appearance.value
+
+        # Logic for determination:
+        # - If all elements met -> guideline_appropriate
+        # - If any required elements not met -> guideline_deviation
+        # - For febrile infant: ill/toxic appearance with deviation may be justified
+        if applicable_count > 0 and met_count == applicable_count:
+            return "guideline_appropriate"
+
+        if not_met_count > 0:
+            # Check if there's clinical justification for deviation
+            if appearance in ("ill_appearing", "toxic_appearing"):
+                # Clinical situation may justify deviation - needs review
+                return "pending"
+            return "guideline_deviation"
+
+        return "pending"
+
+    def _build_assessment_reasoning(self, episode: BundleEpisode, extraction_result) -> str:
+        """Build reasoning text for the assessment.
+
+        Args:
+            episode: The episode being assessed.
+            extraction_result: LLM extraction result.
+
+        Returns:
+            Reasoning string.
+        """
+        reasons = []
+
+        # Add clinical appearance info
+        if hasattr(extraction_result, "appearance"):
+            appearance = extraction_result.appearance
+            if hasattr(appearance, "value"):
+                appearance = appearance.value
+            reasons.append(f"Clinical appearance: {appearance}")
+
+        # Add confidence
+        if hasattr(extraction_result, "confidence"):
+            reasons.append(f"Confidence: {extraction_result.confidence}")
+
+        # Add concerning/reassuring signs
+        if hasattr(extraction_result, "concerning_signs") and extraction_result.concerning_signs:
+            reasons.append(f"Concerning signs: {', '.join(extraction_result.concerning_signs[:3])}")
+
+        if hasattr(extraction_result, "reassuring_signs") and extraction_result.reassuring_signs:
+            reasons.append(f"Reassuring signs: {', '.join(extraction_result.reassuring_signs[:3])}")
+
+        # Add element status summary
+        element_results = self.db.get_element_results(episode.id)
+        met = sum(1 for e in element_results if e.status == "met")
+        not_met = sum(1 for e in element_results if e.status == "not_met")
+        pending = sum(1 for e in element_results if e.status == "pending")
+
+        if element_results:
+            reasons.append(f"Elements: {met} met, {not_met} not met, {pending} pending")
+
+        return "; ".join(reasons) if reasons else "Assessment completed"
+
+    def _reassess_active_episodes(self):
+        """Re-run LLM assessment on episodes that may have new notes.
+
+        Called periodically to update assessments as new clinical data arrives.
+        """
+        episodes = self.db.get_episodes_needing_reassessment(hours=12)
+        if not episodes:
+            return
+
+        logger.info(f"Reassessing {len(episodes)} active episodes")
+        for episode in episodes:
+            try:
+                self._run_episode_assessment(episode)
+            except Exception as e:
+                logger.warning(f"Reassessment failed for episode {episode.id}: {e}")
 
     # =========================================================================
     # UTILITY METHODS

@@ -5,7 +5,10 @@
 {% block content %}
 <div class="page-header">
     <h1>Active Episodes</h1>
-    <a href="{{ url_for('guideline_adherence.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+    <div class="header-actions">
+        <a href="{{ url_for('guideline_adherence.training_stats') }}" class="btn btn-secondary">Training Stats</a>
+        <a href="{{ url_for('guideline_adherence.dashboard') }}" class="btn btn-secondary">Dashboard</a>
+    </div>
 </div>
 
 <div class="filters">
@@ -33,7 +36,7 @@
             <th>Bundle</th>
             <th>Trigger Time</th>
             <th>Adherence</th>
-            <th>Elements</th>
+            <th>LLM Analysis</th>
             <th>Actions</th>
         </tr>
     </thead>
@@ -43,7 +46,6 @@
             <td>
                 <span class="patient-name">{{ ep.patient_name or 'Unknown' }}</span>
                 {% if ep.patient_mrn %}<br><span class="patient-mrn">MRN: {{ ep.patient_mrn }}</span>{% endif %}
-                {% if ep.location %}<br><span class="patient-location">{{ ep.location }}</span>{% endif %}
             </td>
             <td>{{ ep.bundle_name or ep.bundle_id }}</td>
             <td>{{ ep.trigger_time[:16] if ep.trigger_time else '-' }}</td>
@@ -53,21 +55,21 @@
                 </span>
             </td>
             <td>
-                {% if ep.results %}
-                    {% set met = ep.results|selectattr('status', 'equalto', 'met')|list|length %}
-                    {% set not_met = ep.results|selectattr('status', 'equalto', 'not_met')|list|length %}
-                    {% set pending = ep.results|selectattr('status', 'equalto', 'pending')|list|length %}
-                    <span class="element-summary">
-                        <span class="met" title="Met">{{ met }}</span> /
-                        <span class="not-met" title="Not Met">{{ not_met }}</span> /
-                        <span class="pending" title="Pending">{{ pending }}</span>
+                {% if ep.extraction_status == 'reviewed' %}
+                    <span class="extraction-badge reviewed">
+                        {{ ep.extracted_appearance|title }} <small>(Reviewed)</small>
+                    </span>
+                {% elif ep.extraction_status == 'pending_review' %}
+                    <span class="extraction-badge pending">
+                        {{ ep.extracted_appearance|title }} <small>({{ ep.extraction_confidence }})</small>
                     </span>
                 {% else %}
-                    -
+                    <span class="extraction-badge not-analyzed">Not Analyzed</span>
                 {% endif %}
             </td>
-            <td>
-                <a href="{{ url_for('guideline_adherence.episode_detail', episode_id=ep.id) }}" class="btn btn-small">View Details</a>
+            <td class="actions-cell">
+                <a href="{{ url_for('guideline_adherence.episode_detail_full', episode_id=ep.id) }}" class="btn btn-small btn-primary">Review</a>
+                <a href="{{ url_for('guideline_adherence.episode_detail', episode_id=ep.id) }}" class="btn btn-small btn-outline">Details</a>
             </td>
         </tr>
         {% endfor %}
@@ -83,6 +85,18 @@
 {% endif %}
 
 <style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
 .filters {
     margin-bottom: 1.5rem;
 }
@@ -190,6 +204,58 @@
     background: var(--color-white);
     border-radius: var(--radius-lg);
     color: var(--color-gray-500);
+}
+
+.actions-cell {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+}
+
+.btn-outline:hover {
+    background: var(--color-primary-light);
+}
+
+.btn-warning {
+    background: var(--color-warning);
+    color: var(--color-gray-900);
+}
+
+.btn-warning:hover {
+    background: var(--color-warning-dark, #d97706);
+}
+
+.extraction-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.extraction-badge.reviewed {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.extraction-badge.pending {
+    background: var(--color-warning-light);
+    color: var(--color-warning-dark, #92400e);
+}
+
+.extraction-badge.not-analyzed {
+    background: var(--color-gray-200);
+    color: var(--color-gray-600);
+}
+
+.extraction-badge small {
+    font-weight: 400;
+    opacity: 0.8;
 }
 </style>
 {% endblock %}
