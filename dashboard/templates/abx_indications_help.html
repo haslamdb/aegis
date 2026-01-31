@@ -11,14 +11,19 @@
 <div class="help-content">
     <div class="help-card">
         <h2>Overview</h2>
-        <p>The Antibiotic Indications module provides automated classification of antibiotic indication appropriateness
-           using a two-layer approach:</p>
+        <p>The Antibiotic Indications module extracts clinical syndromes from notes to meet Joint Commission requirements
+           for antimicrobial stewardship documentation (MM.09.01.01 EP 13-15).</p>
+        <div class="key-point">
+            <strong>Key Point:</strong> Joint Commission requires documentation of the <em>clinical syndrome</em>
+            (e.g., "CAP", "UTI", "sepsis"), NOT ICD-10 codes or billing constructs.
+        </div>
+        <p>This module provides:</p>
         <ol>
-            <li><strong>LLM Note Extraction (Primary)</strong> - AI-powered extraction from clinical notes provides the most accurate, real-time classification</li>
-            <li><strong>ICD-10 Classification (Fallback)</strong> - Based on Chua et al. methodology, used when notes are unavailable</li>
+            <li><strong>Clinical Syndrome Extraction</strong> - AI extracts the indication from notes (e.g., "Community-Acquired Pneumonia")</li>
+            <li><strong>Guideline Matching</strong> - Maps syndrome to CCHMC treatment guidelines</li>
+            <li><strong>Agent Appropriateness</strong> - Checks if prescribed antibiotic matches guideline recommendations</li>
+            <li><strong>Human Review</strong> - ASP team verifies syndrome and agent appropriateness</li>
         </ol>
-        <p>This module implements <strong>Layer 1</strong> of the three-layer appropriateness model, answering:
-           "Is there ANY indication for antibiotics?"</p>
     </div>
 
     <div class="help-card">
@@ -35,24 +40,24 @@
             <div class="workflow-step">
                 <div class="step-number">2</div>
                 <div class="step-content">
-                    <strong>LLM Note Extraction (Primary)</strong>
-                    <p>AI extracts indications from clinical notes (48h window) with provider attribution and supporting quotes</p>
+                    <strong>Clinical Syndrome Extraction</strong>
+                    <p>LLM extracts the clinical syndrome from notes (48h window). Example: "CAP", "pyelonephritis", "sepsis"</p>
                 </div>
             </div>
             <div class="workflow-arrow">&#8595;</div>
             <div class="workflow-step">
                 <div class="step-number">3</div>
                 <div class="step-content">
-                    <strong>ICD-10 Classification (Fallback)</strong>
-                    <p>Patient's ICD-10 codes mapped using Chua classification - used when notes unavailable</p>
+                    <strong>Red Flag Detection</strong>
+                    <p>Identifies concerning patterns: viral illness, asymptomatic bacteriuria, no documented indication</p>
                 </div>
             </div>
             <div class="workflow-arrow">&#8595;</div>
             <div class="workflow-step">
                 <div class="step-number">4</div>
                 <div class="step-content">
-                    <strong>Final Classification</strong>
-                    <p>LLM result takes precedence; ICD-10 used only as fallback</p>
+                    <strong>Guideline Matching</strong>
+                    <p>Maps syndrome to CCHMC guidelines. Checks if prescribed agent is first-line, alternative, or off-guideline</p>
                 </div>
             </div>
             <div class="workflow-arrow">&#8595;</div>
@@ -60,160 +65,233 @@
                 <div class="step-number">5</div>
                 <div class="step-content">
                     <strong>ASP Review</strong>
-                    <p>Orders classified as "N" (Never Appropriate) generate alerts for review</p>
+                    <p>Team verifies syndrome extraction and agent appropriateness. Reviews contribute to model training</p>
                 </div>
             </div>
         </div>
     </div>
 
     <div class="help-card">
-        <h2>Classification Categories</h2>
+        <h2>Clinical Syndrome Categories</h2>
+        <p>The system recognizes ~40 clinical syndromes across these categories:</p>
         <table class="help-table">
             <thead>
                 <tr>
                     <th>Category</th>
-                    <th>Code</th>
+                    <th>Example Syndromes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-respiratory">Respiratory</span></td>
+                    <td>CAP, HAP, VAP, aspiration pneumonia, empyema</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-urinary">Urinary</span></td>
+                    <td>Simple UTI, pyelonephritis, CAUTI</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-bloodstream">Bloodstream</span></td>
+                    <td>Bacteremia, sepsis, line infection, endocarditis</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-skin">Skin/Soft Tissue</span></td>
+                    <td>Cellulitis, abscess, wound infection</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-abdominal">Intra-abdominal</span></td>
+                    <td>Appendicitis, peritonitis, C. diff</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-cns">CNS</span></td>
+                    <td>Meningitis, VP shunt infection</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-bone">Bone/Joint</span></td>
+                    <td>Osteomyelitis, septic arthritis</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-ent">ENT</span></td>
+                    <td>AOM, sinusitis, strep pharyngitis</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-fn">Febrile Neutropenia</span></td>
+                    <td>Neutropenic fever (oncology)</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-prophylaxis">Prophylaxis</span></td>
+                    <td>Surgical prophylaxis, PCP prophylaxis</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Red Flags (Triggers Alert)</h2>
+        <p>The system flags these concerning patterns for ASP review:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Red Flag</th>
+                    <th>Meaning</th>
+                    <th>Example</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-critical">Likely Viral</span></td>
+                    <td>Notes suggest viral illness but antibiotics prescribed</td>
+                    <td>"Viral URI" or "bronchiolitis" with antibiotic order</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-critical">Asymptomatic Bacteriuria</span></td>
+                    <td>Positive UA/culture without UTI symptoms</td>
+                    <td>Incidental positive UA in patient without dysuria/frequency</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-warning">No Indication Documented</span></td>
+                    <td>Notes don't explain why antibiotics started</td>
+                    <td>Antibiotic order with no infection-related notes</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-critical">Never Appropriate</span></td>
+                    <td>Syndrome where antibiotics rarely/never indicated</td>
+                    <td>RSV bronchiolitis, common cold</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Reviewing Extractions</h2>
+        <p>When reviewing a case, you'll verify two things:</p>
+
+        <h3>1. Syndrome Verification</h3>
+        <p>Is the extracted clinical syndrome correct?</p>
+        <table class="help-table help-table-compact">
+            <thead>
+                <tr>
+                    <th>Decision</th>
+                    <th>When to Use</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Confirm Syndrome</strong></td>
+                    <td>LLM extraction is correct (e.g., correctly identified "CAP")</td>
+                </tr>
+                <tr>
+                    <td><strong>Correct Syndrome</strong></td>
+                    <td>Change to different syndrome (e.g., "HAP" not "CAP")</td>
+                </tr>
+                <tr>
+                    <td><strong>No Indication</strong></td>
+                    <td>No valid indication documented in notes</td>
+                </tr>
+                <tr>
+                    <td><strong>Viral Illness</strong></td>
+                    <td>Viral illness - antibiotics not indicated</td>
+                </tr>
+                <tr>
+                    <td><strong>Asymptomatic Bacteriuria</strong></td>
+                    <td>ASB - treatment not indicated</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>2. Agent Appropriateness (Optional)</h3>
+        <p>Is the prescribed antibiotic appropriate for the syndrome?</p>
+        <table class="help-table help-table-compact">
+            <thead>
+                <tr>
+                    <th>Decision</th>
+                    <th>When to Use</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Appropriate</strong></td>
+                    <td>Good choice for this syndrome (matches guideline first-line)</td>
+                </tr>
+                <tr>
+                    <td><strong>Acceptable</strong></td>
+                    <td>Not first-line but clinically reasonable (allergy, prior treatment)</td>
+                </tr>
+                <tr>
+                    <td><strong>Inappropriate</strong></td>
+                    <td>Wrong antibiotic for this syndrome</td>
+                </tr>
+                <tr>
+                    <td><strong>Skip</strong></td>
+                    <td>Don't assess agent appropriateness</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p class="note"><strong>Training Data:</strong> Your reviews are collected for model fine-tuning.
+           After ~500 reviewed cases, we can fine-tune a faster, specialized model.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Guideline Matching</h2>
+        <p>Each syndrome maps to CCHMC-specific treatment guidelines. The system checks if the prescribed antibiotic is:</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
                     <th>Meaning</th>
                     <th>Action</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td><span class="badge badge-success">Always</span></td>
-                    <td>A</td>
-                    <td>Antibiotic indicated - documented bacterial infection</td>
-                    <td>No alert needed</td>
+                    <td><span class="badge badge-success">First Line</span></td>
+                    <td>Matches CCHMC guideline recommendation</td>
+                    <td>No intervention needed</td>
                 </tr>
                 <tr>
-                    <td><span class="badge badge-warning">Sometimes</span></td>
-                    <td>S</td>
-                    <td>May need antibiotics - clinical judgment required</td>
-                    <td>No alert (clinical discretion)</td>
+                    <td><span class="badge badge-warning">Alternative</span></td>
+                    <td>Acceptable alternative per guideline</td>
+                    <td>Review if first-line was available</td>
                 </tr>
                 <tr>
-                    <td><span class="badge badge-critical">Never</span></td>
-                    <td>N</td>
-                    <td>No antibiotic indication - likely inappropriate</td>
-                    <td><strong>Alert generated</strong></td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-info">Prophylaxis</span></td>
-                    <td>P</td>
-                    <td>Surgical or medical prophylaxis indication</td>
-                    <td>No alert needed</td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-success">Febrile Neutropenia</span></td>
-                    <td>FN</td>
-                    <td>Neutropenia + fever - empiric therapy indicated</td>
-                    <td>No alert needed</td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-secondary">Unknown</span></td>
-                    <td>U</td>
-                    <td>Unable to determine - no ICD-10 or notes available</td>
-                    <td>May need manual review</td>
+                    <td><span class="badge badge-critical">Off-Guideline</span></td>
+                    <td>Not recommended for this syndrome</td>
+                    <td>Consider intervention</td>
                 </tr>
             </tbody>
         </table>
     </div>
 
     <div class="help-card">
-        <h2>LLM Note Extraction (Primary Classification)</h2>
-        <p>The system uses a local LLM (llama3.2 via Ollama) to extract indications from clinical notes. This is the <strong>primary classification method</strong>:</p>
-        <ul>
-            <li><strong>Note Window:</strong> 48 hours before/after the antibiotic order</li>
-            <li><strong>Note Filtering:</strong> Pre-filters notes by antibiotic name and infection keywords</li>
-            <li><strong>Priority Notes:</strong> ID consults, discharge summaries always included</li>
-            <li><strong>Evidence Sources:</strong> Tracks provider name, note type, date for each finding</li>
-            <li><strong>Confidence:</strong> HIGH, MEDIUM, or LOW based on evidence quality</li>
-        </ul>
-        <h3>Why LLM is the Primary Source</h3>
-        <ul>
-            <li>ICD-10 codes may be stale (from previous encounters)</li>
-            <li>Notes reflect real-time clinical reasoning</li>
-            <li>Notes capture nuance that codes cannot (e.g., "viral illness, antibiotics not indicated")</li>
-            <li>Provider attribution allows verification of clinical decisions</li>
-        </ul>
-    </div>
-
-    <div class="help-card">
-        <h2>Reviewing Classifications</h2>
-        <p>Click any row in the dashboard to open the detail page where you can:</p>
-        <ol>
-            <li>View LLM extraction with evidence sources (provider, note type, date)</li>
-            <li>View supporting quotes from clinical notes</li>
-            <li>View ICD-10 codes (fallback classification)</li>
-            <li>Compare LLM vs ICD-10 classifications</li>
-            <li><strong>Confirm</strong> or <strong>Override</strong> the final classification</li>
-            <li>Add notes explaining your decision</li>
-        </ol>
-        <p class="note"><strong>Note:</strong> Your review notes are stored and will be used for LLM fine-tuning to improve future classifications.</p>
-    </div>
-
-    <div class="help-card">
-        <h2>Data Sources</h2>
-        <h3>ICD-10 Classification (Chua)</h3>
-        <ul>
-            <li>94,249 ICD-10 codes mapped to appropriateness categories</li>
-            <li>Based on: Chua KP, et al. "Appropriateness of outpatient antibiotic prescribing." BMJ 2019</li>
-        </ul>
-        <h3>Pediatric Inpatient Modifications</h3>
-        <table class="help-table help-table-compact">
+        <h2>Confidence Levels</h2>
+        <p>The LLM reports confidence in its syndrome extraction:</p>
+        <table class="help-table">
             <thead>
                 <tr>
-                    <th>Code</th>
-                    <th>Description</th>
-                    <th>Original</th>
-                    <th>Modified</th>
-                    <th>Rationale</th>
+                    <th>Level</th>
+                    <th>Meaning</th>
+                    <th>Example</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
-                    <td>R78.81</td>
-                    <td>Bacteremia</td>
-                    <td>N</td>
-                    <td><strong>A</strong></td>
-                    <td>Inpatient bacteremia always requires treatment</td>
+                    <td><span class="badge badge-success">Definite</span></td>
+                    <td>Syndrome explicitly stated in notes</td>
+                    <td>"Started ceftriaxone for CAP"</td>
                 </tr>
                 <tr>
-                    <td>J69.0</td>
-                    <td>Aspiration PNA</td>
-                    <td>N</td>
-                    <td><strong>S</strong></td>
-                    <td>Often requires empiric coverage</td>
+                    <td><span class="badge badge-warning">Probable</span></td>
+                    <td>Strongly implied by clinical context</td>
+                    <td>Fever + infiltrate + antibiotic, but "CAP" not stated</td>
                 </tr>
                 <tr>
-                    <td>K65.x</td>
-                    <td>Peritonitis</td>
-                    <td>S</td>
-                    <td><strong>A</strong></td>
-                    <td>Surgical emergency requiring antibiotics</td>
+                    <td><span class="badge badge-secondary">Unclear</span></td>
+                    <td>Cannot determine from notes</td>
+                    <td>Antibiotic ordered but notes don't explain why</td>
                 </tr>
             </tbody>
         </table>
-    </div>
-
-    <div class="help-card">
-        <h2>Febrile Neutropenia Detection</h2>
-        <p>Febrile neutropenia is automatically detected when:</p>
-        <ul>
-            <li>ANY neutropenia code (D70.x) is present, AND</li>
-            <li>Fever code (R50.x) is present OR temperature &ge; 38.0C</li>
-        </ul>
-        <p>Result: Category <strong>FN</strong> with recommendation for empiric antibiotic protocol.</p>
-    </div>
-
-    <div class="help-card">
-        <h2>Analytics</h2>
-        <p>The module tracks antibiotic usage patterns for stewardship reporting:</p>
-        <ul>
-            <li><strong>By Antibiotic:</strong> Which medications are prescribed most/least appropriately</li>
-            <li><strong>By Location:</strong> Which units have higher rates of inappropriate use</li>
-            <li><strong>By Service:</strong> Which ordering services need targeted education</li>
-            <li><strong>Override Rate:</strong> How often ASP reviewers disagree with AI classifications</li>
-        </ul>
     </div>
 
     <div class="help-card">
@@ -221,28 +299,84 @@
         <div class="layer-cards">
             <div class="layer-card layer-complete">
                 <h4>Layer 1: Indication</h4>
-                <p>Is there ANY indication for antibiotics?</p>
+                <p>What clinical syndrome is being treated?</p>
+                <span class="layer-status">Implemented</span>
+            </div>
+            <div class="layer-card layer-complete">
+                <h4>Layer 2: Agent</h4>
+                <p>Is this antibiotic appropriate for the syndrome?</p>
                 <span class="layer-status">Implemented</span>
             </div>
             <div class="layer-card layer-planned">
-                <h4>Layer 2: Agent</h4>
-                <p>Is THIS antibiotic appropriate for the indication?</p>
-                <span class="layer-status">Phase 2</span>
-            </div>
-            <div class="layer-card layer-planned">
                 <h4>Layer 3: Duration</h4>
-                <p>Is the DURATION appropriate?</p>
+                <p>Is the duration appropriate?</p>
                 <span class="layer-status">Phase 3</span>
             </div>
         </div>
     </div>
 
     <div class="help-card">
+        <h2>Fallback: ICD-10 Classification</h2>
+        <p>When notes are unavailable, the system falls back to ICD-10 based classification (Chua et al.):</p>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Code</th>
+                    <th>Meaning</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-success">Always</span></td>
+                    <td>A</td>
+                    <td>Antibiotic indicated per ICD-10 codes</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-warning">Sometimes</span></td>
+                    <td>S</td>
+                    <td>May need antibiotics - clinical judgment required</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-critical">Never</span></td>
+                    <td>N</td>
+                    <td>No antibiotic indication per ICD-10</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-info">Prophylaxis</span></td>
+                    <td>P</td>
+                    <td>Surgical or medical prophylaxis</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-success">Febrile Neutropenia</span></td>
+                    <td>FN</td>
+                    <td>Neutropenia + fever</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="note"><strong>Note:</strong> ICD-10 classification is a fallback. Clinical syndrome extraction from notes is preferred
+           because it reflects real-time clinical reasoning and meets JC requirements.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Analytics</h2>
+        <p>The module tracks patterns for stewardship reporting:</p>
+        <ul>
+            <li><strong>By Syndrome:</strong> Which infections are most common</li>
+            <li><strong>By Antibiotic:</strong> Agent appropriateness by medication</li>
+            <li><strong>By Location:</strong> Patterns by unit/ward</li>
+            <li><strong>By Service:</strong> Ordering service patterns</li>
+            <li><strong>Review Metrics:</strong> Correction rate, syndrome distribution</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
         <h2>References</h2>
         <ul>
-            <li>Chua KP, Fischer MA, Linder JA. Appropriateness of outpatient antibiotic prescribing among privately insured US patients: ICD-10-CM based cross sectional study. BMJ. 2019;364:k5092.</li>
-            <li>ASHP/IDSA/SHEA/SIS. Clinical Practice Guidelines for Antimicrobial Prophylaxis in Surgery. 2013.</li>
-            <li>The Joint Commission. MM.09.01.01 - Antimicrobial Stewardship Standard. Effective January 1, 2023.</li>
+            <li>The Joint Commission. MM.09.01.01 EP 13-15 - Antimicrobial Stewardship Standard. 2024 revision.</li>
+            <li>CDC Core Elements of Hospital Antibiotic Stewardship Programs. 2019.</li>
+            <li>IDSA/SHEA. Implementing an Antibiotic Stewardship Program: Guidelines. 2016.</li>
+            <li>Chua KP, et al. Appropriateness of outpatient antibiotic prescribing. BMJ 2019;364:k5092.</li>
         </ul>
     </div>
 </div>
@@ -272,6 +406,14 @@
     color: var(--color-gray-700);
     margin-top: 1.5rem;
     margin-bottom: 0.75rem;
+}
+
+.key-point {
+    background: linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border-left: 4px solid var(--color-primary);
+    margin: 1rem 0;
 }
 
 .help-table {
@@ -423,5 +565,17 @@
 .badge-critical { background: var(--color-danger); color: white; }
 .badge-info { background: var(--color-primary); color: white; }
 .badge-secondary { background: var(--color-gray-400); color: white; }
+
+/* Category badges */
+.badge-respiratory { background: #dbeafe; color: #1e40af; }
+.badge-urinary { background: #fef3c7; color: #92400e; }
+.badge-bloodstream { background: #fee2e2; color: #991b1b; }
+.badge-skin { background: #fce7f3; color: #9d174d; }
+.badge-abdominal { background: #d1fae5; color: #065f46; }
+.badge-cns { background: #e0e7ff; color: #3730a3; }
+.badge-bone { background: #f3e8ff; color: #6b21a8; }
+.badge-ent { background: #cffafe; color: #0e7490; }
+.badge-fn { background: #fef3c7; color: #92400e; }
+.badge-prophylaxis { background: #f3f4f6; color: #374151; }
 </style>
 {% endblock %}

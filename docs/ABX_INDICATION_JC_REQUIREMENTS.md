@@ -1,6 +1,6 @@
 # Antibiotic Indication: Joint Commission Requirements
 
-This document clarifies what Joint Commission (JC) actually requires for antibiotic indication documentation and how AEGIS should implement it.
+This document describes the JC-compliant clinical syndrome extraction implemented in AEGIS.
 
 ## Key Clarification
 
@@ -10,188 +10,181 @@ The relevant standards are MM.09.01.01 EP 13 (revised) and EP 15 (revised).
 
 ## Three Distinct Concepts
 
-| Concept | What It Means | JC Requirement |
-|---------|---------------|----------------|
-| **Indication** | The clinical syndrome being treated (e.g., "CAP", "cUTI", "sepsis") | Must be documented at order entry |
-| **Evidence-based use** | Is the antibiotic choice consistent with hospital guidelines for that indication? | ASP must document hospital-wide alignment |
-| **Appropriateness** | Clinical judgment on whether therapy is optimal | NOT directly required by JC |
+| Concept | What It Means | JC Requirement | AEGIS Implementation |
+|---------|---------------|----------------|---------------------|
+| **Indication** | The clinical syndrome being treated (e.g., "CAP", "cUTI", "sepsis") | Must be documented at order entry | LLM extraction from notes |
+| **Evidence-based use** | Is the antibiotic choice consistent with hospital guidelines for that indication? | ASP must document hospital-wide alignment | CCHMC guideline matching |
+| **Appropriateness** | Clinical judgment on whether therapy is optimal | NOT directly required by JC | Optional human review |
 
-## Valid Clinical Syndrome Indications
+## Implementation Architecture
 
-JC expects indications like these (NOT ICD-10 codes):
+```
+Clinical Notes → LLM Extraction → Syndrome Taxonomy → Guideline Matching
+       ↓              ↓                  ↓                   ↓
+   (48h window)  (qwen2.5:7b)    (40+ syndromes)      (CCHMC pathways)
+                      ↓
+              Human Review (optional)
+                      ↓
+              Training Data Collection
+```
 
-**Respiratory:**
-- Community-acquired pneumonia (CAP)
-- Hospital-acquired pneumonia (HAP)
-- Ventilator-associated pneumonia (VAP)
-- Aspiration pneumonia
+### Phase 1: Clinical Syndrome Extraction ✓ IMPLEMENTED
 
-**Urinary:**
-- Urinary tract infection (UTI) - uncomplicated
-- Complicated UTI (cUTI)
-- Catheter-associated UTI (CAUTI)
-- Pyelonephritis
+**File:** `abx-indications/indication_extractor.py`
 
-**Skin/Soft Tissue:**
-- Cellulitis
-- Wound infection
-- Abscess
-- Necrotizing fasciitis
+The LLM extracts the clinical syndrome from notes:
 
-**Intra-abdominal:**
-- Appendicitis
-- Cholecystitis
-- Diverticulitis
-- Peritonitis
+```json
+{
+  "primary_indication": "cap",
+  "primary_indication_display": "Community-Acquired Pneumonia",
+  "indication_category": "respiratory",
+  "indication_confidence": "definite",
+  "therapy_intent": "empiric",
+  "supporting_evidence": ["fever x3 days", "RLL infiltrate on CXR"],
+  "evidence_quotes": ["Started ceftriaxone + azithromycin for CAP"]
+}
+```
 
-**Bloodstream:**
-- Sepsis (source unknown)
-- Bacteremia (with source: e.g., "line-related bacteremia")
-- Endocarditis
+**Red flags detected:**
+- `likely_viral` - Notes suggest viral illness but antibiotics given
+- `asymptomatic_bacteriuria` - Positive UA without UTI symptoms
+- `indication_not_documented` - No indication found in notes
+- `never_appropriate` - Indication where antibiotics rarely/never indicated
 
-**Surgical:**
-- Surgical prophylaxis
-- Surgical site infection (SSI)
+### Phase 2: Syndrome Taxonomy ✓ IMPLEMENTED
 
-**Other:**
-- Meningitis
-- Osteomyelitis
-- Empiric therapy (with expectation of refinement)
-- Febrile neutropenia
+**File:** `abx-indications/indication_taxonomy.py`
 
-## Current vs. Required Implementation
+~40 clinical syndromes mapped to CCHMC guideline disease IDs:
 
-### Current Approach (Needs Revision)
+| Category | Syndromes |
+|----------|-----------|
+| Respiratory | CAP, HAP, VAP, aspiration pneumonia, empyema |
+| Urinary | Simple UTI, pyelonephritis, CAUTI |
+| Bloodstream | Bacteremia (GPC/GNR), sepsis, line infection, endocarditis |
+| Skin/Soft Tissue | Cellulitis, abscess, wound infection, necrotizing fasciitis |
+| Intra-abdominal | Appendicitis, peritonitis, C. diff |
+| CNS | Meningitis, VP shunt infection, brain abscess |
+| Bone/Joint | Osteomyelitis, septic arthritis |
+| ENT | AOM, sinusitis, strep pharyngitis, mastoiditis |
+| Eye | Orbital cellulitis, periorbital cellulitis |
+| Febrile Neutropenia | Febrile neutropenia |
+| Prophylaxis | Surgical prophylaxis, PCP prophylaxis, SBP prophylaxis |
 
+**Never-appropriate indications (triggers alert):**
+- Bronchiolitis (viral)
+- Viral URI
+- Asymptomatic bacteriuria
+
+### Phase 3: Guideline Matching ✓ IMPLEMENTED
+
+Each syndrome maps to CCHMC guideline disease IDs:
+- `cap` → `["cap_infant_preschool", "cap_school_aged"]`
+- `uti_complicated` → `["pyelonephritis", "febrile_uti"]`
+- `febrile_neutropenia` → `["fever_neutropenia"]`
+
+CCHMC engine checks if prescribed agent is:
+- `first_line` - Matches guideline
+- `alternative` - Acceptable alternative
+- `off_guideline` - Needs ASP review
+
+### Phase 4: Human Review ✓ IMPLEMENTED
+
+**Syndrome Review Decisions:**
+| Decision | Meaning |
+|----------|---------|
+| `confirm_syndrome` | LLM extraction is correct |
+| `correct_syndrome` | Change to different syndrome |
+| `no_indication` | No valid indication documented |
+| `viral_illness` | Viral illness, antibiotics not indicated |
+| `asymptomatic_bacteriuria` | ASB, treatment not indicated |
+
+**Agent Review Decisions (optional):**
+| Decision | Meaning |
+|----------|---------|
+| `agent_appropriate` | Good choice for this syndrome |
+| `agent_acceptable` | Not first-line but reasonable |
+| `agent_inappropriate` | Wrong antibiotic for syndrome |
+| `agent_skip` | Not reviewed |
+
+### Phase 5: Training Data Collection ✓ IMPLEMENTED
+
+**File:** `abx-indications/training_collector.py`
+
+Collects JSONL training data for model fine-tuning:
+- Input: Clinical notes + antibiotic context
+- Output: Extracted syndrome, confidence, red flags
+- Human review: Confirmed/corrected syndrome + agent decision
+
+Export for fine-tuning:
+```bash
+python -c "from training_collector import get_abx_training_collector; \
+           get_abx_training_collector().export_training_data('training.jsonl')"
+```
+
+## Comparison: Legacy vs. JC-Compliant Workflow
+
+### Legacy (ICD-10 Based)
 ```
 ICD-10 Codes → Chua Classification → A/S/N/P/FN/U
+                                        ↓
+                              Human confirms/overrides
 ```
+**Problems:**
+- ICD-10 codes are billing constructs
+- May not be available at time of order
+- Don't reflect real-time clinical reasoning
 
-**Problem**: ICD-10 codes are billing constructs, not clinical decision points. They:
-- May not be available at time of antibiotic order
-- Don't reflect the clinical syndrome driving treatment
-- Miss the "at order entry" requirement
-
-### Required Approach
-
+### JC-Compliant (Syndrome Based)
 ```
-Order Entry Indication Field → Clinical Syndrome Extraction → Guideline Comparison
-           ↓                            ↓                            ↓
-   (Epic may capture)           (LLM from notes)            (Local guidelines)
+Clinical Notes → LLM Extraction → Clinical Syndrome → Guideline Match
+       ↓                              ↓                    ↓
+  (Real-time)                 (CAP, UTI, sepsis)    (CCHMC pathways)
+                                      ↓
+                    Human reviews syndrome + agent appropriateness
+                                      ↓
+                           Training data for fine-tuning
 ```
+**Benefits:**
+- Extracts actual clinical reasoning from notes
+- Maps to specific CCHMC guidelines
+- Collects training data for model improvement
+- JC-compliant documentation
 
-## Implementation Plan
+## LLM Model
 
-### Phase 1: Extract Clinical Syndrome (Priority)
+**Current:** `qwen2.5:7b` (fast, ~119 tok/s)
+- Good JSON output for structured extraction
+- Sufficient for syndrome identification
+- Much faster than 70B models
 
-The LLM should extract the **clinical indication/syndrome** from:
+**Upgrade path:** Fine-tune on collected training data after ~500 reviewed cases.
 
-1. **Order entry indication field** (if Epic captures it)
-2. **Clinical notes** (Assessment/Plan, ID consult)
-3. **Inferred from context** (positive culture + antibiotic start)
+## Database Schema
 
-**Output format:**
-```json
-{
-  "indicated_syndrome": "community-acquired pneumonia",
-  "indication_source": "progress_note",
-  "indication_confidence": "high",
-  "supporting_quote": "Started ceftriaxone + azithromycin for CAP"
-}
-```
+New fields in `indication_candidates`:
+- `clinical_syndrome` - Canonical ID (e.g., "cap")
+- `clinical_syndrome_display` - Human readable
+- `syndrome_category` - High-level category
+- `syndrome_confidence` - definite/probable/unclear
+- `therapy_intent` - empiric/directed/prophylaxis
+- `guideline_disease_ids` - JSON array of CCHMC IDs
+- Red flags: `likely_viral`, `asymptomatic_bacteriuria`, `indication_not_documented`, `never_appropriate`
 
-### Phase 2: Compare to Local Guidelines
-
-Map the extracted syndrome to CCHMC's specific guidelines:
-
-```json
-{
-  "syndrome": "community-acquired pneumonia",
-  "prescribed_agent": "ceftriaxone",
-  "guideline_first_line": ["ampicillin", "amoxicillin"],
-  "guideline_alternative": ["ceftriaxone", "azithromycin"],
-  "assessment": "alternative_agent",
-  "note": "First-line is ampicillin; ceftriaxone acceptable for severe CAP"
-}
-```
-
-### Phase 3: Flag Discordance for ASP Review
-
-Alert when:
-1. **No indication documented** - Order lacks syndrome
-2. **Indication unclear** - Notes don't support antibiotic start
-3. **Agent-syndrome mismatch** - Antibiotic doesn't match guideline for syndrome
-
-## Changes Required to ABX Indications Module
-
-### Current Structure
-
-```
-abx-indications/
-├── pediatric_abx_indications.py  # Chua ICD-10 classification
-├── cchmc_guidelines.py           # Agent appropriateness
-└── data/
-    ├── cchmc_disease_guidelines.json  # By ICD-10
-    └── cchmc_antimicrobial_dosing.json
-```
-
-### Proposed Changes
-
-1. **Add syndrome extraction** (LLM-based):
-   - Extract clinical syndrome from notes
-   - Map to standardized syndrome vocabulary
-   - Capture at-order indication if available
-
-2. **Revise guideline matching**:
-   - Match by syndrome, not ICD-10
-   - Use CCHMC-specific pathways per syndrome
-   - Support "empiric" as valid indication
-
-3. **Update alerts**:
-   - "No documented indication" (not "N" per Chua)
-   - "Agent not recommended for [syndrome]"
-   - "Spectrum broader than syndrome requires"
-
-## Data Collection for Training
-
-Same pattern as HAI detection:
-
-```json
-{
-  "case_id": "...",
-  "input_notes": "...",
-  "extraction": {
-    "syndrome": "UTI",
-    "confidence": "high"
-  },
-  "prescribed_agent": "ciprofloxacin",
-  "guideline_comparison": {
-    "first_line": ["nitrofurantoin", "TMP-SMX"],
-    "matches_guideline": false
-  },
-  "human_review": {
-    "confirmed_syndrome": "complicated UTI",
-    "assessment": "appropriate - patient has allergy"
-  }
-}
-```
+New fields in `indication_reviews`:
+- `syndrome_decision` - Syndrome review decision
+- `confirmed_syndrome` - Confirmed/corrected syndrome ID
+- `confirmed_syndrome_display` - Human readable
+- `agent_decision` - Agent appropriateness decision
+- `agent_notes` - Notes about agent choice
 
 ## References
 
 - Joint Commission MM.09.01.01 EP 13-15 (2024 revision)
 - CDC Core Elements of Hospital Antibiotic Stewardship
 - IDSA/SHEA Guidelines for Antimicrobial Stewardship
-
----
-
-## TODO
-
-- [ ] Add syndrome vocabulary standardization
-- [ ] Update LLM prompts to extract clinical syndrome (not ICD-10)
-- [ ] Revise `cchmc_disease_guidelines.json` to be syndrome-based
-- [ ] Create syndrome → guideline mapping
-- [ ] Update alerting logic for JC compliance
-- [ ] Add training data collection to ABX workflow
+- Chua KP, et al. BMJ 2019 (for ICD-10 fallback classification)
 
 ---
 
