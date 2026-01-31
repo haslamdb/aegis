@@ -8,9 +8,10 @@ import logging
 import sys
 from pathlib import Path
 
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, current_app
 
 from dashboard.services.user import get_user_from_request
+from dashboard.services.fhir import FHIRService
 
 logger = logging.getLogger(__name__)
 
@@ -159,11 +160,23 @@ def candidate_detail(candidate_id: str):
                     "reviewed_at": row["reviewed_at"],
                 })
 
+        # Get clinical context if patient_id is available
+        clinical_context = None
+        if candidate.patient and candidate.patient.fhir_id:
+            fhir_url = current_app.config.get("FHIR_SERVER_URL")
+            if fhir_url:
+                fhir = FHIRService(fhir_url)
+                try:
+                    clinical_context = fhir.get_clinical_context(candidate.patient.fhir_id)
+                except Exception:
+                    pass  # Clinical context is optional enhancement
+
         return render_template(
             "abx_indication_detail.html",
             candidate=candidate,
             extraction=extraction,
             reviews=reviews,
+            clinical_context=clinical_context,
         )
 
     except Exception as e:

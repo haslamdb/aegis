@@ -18,6 +18,7 @@
         {% set is_surgical_prophylaxis = request.endpoint and request.endpoint.startswith('surgical_prophylaxis.') %}
         {% set is_drug_bug = request.endpoint and request.endpoint.startswith('drug_bug.') %}
         {% set is_asp_metrics = request.endpoint and request.endpoint.startswith('asp_metrics.') %}
+        {% set is_abx_approvals = request.endpoint and request.endpoint.startswith('abx_approvals.') %}
         {% set is_landing = request.endpoint == 'main.landing' %}
         <div class="nav-brand">
             <svg class="nav-shield" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -42,6 +43,8 @@
             <a href="{{ url_for('drug_bug.dashboard') }}">Drug-Bug Mismatch</a>
             {% elif is_asp_metrics %}
             <a href="{{ url_for('asp_metrics.dashboard') }}">ASP/IP Metrics</a>
+            {% elif is_abx_approvals %}
+            <a href="{{ url_for('abx_approvals.dashboard') }}">ABX Approvals</a>
             {% else %}
             <a href="{{ url_for('main.landing') }}">AEGIS</a>
             {% endif %}
@@ -101,6 +104,14 @@
             <a href="{{ url_for('asp_metrics.trends') }}" {% if request.endpoint == 'asp_metrics.trends' %}class="active"{% endif %}>Trends</a>
             <a href="{{ url_for('asp_metrics.interventions') }}" {% if request.endpoint and 'intervention' in request.endpoint %}class="active"{% endif %}>Interventions</a>
             <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            {% elif is_abx_approvals %}
+            <!-- ABX Approvals Navigation -->
+            <a href="{{ url_for('abx_approvals.dashboard') }}" {% if request.endpoint == 'abx_approvals.dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('abx_approvals.new_request') }}" {% if request.endpoint in ['abx_approvals.new_request', 'abx_approvals.search_patients', 'abx_approvals.patient_detail'] %}class="active"{% endif %}>New Request</a>
+            <a href="{{ url_for('abx_approvals.history') }}" {% if request.endpoint == 'abx_approvals.history' %}class="active"{% endif %}>History</a>
+            <a href="{{ url_for('abx_approvals.reports') }}" {% if request.endpoint == 'abx_approvals.reports' %}class="active"{% endif %}>Reports</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            <a href="{{ url_for('abx_approvals.help_page') }}" {% if request.endpoint == 'abx_approvals.help_page' %}class="active"{% endif %}>Help</a>
             {% endif %}
         </div>
     </nav>

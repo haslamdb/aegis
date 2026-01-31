@@ -46,6 +46,7 @@ def create_app(config=None):
     from .routes.surgical_prophylaxis import surgical_prophylaxis_bp
     from .routes.drug_bug import drug_bug_bp
     from .routes.asp_metrics import asp_metrics_bp
+    from .routes.abx_approvals import abx_approvals_bp
 
     app.register_blueprint(main_bp)  # Landing page at /
     app.register_blueprint(asp_alerts_bp)  # ASP Alerts at /asp-alerts
@@ -58,6 +59,7 @@ def create_app(config=None):
     app.register_blueprint(surgical_prophylaxis_bp)  # Surgical Prophylaxis at /surgical-prophylaxis
     app.register_blueprint(drug_bug_bp)  # Drug-Bug Mismatch at /drug-bug-mismatch
     app.register_blueprint(asp_metrics_bp)  # ASP/IP Metrics at /asp-metrics
+    app.register_blueprint(abx_approvals_bp)  # ABX Approvals at /abx-approvals
 
     # Context processor for templates
     @app.context_processor

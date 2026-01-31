@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import stats_grid, bar_chart, metric_rows %}
+
+{% block title %}Approval Reports - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Approval Reports</h1>
+    <a href="{{ url_for('abx_approvals.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<!-- Period Selector -->
+<div class="period-selector">
+    <form method="get" class="inline-form">
+        <label for="days">Reporting Period:</label>
+        <select name="days" id="days" onchange="this.form.submit()">
+            <option value="7" {% if current_days == 7 %}selected{% endif %}>Last 7 days</option>
+            <option value="30" {% if current_days == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if current_days == 90 %}selected{% endif %}>Last 90 days</option>
+            <option value="365" {% if current_days == 365 %}selected{% endif %}>Last year</option>
+        </select>
+    </form>
+</div>
+
+<!-- Summary Stats -->
+{{ stats_grid([
+    {"value": analytics.total_requests, "label": "Total Requests", "sublabel": "Last " ~ analytics.period_days ~ " days", "variant": "primary"},
+    {"value": analytics.total_decided, "label": "Decisions Made", "variant": "info"},
+    {"value": (analytics.approval_rate|string ~ "%") if analytics.approval_rate else "N/A", "label": "Approval Rate", "variant": "success"},
+    {"value": analytics.avg_requests_per_day, "label": "Avg/Day"}
+]) }}
+
+<!-- Two Column Layout -->
+<div class="report-grid">
+    <!-- Decision Breakdown -->
+    <div class="report-card">
+        <h3>Decision Breakdown</h3>
+        {% if analytics.decision_breakdown %}
+        <table class="data-table compact">
+            <thead>
+                <tr>
+                    <th>Decision</th>
+                    <th class="text-right">Count</th>
+                    <th class="text-right">%</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in analytics.decision_breakdown %}
+                <tr>
+                    <td>
+                        <span class="badge badge-{{ 'success' if item.decision == 'approved' else 'warning' if item.decision == 'changed_therapy' else 'danger' if item.decision == 'denied' else 'secondary' }}">
+                            {{ item.display }}
+                        </span>
+                    </td>
+                    <td class="text-right">{{ item.count }}</td>
+                    <td class="text-right">{{ item.percentage }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="decision-bars">
+            {% for item in analytics.decision_breakdown %}
+            <div class="decision-bar-row">
+                <span class="bar-label">{{ item.display }}</span>
+                <div class="bar-track">
+                    <div class="bar-fill bar-{{ item.decision }}" style="width: {{ item.percentage }}%;"></div>
+                </div>
+                <span class="bar-value">{{ item.percentage }}%</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No decision data available.</p>
+        {% endif %}
+    </div>
+
+    <!-- Response Times -->
+    <div class="report-card">
+        <h3>Response Times</h3>
+        {% if analytics.response_times.avg_minutes %}
+        {{ metric_rows([
+            {'label': 'Average Time to Decision', 'value': analytics.response_times_formatted.avg, 'value_class': 'text-primary'},
+            {'label': 'Fastest Response', 'value': analytics.response_times_formatted.min, 'value_class': 'text-success'},
+            {'label': 'Slowest Response', 'value': analytics.response_times_formatted.max, 'value_class': 'text-warning'}
+        ]) }}
+        {% else %}
+        <p class="text-muted">No response time data available.</p>
+        {% endif %}
+    </div>
+
+    <!-- Top Antibiotics -->
+    <div class="report-card">
+        <h3>Top Requested Antibiotics</h3>
+        {% if analytics.top_antibiotics %}
+        <table class="data-table compact">
+            <thead>
+                <tr>
+                    <th>Antibiotic</th>
+                    <th class="text-right">Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in analytics.top_antibiotics %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td class="text-right">{{ item.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No antibiotic data available.</p>
+        {% endif %}
+    </div>
+
+    <!-- By Day of Week -->
+    <div class="report-card">
+        <h3>Requests by Day of Week</h3>
+        {% if analytics.by_day_of_week %}
+        {{ bar_chart(analytics.by_day_of_week|map(attribute={'label': 'day', 'value': 'count'})|list, bar_class="bar-primary") }}
+        <div class="weekday-chart">
+            {% set max_count = analytics.by_day_of_week|map(attribute='count')|max %}
+            {% for item in analytics.by_day_of_week %}
+            <div class="weekday-bar">
+                <div class="bar-fill" style="height: {{ (item.count / max_count * 100) if max_count else 0 }}%;"></div>
+                <span class="bar-label">{{ item.day[:3] }}</span>
+                <span class="bar-value">{{ item.count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted">No day of week data available.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Daily Trend -->
+<div class="report-card full-width">
+    <h3>Daily Request Trend</h3>
+    {% if analytics.requests_by_day %}
+    <div class="daily-trend">
+        {% set max_daily = analytics.requests_by_day|map(attribute='count')|max %}
+        {% for item in analytics.requests_by_day[:14] %}
+        <div class="trend-bar">
+            <div class="bar-fill" style="height: {{ (item.count / max_daily * 100) if max_daily else 0 }}%;"></div>
+            <span class="bar-value">{{ item.count }}</span>
+            <span class="bar-label">{{ item.date[5:] }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-muted">No daily trend data available.</p>
+    {% endif %}
+</div>
+
+<style>
+.period-selector {
+    margin-bottom: 1.5rem;
+}
+
+.inline-form {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.inline-form label {
+    font-weight: 500;
+}
+
+.inline-form select {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 6px;
+}
+
+.report-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.report-card {
+    background: white;
+    border: 1px solid var(--color-gray-200);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.report-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.report-card h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    font-size: 1rem;
+}
+
+.data-table.compact {
+    font-size: 0.8125rem;
+}
+
+.data-table.compact th,
+.data-table.compact td {
+    padding: 0.5rem 0.75rem;
+}
+
+.decision-bars {
+    margin-top: 1rem;
+}
+
+.decision-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.decision-bar-row .bar-label {
+    width: 100px;
+    font-size: 0.8125rem;
+}
+
+.bar-track {
+    flex: 1;
+    height: 20px;
+    background: var(--color-gray-100);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.bar-fill.bar-approved { background: var(--color-success); }
+.bar-fill.bar-changed_therapy { background: var(--color-warning); }
+.bar-fill.bar-denied { background: var(--color-danger); }
+.bar-fill.bar-deferred { background: var(--color-gray-400); }
+
+.decision-bar-row .bar-value {
+    width: 40px;
+    text-align: right;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.weekday-chart {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 150px;
+    padding: 0 1rem;
+    margin-top: 1rem;
+}
+
+.weekday-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    max-width: 50px;
+}
+
+.weekday-bar .bar-fill {
+    width: 30px;
+    background: var(--color-primary);
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+}
+
+.weekday-bar .bar-label {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+    margin-top: 0.25rem;
+}
+
+.weekday-bar .bar-value {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-gray-600);
+}
+
+.daily-trend {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    height: 150px;
+    overflow-x: auto;
+}
+
+.trend-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 40px;
+    flex: 1;
+}
+
+.trend-bar .bar-fill {
+    width: 20px;
+    background: var(--color-primary);
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+}
+
+.trend-bar .bar-value {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--color-gray-600);
+}
+
+.trend-bar .bar-label {
+    font-size: 0.65rem;
+    color: var(--color-gray-500);
+    margin-top: 0.25rem;
+}
+
+@media (max-width: 768px) {
+    .report-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

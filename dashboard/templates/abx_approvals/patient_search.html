@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Patient Search - Antibiotic Approvals - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>New Approval Request</h1>
+    <a href="{{ url_for('abx_approvals.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% if error %}
+<div class="alert alert-warning">{{ error }}</div>
+{% endif %}
+
+<!-- Search Form -->
+<div class="search-card">
+    <h2>Search for Patient</h2>
+    <form method="get" action="{{ url_for('abx_approvals.search_patients') }}" class="search-form">
+        <div class="search-row">
+            <div class="form-group">
+                <label for="mrn">Patient MRN</label>
+                <input type="text"
+                       id="mrn"
+                       name="mrn"
+                       value="{{ search_mrn or '' }}"
+                       placeholder="Enter MRN"
+                       class="form-control"
+                       autofocus>
+                <small class="form-help">Recommended: Search by MRN for exact match</small>
+            </div>
+            <div class="search-or">OR</div>
+            <div class="form-group">
+                <label for="name">Patient Name</label>
+                <input type="text"
+                       id="name"
+                       name="name"
+                       value="{{ search_name or '' }}"
+                       placeholder="Last, First"
+                       class="form-control">
+                <small class="form-help">Search by name (partial match supported)</small>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Search</button>
+            {% if search_mrn or search_name %}
+            <a href="{{ url_for('abx_approvals.new_request') }}" class="btn btn-secondary">Clear</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Search Results -->
+{% if patients is defined %}
+<div class="section">
+    <h2>Search Results</h2>
+    {% if patients %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>MRN</th>
+                <th>Name</th>
+                <th>DOB</th>
+                <th>Gender</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for patient in patients %}
+            <tr>
+                <td><strong class="patient-mrn">{{ patient.mrn }}</strong></td>
+                <td>{{ patient.name }}</td>
+                <td>{{ patient.birth_date.strftime('%m/%d/%Y') if patient.birth_date else '-' }}</td>
+                <td>{{ patient.gender | capitalize if patient.gender else '-' }}</td>
+                <td class="text-center">
+                    <a href="{{ url_for('abx_approvals.patient_detail', patient_id=patient.id) }}" class="btn btn-sm btn-primary">Select</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No patients found matching your search criteria.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<style>
+.search-card {
+    background: white;
+    border: 1px solid var(--color-gray-200);
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.search-card h2 {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+.search-form .search-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 1.5rem;
+}
+
+.search-or {
+    display: flex;
+    align-items: center;
+    padding-top: 1.5rem;
+    color: var(--color-gray-500);
+    font-weight: 500;
+}
+
+.search-form .form-group {
+    flex: 1;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 6px;
+    font-size: 1rem;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-help {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+}
+
+.form-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.patient-mrn {
+    font-family: monospace;
+}
+
+@media (max-width: 768px) {
+    .search-form .search-row {
+        flex-direction: column;
+    }
+
+    .search-or {
+        padding: 0;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}

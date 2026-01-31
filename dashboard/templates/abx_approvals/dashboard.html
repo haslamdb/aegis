@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import stats_grid, quick_links, empty_state %}
+
+{% block title %}Antibiotic Approvals - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Antibiotic Approvals</h1>
+    <p class="subtitle">Phone-based Antibiotic Approval Request Management</p>
+</div>
+
+<!-- Stats Cards -->
+{{ stats_grid([
+    {"value": pending_requests | length, "label": "Pending Requests", "sublabel": "Awaiting Decision", "variant": "primary"},
+    {"value": stats.today or 0, "label": "Today's Requests", "sublabel": "Created today"},
+    {"value": stats.by_decision.get('approved', 0), "label": "Approved (30d)", "sublabel": "Last 30 days", "variant": "success"},
+    {"value": stats.total or 0, "label": "Total Requests", "sublabel": "Last 30 days", "variant": "info"}
+]) }}
+
+<!-- Quick Actions -->
+<div class="section">
+    <h2>Quick Actions</h2>
+    {{ quick_links([
+        {"url": url_for('abx_approvals.new_request'), "label": "New Request", "class": "btn-primary"},
+        {"url": url_for('abx_approvals.history'), "label": "History", "class": "btn-secondary"},
+        {"url": url_for('abx_approvals.reports'), "label": "Reports", "class": "btn-success"},
+        {"url": url_for('abx_approvals.help_page'), "label": "Help", "class": "btn-info"}
+    ]) }}
+</div>
+
+<!-- Pending Requests -->
+<div class="section">
+    <h2>Pending Requests</h2>
+    {% if pending_requests %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Antibiotic</th>
+                <th>Indication</th>
+                <th>Prescriber</th>
+                <th>Created</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in pending_requests %}
+            <tr>
+                <td>
+                    <strong>{{ req.patient_mrn }}</strong>
+                    {% if req.patient_name %}
+                    <br><small class="text-muted">{{ req.patient_name }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ req.antibiotic_name }}</strong>
+                    {% if req.antibiotic_dose %}
+                    <br><small class="text-muted">{{ req.antibiotic_dose }} {{ req.antibiotic_route or '' }}</small>
+                    {% endif %}
+                </td>
+                <td>{{ req.indication or '-' }}</td>
+                <td>
+                    {{ req.prescriber_name or '-' }}
+                    {% if req.prescriber_pager %}
+                    <br><small class="text-muted">Pager: {{ req.prescriber_pager }}</small>
+                    {% endif %}
+                </td>
+                <td data-timestamp="{{ req.created_at.isoformat() }}">{{ req.created_at.strftime('%m/%d %H:%M') }}</td>
+                <td class="text-center">
+                    <a href="{{ url_for('abx_approvals.approval_detail', approval_id=req.id) }}" class="btn btn-sm btn-primary">Review</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    {{ empty_state("No pending requests. All requests have been processed.", url_for('abx_approvals.new_request'), "Create New Request") }}
+    {% endif %}
+</div>
+
+<!-- Today's Completed -->
+{% if today_completed %}
+<div class="section">
+    <h2>Completed Today</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Antibiotic</th>
+                <th>Decision</th>
+                <th>Decided By</th>
+                <th>Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in today_completed[:5] %}
+            <tr>
+                <td>
+                    <strong>{{ req.patient_mrn }}</strong>
+                    {% if req.patient_name %}
+                    <br><small class="text-muted">{{ req.patient_name }}</small>
+                    {% endif %}
+                </td>
+                <td>{{ req.antibiotic_name }}</td>
+                <td>
+                    <span class="badge badge-{{ 'success' if req.decision == 'approved' else 'warning' if req.decision == 'changed_therapy' else 'danger' if req.decision == 'denied' else 'secondary' }}">
+                        {{ ApprovalDecision.display_name(req.decision) }}
+                    </span>
+                </td>
+                <td>{{ req.decision_by or '-' }}</td>
+                <td>{{ req.decision_at.strftime('%H:%M') if req.decision_at else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if today_completed | length > 5 %}
+    <p class="text-center">
+        <a href="{{ url_for('abx_approvals.history', days=1) }}">View all {{ today_completed | length }} completed today</a>
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Top Antibiotics Summary -->
+{% if stats.by_antibiotic %}
+<div class="section">
+    <h2>Top Requested Antibiotics (30 days)</h2>
+    <div class="top-antibiotics">
+        {% for item in stats.by_antibiotic[:5] %}
+        <div class="antibiotic-chip">
+            <span class="antibiotic-name">{{ item.name }}</span>
+            <span class="antibiotic-count">{{ item.count }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<style>
+.top-antibiotics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.antibiotic-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--color-gray-100);
+    border-radius: 20px;
+    font-size: 0.875rem;
+}
+
+.antibiotic-name {
+    font-weight: 500;
+}
+
+.antibiotic-count {
+    background: var(--color-primary);
+    color: white;
+    padding: 0.1rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

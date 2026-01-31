@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/components.html" import detail_list %}
+{% from "macros/components.html" import detail_list, clinical_context_card %}
 
 {% block title %}Alert {{ alert.id[:8] }} - {{ app_name }}{% endblock %}
 
@@ -12,6 +12,11 @@
 <div class="alert-detail-layout alert-detail-page">
     <!-- Left Column: Alert Information -->
     <div class="alert-detail-main">
+        <!-- Clinical Context Card (MDR, Allergies, Renal) -->
+        {% if clinical_context %}
+        {{ clinical_context_card(clinical_context) }}
+        {% endif %}
+
         <div class="alert-detail-card">
             <div class="alert-header">
                 <div class="alert-id">
@@ -95,14 +100,44 @@
                         {% if alert.content.get('susceptible_options') %}
                         <dt>Susceptible Options</dt>
                         <dd>
+                            {% if allergy_adjusted_recommendation and allergy_adjusted_recommendation.has_allergy_conflicts %}
+                            {# Show allergy-adjusted options #}
+                            {% for option in allergy_adjusted_recommendation.safe_options %}
+                            <span class="badge badge-success">{{ option|replace(' Susceptibility', '')|replace(' susceptibility', '') }}</span>
+                            {% endfor %}
+                            {% for option in allergy_adjusted_recommendation.excluded_options %}
+                            <span class="badge badge-danger" title="Excluded due to allergy"><s>{{ option|replace(' Susceptibility', '')|replace(' susceptibility', '') }}</s></span>
+                            {% endfor %}
+                            {% for option, warning in allergy_adjusted_recommendation.caution_options %}
+                            <span class="badge badge-warning" title="{{ warning }}">{{ option|replace(' Susceptibility', '')|replace(' susceptibility', '') }} &#x26A0;</span>
+                            {% endfor %}
+                            {% else %}
+                            {# Show original options #}
                             {% for option in alert.content.get('susceptible_options', []) %}
                             <span class="badge badge-success">{{ option|replace(' Susceptibility', '')|replace(' susceptibility', '') }}</span>
                             {% endfor %}
+                            {% endif %}
                         </dd>
                         {% endif %}
 
                         <dt>Recommendation</dt>
-                        <dd class="recommendation-text">{{ alert.content.get('recommendation', '-')|replace(' Susceptibility', '')|replace(' susceptibility', '') }}</dd>
+                        <dd class="recommendation-text">
+                            {% if allergy_adjusted_recommendation and allergy_adjusted_recommendation.has_allergy_conflicts %}
+                            {# Show allergy-adjusted recommendation #}
+                            <div class="allergy-adjusted-recommendation">
+                                {{ allergy_adjusted_recommendation.recommendation|replace(' Susceptibility', '')|replace(' susceptibility', '') }}
+                            </div>
+                            {% if allergy_adjusted_recommendation.allergy_warnings %}
+                            <div class="allergy-warnings">
+                                {% for warning in allergy_adjusted_recommendation.allergy_warnings %}
+                                <span class="allergy-warning-badge">&#x26A0; {{ warning }}</span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            {{ alert.content.get('recommendation', '-')|replace(' Susceptibility', '')|replace(' susceptibility', '') }}
+                            {% endif %}
+                        </dd>
                     </dl>
 
                     {% if alert.content.get('susceptibility_panel') %}

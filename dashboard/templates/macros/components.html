@@ -821,6 +821,110 @@
 
 
 {# ==============================================
+   Clinical Context Card Macro
+   Displays MDR history, drug allergies, and renal status as alert badges
+   ============================================== #}
+
+{# Clinical Context Card Macro
+   Renders clinical alerts for antibiotic decision support: MDR history,
+   drug allergies, and renal status.
+
+   Usage:
+   {% from "macros/components.html" import clinical_context_card %}
+   {{ clinical_context_card(clinical_context) }}
+#}
+{% macro clinical_context_card(ctx) %}
+<div class="clinical-context-card">
+    <h3>Clinical Alerts</h3>
+
+    {# MDR History #}
+    {% if ctx.has_mdr_risk %}
+    <div class="context-section mdr-section">
+        <span class="section-icon">&#x26A0;</span>
+        <div class="section-content">
+            <strong>MDR History (1 year)</strong>
+            <div class="mdr-badges">
+                {% if ctx.mdr_history.has_mrsa %}<span class="badge badge-danger">MRSA</span>{% endif %}
+                {% if ctx.mdr_history.has_vre %}<span class="badge badge-danger">VRE</span>{% endif %}
+                {% if ctx.mdr_history.has_cre %}<span class="badge badge-danger">CRE</span>{% endif %}
+                {% if ctx.mdr_history.has_esbl %}<span class="badge badge-warning">ESBL</span>{% endif %}
+            </div>
+            {% if ctx.mdr_history.resistant_organisms %}
+            <ul class="mdr-details">
+                {% for org in ctx.mdr_history.resistant_organisms[:3] %}
+                <li>{{ org.organism }} ({{ org.antibiotic }} R{% if org.date %}, {{ org.date[:10] }}{% endif %})</li>
+                {% endfor %}
+                {% if ctx.mdr_history.resistant_organisms|length > 3 %}
+                <li class="text-muted">... and {{ ctx.mdr_history.resistant_organisms|length - 3 }} more</li>
+                {% endif %}
+            </ul>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+
+    {# Drug Allergies #}
+    {% if ctx.allergies %}
+    <div class="context-section allergy-section {{ 'critical' if ctx.has_critical_allergies else '' }}">
+        <span class="section-icon">&#x1F48A;</span>
+        <div class="section-content">
+            <strong>Drug Allergies</strong>
+            <ul class="allergy-list">
+                {% for allergy in ctx.allergies %}
+                <li>
+                    {{ allergy.substance }}
+                    {% if allergy.severity == 'life-threatening' %}
+                    <span class="badge badge-danger">Anaphylaxis</span>
+                    {% elif allergy.severity == 'moderate' %}
+                    <span class="badge badge-warning">Moderate</span>
+                    {% endif %}
+                    {% if allergy.reaction %}
+                    <span class="allergy-reaction">({{ allergy.reaction }})</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Renal Status #}
+    {% if ctx.needs_renal_dosing %}
+    <div class="context-section renal-section">
+        <span class="section-icon">&#x1F9EA;</span>
+        <div class="section-content">
+            <strong>Renal Function</strong>
+            <div class="renal-badges">
+                {% if ctx.renal_status.on_dialysis %}
+                <span class="badge badge-warning">{{ ctx.renal_status.dialysis_type | default('Dialysis') | title }}</span>
+                {% elif ctx.renal_status.has_ckd %}
+                <span class="badge badge-warning">CKD Stage {{ ctx.renal_status.ckd_stage }}</span>
+                {% endif %}
+                {% if ctx.renal_status.has_aki %}
+                <span class="badge badge-danger">AKI</span>
+                {% endif %}
+            </div>
+            <div class="renal-values">
+                {% if ctx.renal_status.latest_gfr is not none %}
+                <span class="renal-value">GFR: {{ ctx.renal_status.latest_gfr | round(0) | int }}</span>
+                {% endif %}
+                {% if ctx.renal_status.latest_creatinine is not none %}
+                <span class="renal-value">Cr: {{ ctx.renal_status.latest_creatinine }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# Clean patient indicator #}
+    {% if not ctx.has_mdr_risk and not ctx.allergies and not ctx.needs_renal_dosing %}
+    <p class="no-alerts">No critical clinical alerts identified.</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+
+{# ==============================================
    Form Input Macros
    ============================================== #}
 

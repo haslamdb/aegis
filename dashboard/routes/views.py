@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, redirect, url_for, current_app, request
 
 from common.alert_store import AlertStatus, AlertType, ResolutionReason
+from common.allergy_recommendations import adjust_recommendation_for_allergies
 from ..services.fhir import FHIRService
 
 asp_alerts_bp = Blueprint("asp_alerts", __name__, url_prefix="/asp-alerts")
@@ -175,12 +176,45 @@ def alert_detail(alert_id):
     # Get resolution reason options for dropdown
     resolution_reasons = ResolutionReason.all_options()
 
+    # Get clinical context if patient_id is available
+    clinical_context = None
+    allergy_adjusted_recommendation = None
+
+    if alert.patient_id:
+        fhir_url = current_app.config.get("FHIR_BASE_URL", "http://localhost:8081/fhir")
+        fhir = FHIRService(fhir_url)
+        try:
+            clinical_context = fhir.get_clinical_context(alert.patient_id)
+        except Exception:
+            pass  # Clinical context is optional enhancement
+
+    # Adjust recommendations based on patient allergies
+    if clinical_context and clinical_context.allergies and alert.content:
+        # Convert DrugAllergy objects to dicts for the allergy module
+        allergy_dicts = [
+            {"substance": a.substance, "severity": a.severity}
+            for a in clinical_context.allergies
+        ]
+
+        # Get susceptible options and recommendation from alert content
+        susceptible_options = alert.content.get("susceptible_options", [])
+        original_recommendation = alert.content.get("recommendation", "")
+
+        if susceptible_options or original_recommendation:
+            allergy_adjusted_recommendation = adjust_recommendation_for_allergies(
+                original_recommendation,
+                susceptible_options,
+                allergy_dicts,
+            )
+
     return render_template(
         "alert_detail.html",
         alert=alert,
         audit_log=audit_log,
         resolution_reasons=resolution_reasons,
         ResolutionReason=ResolutionReason,
+        clinical_context=clinical_context,
+        allergy_adjusted_recommendation=allergy_adjusted_recommendation,
     )
 
 

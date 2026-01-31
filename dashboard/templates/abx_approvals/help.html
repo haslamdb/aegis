@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Help - Antibiotic Approvals - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Antibiotic Approvals Help</h1>
+    <a href="{{ url_for('abx_approvals.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<div class="help-content">
+    <section class="help-section">
+        <h2>Overview</h2>
+        <p>
+            The Antibiotic Approvals module is designed for pharmacists handling phone-based
+            antibiotic approval requests. Unlike system-generated alerts, these requests are
+            initiated manually when a prescriber calls requesting extended use of broad-spectrum
+            antibiotics (e.g., meropenem past 72 hours).
+        </p>
+    </section>
+
+    <section class="help-section">
+        <h2>Workflow</h2>
+        <div class="workflow-steps">
+            <div class="workflow-step">
+                <span class="step-number">1</span>
+                <div class="step-content">
+                    <h3>Receive Call</h3>
+                    <p>Prescriber calls requesting antibiotic approval for a patient.</p>
+                </div>
+            </div>
+            <div class="workflow-step">
+                <span class="step-number">2</span>
+                <div class="step-content">
+                    <h3>Search for Patient</h3>
+                    <p>Click "New Request" and search by MRN (recommended) or patient name.</p>
+                </div>
+            </div>
+            <div class="workflow-step">
+                <span class="step-number">3</span>
+                <div class="step-content">
+                    <h3>Review Clinical Data</h3>
+                    <p>Review current antibiotics and recent culture/susceptibility results displayed automatically.</p>
+                </div>
+            </div>
+            <div class="workflow-step">
+                <span class="step-number">4</span>
+                <div class="step-content">
+                    <h3>Document Request</h3>
+                    <p>Enter the antibiotic details, indication, prescriber information, and your decision.</p>
+                </div>
+            </div>
+            <div class="workflow-step">
+                <span class="step-number">5</span>
+                <div class="step-content">
+                    <h3>Submit</h3>
+                    <p>Your decision is recorded and the request is documented for compliance and reporting.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="help-section">
+        <h2>Decision Types</h2>
+        <div class="decision-types">
+            <div class="decision-type">
+                <span class="badge badge-success">Approved</span>
+                <p>The requested antibiotic is appropriate. The prescriber may continue therapy.</p>
+            </div>
+            <div class="decision-type">
+                <span class="badge badge-warning">Changed Therapy</span>
+                <p>Recommend a different antibiotic. Enter the recommended alternative.</p>
+            </div>
+            <div class="decision-type">
+                <span class="badge badge-danger">Denied</span>
+                <p>The request is not appropriate. Provide rationale in the notes.</p>
+            </div>
+            <div class="decision-type">
+                <span class="badge badge-secondary">Deferred</span>
+                <p>Need more information. Plan to call back after reviewing additional data.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="help-section">
+        <h2>Common Antibiotics Requiring Approval</h2>
+        <p>The following broad-spectrum antibiotics commonly require pharmacist approval for extended use:</p>
+        <ul>
+            <li><strong>Carbapenems:</strong> Meropenem, Imipenem, Ertapenem</li>
+            <li><strong>Extended-spectrum cephalosporins:</strong> Cefepime, Ceftazidime</li>
+            <li><strong>Anti-MRSA agents:</strong> Vancomycin, Daptomycin, Linezolid</li>
+            <li><strong>BL/BLI combinations:</strong> Piperacillin-Tazobactam, Ceftazidime-Avibactam</li>
+            <li><strong>Fluoroquinolones:</strong> Levofloxacin, Ciprofloxacin, Moxifloxacin</li>
+        </ul>
+    </section>
+
+    <section class="help-section">
+        <h2>Best Practices</h2>
+        <ul>
+            <li>Always verify the patient identity with the prescriber before proceeding.</li>
+            <li>Review recent culture results to assess antibiotic appropriateness.</li>
+            <li>Check current antibiotic orders to avoid duplication or inappropriate combinations.</li>
+            <li>Document the clinical indication clearly for compliance tracking.</li>
+            <li>When recommending therapy changes, ensure the alternative covers the suspected pathogens.</li>
+            <li>Use the "Deferred" option if you need additional clinical context before deciding.</li>
+        </ul>
+    </section>
+
+    <section class="help-section">
+        <h2>Reports</h2>
+        <p>
+            The Reports page provides analytics on approval patterns, including:
+        </p>
+        <ul>
+            <li>Decision breakdown (approval rate, therapy changes, denials)</li>
+            <li>Most frequently requested antibiotics</li>
+            <li>Response time metrics</li>
+            <li>Trends by day of week and daily volume</li>
+        </ul>
+        <p>
+            Use these reports for stewardship program metrics and quality improvement initiatives.
+        </p>
+    </section>
+
+    <section class="help-section">
+        <h2>Need Assistance?</h2>
+        <p>
+            For technical issues with this dashboard, contact the AEGIS support team.<br>
+            For clinical questions about antibiotic stewardship, contact the Antimicrobial Stewardship Program.
+        </p>
+    </section>
+</div>
+
+<style>
+.help-content {
+    max-width: 900px;
+}
+
+.help-section {
+    margin-bottom: 2.5rem;
+}
+
+.help-section h2 {
+    color: var(--color-gray-800);
+    border-bottom: 2px solid var(--color-primary);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.workflow-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.workflow-step {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: var(--color-primary);
+    color: white;
+    border-radius: 50%;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.step-content h3 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+}
+
+.step-content p {
+    margin: 0;
+    color: var(--color-gray-600);
+}
+
+.decision-types {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.decision-type {
+    padding: 1rem;
+    background: var(--color-gray-50);
+    border-radius: 8px;
+}
+
+.decision-type .badge {
+    margin-bottom: 0.5rem;
+}
+
+.decision-type p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.help-section ul {
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.help-section li {
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}

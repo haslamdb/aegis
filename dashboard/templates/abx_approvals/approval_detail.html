@@ -1,0 +1,504 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import info_grid, detail_list %}
+
+{% block title %}Approval Detail - {{ approval.id if approval else 'Not Found' }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Approval Request Detail</h1>
+    <a href="{{ url_for('abx_approvals.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% else %}
+
+<div class="alert-detail-layout">
+    <!-- Left Column: Request Details -->
+    <div class="alert-detail-main">
+        <!-- Status Banner -->
+        <div class="status-banner status-{{ approval.status }}">
+            <span class="status-icon">
+                {% if approval.status == 'completed' %}&#x2713;{% else %}&#x23F3;{% endif %}
+            </span>
+            <span class="status-text">
+                {% if approval.status == 'completed' %}
+                    {% if approval.decision %}
+                        <span class="badge badge-lg badge-{{ 'success' if approval.decision == 'approved' else 'warning' if approval.decision == 'changed_therapy' else 'danger' if approval.decision == 'denied' else 'secondary' }}">
+                            {{ ApprovalDecision.display_name(approval.decision) }}
+                        </span>
+                        by {{ approval.decision_by or 'Unknown' }}
+                        {% if approval.decision_at %}
+                        on {{ approval.decision_at.strftime('%m/%d/%Y at %H:%M') }}
+                        {% endif %}
+                    {% else %}
+                        Completed
+                    {% endif %}
+                {% else %}
+                    <span class="badge badge-lg badge-warning">Pending</span>
+                    Awaiting decision
+                {% endif %}
+            </span>
+        </div>
+
+        <!-- Patient Information -->
+        <div class="alert-detail-card">
+            <h3>Patient Information</h3>
+            {{ info_grid([
+                {'label': 'MRN', 'value': approval.patient_mrn, 'class': 'patient-mrn'},
+                {'label': 'Name', 'value': approval.patient_name},
+                {'label': 'Location', 'value': approval.patient_location}
+            ]) }}
+        </div>
+
+        <!-- Request Details -->
+        <div class="alert-detail-card">
+            <h3>Request Details</h3>
+            {{ info_grid([
+                {'label': 'Antibiotic', 'value': approval.antibiotic_name},
+                {'label': 'Dose', 'value': approval.antibiotic_dose},
+                {'label': 'Route', 'value': approval.antibiotic_route},
+                {'label': 'Indication', 'value': approval.indication},
+                {'label': 'Duration Requested', 'value': (approval.duration_requested_hours|string ~ ' hours') if approval.duration_requested_hours else none},
+                {'label': 'Prescriber', 'value': approval.prescriber_name},
+                {'label': 'Pager', 'value': approval.prescriber_pager}
+            ]) }}
+        </div>
+
+        <!-- Decision Details -->
+        {% if approval.decision %}
+        <div class="alert-detail-card">
+            <h3>Decision Details</h3>
+            {{ info_grid([
+                {'label': 'Decision', 'value': ApprovalDecision.display_name(approval.decision)},
+                {'label': 'Decided By', 'value': approval.decision_by},
+                {'label': 'Decided At', 'value': approval.decision_at.strftime('%m/%d/%Y %H:%M') if approval.decision_at else none}
+            ]) }}
+
+            {% if approval.alternative_recommended %}
+            <div class="alternative-recommendation">
+                <strong>Recommended Alternative:</strong> {{ approval.alternative_recommended }}
+            </div>
+            {% endif %}
+
+            {% if approval.decision_notes %}
+            <div class="decision-notes">
+                <strong>Notes:</strong>
+                <p>{{ approval.decision_notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Clinical Context (if captured) -->
+        {% if approval.clinical_context %}
+        <div class="alert-detail-card">
+            <h3>Clinical Context (at time of request)</h3>
+
+            {% if approval.clinical_context.current_medications %}
+            <h4>Active Antibiotics</h4>
+            <ul class="context-list">
+                {% for med in approval.clinical_context.current_medications %}
+                <li>{{ med }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if approval.clinical_context.recent_cultures %}
+            <h4>Recent Cultures</h4>
+            <ul class="context-list">
+                {% for culture in approval.clinical_context.recent_cultures %}
+                <li>{{ culture }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Audit Log -->
+        {% if audit_log %}
+        <div class="alert-detail-card">
+            <h3>Audit History</h3>
+            <table class="data-table compact">
+                <thead>
+                    <tr>
+                        <th>Action</th>
+                        <th>By</th>
+                        <th>Time</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in audit_log %}
+                    <tr>
+                        <td>{{ entry.action.value | replace('_', ' ') | title }}</td>
+                        <td>{{ entry.performed_by or '-' }}</td>
+                        <td>{{ entry.performed_at.strftime('%m/%d/%Y %H:%M') }}</td>
+                        <td>{{ entry.details or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column: Actions -->
+    <div class="alert-detail-sidebar">
+        {% if approval.status == 'pending' %}
+        <div class="action-card">
+            <h3>Record Decision</h3>
+
+            <div class="form-group">
+                <label for="decision_by">Your Name</label>
+                <input type="text"
+                       id="decision_by"
+                       value="{{ current_user or '' }}"
+                       class="form-control"
+                       placeholder="Enter your name">
+            </div>
+
+            <div class="decision-buttons">
+                <button type="button" class="btn btn-approve" data-decision="approved">Approve</button>
+                <button type="button" class="btn btn-change" data-decision="changed_therapy">Change</button>
+                <button type="button" class="btn btn-deny" data-decision="denied">Deny</button>
+                <button type="button" class="btn btn-defer" data-decision="deferred">Defer</button>
+            </div>
+
+            <div id="alternative-section" class="hidden">
+                <div class="form-group">
+                    <label for="alternative_recommended">Recommended Alternative</label>
+                    <input type="text"
+                           id="alternative_recommended"
+                           class="form-control"
+                           placeholder="e.g., Ceftriaxone">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="decision_notes">Notes</label>
+                <textarea id="decision_notes"
+                          class="form-textarea"
+                          rows="3"
+                          placeholder="Add notes..."></textarea>
+            </div>
+
+            <button type="button" id="submit-decision" class="btn btn-primary btn-block">
+                Submit Decision
+            </button>
+
+            <div id="result-message" class="hidden"></div>
+        </div>
+
+        <script>
+        let selectedDecision = null;
+
+        document.querySelectorAll('.decision-buttons button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                selectedDecision = this.getAttribute('data-decision');
+                document.querySelectorAll('.decision-buttons button').forEach(b => b.classList.remove('selected'));
+                this.classList.add('selected');
+
+                const altSection = document.getElementById('alternative-section');
+                if (selectedDecision === 'changed_therapy') {
+                    altSection.classList.remove('hidden');
+                } else {
+                    altSection.classList.add('hidden');
+                }
+            });
+        });
+
+        document.getElementById('submit-decision').addEventListener('click', async function() {
+            const resultDiv = document.getElementById('result-message');
+            const decisionBy = document.getElementById('decision_by').value.trim();
+
+            if (!decisionBy) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Please enter your name.</div>';
+                resultDiv.classList.remove('hidden');
+                return;
+            }
+
+            if (!selectedDecision) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Please select a decision.</div>';
+                resultDiv.classList.remove('hidden');
+                return;
+            }
+
+            const data = {
+                decision: selectedDecision,
+                decision_notes: document.getElementById('decision_notes').value.trim() || null,
+                alternative_recommended: selectedDecision === 'changed_therapy'
+                    ? document.getElementById('alternative_recommended').value.trim()
+                    : null,
+            };
+
+            try {
+                const response = await fetch('/abx-approvals/api/{{ approval.id }}/decide', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Name': decisionBy,
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    resultDiv.innerHTML = '<div class="alert alert-success">Decision recorded! Refreshing...</div>';
+                    resultDiv.classList.remove('hidden');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-danger">Error: ' + result.error + '</div>';
+                    resultDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Failed: ' + err.message + '</div>';
+                resultDiv.classList.remove('hidden');
+            }
+        });
+        </script>
+        {% else %}
+        <div class="action-card completed-card">
+            <h3>Request Complete</h3>
+            <div class="complete-status">
+                <span class="status-icon">&#x2713;</span>
+                <p>This request has been processed.</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Add Note -->
+        <div class="action-card">
+            <h3>Add Note</h3>
+            <div class="form-group">
+                <label for="note_by">Your Name</label>
+                <input type="text"
+                       id="note_by"
+                       value="{{ current_user or '' }}"
+                       class="form-control"
+                       placeholder="Enter your name">
+            </div>
+            <div class="form-group">
+                <textarea id="new_note"
+                          class="form-textarea"
+                          rows="2"
+                          placeholder="Add a follow-up note..."></textarea>
+            </div>
+            <button type="button" id="add-note-btn" class="btn btn-secondary btn-block">
+                Add Note
+            </button>
+            <div id="note-result" class="hidden"></div>
+        </div>
+
+        <script>
+        document.getElementById('add-note-btn').addEventListener('click', async function() {
+            const resultDiv = document.getElementById('note-result');
+            const noteBy = document.getElementById('note_by').value.trim();
+            const note = document.getElementById('new_note').value.trim();
+
+            if (!note) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Please enter a note.</div>';
+                resultDiv.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch('/abx-approvals/api/{{ approval.id }}/note', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Name': noteBy,
+                    },
+                    body: JSON.stringify({ note: note })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    resultDiv.innerHTML = '<div class="alert alert-success">Note added!</div>';
+                    resultDiv.classList.remove('hidden');
+                    document.getElementById('new_note').value = '';
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-danger">Error: ' + result.error + '</div>';
+                    resultDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Failed: ' + err.message + '</div>';
+                resultDiv.classList.remove('hidden');
+            }
+        });
+        </script>
+
+        <!-- Request Info -->
+        <div class="action-card info-card">
+            <h3>Request Info</h3>
+            <dl class="info-list">
+                <dt>ID</dt>
+                <dd><code>{{ approval.id }}</code></dd>
+                <dt>Created</dt>
+                <dd>{{ approval.created_at.strftime('%m/%d/%Y %H:%M') }}</dd>
+                <dt>Created By</dt>
+                <dd>{{ approval.created_by or 'Unknown' }}</dd>
+            </dl>
+        </div>
+    </div>
+</div>
+
+<style>
+.status-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.status-banner.status-pending {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+}
+
+.status-banner.status-completed {
+    background: #ecfdf5;
+    border: 1px solid #10b981;
+}
+
+.status-icon {
+    font-size: 1.5rem;
+}
+
+.status-text {
+    font-size: 0.95rem;
+}
+
+.badge-lg {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.9rem;
+}
+
+.alternative-recommendation {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--color-warning);
+    border-radius: 6px;
+}
+
+.decision-notes {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--color-gray-50);
+    border-radius: 6px;
+}
+
+.decision-notes p {
+    margin: 0.5rem 0 0 0;
+    white-space: pre-wrap;
+}
+
+.context-list {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.context-list li {
+    margin-bottom: 0.25rem;
+}
+
+.data-table.compact {
+    font-size: 0.8125rem;
+}
+
+.data-table.compact th,
+.data-table.compact td {
+    padding: 0.5rem 0.75rem;
+}
+
+.decision-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.btn-approve { background: var(--color-success); color: white; border: none; }
+.btn-change { background: var(--color-warning); color: var(--color-gray-900); border: none; }
+.btn-deny { background: var(--color-danger); color: white; border: none; }
+.btn-defer { background: var(--color-gray-400); color: white; border: none; }
+
+.decision-buttons button.selected {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+.form-control, .form-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-family: inherit;
+}
+
+.completed-card {
+    background: var(--color-gray-50);
+}
+
+.complete-status {
+    text-align: center;
+    padding: 1rem;
+}
+
+.complete-status .status-icon {
+    font-size: 2rem;
+    color: var(--color-success);
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.info-card .info-list {
+    margin: 0;
+}
+
+.info-card .info-list dt {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+    text-transform: uppercase;
+}
+
+.info-card .info-list dd {
+    margin: 0 0 0.75rem 0;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    margin-top: 1rem;
+    font-size: 0.875rem;
+}
+
+.alert-danger {
+    background: #fef2f2;
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
+.alert-success {
+    background: #f0fdf4;
+    border: 1px solid #10b981;
+    color: #065f46;
+}
+
+.patient-mrn {
+    font-family: monospace;
+    font-weight: 600;
+}
+</style>
+
+{% endif %}
+{% endblock %}

@@ -25,6 +25,7 @@ class ModuleSource(Enum):
     ABX_INDICATIONS = "abx_indications"  # Antibiotic indications module
     DRUG_BUG = "drug_bug"                # Drug-bug mismatch module
     SURGICAL_PROPHYLAXIS = "surgical_prophylaxis"  # Surgical prophylaxis module
+    ABX_APPROVALS = "abx_approvals"      # Antibiotic approvals module
 
 
 class InterventionType(Enum):

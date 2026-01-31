@@ -1,0 +1,572 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import info_grid, reviewer_input, clinical_context_card %}
+
+{% block title %}Approval Request - {{ patient.name if patient else 'Unknown' }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Antibiotic Approval Request</h1>
+    <a href="{{ url_for('abx_approvals.new_request') }}" class="btn btn-secondary">New Search</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% else %}
+
+<div class="alert-detail-layout">
+    <!-- Left Column: Clinical Information -->
+    <div class="alert-detail-main">
+        <!-- Clinical Context Card (MDR, Allergies, Renal) -->
+        {% if clinical_context %}
+        {{ clinical_context_card(clinical_context) }}
+        {% endif %}
+
+        <!-- Patient Demographics -->
+        <div class="alert-detail-card">
+            <h3>Patient Information</h3>
+            {{ info_grid([
+                {'label': 'MRN', 'value': patient.mrn, 'class': 'patient-mrn'},
+                {'label': 'Name', 'value': patient.name},
+                {'label': 'DOB', 'value': patient.birth_date.strftime('%m/%d/%Y') if patient.birth_date else none},
+                {'label': 'Gender', 'value': patient.gender | capitalize if patient.gender else none},
+                {'label': 'Location', 'value': patient.location_display}
+            ]) }}
+        </div>
+
+        <!-- Current Antibiotics -->
+        <div class="alert-detail-card">
+            <h3>Current Antibiotics</h3>
+            {% if medications %}
+            <table class="data-table compact">
+                <thead>
+                    <tr>
+                        <th>Antibiotic</th>
+                        <th>Dose</th>
+                        <th>Route</th>
+                        <th>Status</th>
+                        <th>Ordered</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for med in medications %}
+                    <tr>
+                        <td><strong>{{ med.name }}</strong></td>
+                        <td>{{ med.dose or '-' }}</td>
+                        <td>{{ med.route or '-' }}</td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if med.status == 'active' else 'warning' }}">
+                                {{ med.status | title }}
+                            </span>
+                        </td>
+                        <td>{{ med.ordered_at.strftime('%m/%d %H:%M') if med.ordered_at else '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted">No active antibiotics found.</p>
+            {% endif %}
+        </div>
+
+        <!-- Recent Cultures -->
+        <div class="alert-detail-card">
+            <h3>Recent Cultures (30 days)</h3>
+            {% if cultures %}
+            {% for culture in cultures %}
+            <div class="culture-item">
+                <div class="culture-header">
+                    <span class="organism-name">{{ culture.organism }}</span>
+                    <span class="culture-date">{{ culture.collected_at.strftime('%m/%d/%Y') if culture.collected_at else 'Unknown date' }}</span>
+                </div>
+                {% if culture.susceptibilities %}
+                <div class="susceptibilities">
+                    <table class="susceptibility-table">
+                        <tbody>
+                            {% for sus in culture.susceptibilities %}
+                            {% set is_excluded = culture._allergy_excluded is defined and sus.antibiotic in culture._allergy_excluded %}
+                            <tr class="{{ 'allergy-excluded' if is_excluded else '' }}">
+                                <td>
+                                    {{ sus.antibiotic }}
+                                    {% if is_excluded %}
+                                    <span class="allergy-icon" title="Excluded due to patient allergy">&#x26A0;</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if is_excluded %}
+                                    <span class="badge badge-danger" style="text-decoration: line-through; opacity: 0.6;">
+                                        {{ sus.result }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge badge-{{ 'success' if sus.result == 'S' else 'danger' if sus.result == 'R' else 'warning' }}">
+                                        {{ sus.result }}
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                {% if sus.mic %}
+                                <td class="mic-value">MIC: {{ sus.mic }}</td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% if culture._has_allergy_conflicts is defined and culture._has_allergy_conflicts %}
+                    <div class="allergy-note">
+                        <small>&#x26A0; Some options excluded due to patient allergies</small>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p class="text-muted">No susceptibility data available.</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p class="text-muted">No cultures found in the last 30 days.</p>
+            {% endif %}
+        </div>
+
+        <!-- Recent Approvals for This Patient -->
+        {% if recent_approvals %}
+        <div class="alert-detail-card">
+            <h3>Recent Approval History</h3>
+            <table class="data-table compact">
+                <thead>
+                    <tr>
+                        <th>Antibiotic</th>
+                        <th>Decision</th>
+                        <th>Date</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req in recent_approvals[:5] %}
+                    <tr>
+                        <td>{{ req.antibiotic_name }}</td>
+                        <td>
+                            <span class="badge badge-{{ 'success' if req.decision == 'approved' else 'warning' if req.decision == 'changed_therapy' else 'danger' if req.decision == 'denied' else 'secondary' }}">
+                                {{ ApprovalDecision.display_name(req.decision) if req.decision else 'Pending' }}
+                            </span>
+                        </td>
+                        <td>{{ req.created_at.strftime('%m/%d') }}</td>
+                        <td>{{ req.decision_notes[:50] ~ '...' if req.decision_notes and req.decision_notes|length > 50 else req.decision_notes or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column: Approval Form -->
+    <div class="alert-detail-sidebar">
+        <div class="action-card">
+            <h3>Request Details</h3>
+
+            {{ reviewer_input(label="Your Name", id="created_by") }}
+
+            <div class="form-group">
+                <label for="antibiotic_name">Antibiotic Requested *</label>
+                <input type="text"
+                       id="antibiotic_name"
+                       name="antibiotic_name"
+                       list="antibiotic-list"
+                       required
+                       placeholder="e.g., Meropenem"
+                       class="form-control">
+                <datalist id="antibiotic-list">
+                    {% for abx in common_antibiotics %}
+                    <option value="{{ abx }}">
+                    {% endfor %}
+                </datalist>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="antibiotic_dose">Dose</label>
+                    <input type="text"
+                           id="antibiotic_dose"
+                           name="antibiotic_dose"
+                           placeholder="e.g., 1g q8h"
+                           class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="antibiotic_route">Route</label>
+                    <select id="antibiotic_route" name="antibiotic_route" class="form-control">
+                        <option value="">Select...</option>
+                        <option value="IV">IV</option>
+                        <option value="PO">PO</option>
+                        <option value="IM">IM</option>
+                        <option value="Inhaled">Inhaled</option>
+                        <option value="Topical">Topical</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="indication">Indication</label>
+                <input type="text"
+                       id="indication"
+                       name="indication"
+                       placeholder="e.g., Hospital-acquired pneumonia"
+                       class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label for="duration_requested_hours">Duration Requested (hours)</label>
+                <select id="duration_requested_hours" name="duration_requested_hours" class="form-control">
+                    <option value="">Select...</option>
+                    <option value="24">24 hours (1 day)</option>
+                    <option value="48">48 hours (2 days)</option>
+                    <option value="72">72 hours (3 days)</option>
+                    <option value="120">120 hours (5 days)</option>
+                    <option value="168">168 hours (7 days)</option>
+                    <option value="336">336 hours (14 days)</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="prescriber_name">Prescriber Name</label>
+                    <input type="text"
+                           id="prescriber_name"
+                           name="prescriber_name"
+                           placeholder="Dr. Smith"
+                           class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="prescriber_pager">Pager</label>
+                    <input type="text"
+                           id="prescriber_pager"
+                           name="prescriber_pager"
+                           placeholder="12345"
+                           class="form-control">
+                </div>
+            </div>
+
+            <hr>
+
+            <h3>Decision</h3>
+
+            <div class="decision-buttons">
+                <button type="button" class="btn btn-approve btn-block" data-decision="approved">
+                    Approve
+                </button>
+                <button type="button" class="btn btn-change btn-block" data-decision="changed_therapy">
+                    Change Therapy
+                </button>
+                <button type="button" class="btn btn-deny btn-block" data-decision="denied">
+                    Deny
+                </button>
+                <button type="button" class="btn btn-defer btn-block" data-decision="deferred">
+                    Defer (Need More Info)
+                </button>
+            </div>
+
+            <div id="alternative-section" class="hidden">
+                <div class="form-group">
+                    <label for="alternative_recommended">Recommended Alternative *</label>
+                    <input type="text"
+                           id="alternative_recommended"
+                           name="alternative_recommended"
+                           list="antibiotic-list"
+                           placeholder="e.g., Ceftriaxone"
+                           class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+                <label for="decision_notes">Notes</label>
+                <textarea id="decision_notes"
+                          name="decision_notes"
+                          rows="3"
+                          class="form-textarea"
+                          placeholder="Add notes about your decision..."></textarea>
+            </div>
+
+            <button type="button" id="submit-btn" class="btn btn-primary btn-block" style="margin-top: 1rem;">
+                Submit Request
+            </button>
+
+            <div id="result-message" class="hidden"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedDecision = null;
+
+// Decision button handlers
+document.querySelectorAll('.decision-buttons button').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const decision = this.getAttribute('data-decision');
+        selectedDecision = decision;
+
+        // Highlight selected
+        document.querySelectorAll('.decision-buttons button').forEach(b => {
+            b.classList.remove('selected');
+        });
+        this.classList.add('selected');
+
+        // Show/hide alternative field
+        const altSection = document.getElementById('alternative-section');
+        if (decision === 'changed_therapy') {
+            altSection.classList.remove('hidden');
+        } else {
+            altSection.classList.add('hidden');
+        }
+    });
+});
+
+// Submit handler
+document.getElementById('submit-btn').addEventListener('click', async function() {
+    const resultDiv = document.getElementById('result-message');
+    const createdBy = document.getElementById('created_by').value.trim();
+    const antibioticName = document.getElementById('antibiotic_name').value.trim();
+
+    if (!createdBy) {
+        resultDiv.innerHTML = '<div class="alert alert-danger">Please enter your name.</div>';
+        resultDiv.classList.remove('hidden');
+        document.getElementById('created_by').focus();
+        return;
+    }
+
+    if (!antibioticName) {
+        resultDiv.innerHTML = '<div class="alert alert-danger">Please enter the antibiotic name.</div>';
+        resultDiv.classList.remove('hidden');
+        document.getElementById('antibiotic_name').focus();
+        return;
+    }
+
+    if (!selectedDecision) {
+        resultDiv.innerHTML = '<div class="alert alert-danger">Please select a decision.</div>';
+        resultDiv.classList.remove('hidden');
+        return;
+    }
+
+    if (selectedDecision === 'changed_therapy') {
+        const alt = document.getElementById('alternative_recommended').value.trim();
+        if (!alt) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Please enter the recommended alternative.</div>';
+            resultDiv.classList.remove('hidden');
+            document.getElementById('alternative_recommended').focus();
+            return;
+        }
+    }
+
+    // Build request data
+    const data = {
+        patient_id: '{{ patient.id }}',
+        patient_mrn: '{{ patient.mrn }}',
+        patient_name: '{{ patient.name }}',
+        antibiotic_name: antibioticName,
+        antibiotic_dose: document.getElementById('antibiotic_dose').value.trim() || null,
+        antibiotic_route: document.getElementById('antibiotic_route').value || null,
+        indication: document.getElementById('indication').value.trim() || null,
+        duration_requested_hours: parseInt(document.getElementById('duration_requested_hours').value) || null,
+        prescriber_name: document.getElementById('prescriber_name').value.trim() || null,
+        prescriber_pager: document.getElementById('prescriber_pager').value.trim() || null,
+    };
+
+    try {
+        // First create the request
+        const createResponse = await fetch('{{ url_for("abx_approvals.api_create_request") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Name': createdBy,
+            },
+            body: JSON.stringify(data)
+        });
+
+        const createResult = await createResponse.json();
+
+        if (!createResult.success) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Error: ' + createResult.error + '</div>';
+            resultDiv.classList.remove('hidden');
+            return;
+        }
+
+        // Then record the decision
+        const decisionData = {
+            decision: selectedDecision,
+            decision_notes: document.getElementById('decision_notes').value.trim() || null,
+            alternative_recommended: selectedDecision === 'changed_therapy'
+                ? document.getElementById('alternative_recommended').value.trim()
+                : null,
+        };
+
+        const decideResponse = await fetch('/abx-approvals/api/' + createResult.approval_id + '/decide', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-User-Name': createdBy,
+            },
+            body: JSON.stringify(decisionData)
+        });
+
+        const decideResult = await decideResponse.json();
+
+        if (decideResult.success) {
+            resultDiv.innerHTML = '<div class="alert alert-success">Request submitted successfully! Redirecting...</div>';
+            resultDiv.classList.remove('hidden');
+            setTimeout(() => {
+                window.location.href = '{{ url_for("abx_approvals.dashboard") }}';
+            }, 1500);
+        } else {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Error recording decision: ' + decideResult.error + '</div>';
+            resultDiv.classList.remove('hidden');
+        }
+
+    } catch (err) {
+        resultDiv.innerHTML = '<div class="alert alert-danger">Failed to submit: ' + err.message + '</div>';
+        resultDiv.classList.remove('hidden');
+    }
+});
+</script>
+
+<style>
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-control, .form-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-family: inherit;
+}
+
+.form-control:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.decision-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.btn-approve {
+    background: var(--color-success);
+    color: white;
+    border: 2px solid var(--color-success);
+}
+
+.btn-approve:hover {
+    background: #15803d;
+}
+
+.btn-change {
+    background: var(--color-warning);
+    color: var(--color-gray-900);
+    border: 2px solid var(--color-warning);
+}
+
+.btn-deny {
+    background: var(--color-danger);
+    color: white;
+    border: 2px solid var(--color-danger);
+}
+
+.btn-deny:hover {
+    background: #b91c1c;
+}
+
+.btn-defer {
+    background: var(--color-gray-400);
+    color: white;
+    border: 2px solid var(--color-gray-400);
+}
+
+.btn-defer:hover {
+    background: var(--color-gray-500);
+}
+
+.decision-buttons button.selected {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+.data-table.compact {
+    font-size: 0.8125rem;
+}
+
+.data-table.compact th,
+.data-table.compact td {
+    padding: 0.5rem 0.75rem;
+}
+
+.culture-item {
+    padding: 1rem;
+    background: var(--color-gray-50);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.culture-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.organism-name {
+    font-weight: 600;
+    color: var(--color-gray-800);
+}
+
+.culture-date {
+    font-size: 0.8rem;
+    color: var(--color-gray-500);
+}
+
+.susceptibility-table {
+    width: 100%;
+    font-size: 0.8125rem;
+}
+
+.susceptibility-table td {
+    padding: 0.25rem 0.5rem;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.mic-value {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+}
+
+.alert-danger {
+    background: #fef2f2;
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
+.alert-success {
+    background: #f0fdf4;
+    border: 1px solid #10b981;
+    color: #065f46;
+}
+
+.patient-mrn {
+    font-family: monospace;
+    font-weight: 600;
+}
+</style>
+
+{% endif %}
+{% endblock %}

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "macros/components.html" import reviewer_input %}
+{% from "macros/components.html" import reviewer_input, clinical_context_card %}
 
 {% block title %}Indication Review - {{ candidate.medication.medication_name }} - {{ app_name }}{% endblock %}
 
@@ -12,6 +12,11 @@
 <div class="alert-detail-layout">
     <!-- Left Column: Candidate Information -->
     <div class="alert-detail-main">
+        <!-- Clinical Context Card (MDR, Allergies, Renal) -->
+        {% if clinical_context %}
+        {{ clinical_context_card(clinical_context) }}
+        {% endif %}
+
         <!-- Status Badge -->
         <div class="candidate-status-bar">
             <span class="badge badge-lg badge-classification-{{ candidate.final_classification }}">

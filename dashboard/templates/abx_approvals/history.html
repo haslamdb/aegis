@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import empty_state %}
+
+{% block title %}Approval History - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Approval History</h1>
+    <a href="{{ url_for('abx_approvals.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="decision">Decision</label>
+            <select name="decision" id="decision" onchange="this.form.submit()">
+                <option value="">All Decisions</option>
+                {% for value, display in decision_options %}
+                <option value="{{ value }}" {% if current_decision == value %}selected{% endif %}>
+                    {{ display }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="antibiotic">Antibiotic</label>
+            <input type="text"
+                   name="antibiotic"
+                   id="antibiotic"
+                   value="{{ current_antibiotic or '' }}"
+                   placeholder="Filter by antibiotic..."
+                   class="form-control filter-input">
+        </div>
+        <div class="filter-group">
+            <label for="mrn">Patient MRN</label>
+            <input type="text"
+                   name="mrn"
+                   id="mrn"
+                   value="{{ current_mrn or '' }}"
+                   placeholder="Filter by MRN..."
+                   class="form-control filter-input">
+        </div>
+        <div class="filter-group">
+            <label for="days">Period</label>
+            <select name="days" id="days" onchange="this.form.submit()">
+                <option value="7" {% if current_days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if current_days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="90" {% if current_days == 90 %}selected{% endif %}>Last 90 days</option>
+                <option value="365" {% if current_days == 365 %}selected{% endif %}>Last year</option>
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+            {% if current_decision or current_antibiotic or current_mrn or current_days != 30 %}
+            <a href="{{ url_for('abx_approvals.history') }}" class="btn btn-secondary btn-sm">Clear</a>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<!-- Results -->
+<div class="section">
+    {% if approvals %}
+    <p class="results-count">{{ approvals | length }} approval{% if approvals | length != 1 %}s{% endif %} found</p>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Antibiotic</th>
+                <th>Indication</th>
+                <th>Decision</th>
+                <th>Decided By</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in approvals %}
+            <tr>
+                <td>{{ req.created_at.strftime('%m/%d/%Y') }}</td>
+                <td>
+                    <strong>{{ req.patient_mrn }}</strong>
+                    {% if req.patient_name %}
+                    <br><small class="text-muted">{{ req.patient_name }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ req.antibiotic_name }}</strong>
+                    {% if req.antibiotic_dose %}
+                    <br><small class="text-muted">{{ req.antibiotic_dose }}</small>
+                    {% endif %}
+                </td>
+                <td>{{ req.indication or '-' }}</td>
+                <td>
+                    <span class="badge badge-{{ 'success' if req.decision == 'approved' else 'warning' if req.decision == 'changed_therapy' else 'danger' if req.decision == 'denied' else 'secondary' }}">
+                        {{ ApprovalDecision.display_name(req.decision) if req.decision else 'Pending' }}
+                    </span>
+                    {% if req.alternative_recommended %}
+                    <br><small class="text-muted">Alt: {{ req.alternative_recommended }}</small>
+                    {% endif %}
+                </td>
+                <td>{{ req.decision_by or '-' }}</td>
+                <td class="text-center">
+                    <a href="{{ url_for('abx_approvals.approval_detail', approval_id=req.id) }}" class="btn btn-sm btn-secondary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    {{ empty_state("No approvals found matching your criteria.") }}
+    {% endif %}
+</div>
+
+<style>
+.filters {
+    background: white;
+    padding: 1rem 1.5rem;
+    border: 1px solid var(--color-gray-200);
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.filter-form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.filter-group label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-gray-600);
+}
+
+.filter-group select,
+.filter-group .filter-input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    min-width: 150px;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.results-count {
+    color: var(--color-gray-500);
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+}
+
+.patient-mrn {
+    font-family: monospace;
+}
+</style>
+{% endblock %}

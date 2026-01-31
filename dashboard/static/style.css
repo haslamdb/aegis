@@ -3032,3 +3032,195 @@ table a.btn:hover {
 .text-center {
     text-align: center;
 }
+
+/* ============================================
+   Clinical Context Card
+   MDR history, allergies, renal status alerts
+   ============================================ */
+.clinical-context-card {
+    background: var(--color-white);
+    border: 2px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.clinical-context-card h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-gray-700);
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.context-section {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 0.75rem;
+    background: var(--color-gray-50);
+}
+
+.context-section:last-of-type {
+    margin-bottom: 0;
+}
+
+.context-section.mdr-section {
+    background: var(--color-danger-light);
+    border-left: 4px solid var(--color-danger);
+}
+
+.context-section.allergy-section {
+    background: var(--color-warning-light);
+    border-left: 4px solid var(--color-warning);
+}
+
+.context-section.allergy-section.critical {
+    background: var(--color-danger-light);
+    border-left: 4px solid var(--color-danger);
+}
+
+.context-section.renal-section {
+    background: var(--color-info-light);
+    border-left: 4px solid var(--color-info);
+}
+
+.section-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.section-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.section-content strong {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-gray-800);
+    margin-bottom: 0.5rem;
+}
+
+.mdr-badges,
+.renal-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-bottom: 0.5rem;
+}
+
+.mdr-details {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1rem;
+    font-size: 0.8rem;
+    color: var(--color-gray-600);
+}
+
+.mdr-details li {
+    margin-bottom: 0.25rem;
+}
+
+.allergy-list {
+    margin: 0;
+    padding-left: 1rem;
+    font-size: 0.85rem;
+}
+
+.allergy-list li {
+    margin-bottom: 0.375rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.allergy-reaction {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+    font-style: italic;
+}
+
+.renal-values {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.85rem;
+}
+
+.renal-value {
+    font-weight: 500;
+    color: var(--color-gray-700);
+}
+
+.no-alerts {
+    text-align: center;
+    color: var(--color-gray-500);
+    padding: 1rem;
+    font-style: italic;
+    margin: 0;
+}
+
+/* ============================================
+   Allergy-Adjusted Recommendations
+   ============================================ */
+.allergy-adjusted-recommendation {
+    margin-bottom: 0.75rem;
+}
+
+.allergy-warnings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    margin-top: 0.5rem;
+}
+
+.allergy-warning-badge {
+    display: inline-block;
+    background: var(--color-warning-light);
+    color: var(--color-gray-800);
+    padding: 0.375rem 0.625rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    border-left: 3px solid var(--color-warning);
+}
+
+/* Strikethrough for excluded options */
+.badge s {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Susceptible options with allergy exclusions */
+.recommendation-text .badge-danger {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+    border: 1px solid var(--color-danger);
+}
+
+/* Allergy-excluded rows in susceptibility tables */
+.allergy-excluded {
+    background: var(--color-danger-light);
+    opacity: 0.7;
+}
+
+.allergy-excluded td {
+    text-decoration: line-through;
+    color: var(--color-gray-500);
+}
+
+.allergy-icon {
+    color: var(--color-warning);
+    margin-left: 0.25rem;
+}
+
+.allergy-note {
+    margin-top: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    background: var(--color-warning-light);
+    border-radius: var(--radius-sm);
+    color: var(--color-gray-700);
+}
