@@ -118,7 +118,6 @@
     <div class="report-card">
         <h3>Requests by Day of Week</h3>
         {% if analytics.by_day_of_week %}
-        {{ bar_chart(analytics.by_day_of_week|map(attribute={'label': 'day', 'value': 'count'})|list, bar_class="bar-primary") }}
         <div class="weekday-chart">
             {% set max_count = analytics.by_day_of_week|map(attribute='count')|max %}
             {% for item in analytics.by_day_of_week %}

@@ -1986,6 +1986,19 @@ table a.btn:hover {
     color: var(--color-gray-500);
 }
 
+.culture-card .culture-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.culture-card .specimen-type {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    color: var(--color-gray-500);
+}
+
 .culture-list h3 {
     margin-bottom: 1rem;
 }

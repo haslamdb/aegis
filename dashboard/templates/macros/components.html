@@ -948,10 +948,15 @@
    {{ culture_card(culture) }}
    {{ culture_card(culture, show_dates=false, compact=true) }}
 #}
-{% macro culture_card(culture, show_dates=true, compact=false) %}
+{% macro culture_card(culture, show_dates=true, compact=false, allergies=none) %}
 <div class="culture-card {{ 'culture-card-compact' if compact else '' }}">
     <div class="culture-header">
-        <span class="organism-name">{{ culture.organism }}</span>
+        <div class="culture-title">
+            <span class="organism-name">{{ culture.organism }}</span>
+            {% if culture.specimen_type %}
+            <span class="specimen-type">({{ culture.specimen_type }})</span>
+            {% endif %}
+        </div>
         {% if show_dates and culture.collected_at %}
         <span class="culture-date">{{ culture.collected_at.strftime('%m/%d/%Y') }}</span>
         {% endif %}
@@ -998,7 +1003,13 @@
     </table>
     {% if culture._has_allergy_conflicts is defined and culture._has_allergy_conflicts %}
     <div class="allergy-note">
-        <small>&#x26A0; Some options excluded due to patient allergies</small>
+        <small><strong>Allergy History:</strong>
+        {% if allergies %}
+            {% for allergy in allergies %}{{ allergy.substance }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {% else %}
+            See clinical alerts
+        {% endif %}
+        </small>
     </div>
     {% endif %}
     {% else %}
@@ -1014,13 +1025,14 @@
    Usage:
    {% from "macros/components.html" import culture_list %}
    {{ culture_list(cultures, title="Recent Cultures (30 days)") }}
+   {{ culture_list(cultures, allergies=clinical_context.allergies) }}
 #}
-{% macro culture_list(cultures, title="Recent Cultures", empty_message="No cultures found.") %}
+{% macro culture_list(cultures, title="Recent Cultures", empty_message="No cultures found.", allergies=none) %}
 <div class="culture-list">
     <h3>{{ title }}</h3>
     {% if cultures %}
         {% for culture in cultures %}
-        {{ culture_card(culture) }}
+        {{ culture_card(culture, allergies=allergies) }}
         {% endfor %}
     {% else %}
     <p class="text-muted">{{ empty_message }}</p>

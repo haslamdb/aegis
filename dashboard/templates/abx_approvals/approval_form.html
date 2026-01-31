@@ -70,7 +70,7 @@
 
         <!-- Recent Cultures -->
         <div class="alert-detail-card">
-            {{ culture_list(cultures, title="Recent Cultures (30 days)", empty_message="No cultures found in the last 30 days.") }}
+            {{ culture_list(cultures, title="Recent Cultures (30 days)", empty_message="No cultures found in the last 30 days.", allergies=clinical_context.allergies if clinical_context else none) }}
         </div>
 
         <!-- Recent Approvals for This Patient -->
@@ -110,7 +110,7 @@
         <div class="action-card">
             <h3>Request Details</h3>
 
-            {{ reviewer_input(label="Your Name", id="created_by") }}
+            {{ reviewer_input(label="Your Name") }}
 
             <div class="form-group">
                 <label for="antibiotic_name">Antibiotic Requested *</label>
@@ -225,7 +225,7 @@
             </div>
 
             <button type="button" id="submit-btn" class="btn btn-primary btn-block" style="margin-top: 1rem;">
-                Submit Request
+                Submit
             </button>
 
             <div id="result-message" class="hidden"></div>
@@ -261,13 +261,13 @@ document.querySelectorAll('.decision-buttons button').forEach(btn => {
 // Submit handler
 document.getElementById('submit-btn').addEventListener('click', async function() {
     const resultDiv = document.getElementById('result-message');
-    const createdBy = document.getElementById('created_by').value.trim();
+    const reviewer = document.getElementById('reviewer').value.trim();
     const antibioticName = document.getElementById('antibiotic_name').value.trim();
 
-    if (!createdBy) {
+    if (!reviewer) {
         resultDiv.innerHTML = '<div class="alert alert-danger">Please enter your name.</div>';
         resultDiv.classList.remove('hidden');
-        document.getElementById('created_by').focus();
+        document.getElementById('reviewer').focus();
         return;
     }
 
@@ -305,6 +305,7 @@ document.getElementById('submit-btn').addEventListener('click', async function()
         indication: document.getElementById('indication').value.trim() || null,
         duration_requested_hours: parseInt(document.getElementById('duration_requested_hours').value) || null,
         prescriber_name: document.getElementById('prescriber_name').value.trim() || null,
+        reviewer: reviewer,
     };
 
     try {
@@ -313,7 +314,6 @@ document.getElementById('submit-btn').addEventListener('click', async function()
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-User-Name': createdBy,
             },
             body: JSON.stringify(data)
         });
@@ -329,6 +329,7 @@ document.getElementById('submit-btn').addEventListener('click', async function()
         // Then record the decision
         const decisionData = {
             decision: selectedDecision,
+            reviewer: reviewer,
             decision_notes: document.getElementById('decision_notes').value.trim() || null,
             alternative_recommended: selectedDecision === 'changed_therapy'
                 ? document.getElementById('alternative_recommended').value.trim()
@@ -339,7 +340,6 @@ document.getElementById('submit-btn').addEventListener('click', async function()
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-User-Name': createdBy,
             },
             body: JSON.stringify(decisionData)
         });
