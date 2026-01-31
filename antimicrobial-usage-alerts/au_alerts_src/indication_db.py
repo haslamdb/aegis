@@ -1292,3 +1292,54 @@ class IndicationDatabase:
                 "no_indication_flags": row["no_indication_flags"] or 0,
                 "days": days,
             }
+
+    def get_agent_appropriateness_stats(self, days: int = 30) -> dict:
+        """Get agent appropriateness statistics from reviews.
+
+        Only includes reviews where agent_decision was actually assessed
+        (not skipped or null).
+
+        Args:
+            days: Number of days to look back.
+
+        Returns:
+            Dict with appropriateness stats, or empty dict if no data.
+        """
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+
+            cursor.execute(
+                """
+                SELECT
+                    agent_decision,
+                    COUNT(*) as count
+                FROM indication_reviews
+                WHERE reviewed_at >= datetime('now', ?)
+                AND agent_decision IS NOT NULL
+                AND agent_decision != ''
+                AND agent_decision != 'agent_skip'
+                GROUP BY agent_decision
+                ORDER BY count DESC
+                """,
+                (f"-{days} days",),
+            )
+
+            results = {}
+            total = 0
+            for row in cursor.fetchall():
+                decision = row["agent_decision"]
+                count = row["count"]
+                results[decision] = count
+                total += count
+
+            if total == 0:
+                return {}
+
+            return {
+                "total_assessed": total,
+                "appropriate": results.get("agent_appropriate", 0),
+                "acceptable": results.get("agent_acceptable", 0),
+                "inappropriate": results.get("agent_inappropriate", 0),
+                "appropriate_rate": (results.get("agent_appropriate", 0) + results.get("agent_acceptable", 0)) / total if total > 0 else 0,
+                "days": days,
+            }
