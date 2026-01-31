@@ -170,6 +170,10 @@ class Classification:
     tokens_used: int = 0
     processing_time_ms: int = 0
     created_at: datetime = field(default_factory=datetime.now)
+    # Extraction and rules engine data for training feedback
+    extraction_data: dict | None = None  # Full ClinicalExtraction JSON for review
+    rules_result: dict | None = None  # ClassificationResult from rules engine
+    strictness_level: str | None = None  # nhsn_strict, nhsn_moderate, permissive
 
     def to_db_row(self) -> dict:
         """Convert to database row format."""
@@ -188,7 +192,24 @@ class Classification:
             "tokens_used": self.tokens_used,
             "processing_time_ms": self.processing_time_ms,
             "created_at": self.created_at.isoformat(),
+            "extraction_data": json.dumps(self.extraction_data) if self.extraction_data else None,
+            "rules_result": json.dumps(self.rules_result) if self.rules_result else None,
+            "strictness_level": self.strictness_level,
         }
+
+
+class OverrideReasonCategory(Enum):
+    """Categories for why an IP reviewer overrode the LLM classification.
+
+    These categories help determine whether the issue was with extraction
+    (LLM training feedback) or rules engine (interpretation difference).
+    """
+    EXTRACTION_ERROR = "extraction_error"  # LLM extracted facts incorrectly
+    RULES_ERROR = "rules_error"  # Rules engine applied criteria incorrectly
+    CLINICAL_JUDGMENT = "clinical_judgment"  # Reviewer used clinical context not in notes
+    MISSING_DOCUMENTATION = "missing_documentation"  # Key info was missing from notes
+    NHSN_INTERPRETATION = "nhsn_interpretation"  # Different interpretation of NHSN criteria
+    OTHER = "other"
 
 
 @dataclass
@@ -209,7 +230,10 @@ class Review:
     # Override tracking
     llm_decision: str | None = None  # Original LLM decision for comparison
     is_override: bool = False  # True if reviewer disagreed with LLM
-    override_reason: str | None = None  # Categorized reason for override
+    override_reason: str | None = None  # Free-text reason for override
+    # Structured override tracking for training feedback
+    override_reason_category: str | None = None  # OverrideReasonCategory value
+    extraction_corrections: dict | None = None  # {field: {old: x, new: y}} for LLM training
     created_at: datetime = field(default_factory=datetime.now)
     reviewed_at: datetime | None = None
 
@@ -252,6 +276,8 @@ class Review:
             "llm_decision": self.llm_decision,
             "is_override": self.is_override,
             "override_reason": self.override_reason,
+            "override_reason_category": self.override_reason_category,
+            "extraction_corrections": json.dumps(self.extraction_corrections) if self.extraction_corrections else None,
             "created_at": self.created_at.isoformat(),
             "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
         }

@@ -43,6 +43,10 @@ CREATE TABLE IF NOT EXISTS hai_classifications (
     prompt_version TEXT NOT NULL,
     tokens_used INTEGER,
     processing_time_ms INTEGER,
+    -- v2: Extraction data for training/review
+    extraction_data TEXT,  -- JSON: full ClinicalExtraction for review
+    rules_result TEXT,  -- JSON: ClassificationResult from rules engine
+    strictness_level TEXT,  -- nhsn_strict, nhsn_moderate, permissive
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (candidate_id) REFERENCES hai_candidates(id)
 );
@@ -64,6 +68,9 @@ CREATE TABLE IF NOT EXISTS hai_reviews (
     llm_decision TEXT,  -- Original LLM decision for comparison
     is_override BOOLEAN DEFAULT 0,  -- True if reviewer disagreed with LLM
     override_reason TEXT,  -- Specific reason for override (optional, detailed)
+    -- v2: Structured override reasons for training
+    override_reason_category TEXT,  -- extraction_error, rules_error, clinical_judgment, etc.
+    extraction_corrections TEXT,  -- JSON: {field: {old: x, new: y}} for training feedback
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     reviewed_at TIMESTAMP,
     FOREIGN KEY (candidate_id) REFERENCES hai_candidates(id),

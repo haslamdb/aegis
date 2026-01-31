@@ -709,8 +709,9 @@ class HAIDatabase:
                     id, candidate_id, decision, confidence, alternative_source,
                     is_mbi_lcbi, supporting_evidence, contradicting_evidence,
                     reasoning, model_used, prompt_version, tokens_used,
-                    processing_time_ms, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    processing_time_ms, created_at,
+                    extraction_data, rules_result, strictness_level
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     row["id"],
@@ -727,6 +728,9 @@ class HAIDatabase:
                     row["tokens_used"],
                     row["processing_time_ms"],
                     row["created_at"],
+                    row.get("extraction_data"),
+                    row.get("rules_result"),
+                    row.get("strictness_level"),
                 ),
             )
             conn.commit()
@@ -778,6 +782,20 @@ class HAIDatabase:
                     )
                 )
 
+        # Parse extraction_data and rules_result if present
+        extraction_data = None
+        rules_result = None
+        strictness_level = None
+        try:
+            if row["extraction_data"]:
+                extraction_data = json.loads(row["extraction_data"])
+            if row["rules_result"]:
+                rules_result = json.loads(row["rules_result"])
+            strictness_level = row["strictness_level"]
+        except (KeyError, IndexError):
+            # Columns may not exist in older databases
+            pass
+
         return Classification(
             id=row["id"],
             candidate_id=row["candidate_id"],
@@ -793,6 +811,9 @@ class HAIDatabase:
             tokens_used=row["tokens_used"] or 0,
             processing_time_ms=row["processing_time_ms"] or 0,
             created_at=datetime.fromisoformat(row["created_at"]),
+            extraction_data=extraction_data,
+            rules_result=rules_result,
+            strictness_level=strictness_level,
         )
 
     # --- Review Operations ---
@@ -822,6 +843,8 @@ class HAIDatabase:
         llm_decision: str | None = None,
         is_override: bool = False,
         override_reason: str | None = None,
+        override_reason_category: str | None = None,
+        extraction_corrections: dict | None = None,
     ) -> str:
         """Save a new review entry with individual parameters.
 
@@ -835,6 +858,8 @@ class HAIDatabase:
             llm_decision: Original LLM classification decision
             is_override: Whether reviewer disagreed with LLM
             override_reason: Reason for override if applicable
+            override_reason_category: Categorized reason (extraction_error, rules_error, etc.)
+            extraction_corrections: {field: {old: x, new: y}} for LLM training feedback
         """
         import uuid
         review_id = str(uuid.uuid4())
@@ -850,8 +875,9 @@ class HAIDatabase:
                     id, candidate_id, classification_id, queue_type, reviewed,
                     reviewer, reviewer_decision, reviewer_notes,
                     llm_decision, is_override, override_reason,
+                    override_reason_category, extraction_corrections,
                     created_at, reviewed_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     review_id,
@@ -865,6 +891,8 @@ class HAIDatabase:
                     llm_decision,
                     is_override,
                     override_reason,
+                    override_reason_category,
+                    json.dumps(extraction_corrections) if extraction_corrections else None,
                     now.isoformat(),
                     now.isoformat() if is_completed else None,
                 ),
@@ -886,6 +914,8 @@ class HAIDatabase:
                 "llm_decision": llm_decision,
                 "is_override": is_override,
                 "override_reason": override_reason,
+                "override_reason_category": override_reason_category,
+                "has_extraction_corrections": extraction_corrections is not None,
                 "is_completed": is_completed,
             },
         )

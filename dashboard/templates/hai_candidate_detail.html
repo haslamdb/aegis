@@ -103,6 +103,81 @@
         </div>
         {% endif %}
 
+        <!-- Extraction Data (for training feedback) -->
+        {% if extraction_data %}
+        <div class="alert-detail-card">
+            <div class="info-section">
+                <h3>LLM Extraction Details</h3>
+                <details class="extraction-details">
+                    <summary>View extracted data (click to expand)</summary>
+                    <div class="extraction-content">
+                        {% if strictness_level %}
+                        <div class="extraction-field">
+                            <strong>Strictness Level:</strong> {{ strictness_level }}
+                        </div>
+                        {% endif %}
+                        {% if extraction_data.symptoms %}
+                        <div class="extraction-field">
+                            <strong>Symptoms Extracted:</strong>
+                            <ul>
+                                {% for symptom in extraction_data.symptoms %}
+                                <li>{{ symptom }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        {% if extraction_data.documented_infection_sites %}
+                        <div class="extraction-field">
+                            <strong>Documented Infection Sites:</strong>
+                            <ul>
+                                {% for site in extraction_data.documented_infection_sites %}
+                                <li>{{ site.site_type }}: {{ site.confidence }} ({{ site.evidence_source }})</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        {% if extraction_data.mbi_factors %}
+                        <div class="extraction-field">
+                            <strong>MBI Factors:</strong>
+                            <ul>
+                                {% if extraction_data.mbi_factors.mucositis_documented %}
+                                <li>Mucositis: {{ extraction_data.mbi_factors.mucositis_grade or 'documented' }}</li>
+                                {% endif %}
+                                {% if extraction_data.mbi_factors.gvhd_documented %}
+                                <li>GVHD: documented</li>
+                                {% endif %}
+                                {% if extraction_data.mbi_factors.neutropenia_present %}
+                                <li>Neutropenia: ANC {{ extraction_data.mbi_factors.anc_value }}</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        {% if extraction_data.line_assessment %}
+                        <div class="extraction-field">
+                            <strong>Line Assessment:</strong>
+                            <ul>
+                                <li>Line Present: {{ 'Yes' if extraction_data.line_assessment.line_present else 'No' }}</li>
+                                {% if extraction_data.line_assessment.line_type %}
+                                <li>Line Type: {{ extraction_data.line_assessment.line_type }}</li>
+                                {% endif %}
+                                {% if extraction_data.line_assessment.days_in_place %}
+                                <li>Days In Place: {{ extraction_data.line_assessment.days_in_place }}</li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        <div class="extraction-raw">
+                            <details>
+                                <summary>Raw JSON</summary>
+                                <pre>{{ extraction_data | tojson(indent=2) }}</pre>
+                            </details>
+                        </div>
+                    </div>
+                </details>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- NHSN Criteria -->
         <div class="alert-detail-card">
             <div class="info-section">
@@ -312,6 +387,25 @@
             </div>
         </div>
 
+        <!-- Override Reason (shown when disagreeing with LLM) -->
+        <div class="action-card hidden" id="override-reason-section">
+            <h3>Override Reason</h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                You are overriding the LLM classification. Please indicate why:
+            </p>
+            <div class="form-group">
+                <select id="override-reason-category" class="form-control">
+                    <option value="">-- Select a reason --</option>
+                    <option value="extraction_error">Extraction Error - LLM misread the notes</option>
+                    <option value="rules_error">Rules Error - Classification logic was wrong</option>
+                    <option value="clinical_judgment">Clinical Judgment - Context not in notes</option>
+                    <option value="missing_documentation">Missing Documentation - Key info unavailable</option>
+                    <option value="nhsn_interpretation">NHSN Interpretation - Different criteria reading</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+        </div>
+
         <div id="review-result" class="hidden"></div>
 
         {% elif candidate.status.value == 'confirmed' %}
@@ -353,56 +447,101 @@
 </div>
 
 <script>
-document.querySelectorAll('.classification-buttons button, .classification-buttons-single button, .secondary-buttons button, .ssi-type-buttons button').forEach(btn => {
-    btn.addEventListener('click', async function() {
-        const decision = this.getAttribute('data-decision');
-        const reviewer = document.getElementById('reviewer').value;
-        const notes = document.getElementById('notes').value;
-        const resultDiv = document.getElementById('review-result');
+(function() {
+    // LLM's decision for this candidate
+    const llmDecision = '{{ classifications[0].decision.value if classifications else "" }}';
 
-        if (!reviewer.trim()) {
-            resultDiv.innerHTML = '<div class="alert alert-danger">Please enter your name</div>';
-            resultDiv.classList.remove('hidden');
-            document.getElementById('reviewer').focus();
-            return;
+    // Check if decision is an override
+    function isOverride(decision) {
+        const confirmDecisions = ['confirmed', 'superficial_ssi', 'deep_ssi', 'organ_space_ssi'];
+        const rejectDecisions = ['rejected', 'mbi_lcbi', 'secondary'];
+
+        if (llmDecision === 'hai_confirmed' && rejectDecisions.includes(decision)) {
+            return true;
         }
+        if (llmDecision === 'not_hai' && confirmDecisions.includes(decision)) {
+            return true;
+        }
+        return false;
+    }
 
-        // Highlight selected button
-        document.querySelectorAll('.classification-buttons button, .classification-buttons-single button, .secondary-buttons button, .ssi-type-buttons button').forEach(b => {
-            b.classList.remove('selected');
-        });
-        this.classList.add('selected');
+    // Show/hide override reason section based on selection
+    function updateOverrideSection(decision) {
+        const overrideSection = document.getElementById('override-reason-section');
+        if (isOverride(decision)) {
+            overrideSection.classList.remove('hidden');
+        } else {
+            overrideSection.classList.add('hidden');
+        }
+    }
 
-        const data = {
-            candidate_id: '{{ candidate.id }}',
-            reviewer: reviewer,
-            decision: decision,
-            notes: notes
-        };
+    document.querySelectorAll('.classification-buttons button, .classification-buttons-single button, .secondary-buttons button, .ssi-type-buttons button').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const decision = this.getAttribute('data-decision');
+            const reviewer = document.getElementById('reviewer').value;
+            const notes = document.getElementById('notes').value;
+            const resultDiv = document.getElementById('review-result');
+            const overrideReasonCategory = document.getElementById('override-reason-category');
 
-        try {
-            const response = await fetch('{{ url_for("hai_detection.api_submit_review", candidate_id=candidate.id) }}', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                resultDiv.innerHTML = '<div class="alert alert-success">Classification submitted! Redirecting...</div>';
+            if (!reviewer.trim()) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Please enter your name</div>';
                 resultDiv.classList.remove('hidden');
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                resultDiv.innerHTML = '<div class="alert alert-danger">Error: ' + result.error + '</div>';
+                document.getElementById('reviewer').focus();
+                return;
+            }
+
+            // Highlight selected button and show override section if needed
+            document.querySelectorAll('.classification-buttons button, .classification-buttons-single button, .secondary-buttons button, .ssi-type-buttons button').forEach(b => {
+                b.classList.remove('selected');
+            });
+            this.classList.add('selected');
+            updateOverrideSection(decision);
+
+            // If override and no reason selected, prompt user
+            const override = isOverride(decision);
+            if (override && overrideReasonCategory && !overrideReasonCategory.value) {
+                resultDiv.innerHTML = '<div class="alert alert-warning">Please select an override reason before submitting.</div>';
+                resultDiv.classList.remove('hidden');
+                overrideReasonCategory.focus();
+                return;
+            }
+
+            const data = {
+                candidate_id: '{{ candidate.id }}',
+                reviewer: reviewer,
+                decision: decision,
+                notes: notes
+            };
+
+            // Add override reason category if this is an override
+            if (override && overrideReasonCategory && overrideReasonCategory.value) {
+                data.override_reason_category = overrideReasonCategory.value;
+            }
+
+            try {
+                const response = await fetch('{{ url_for("hai_detection.api_submit_review", candidate_id=candidate.id) }}', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    resultDiv.innerHTML = '<div class="alert alert-success">Classification submitted! Redirecting...</div>';
+                    resultDiv.classList.remove('hidden');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    resultDiv.innerHTML = '<div class="alert alert-danger">Error: ' + result.error + '</div>';
+                    resultDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Failed to submit: ' + err.message + '</div>';
                 resultDiv.classList.remove('hidden');
             }
-        } catch (err) {
-            resultDiv.innerHTML = '<div class="alert alert-danger">Failed to submit: ' + err.message + '</div>';
-            resultDiv.classList.remove('hidden');
-        }
+        });
     });
-});
+})();
 </script>
 
 <style>
@@ -760,6 +899,89 @@ document.querySelectorAll('.classification-buttons button, .classification-butto
     border-radius: 8px;
     text-align: center;
     color: #92400e;
+}
+
+/* Extraction Details Section */
+.extraction-details {
+    background: var(--color-gray-50);
+    border: 1px solid var(--color-gray-200);
+    border-radius: 8px;
+    padding: 0;
+}
+
+.extraction-details summary {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--color-primary-dark);
+}
+
+.extraction-details summary:hover {
+    background: var(--color-gray-100);
+}
+
+.extraction-details[open] summary {
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.extraction-content {
+    padding: 1rem;
+}
+
+.extraction-field {
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--color-gray-100);
+}
+
+.extraction-field:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.extraction-field ul {
+    margin: 0.5rem 0 0 1.5rem;
+    padding: 0;
+}
+
+.extraction-field li {
+    margin: 0.25rem 0;
+}
+
+.extraction-raw details {
+    margin-top: 1rem;
+}
+
+.extraction-raw summary {
+    cursor: pointer;
+    color: var(--color-gray-500);
+    font-size: 0.85rem;
+}
+
+.extraction-raw pre {
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    max-height: 300px;
+}
+
+/* Override Reason Section */
+#override-reason-section {
+    border: 2px solid var(--color-warning);
+    background: var(--color-warning-light);
+}
+
+#override-reason-section h3 {
+    color: var(--color-warning-dark, #92400e);
+}
+
+#override-reason-section .form-control {
+    background: white;
 }
 
 /* Alerts */
