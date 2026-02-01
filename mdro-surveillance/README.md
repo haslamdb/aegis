@@ -12,14 +12,18 @@ The MDRO Surveillance module:
 
 ## Supported MDRO Types
 
+Classification criteria are aligned with CDC/NHSN definitions for consistency between real-time surveillance and quarterly NHSN AR reporting.
+
 | Type | Full Name | Classification Criteria |
 |------|-----------|------------------------|
-| MRSA | Methicillin-resistant Staphylococcus aureus | Oxacillin R or Cefoxitin R |
+| MRSA | Methicillin-resistant Staphylococcus aureus | Oxacillin R, Methicillin R, Nafcillin R, or Cefoxitin R |
 | VRE | Vancomycin-resistant Enterococcus | Vancomycin R in E. faecium/faecalis |
-| CRE | Carbapenem-resistant Enterobacteriaceae | Meropenem R or Imipenem R or Ertapenem R |
-| ESBL | Extended-spectrum Beta-lactamase | Ceftriaxone R + Cefepime R (Enterobacteriaceae) |
-| CRPA | Carbapenem-resistant Pseudomonas aeruginosa | Meropenem R or Imipenem R |
-| CRAB | Carbapenem-resistant Acinetobacter baumannii | Meropenem R or Imipenem R |
+| CRE | Carbapenem-resistant Enterobacterales | Meropenem R, Imipenem R, Ertapenem R, or Doripenem R |
+| ESBL | Extended-spectrum Beta-lactamase | Ceftriaxone R, Ceftazidime R, Cefotaxime R, or Aztreonam R (in E. coli, Klebsiella, or P. mirabilis) |
+| CRPA | Carbapenem-resistant Pseudomonas aeruginosa | Meropenem R, Imipenem R, or Doripenem R |
+| CRAB | Carbapenem-resistant Acinetobacter baumannii | Meropenem R, Imipenem R, or Doripenem R |
+
+**Note:** CRE classification takes precedence over ESBL - organisms resistant to carbapenems are classified as CRE, not ESBL.
 
 ## Transmission Classification
 

@@ -117,14 +117,18 @@ Tracks resistance patterns using the **first-isolate rule**:
 - Prevents overweighting from repeat cultures
 - Matches NHSN deduplication methodology
 
-**Phenotype Detection:**
-| Phenotype | Organisms | Antibiotics Tested |
+**Phenotype Detection** (aligned with CDC/NHSN definitions and MDRO Surveillance module):
+
+| Phenotype | Organisms | Resistance Criteria |
 |-----------|-----------|-------------------|
-| MRSA | S. aureus | Oxacillin/Cefoxitin |
-| VRE | E. faecalis, E. faecium | Vancomycin |
-| ESBL | E. coli, K. pneumoniae | 3rd gen cephalosporins |
-| CRE | Enterobacterales | Carbapenems |
-| CRPA | P. aeruginosa | Carbapenems |
+| MRSA | S. aureus | Oxacillin R, Methicillin R, Nafcillin R, or Cefoxitin R |
+| VRE | E. faecalis, E. faecium | Vancomycin R |
+| ESBL | E. coli, Klebsiella, P. mirabilis | Ceftriaxone R, Ceftazidime R, Cefotaxime R, or Aztreonam R |
+| CRE | Enterobacterales | Meropenem R, Imipenem R, Ertapenem R, or Doripenem R |
+| CRPA | P. aeruginosa | Meropenem R, Imipenem R, or Doripenem R |
+| CRAB | A. baumannii | Meropenem R, Imipenem R, or Doripenem R |
+
+**Note:** CRE classification takes precedence over ESBL - organisms resistant to carbapenems are classified as CRE.
 
 ### Data Sources
 

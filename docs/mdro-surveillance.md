@@ -61,22 +61,29 @@ FHIR Server (DiagnosticReport + Observation)
 
 ### Classification Algorithm
 
-The classifier examines susceptibility results (S/I/R) to determine MDRO type:
+The classifier examines susceptibility results (S/I/R) to determine MDRO type. Definitions are aligned with CDC/NHSN standards for consistency between real-time surveillance and quarterly NHSN AR reporting.
 
 ```python
 # Example: MRSA detection
 if organism == "Staphylococcus aureus":
-    if susceptibilities.get("Oxacillin") == "R":
-        return MDROType.MRSA
-    if susceptibilities.get("Cefoxitin") == "R":
+    mrsa_agents = ["Oxacillin", "Methicillin", "Nafcillin", "Cefoxitin"]
+    if any(susceptibilities.get(abx) == "R" for abx in mrsa_agents):
         return MDROType.MRSA
 
-# Example: CRE detection
-if organism in ENTEROBACTERIACEAE:
-    carbapenems = ["Meropenem", "Imipenem", "Ertapenem"]
+# Example: CRE detection (takes precedence over ESBL)
+if organism in ENTEROBACTERALES:
+    carbapenems = ["Meropenem", "Imipenem", "Ertapenem", "Doripenem"]
     if any(susceptibilities.get(abx) == "R" for abx in carbapenems):
         return MDROType.CRE
+
+# Example: ESBL detection
+if organism in ["E. coli", "Klebsiella", "Proteus mirabilis"]:
+    esbl_agents = ["Ceftriaxone", "Ceftazidime", "Cefotaxime", "Aztreonam"]
+    if any(susceptibilities.get(abx) == "R" for abx in esbl_agents):
+        return MDROType.ESBL
 ```
+
+**Important:** CRE classification takes precedence over ESBL. If an organism is resistant to carbapenems, it is classified as CRE rather than ESBL.
 
 ### Database Schema
 

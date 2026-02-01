@@ -1,7 +1,19 @@
 """MDRO Classification based on susceptibility patterns.
 
 Identifies multi-drug resistant organisms from culture susceptibility data
-following CDC/NHSN definitions.
+following CDC/NHSN definitions. These definitions are aligned with the
+NHSN AR (Antimicrobial Resistance) reporting module to ensure consistency
+between real-time surveillance and quarterly NHSN reporting.
+
+CDC/NHSN Phenotype Definitions:
+- MRSA: Staph aureus + oxacillin/methicillin/nafcillin/cefoxitin R
+- VRE: Enterococcus + vancomycin R
+- CRE: Enterobacterales + meropenem/imipenem/ertapenem/doripenem R
+- ESBL: E. coli/Klebsiella/Proteus + ceftriaxone/ceftazidime/cefotaxime/aztreonam R
+- CRPA: Pseudomonas aeruginosa + carbapenem R
+- CRAB: Acinetobacter baumannii + carbapenem R
+
+Reference: CDC NHSN Antimicrobial Use and Resistance Module Protocol
 """
 
 from dataclasses import dataclass, field
@@ -225,15 +237,19 @@ class MDROClassifier:
     def _check_esbl(self, organism: str, resistant_to: set[str]) -> MDROClassification:
         """Check for ESBL-producing Enterobacteriaceae.
 
-        ESBL pattern: Resistant to 3rd gen cephalosporins but often
-        susceptible to carbapenems.
+        CDC/NHSN Definition: Resistance to at least one extended-spectrum
+        cephalosporin (ceftriaxone, ceftazidime, cefotaxime) or aztreonam
+        in E. coli, Klebsiella spp, or Proteus mirabilis.
+
+        Note: CRE takes precedence - organisms resistant to carbapenems
+        are classified as CRE, not ESBL (check order in classify() method).
         """
         esbl_resistant = [
             agent for agent in self.ESBL_INDICATOR_AGENTS
             if agent in resistant_to
         ]
-        # Need resistance to at least 2 ESBL indicators
-        if len(esbl_resistant) >= 2:
+        # CDC/NHSN: Resistance to at least 1 ESBL indicator agent
+        if len(esbl_resistant) >= 1:
             return MDROClassification(
                 is_mdro=True,
                 mdro_type=MDROType.ESBL,

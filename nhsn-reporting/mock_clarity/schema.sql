@@ -327,7 +327,14 @@ INSERT OR REPLACE INTO RX_MED_ONE (MEDICATION_ID, GENERIC_NAME, BRAND_NAME, PHAR
     (5022, 'fluconazole', 'Diflucan', 'Antifungal', 'Azole'),
     (5023, 'micafungin', 'Mycamine', 'Antifungal', 'Echinocandin'),
     (5024, 'amphotericin B', 'Fungizone', 'Antifungal', 'Polyene'),
-    (5025, 'voriconazole', 'Vfend', 'Antifungal', 'Azole');
+    (5025, 'voriconazole', 'Vfend', 'Antifungal', 'Azole'),
+    -- Additional antimicrobials for MDRO phenotype detection
+    (5026, 'oxacillin', 'Bactocill', 'Antibacterial', 'Penicillin'),
+    (5027, 'nafcillin', 'Nallpen', 'Antibacterial', 'Penicillin'),
+    (5028, 'cefoxitin', 'Mefoxin', 'Antibacterial', 'Cephalosporin 2nd Gen'),
+    (5029, 'cefotaxime', 'Claforan', 'Antibacterial', 'Cephalosporin 3rd Gen'),
+    (5030, 'imipenem', 'Primaxin', 'Antibacterial', 'Carbapenem'),
+    (5031, 'doripenem', 'Doribax', 'Antibacterial', 'Carbapenem');
 
 -- NHSN antimicrobial code mappings
 INSERT OR REPLACE INTO NHSN_ANTIMICROBIAL_MAP (MEDICATION_ID, NHSN_CODE, NHSN_CATEGORY, ATC_CODE, DDD, DDD_UNIT) VALUES
@@ -355,13 +362,30 @@ INSERT OR REPLACE INTO NHSN_ANTIMICROBIAL_MAP (MEDICATION_ID, NHSN_CODE, NHSN_CA
     (5022, 'FLU', 'Antifungals - Azoles', 'J02AC01', 0.2, 'g'),
     (5023, 'MCF', 'Antifungals - Echinocandins', 'J02AX05', 0.1, 'g'),
     (5024, 'AMB', 'Antifungals - Polyenes', 'J02AA01', 0.035, 'g'),
-    (5025, 'VRC', 'Antifungals - Azoles', 'J02AC03', 0.4, 'g');
+    (5025, 'VRC', 'Antifungals - Azoles', 'J02AC03', 0.4, 'g'),
+    -- Additional antimicrobials for MDRO phenotype detection
+    (5026, 'OXA', 'Penicillins', 'J01CF04', 2.0, 'g'),
+    (5027, 'NAF', 'Penicillins', 'J01CF06', 2.0, 'g'),
+    (5028, 'FOX', 'Cephalosporins 2nd Gen', 'J01DC01', 6.0, 'g'),
+    (5029, 'CTX', 'Cephalosporins 3rd Gen', 'J01DD01', 4.0, 'g'),
+    (5030, 'IPM', 'Carbapenems', 'J01DH51', 2.0, 'g'),
+    (5031, 'DOR', 'Carbapenems', 'J01DH04', 1.5, 'g');
 
 -- NHSN Phenotype definitions for AR reporting
+-- Aligned with CDC/NHSN definitions for consistency with MDRO Surveillance module
+-- Reference: CDC NHSN Antimicrobial Use and Resistance Module Protocol
 INSERT OR REPLACE INTO NHSN_PHENOTYPE_MAP (PHENOTYPE_ID, PHENOTYPE_CODE, PHENOTYPE_NAME, ORGANISM_PATTERN, RESISTANCE_PATTERN) VALUES
-    (1, 'MRSA', 'Methicillin-resistant Staphylococcus aureus', 'Staphylococcus aureus', 'OXA:R'),
+    -- MRSA: Staph aureus resistant to oxacillin (or methicillin/nafcillin/cefoxitin)
+    (1, 'MRSA', 'Methicillin-resistant Staphylococcus aureus', 'Staphylococcus aureus', 'OXA:R|METH:R|NAF:R|FOX:R'),
+    -- VRE: Enterococcus (faecalis or faecium) resistant to vancomycin
     (2, 'VRE', 'Vancomycin-resistant Enterococcus', 'Enterococcus%', 'VAN:R'),
-    (3, 'ESBL', 'Extended-spectrum beta-lactamase', 'Escherichia coli|Klebsiella%', 'CTX:R,CAZ:R,FEP:S'),
-    (4, 'CRE', 'Carbapenem-resistant Enterobacterales', '%', 'MEM:R|ETP:R'),
-    (5, 'CRPA', 'Carbapenem-resistant Pseudomonas aeruginosa', 'Pseudomonas aeruginosa', 'MEM:R|IPM:R'),
-    (6, 'CRAB', 'Carbapenem-resistant Acinetobacter baumannii', 'Acinetobacter baumannii', 'MEM:R|IPM:R');
+    -- ESBL: Enterobacterales with extended-spectrum cephalosporin resistance
+    -- Requires resistance to >=1 of: ceftriaxone, ceftazidime, cefotaxime, or aztreonam
+    (3, 'ESBL', 'Extended-spectrum beta-lactamase', 'Escherichia coli|Klebsiella%|Proteus mirabilis', 'CRO:R|CAZ:R|CTX:R|ATM:R'),
+    -- CRE: Enterobacterales resistant to at least one carbapenem
+    -- Specific organism list matches CDC Enterobacterales definition
+    (4, 'CRE', 'Carbapenem-resistant Enterobacterales', 'Escherichia coli|Klebsiella%|Enterobacter%|Citrobacter%|Serratia%|Proteus%|Morganella%|Providencia%|Salmonella%|Shigella%', 'MEM:R|IPM:R|ETP:R|DOR:R'),
+    -- CRPA: Pseudomonas aeruginosa resistant to carbapenems
+    (5, 'CRPA', 'Carbapenem-resistant Pseudomonas aeruginosa', 'Pseudomonas aeruginosa|Pseudomonas%', 'MEM:R|IPM:R|DOR:R'),
+    -- CRAB: Acinetobacter baumannii resistant to carbapenems
+    (6, 'CRAB', 'Carbapenem-resistant Acinetobacter baumannii', 'Acinetobacter baumannii|Acinetobacter%', 'MEM:R|IPM:R|DOR:R');
