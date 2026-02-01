@@ -1,81 +1,77 @@
 # Dashboard & Detail Page Harmonization
 
-## Goal
-Standardize the layout, styling, and workflows across all AEGIS modules for a consistent user experience.
+## Status: COMPLETED (2026-01-31)
 
-## Current State (Jan 2026)
+All major harmonization work completed. Shared component macros extracted and in use across modules.
 
-| Module | Dashboard | Detail Page | Review Workflow |
-|--------|-----------|-------------|-----------------|
-| HAI Detection | Table + filters | Good LLM evidence layout | Confirm/Reject with notes |
-| Surgical Prophylaxis | Table + metrics | Good metadata grid (`info-grid`) | Compliance scoring |
-| ABX Indications | Table + filters | Hybrid (new evidence sources) | Confirm/Override with notes |
-| CDI | Table | Basic | Confirm/Reject |
-
-## Design Patterns to Standardize
+## Completed Items
 
 ### 1. Metadata Display
-Adopt the `info-grid` pattern from Surgical Prophylaxis:
-```html
-<div class="info-grid">
-    <div class="info-item">
-        <span class="info-label">LABEL</span>
-        <span class="info-value">Value</span>
-    </div>
-</div>
-```
+- [x] `info_grid` macro extracted to `macros/components.html`
+- [x] `detail_list` macro for vertical label/value pairs
+- [x] Used in: HAI, ABX Indications, Surgical Prophylaxis, Guideline Adherence
 
 ### 2. LLM Evidence Display
-Adopt the evidence sources pattern from ABX Indications / HAI:
-- Note type badge (PROGRESS_NOTE, ID_CONSULT, etc.)
-- Date and provider attribution
-- Relevance explanation
-- Supporting quotes
+- [x] `evidence_sources_full` - Full attribution format (ABX style)
+- [x] `evidence_sources_simple` - Simple format (HAI style)
+- [x] `extraction_meta` - Confidence, model, token display
+- [x] Used in: HAI, ABX Indications, Guideline Adherence
 
-### 3. Review Workflow
-Standardize across modules:
-- Reviewer name input
-- Primary action buttons (Confirm, Reject)
-- Override options with required reason
-- Optional notes field
-- Status transitions: pending → reviewed → (confirmed/rejected)
+### 3. Review Workflow Components
+- [x] `reviewer_input` - Pre-populates from session
+- [x] `decision_badge` - LLM/reviewer decisions
+- [x] `status_badge` - Status with color coding
+- [x] Override workflows with required reasons
+- [x] Used in: HAI, ABX Indications, Guideline Adherence
 
-### 4. Post-Review Handling
-Define consistent behavior for reviewed items:
-- Move to "Reviewed" tab or separate view?
-- How long to retain in active dashboard?
-- Archive/export workflow for reporting
+### 4. Classification & Status Badges
+- [x] `classification_badge` - A/S/N/P badges
+- [x] `hai_type_badge` - CLABSI, CAUTI, SSI, VAE, CDI
+- [x] `priority_badge` - Priority score with color coding
 
-## Modules to Update
+### 5. HAI Type-Specific Details
+- [x] `hai_type_details` macro with sub-macros for each type
+- [x] CLABSI: device days, line site/type, insertion/removal dates
+- [x] SSI: procedure, NHSN category, wound class, implant, surveillance window
+- [x] CDI: test type, onset type, recurrence info
+- [x] CAUTI: catheter days, CFU/mL, organism, catheter info
+- [x] VAE: VAC onset, vent day, FiO2/PEEP criteria, baseline/worsening periods
 
-- [ ] HAI Detection - Add `info-grid` for patient/culture metadata
-- [ ] CDI - Add evidence sources display, improve metadata layout
-- [ ] CAUTI - Same as CDI
-- [ ] VAE - Same as CDI
-- [ ] SSI - Already good, minor tweaks
-- [ ] Surgical Prophylaxis - Add LLM evidence display if applicable
-- [ ] ABX Indications - Already updated (Jan 2026)
+### 6. Dashboard Components
+- [x] `stat_card`, `stats_grid` - Statistics display
+- [x] `dashboard_card`, `report_card` - Card containers
+- [x] `data_table` - Consistent table rendering
+- [x] `bar_chart` - Horizontal bar charts
+- [x] `filter_form`, `filter_select` - Filter controls
+- [x] `quick_links` - Action button rows
+- [x] `page_header` - Title with actions
+- [x] `empty_state` - Empty state messages
+- [x] `alert_box` - Notification boxes
 
-## Shared Components to Extract
+### 7. Clinical Context Components
+- [x] `clinical_context_card` - MDR history, allergies, renal status
+- [x] `culture_card`, `culture_list` - Culture display with susceptibilities
+- [x] `susceptibility_table` - Standalone susceptibility table
+- [x] Allergy exclusion display in susceptibility results
 
-Consider extracting to reusable Jinja macros or includes:
-- `_info_grid.html` - Metadata display component
-- `_evidence_sources.html` - LLM evidence with attribution
-- `_review_form.html` - Standard review workflow
-- `_classification_badge.html` - Status/classification badges
+## Shared Macros Location
 
-## CSS Standardization
+All shared components in: `dashboard/templates/macros/components.html`
 
-Move common styles to `static/css/components.css`:
-- `.info-grid`, `.info-item`, `.info-label`, `.info-value`
-- `.evidence-sources`, `.evidence-item`, `.evidence-header`
-- `.badge-*` variants
-- `.review-form`, `.confirm-buttons`, `.override-buttons`
+Import with:
+```jinja2
+{% from "macros/components.html" import info_grid, evidence_sources_full, ... %}
+```
 
-## Priority
-Medium - Not blocking current work, but will improve maintainability and UX consistency.
+## Modules Using Shared Components
 
-## Notes
-- Started harmonization with ABX Indications detail page (Jan 2026)
-- Evidence source attribution pattern now in ABX Indications
-- LLM is primary classification source for ABX Indications
+| Module | info_grid | evidence | review | badges | hai_details |
+|--------|-----------|----------|--------|--------|-------------|
+| HAI Detection | Yes | Yes | Yes | Yes | Yes |
+| ABX Indications | Yes | Yes | Yes | Yes | - |
+| Surgical Prophylaxis | Yes | - | Yes | - | - |
+| Guideline Adherence | Yes | Yes | Yes | Yes | - |
+| Drug-Bug Mismatch | Yes | - | Yes | - | - |
+
+## Date Created: 2026-01-26
+## Date Completed: 2026-01-31
