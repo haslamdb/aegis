@@ -4,329 +4,6 @@
 {% block title %}Cluster Detail - {{ app_name }}{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <h1>Outbreak Cluster</h1>
-    <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-secondary">Back to Clusters</a>
-</div>
-
-{% if error %}
-{{ alert_box("Unable to load cluster details.", "warning", error) }}
-{% endif %}
-
-{% if cluster %}
-<div class="alert-detail-layout outbreak-cluster-page">
-    <!-- Left Column: Cluster Information & Cases -->
-    <div class="alert-detail-main">
-        <!-- Status Badges -->
-        <div class="candidate-status-bar">
-            <span class="badge badge-severity-{{ cluster.severity.value }} badge-lg">
-                {{ cluster.severity.value | capitalize }} Severity
-            </span>
-            <span class="badge badge-status-{{ cluster.status.value }} badge-lg">
-                {{ cluster.status.value | capitalize }}
-            </span>
-        </div>
-
-        <!-- Cluster Summary -->
-        <div class="alert-detail-card">
-            <h3>Cluster Information</h3>
-            {{ detail_list([
-                {'label': 'Unit', 'value': cluster.unit, 'bold': true},
-                {'label': 'Infection Type', 'value': cluster.infection_type | upper},
-                {'label': 'Organism', 'value': cluster.organism or 'Various'}
-            ]) }}
-
-            <h3>Timeline</h3>
-            {{ info_grid([
-                {'label': 'First Case', 'value': cluster.first_case_date.strftime('%Y-%m-%d') if cluster.first_case_date else '-'},
-                {'label': 'Last Case', 'value': cluster.last_case_date.strftime('%Y-%m-%d') if cluster.last_case_date else '-'},
-                {'label': 'Total Cases', 'value': cluster.case_count},
-                {'label': 'Detected', 'value': cluster.created_at.strftime('%Y-%m-%d %H:%M') if cluster.created_at else '-'}
-            ]) }}
-        </div>
-
-        <!-- Cases in Cluster -->
-        <div class="alert-detail-card">
-            <h3>Cases in Cluster ({{ cluster.cases | length if cluster.cases else 0 }})</h3>
-            {% if cluster.cases %}
-            <div class="cluster-cases-list">
-                {% for case in cluster.cases %}
-                <div class="cluster-case-item">
-                    <div class="case-header">
-                        <div class="case-patient">
-                            <span class="patient-mrn">{{ case.patient_mrn }}</span>
-                            <span class="badge badge-source-{{ case.source }}">{{ case.source | upper }}</span>
-                        </div>
-                        <span class="case-date">{{ case.event_date.strftime('%Y-%m-%d') if case.event_date else '-' }}</span>
-                    </div>
-                    <div class="case-details">
-                        <span class="case-organism">{{ case.organism or '-' }}</span>
-                        <span class="case-unit">{{ case.unit }}</span>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            {{ empty_state("No Cases", "No cases linked to this cluster.") }}
-            {% endif %}
-        </div>
-
-        <!-- Resolution (if already resolved) -->
-        {% if cluster.status.value == 'resolved' %}
-        <div class="alert-detail-card resolution-card">
-            <h3>Resolution</h3>
-            {{ info_grid([
-                {'label': 'Resolved By', 'value': cluster.resolved_by or '-'},
-                {'label': 'Resolved At', 'value': cluster.resolved_at.strftime('%Y-%m-%d %H:%M') if cluster.resolved_at else '-'}
-            ]) }}
-            {% if cluster.resolution_notes %}
-            <div class="resolution-notes">
-                <strong>Notes:</strong>
-                <p>{{ cluster.resolution_notes }}</p>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- Right Column: IP Review Actions -->
-    <div class="alert-detail-sidebar">
-        {% if cluster.status.value != 'resolved' %}
-        <div id="review-form-container">
-            <div class="action-card">
-                <h3>IP Investigation Decision</h3>
-                {{ reviewer_input() }}
-
-                <div class="decision-buttons">
-                    <button type="button" class="btn btn-confirm-outbreak btn-block" data-decision="confirmed">
-                        Confirm Outbreak
-                    </button>
-                    <button type="button" class="btn btn-investigating btn-block" data-decision="investigating">
-                        Under Investigation
-                    </button>
-                </div>
-
-                <div class="classification-divider">
-                    <span>Or:</span>
-                </div>
-
-                <div class="secondary-buttons">
-                    <button type="button" class="btn btn-not-outbreak btn-block" data-decision="not_outbreak">
-                        Not an Outbreak
-                    </button>
-                    <button type="button" class="btn btn-resolve btn-block" data-decision="resolved">
-                        Resolve Cluster
-                    </button>
-                </div>
-            </div>
-
-            <!-- Override Reason Section (shown when marking as "Not Outbreak") -->
-            <div class="action-card hidden" id="override-reason-section">
-                <h3>Override Reason</h3>
-                <p class="text-muted override-message" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
-                    You are overriding the automated cluster detection. Please indicate why:
-                </p>
-                <div class="form-group">
-                    <select id="override-reason-category" class="form-control">
-                        <option value="">-- Select a reason --</option>
-                        <option value="unrelated_cases">Cases are Unrelated</option>
-                        <option value="timing_coincidence">Temporal Coincidence Only</option>
-                        <option value="different_organisms">Different Organisms / Strains</option>
-                        <option value="community_onset">All Community-Onset Cases</option>
-                        <option value="false_positive">System False Positive</option>
-                        <option value="duplicate_data">Duplicate Data Entry</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="action-card" id="notes-section">
-                <h3>Investigation Notes</h3>
-                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">
-                    Document your investigation findings
-                </p>
-                <div class="form-group">
-                    <textarea name="notes" id="notes" rows="4" class="form-textarea" placeholder="Investigation notes, actions taken, environmental findings..."></textarea>
-                </div>
-                <button type="button" class="btn btn-submit-review btn-block" id="submit-review-btn">
-                    Submit Decision
-                </button>
-            </div>
-        </div>
-
-        <!-- Success state (shown after submission) -->
-        <div id="review-success-container" class="hidden">
-            <div class="action-card submitted-state">
-                <div class="submitted-success">
-                    <div class="success-icon">&#10003;</div>
-                    <h3>Decision Submitted</h3>
-                    <p id="success-message">Your decision has been recorded.</p>
-                </div>
-                <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
-                    Return to Clusters
-                </a>
-            </div>
-        </div>
-
-        {% else %}
-        <!-- Already resolved -->
-        <div class="action-card submitted-state">
-            <div class="submitted-success resolved-success">
-                <div class="success-icon">&#10003;</div>
-                <h3>Cluster Resolved</h3>
-                <p>This cluster has been resolved.</p>
-                <span class="badge badge-success badge-lg">Resolved</span>
-                <p class="reviewer-info">by {{ cluster.resolved_by or 'Unknown' }} on {{ cluster.resolved_at.strftime('%Y-%m-%d %H:%M') if cluster.resolved_at else '' }}</p>
-            </div>
-            <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
-                Return to Clusters
-            </a>
-        </div>
-        {% endif %}
-
-        <div class="action-card">
-            <h3>Quick Links</h3>
-            <div class="quick-links-vertical">
-                <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-outline btn-block">&larr; Back to Clusters</a>
-                <a href="{{ url_for('outbreak_detection.dashboard') }}" class="btn btn-outline btn-block">Dashboard</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-(function() {
-    // Currently selected decision
-    let selectedDecision = null;
-
-    // Check if decision is an override (marking as not outbreak)
-    function isOverride(decision) {
-        return decision === 'not_outbreak';
-    }
-
-    // Update UI based on selected decision
-    function updateUI(decision) {
-        selectedDecision = decision;
-
-        // Show/hide override section
-        const overrideSection = document.getElementById('override-reason-section');
-        if (isOverride(decision)) {
-            overrideSection.classList.remove('hidden');
-        } else {
-            overrideSection.classList.add('hidden');
-        }
-    }
-
-    // Handle decision button clicks
-    document.querySelectorAll('.decision-buttons button, .secondary-buttons button').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const decision = this.getAttribute('data-decision');
-
-            // Update button states
-            document.querySelectorAll('.decision-buttons button, .secondary-buttons button').forEach(b => {
-                b.classList.remove('selected');
-            });
-            this.classList.add('selected');
-
-            updateUI(decision);
-        });
-    });
-
-    // Show error message
-    function showError(message) {
-        const existing = document.querySelector('.submit-error');
-        if (existing) existing.remove();
-
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'alert alert-danger submit-error';
-        errorDiv.textContent = message;
-        document.getElementById('notes-section').insertBefore(
-            errorDiv,
-            document.getElementById('submit-review-btn')
-        );
-    }
-
-    // Handle submit
-    document.getElementById('submit-review-btn').addEventListener('click', async function() {
-        const reviewer = document.getElementById('reviewer').value;
-        let notes = document.getElementById('notes').value;
-
-        // Remove any existing error
-        const existing = document.querySelector('.submit-error');
-        if (existing) existing.remove();
-
-        if (!reviewer.trim()) {
-            showError('Please enter your name');
-            document.getElementById('reviewer').focus();
-            return;
-        }
-
-        if (!selectedDecision) {
-            showError('Please select a decision');
-            return;
-        }
-
-        // Get override reason if applicable
-        let overrideReason = '';
-        if (isOverride(selectedDecision)) {
-            overrideReason = document.getElementById('override-reason-category').value;
-            if (overrideReason) {
-                const reasonText = document.querySelector(`#override-reason-category option[value="${overrideReason}"]`).text;
-                overrideReason = reasonText;
-            }
-        }
-
-        // Map decision to status update
-        let newStatus;
-        if (selectedDecision === 'confirmed') {
-            newStatus = 'active';
-        } else if (selectedDecision === 'investigating') {
-            newStatus = 'investigating';
-        } else if (selectedDecision === 'not_outbreak') {
-            newStatus = 'not_outbreak';  // Server handles this specially
-        } else if (selectedDecision === 'resolved') {
-            newStatus = 'resolved';
-        }
-
-        try {
-            const response = await fetch('{{ url_for("outbreak_detection.update_cluster_status", cluster_id=cluster.id) }}', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: new URLSearchParams({
-                    'reviewer': reviewer,
-                    'status': newStatus,
-                    'notes': notes,
-                    'decision': selectedDecision,
-                    'override_reason': overrideReason
-                })
-            });
-
-            if (response.ok) {
-                // Hide the form and show success state
-                document.getElementById('review-form-container').classList.add('hidden');
-
-                let msg = 'Your decision has been recorded.';
-                if (isOverride(selectedDecision)) {
-                    msg = 'Your decision has been recorded. Override logged for quality tracking.';
-                }
-                document.getElementById('success-message').textContent = msg;
-                document.getElementById('review-success-container').classList.remove('hidden');
-            } else {
-                showError('Error updating cluster status');
-            }
-        } catch (err) {
-            showError('Failed to submit: ' + err.message);
-        }
-    });
-})();
-</script>
-
-{% else %}
-{{ empty_state("Cluster Not Found", "The requested cluster could not be loaded.") }}
-{% endif %}
-{% endblock %}
-
-{% block styles %}
 <style>
 /* Outbreak Cluster Page - Using shared alert-detail-layout */
 
@@ -667,4 +344,325 @@
     }
 }
 </style>
+
+<div class="page-header">
+    <h1>Outbreak Cluster</h1>
+    <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-secondary">Back to Clusters</a>
+</div>
+
+{% if error %}
+{{ alert_box("Unable to load cluster details.", "warning", error) }}
+{% endif %}
+
+{% if cluster %}
+<div class="alert-detail-layout outbreak-cluster-page">
+    <!-- Left Column: Cluster Information & Cases -->
+    <div class="alert-detail-main">
+        <!-- Status Badges -->
+        <div class="candidate-status-bar">
+            <span class="badge badge-severity-{{ cluster.severity.value }} badge-lg">
+                {{ cluster.severity.value | capitalize }} Severity
+            </span>
+            <span class="badge badge-status-{{ cluster.status.value }} badge-lg">
+                {{ cluster.status.value | capitalize }}
+            </span>
+        </div>
+
+        <!-- Cluster Summary -->
+        <div class="alert-detail-card">
+            <h3>Cluster Information</h3>
+            {{ detail_list([
+                {'label': 'Unit', 'value': cluster.unit, 'bold': true},
+                {'label': 'Infection Type', 'value': cluster.infection_type | upper},
+                {'label': 'Organism', 'value': cluster.organism or 'Various'}
+            ]) }}
+
+            <h3>Timeline</h3>
+            {{ info_grid([
+                {'label': 'First Case', 'value': cluster.first_case_date.strftime('%Y-%m-%d') if cluster.first_case_date else '-'},
+                {'label': 'Last Case', 'value': cluster.last_case_date.strftime('%Y-%m-%d') if cluster.last_case_date else '-'},
+                {'label': 'Total Cases', 'value': cluster.case_count},
+                {'label': 'Detected', 'value': cluster.created_at.strftime('%Y-%m-%d %H:%M') if cluster.created_at else '-'}
+            ]) }}
+        </div>
+
+        <!-- Cases in Cluster -->
+        <div class="alert-detail-card">
+            <h3>Cases in Cluster ({{ cluster.cases | length if cluster.cases else 0 }})</h3>
+            {% if cluster.cases %}
+            <div class="cluster-cases-list">
+                {% for case in cluster.cases %}
+                <div class="cluster-case-item">
+                    <div class="case-header">
+                        <div class="case-patient">
+                            <span class="patient-mrn">{{ case.patient_mrn }}</span>
+                            <span class="badge badge-source-{{ case.source }}">{{ case.source | upper }}</span>
+                        </div>
+                        <span class="case-date">{{ case.event_date.strftime('%Y-%m-%d') if case.event_date else '-' }}</span>
+                    </div>
+                    <div class="case-details">
+                        <span class="case-organism">{{ case.organism or '-' }}</span>
+                        <span class="case-unit">{{ case.unit }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            {{ empty_state("No Cases", "No cases linked to this cluster.") }}
+            {% endif %}
+        </div>
+
+        <!-- Resolution (if already resolved) -->
+        {% if cluster.status.value == 'resolved' %}
+        <div class="alert-detail-card resolution-card">
+            <h3>Resolution</h3>
+            {{ info_grid([
+                {'label': 'Resolved By', 'value': cluster.resolved_by or '-'},
+                {'label': 'Resolved At', 'value': cluster.resolved_at.strftime('%Y-%m-%d %H:%M') if cluster.resolved_at else '-'}
+            ]) }}
+            {% if cluster.resolution_notes %}
+            <div class="resolution-notes">
+                <strong>Notes:</strong>
+                <p>{{ cluster.resolution_notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Right Column: IP Review Actions -->
+    <div class="alert-detail-sidebar">
+        {% if cluster.status.value != 'resolved' %}
+        <div id="review-form-container">
+            <div class="action-card">
+                <h3>IP Investigation Decision</h3>
+                {{ reviewer_input() }}
+
+                <div class="decision-buttons">
+                    <button type="button" class="btn btn-confirm-outbreak btn-block" data-decision="confirmed">
+                        Confirm Outbreak
+                    </button>
+                    <button type="button" class="btn btn-investigating btn-block" data-decision="investigating">
+                        Under Investigation
+                    </button>
+                </div>
+
+                <div class="classification-divider">
+                    <span>Or:</span>
+                </div>
+
+                <div class="secondary-buttons">
+                    <button type="button" class="btn btn-not-outbreak btn-block" data-decision="not_outbreak">
+                        Not an Outbreak
+                    </button>
+                    <button type="button" class="btn btn-resolve btn-block" data-decision="resolved">
+                        Resolve Cluster
+                    </button>
+                </div>
+            </div>
+
+            <!-- Override Reason Section (shown when marking as "Not Outbreak") -->
+            <div class="action-card hidden" id="override-reason-section">
+                <h3>Override Reason</h3>
+                <p class="text-muted override-message" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                    You are overriding the automated cluster detection. Please indicate why:
+                </p>
+                <div class="form-group">
+                    <select id="override-reason-category" class="form-control">
+                        <option value="">-- Select a reason --</option>
+                        <option value="unrelated_cases">Cases are Unrelated</option>
+                        <option value="timing_coincidence">Temporal Coincidence Only</option>
+                        <option value="different_organisms">Different Organisms / Strains</option>
+                        <option value="community_onset">All Community-Onset Cases</option>
+                        <option value="false_positive">System False Positive</option>
+                        <option value="duplicate_data">Duplicate Data Entry</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="action-card" id="notes-section">
+                <h3>Investigation Notes</h3>
+                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">
+                    Document your investigation findings
+                </p>
+                <div class="form-group">
+                    <textarea name="notes" id="notes" rows="4" class="form-textarea" placeholder="Investigation notes, actions taken, environmental findings..."></textarea>
+                </div>
+                <button type="button" class="btn btn-submit-review btn-block" id="submit-review-btn">
+                    Submit Decision
+                </button>
+            </div>
+        </div>
+
+        <!-- Success state (shown after submission) -->
+        <div id="review-success-container" class="hidden">
+            <div class="action-card submitted-state">
+                <div class="submitted-success">
+                    <div class="success-icon">&#10003;</div>
+                    <h3>Decision Submitted</h3>
+                    <p id="success-message">Your decision has been recorded.</p>
+                </div>
+                <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
+                    Return to Clusters
+                </a>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Already resolved -->
+        <div class="action-card submitted-state">
+            <div class="submitted-success resolved-success">
+                <div class="success-icon">&#10003;</div>
+                <h3>Cluster Resolved</h3>
+                <p>This cluster has been resolved.</p>
+                <span class="badge badge-success badge-lg">Resolved</span>
+                <p class="reviewer-info">by {{ cluster.resolved_by or 'Unknown' }} on {{ cluster.resolved_at.strftime('%Y-%m-%d %H:%M') if cluster.resolved_at else '' }}</p>
+            </div>
+            <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
+                Return to Clusters
+            </a>
+        </div>
+        {% endif %}
+
+        <div class="action-card">
+            <h3>Quick Links</h3>
+            <div class="quick-links-vertical">
+                <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-outline btn-block">&larr; Back to Clusters</a>
+                <a href="{{ url_for('outbreak_detection.dashboard') }}" class="btn btn-outline btn-block">Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // Currently selected decision
+    let selectedDecision = null;
+
+    // Check if decision is an override (marking as not outbreak)
+    function isOverride(decision) {
+        return decision === 'not_outbreak';
+    }
+
+    // Update UI based on selected decision
+    function updateUI(decision) {
+        selectedDecision = decision;
+
+        // Show/hide override section
+        const overrideSection = document.getElementById('override-reason-section');
+        if (isOverride(decision)) {
+            overrideSection.classList.remove('hidden');
+        } else {
+            overrideSection.classList.add('hidden');
+        }
+    }
+
+    // Handle decision button clicks
+    document.querySelectorAll('.decision-buttons button, .secondary-buttons button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const decision = this.getAttribute('data-decision');
+
+            // Update button states
+            document.querySelectorAll('.decision-buttons button, .secondary-buttons button').forEach(b => {
+                b.classList.remove('selected');
+            });
+            this.classList.add('selected');
+
+            updateUI(decision);
+        });
+    });
+
+    // Show error message
+    function showError(message) {
+        const existing = document.querySelector('.submit-error');
+        if (existing) existing.remove();
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger submit-error';
+        errorDiv.textContent = message;
+        document.getElementById('notes-section').insertBefore(
+            errorDiv,
+            document.getElementById('submit-review-btn')
+        );
+    }
+
+    // Handle submit
+    document.getElementById('submit-review-btn').addEventListener('click', async function() {
+        const reviewer = document.getElementById('reviewer').value;
+        let notes = document.getElementById('notes').value;
+
+        // Remove any existing error
+        const existing = document.querySelector('.submit-error');
+        if (existing) existing.remove();
+
+        if (!reviewer.trim()) {
+            showError('Please enter your name');
+            document.getElementById('reviewer').focus();
+            return;
+        }
+
+        if (!selectedDecision) {
+            showError('Please select a decision');
+            return;
+        }
+
+        // Get override reason if applicable
+        let overrideReason = '';
+        if (isOverride(selectedDecision)) {
+            overrideReason = document.getElementById('override-reason-category').value;
+            if (overrideReason) {
+                const reasonText = document.querySelector(`#override-reason-category option[value="${overrideReason}"]`).text;
+                overrideReason = reasonText;
+            }
+        }
+
+        // Map decision to status update
+        let newStatus;
+        if (selectedDecision === 'confirmed') {
+            newStatus = 'active';
+        } else if (selectedDecision === 'investigating') {
+            newStatus = 'investigating';
+        } else if (selectedDecision === 'not_outbreak') {
+            newStatus = 'not_outbreak';  // Server handles this specially
+        } else if (selectedDecision === 'resolved') {
+            newStatus = 'resolved';
+        }
+
+        try {
+            const response = await fetch('{{ url_for("outbreak_detection.update_cluster_status", cluster_id=cluster.id) }}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({
+                    'reviewer': reviewer,
+                    'status': newStatus,
+                    'notes': notes,
+                    'decision': selectedDecision,
+                    'override_reason': overrideReason
+                })
+            });
+
+            if (response.ok) {
+                // Hide the form and show success state
+                document.getElementById('review-form-container').classList.add('hidden');
+
+                let msg = 'Your decision has been recorded.';
+                if (isOverride(selectedDecision)) {
+                    msg = 'Your decision has been recorded. Override logged for quality tracking.';
+                }
+                document.getElementById('success-message').textContent = msg;
+                document.getElementById('review-success-container').classList.remove('hidden');
+            } else {
+                showError('Error updating cluster status');
+            }
+        } catch (err) {
+            showError('Failed to submit: ' + err.message);
+        }
+    });
+})();
+</script>
+
+{% else %}
+{{ empty_state("Cluster Not Found", "The requested cluster could not be loaded.") }}
+{% endif %}
 {% endblock %}

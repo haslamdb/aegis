@@ -4,6 +4,152 @@
 {% block title %}MDRO Cases - {{ app_name }}{% endblock %}
 
 {% block content %}
+<style>
+    /* Filter Section Styling */
+    .mdro-filter-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .mdro-filter-section h3 {
+        margin: 0 0 1rem 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .mdro-filter-section h3::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 16px;
+        background: linear-gradient(180deg, #8f4469 0%, #b85c82 100%);
+        border-radius: 2px;
+    }
+
+    .mdro-filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        align-items: flex-end;
+    }
+
+    .mdro-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 160px;
+    }
+
+    .mdro-filter-group label {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #475569;
+    }
+
+    .mdro-filter-group select {
+        padding: 0.625rem 2rem 0.625rem 0.875rem;
+        font-size: 0.9rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background-color: white;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.25rem;
+        appearance: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .mdro-filter-group select:hover {
+        border-color: #94a3b8;
+    }
+
+    .mdro-filter-group select:focus {
+        outline: none;
+        border-color: #8f4469;
+        box-shadow: 0 0 0 3px rgba(143, 68, 105, 0.15);
+    }
+
+    .mdro-filter-actions {
+        display: flex;
+        gap: 0.75rem;
+        padding-bottom: 2px;
+    }
+
+    .mdro-filter-actions .btn {
+        padding: 0.625rem 1.25rem;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: all 0.15s ease;
+    }
+
+    .mdro-filter-actions .btn-primary {
+        background: linear-gradient(135deg, #8f4469 0%, #a04d75 100%);
+        border: none;
+        box-shadow: 0 2px 4px rgba(143, 68, 105, 0.2);
+    }
+
+    .mdro-filter-actions .btn-primary:hover {
+        background: linear-gradient(135deg, #7d3b5c 0%, #8f4469 100%);
+        box-shadow: 0 4px 8px rgba(143, 68, 105, 0.3);
+        transform: translateY(-1px);
+    }
+
+    .mdro-filter-actions .btn-outline {
+        background: white;
+        border: 1px solid #cbd5e1;
+        color: #64748b;
+    }
+
+    .mdro-filter-actions .btn-outline:hover {
+        background: #f8fafc;
+        border-color: #94a3b8;
+        color: #475569;
+    }
+
+    /* MDRO Type Badges */
+    .badge-mdro {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    .badge-mrsa { color: #dc3545; background-color: #f8d7da; }
+    .badge-vre { color: #6f42c1; background-color: #e8daef; }
+    .badge-cre { color: #d63384; background-color: #f8d7e8; }
+    .badge-esbl { color: #fd7e14; background-color: #ffe5d0; }
+    .badge-crpa { color: #0d6efd; background-color: #cfe2ff; }
+    .badge-crab { color: #198754; background-color: #d1e7dd; }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .mdro-filter-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .mdro-filter-group {
+            min-width: 100%;
+        }
+        .mdro-filter-actions {
+            justify-content: stretch;
+        }
+        .mdro-filter-actions .btn {
+            flex: 1;
+        }
+    }
+</style>
+
 <div class="page-header">
     <h1>MDRO Cases</h1>
     <p class="subtitle">All multi-drug resistant organism cases</p>
@@ -14,37 +160,38 @@
 {% endif %}
 
 <!-- Filters -->
-<div class="section">
-    <form method="GET" class="filter-bar">
-        <div class="filter-group">
+<div class="mdro-filter-section">
+    <h3>Filter Cases</h3>
+    <form method="GET" class="mdro-filter-form">
+        <div class="mdro-filter-group">
             <label for="type">MDRO Type</label>
-            <select name="type" id="type" class="form-select">
+            <select name="type" id="type">
                 <option value="">All Types</option>
                 {% for t in mdro_types %}
                 <option value="{{ t }}" {% if current_type == t %}selected{% endif %}>{{ t | upper }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="filter-group">
+        <div class="mdro-filter-group">
             <label for="unit">Unit</label>
-            <select name="unit" id="unit" class="form-select">
+            <select name="unit" id="unit">
                 <option value="">All Units</option>
                 {% for u in units %}
                 <option value="{{ u }}" {% if current_unit == u %}selected{% endif %}>{{ u }}</option>
                 {% endfor %}
             </select>
         </div>
-        <div class="filter-group">
+        <div class="mdro-filter-group">
             <label for="days">Time Period</label>
-            <select name="days" id="days" class="form-select">
+            <select name="days" id="days">
                 <option value="7" {% if current_days == 7 %}selected{% endif %}>Last 7 days</option>
                 <option value="30" {% if current_days == 30 %}selected{% endif %}>Last 30 days</option>
                 <option value="90" {% if current_days == 90 %}selected{% endif %}>Last 90 days</option>
                 <option value="365" {% if current_days == 365 %}selected{% endif %}>Last year</option>
             </select>
         </div>
-        <div class="filter-group filter-actions">
-            <button type="submit" class="btn btn-primary">Filter</button>
+        <div class="mdro-filter-actions">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
             <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-outline">Clear</a>
         </div>
     </form>
@@ -132,46 +279,4 @@
 <div class="section">
     <a href="{{ url_for('mdro_surveillance.dashboard') }}" class="btn btn-outline">&larr; Back to Dashboard</a>
 </div>
-{% endblock %}
-
-{% block styles %}
-<style>
-    .filter-bar {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-        align-items: flex-end;
-        padding: 1rem;
-        background: var(--surface);
-        border-radius: 8px;
-        margin-bottom: 1rem;
-    }
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-    .filter-group label {
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: var(--text-muted);
-    }
-    .filter-actions {
-        flex-direction: row;
-        gap: 0.5rem;
-    }
-
-    .badge-mdro {
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-    .badge-mrsa { color: #dc3545; background-color: #f8d7da; }
-    .badge-vre { color: #6f42c1; background-color: #e8daef; }
-    .badge-cre { color: #d63384; background-color: #f8d7e8; }
-    .badge-esbl { color: #fd7e14; background-color: #ffe5d0; }
-    .badge-crpa { color: #0d6efd; background-color: #cfe2ff; }
-    .badge-crab { color: #198754; background-color: #d1e7dd; }
-</style>
 {% endblock %}

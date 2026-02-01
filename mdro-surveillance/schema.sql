@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS mdro_cases (
     -- MDRO classification
     mdro_type TEXT NOT NULL,  -- mrsa, vre, cre, esbl, crpa, crab
     resistant_antibiotics TEXT,  -- JSON array
+    susceptibilities TEXT,  -- JSON array of all susceptibility results
     classification_reason TEXT,
 
     -- Location/timing

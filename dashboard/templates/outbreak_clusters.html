@@ -4,6 +4,122 @@
 {% block title %}Outbreak Clusters - {{ app_name }}{% endblock %}
 
 {% block content %}
+<style>
+    /* Filter Section Styling */
+    .outbreak-filter-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .outbreak-filter-section h3 {
+        margin: 0 0 1rem 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .outbreak-filter-section h3::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 16px;
+        background: linear-gradient(180deg, #8f4469 0%, #b85c82 100%);
+        border-radius: 2px;
+    }
+
+    .outbreak-filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        align-items: flex-end;
+    }
+
+    .outbreak-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 180px;
+    }
+
+    .outbreak-filter-group label {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #475569;
+    }
+
+    .outbreak-filter-group select {
+        padding: 0.625rem 2rem 0.625rem 0.875rem;
+        font-size: 0.9rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background-color: white;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+        background-position: right 0.5rem center;
+        background-repeat: no-repeat;
+        background-size: 1.25rem;
+        appearance: none;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+
+    .outbreak-filter-group select:hover {
+        border-color: #94a3b8;
+    }
+
+    .outbreak-filter-group select:focus {
+        outline: none;
+        border-color: #8f4469;
+        box-shadow: 0 0 0 3px rgba(143, 68, 105, 0.15);
+    }
+
+    /* Table badges */
+    .badge-type {
+        background-color: var(--primary);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    .case-count {
+        display: inline-block;
+        background: var(--primary);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-weight: bold;
+    }
+
+    .badge-severity-critical { background-color: #dc3545; color: white; }
+    .badge-severity-high { background-color: #fd7e14; color: white; }
+    .badge-severity-medium { background-color: #ffc107; color: black; }
+    .badge-severity-low { background-color: #198754; color: white; }
+
+    .badge-status-active { background-color: #dc3545; color: white; }
+    .badge-status-investigating { background-color: #ffc107; color: black; }
+    .badge-status-resolved { background-color: #198754; color: white; }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .outbreak-filter-form {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .outbreak-filter-group {
+            min-width: 100%;
+        }
+    }
+</style>
+
 <div class="page-header">
     <h1>Outbreak Clusters</h1>
     <p class="subtitle">All detected infection clusters</p>
@@ -14,11 +130,12 @@
 {% endif %}
 
 <!-- Status Filter -->
-<div class="section">
-    <form method="GET" class="filter-bar">
-        <div class="filter-group">
+<div class="outbreak-filter-section">
+    <h3>Filter Clusters</h3>
+    <form method="GET" class="outbreak-filter-form">
+        <div class="outbreak-filter-group">
             <label for="status">Status</label>
-            <select name="status" id="status" class="form-select" onchange="this.form.submit()">
+            <select name="status" id="status" onchange="this.form.submit()">
                 <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
                 <option value="investigating" {% if current_status == 'investigating' %}selected{% endif %}>Investigating</option>
                 <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
@@ -85,53 +202,4 @@
 <div class="section">
     <a href="{{ url_for('outbreak_detection.dashboard') }}" class="btn btn-outline">&larr; Back to Dashboard</a>
 </div>
-{% endblock %}
-
-{% block styles %}
-<style>
-    .filter-bar {
-        display: flex;
-        gap: 1rem;
-        padding: 1rem;
-        background: var(--surface);
-        border-radius: 8px;
-        margin-bottom: 1rem;
-    }
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-    .filter-group label {
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: var(--text-muted);
-    }
-
-    .badge-type {
-        background-color: var(--primary);
-        color: white;
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-weight: 600;
-    }
-
-    .case-count {
-        display: inline-block;
-        background: var(--primary);
-        color: white;
-        padding: 0.25rem 0.75rem;
-        border-radius: 12px;
-        font-weight: bold;
-    }
-
-    .badge-severity-critical { background-color: #dc3545; color: white; }
-    .badge-severity-high { background-color: #fd7e14; color: white; }
-    .badge-severity-medium { background-color: #ffc107; color: black; }
-    .badge-severity-low { background-color: #198754; color: white; }
-
-    .badge-status-active { background-color: #dc3545; color: white; }
-    .badge-status-investigating { background-color: #ffc107; color: black; }
-    .badge-status-resolved { background-color: #198754; color: white; }
-</style>
 {% endblock %}

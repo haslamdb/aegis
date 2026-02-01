@@ -62,7 +62,39 @@
                 </div>
             </div>
 
-            {% if case.resistant_antibiotics %}
+            {% if case.susceptibilities %}
+            <div class="susceptibility-section">
+                <h4>Susceptibility Results</h4>
+                <table class="susceptibility-table">
+                    <thead>
+                        <tr>
+                            <th>Antibiotic</th>
+                            <th>Result</th>
+                            <th>MIC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for susc in case.susceptibilities|sort(attribute='result', reverse=true) %}
+                        <tr class="susc-row susc-{{ susc.result|lower }}">
+                            <td>{{ susc.antibiotic | capitalize }}</td>
+                            <td>
+                                <div class="susc-result">
+                                    <span class="susc-badge susc-{{ susc.result|lower }}">{{ susc.result }}</span>
+                                    <span class="susc-text">
+                                        {% if susc.result == 'R' %}Resistant
+                                        {% elif susc.result == 'I' %}Intermediate
+                                        {% elif susc.result == 'S' %}Susceptible
+                                        {% else %}{{ susc.result }}{% endif %}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="mic-value">{{ susc.mic or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% elif case.resistant_antibiotics %}
             <div class="susceptibility-section">
                 <h4>Resistant Antibiotics</h4>
                 <table class="susceptibility-table">
@@ -74,7 +106,7 @@
                     </thead>
                     <tbody>
                         {% for abx in case.resistant_antibiotics %}
-                        <tr class="susc-r">
+                        <tr class="susc-row susc-r">
                             <td>{{ abx | capitalize }}</td>
                             <td>
                                 <div class="susc-result">
@@ -146,95 +178,88 @@
     <!-- Right Column: IP Review Actions -->
     <div class="alert-detail-sidebar">
         {% if not case.reviewed_by %}
-        <div id="review-form-container">
-            <div class="action-card">
-                <h3>IP Review Decision</h3>
-                {{ reviewer_input() }}
+        <div class="action-card">
+            <h3>Classification Decision</h3>
+            {{ reviewer_input() }}
 
-                <div class="decision-buttons">
-                    <button type="button" class="btn btn-confirm-mdro btn-block" data-decision="confirmed">
-                        Confirm {{ case.mdro_type.value | upper }}
-                    </button>
-                </div>
-
-                <div class="classification-divider">
-                    <span>Or classify as Not {{ case.mdro_type.value | upper }}:</span>
-                </div>
-
-                <div class="secondary-buttons">
-                    <button type="button" class="btn btn-not-mdro btn-block" data-decision="rejected">
-                        Not {{ case.mdro_type.value | upper }}
-                    </button>
-                    <button type="button" class="btn btn-needs-info btn-block" data-decision="needs_more_info">
-                        Needs More Info
-                    </button>
-                </div>
+            <div class="classification-buttons-single">
+                <button type="button" class="btn btn-confirm-hai btn-block" data-decision="confirmed">
+                    Confirm {{ case.mdro_type.value | upper }}
+                </button>
             </div>
 
-            <!-- Override Reason Section (shown when rejecting) -->
-            <div class="action-card hidden" id="override-reason-section">
-                <h3>Override Reason</h3>
-                <p class="text-muted override-message" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
-                    You are overriding the automated MDRO classification. Please indicate why:
-                </p>
-                <div class="form-group">
-                    <select id="override-reason-category" class="form-control">
-                        <option value="">-- Select a reason --</option>
-                        <option value="susceptibility_error">Susceptibility Interpretation Error</option>
-                        <option value="organism_misidentified">Organism Misidentified</option>
-                        <option value="contamination">Contamination / Not True Infection</option>
-                        <option value="duplicate_culture">Duplicate Culture</option>
-                        <option value="criteria_not_met">MDRO Criteria Not Met</option>
-                        <option value="clinical_context">Clinical Context (colonization only)</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
+            <div class="classification-divider">
+                <span>Or:</span>
             </div>
 
-            <div class="action-card" id="notes-section">
-                <h3>Notes</h3>
-                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">
-                    Add any notes about your review decision (optional)
-                </p>
-                <div class="form-group">
-                    <textarea name="notes" id="notes" rows="3" class="form-textarea" placeholder="Additional details..."></textarea>
-                </div>
-                <button type="button" class="btn btn-submit-review btn-block" id="submit-review-btn">
-                    Submit Review
+            <div class="secondary-buttons mdro-buttons">
+                <button type="button" class="btn btn-not-hai btn-block" data-decision="rejected">
+                    Not {{ case.mdro_type.value | upper }}
+                </button>
+                <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
+                    Needs More Info
                 </button>
             </div>
         </div>
 
-        <!-- Success state (shown after submission) -->
-        <div id="review-success-container" class="hidden">
-            <div class="action-card submitted-state">
-                <div class="submitted-success">
-                    <div class="success-icon">&#10003;</div>
-                    <h3>Review Submitted</h3>
-                    <p id="success-message">Your review has been recorded.</p>
-                </div>
-                <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
-                    Return to Cases
-                </a>
+        <!-- Override Reason (shown when disagreeing with system classification) -->
+        <div class="action-card hidden" id="override-reason-section">
+            <h3>Override Reason</h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                You are overriding the automated MDRO classification. Please indicate why:
+            </p>
+            <div class="form-group">
+                <select id="override-reason-category" class="form-control">
+                    <option value="">-- Select a reason --</option>
+                    <option value="susceptibility_error">Susceptibility Interpretation Error</option>
+                    <option value="organism_misidentified">Organism Misidentified</option>
+                    <option value="contamination">Contamination / Not True Infection</option>
+                    <option value="duplicate_culture">Duplicate Culture</option>
+                    <option value="criteria_not_met">MDRO Criteria Not Met</option>
+                    <option value="clinical_context">Clinical Context (colonization only)</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <!-- Override Notes -->
+            <div class="form-group" style="margin-top: 1rem;">
+                <label for="override-notes" style="font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; display: block;">Additional notes (optional)</label>
+                <textarea id="override-notes" rows="2" class="form-textarea" placeholder="Any additional context about this override..."></textarea>
+            </div>
+
+            <!-- Submit Override Button -->
+            <div class="override-submit-container">
+                <button type="button" class="btn btn-override-submit" id="submit-override-btn">
+                    Submit Override
+                </button>
             </div>
         </div>
 
+        <div class="action-card" id="notes-section">
+            <h3>Notes</h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">
+                Add any notes about your classification decision (optional)
+            </p>
+            <div class="form-group">
+                <textarea name="notes" id="notes" rows="3" class="form-textarea" placeholder="Additional details..."></textarea>
+            </div>
+        </div>
+
+        <div id="review-result" class="hidden"></div>
+
         {% else %}
         <!-- Already reviewed -->
-        <div class="action-card submitted-state">
-            <div class="submitted-success">
-                <div class="success-icon">&#10003;</div>
-                <h3>Review Complete</h3>
-                <p>This case has been reviewed.</p>
-                <span class="badge badge-success badge-lg">Reviewed</span>
-                <p class="reviewer-info">by {{ case.reviewed_by }} on {{ case.reviewed_at.strftime('%Y-%m-%d %H:%M') if case.reviewed_at else '' }}</p>
+        <div class="action-card resolved-card">
+            <h3>Classification Complete</h3>
+            <div class="review-complete review-confirmed">
+                <span class="status-icon">✓</span>
+                <strong>Case Reviewed</strong>
+                <p>This case has been reviewed by {{ case.reviewed_by }}.</p>
+                <p class="reviewer-info">{{ case.reviewed_at.strftime('%Y-%m-%d %H:%M') if case.reviewed_at else '' }}</p>
                 {% if case.notes %}
                 <p class="review-notes-display">{{ case.notes }}</p>
                 {% endif %}
             </div>
-            <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
-                Return to Cases
-            </a>
         </div>
         {% endif %}
 
@@ -250,92 +275,53 @@
 
 <script>
 (function() {
-    // Currently selected decision
-    let selectedDecision = null;
+    // Track the currently selected decision
+    let pendingDecision = null;
 
-    // Check if decision is an override (disagreeing with system classification)
+    // Check if decision is an override (rejecting system classification)
     function isOverride(decision) {
-        // If rejecting MDRO classification, it's an override
         return decision === 'rejected';
     }
 
-    // Update UI based on selected decision
-    function updateUI(decision) {
-        selectedDecision = decision;
-
-        // Show/hide override section
+    // Show/hide override reason section and notes section based on selection
+    function updateOverrideSection(decision) {
         const overrideSection = document.getElementById('override-reason-section');
+        const notesSection = document.getElementById('notes-section');
+
         if (isOverride(decision)) {
             overrideSection.classList.remove('hidden');
+            notesSection.classList.add('hidden'); // Hide main notes, use override notes instead
+            pendingDecision = decision;
         } else {
             overrideSection.classList.add('hidden');
+            notesSection.classList.remove('hidden');
+            pendingDecision = null;
         }
     }
 
-    // Handle decision button clicks
-    document.querySelectorAll('.decision-buttons button, .secondary-buttons button').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const decision = this.getAttribute('data-decision');
-
-            // Update button states
-            document.querySelectorAll('.decision-buttons button, .secondary-buttons button').forEach(b => {
-                b.classList.remove('selected');
-            });
-            this.classList.add('selected');
-
-            updateUI(decision);
-        });
-    });
-
-    // Show error message
-    function showError(message) {
-        const existing = document.querySelector('.submit-error');
-        if (existing) existing.remove();
-
-        const errorDiv = document.createElement('div');
-        errorDiv.className = 'alert alert-danger submit-error';
-        errorDiv.textContent = message;
-        document.getElementById('notes-section').insertBefore(
-            errorDiv,
-            document.getElementById('submit-review-btn')
-        );
-    }
-
-    // Handle submit
-    document.getElementById('submit-review-btn').addEventListener('click', async function() {
+    // Submit the review to the API
+    async function submitReview(decision, notes, overrideData) {
         const reviewer = document.getElementById('reviewer').value;
-        const notes = document.getElementById('notes').value;
-
-        // Remove any existing error
-        const existing = document.querySelector('.submit-error');
-        if (existing) existing.remove();
+        const resultDiv = document.getElementById('review-result');
 
         if (!reviewer.trim()) {
-            showError('Please enter your name');
+            resultDiv.innerHTML = '<div class="alert alert-danger">Please enter your name</div>';
+            resultDiv.classList.remove('hidden');
             document.getElementById('reviewer').focus();
-            return;
-        }
-
-        if (!selectedDecision) {
-            showError('Please select a decision');
-            return;
+            return false;
         }
 
         const data = {
             reviewer: reviewer,
-            decision: selectedDecision,
+            decision: decision,
             notes: notes
         };
 
-        // Add override reason if applicable
-        if (isOverride(selectedDecision)) {
-            const overrideReason = document.getElementById('override-reason-category').value;
-            if (overrideReason) {
-                data.override_reason = overrideReason;
-                // Append to notes if reason selected
-                const reasonText = document.querySelector(`#override-reason-category option[value="${overrideReason}"]`).text;
-                data.notes = `[Override: ${reasonText}] ${notes}`.trim();
-            }
+        // Add override data if provided
+        if (overrideData) {
+            data.override_reason = overrideData.category;
+            const reasonText = document.querySelector(`#override-reason-category option[value="${overrideData.category}"]`).text;
+            data.notes = `[Override: ${reasonText}] ${notes}`.trim();
         }
 
         try {
@@ -348,31 +334,151 @@
             const result = await response.json();
 
             if (result.success) {
-                // Hide the form and show success state
-                document.getElementById('review-form-container').classList.add('hidden');
-
-                let msg = 'Your review has been recorded.';
-                if (isOverride(selectedDecision)) {
-                    msg = 'Your review has been recorded. Override logged for quality tracking.';
-                }
-                document.getElementById('success-message').textContent = msg;
-                document.getElementById('review-success-container').classList.remove('hidden');
+                resultDiv.innerHTML = '<div class="alert alert-success">Classification submitted! Redirecting...</div>';
+                resultDiv.classList.remove('hidden');
+                setTimeout(() => window.location.reload(), 1500);
+                return true;
             } else {
-                showError('Error: ' + result.error);
+                resultDiv.innerHTML = '<div class="alert alert-danger">Error: ' + result.error + '</div>';
+                resultDiv.classList.remove('hidden');
+                return false;
             }
         } catch (err) {
-            showError('Failed to submit: ' + err.message);
+            resultDiv.innerHTML = '<div class="alert alert-danger">Failed to submit: ' + err.message + '</div>';
+            resultDiv.classList.remove('hidden');
+            return false;
         }
+    }
+
+    // Handle classification button clicks
+    document.querySelectorAll('.classification-buttons-single button, .secondary-buttons button').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const decision = this.getAttribute('data-decision');
+            const reviewer = document.getElementById('reviewer').value;
+            const resultDiv = document.getElementById('review-result');
+
+            if (!reviewer.trim()) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Please enter your name</div>';
+                resultDiv.classList.remove('hidden');
+                document.getElementById('reviewer').focus();
+                return;
+            }
+
+            // Highlight selected button
+            document.querySelectorAll('.classification-buttons-single button, .secondary-buttons button').forEach(b => {
+                b.classList.remove('selected');
+            });
+            this.classList.add('selected');
+
+            // Clear any previous messages
+            resultDiv.classList.add('hidden');
+
+            // Check if this is an override
+            const override = isOverride(decision);
+            updateOverrideSection(decision);
+
+            if (override) {
+                // Don't submit yet - wait for override form completion
+                resultDiv.innerHTML = '<div class="alert alert-info">Please complete the override reason above, then click "Submit Override".</div>';
+                resultDiv.classList.remove('hidden');
+                document.getElementById('override-reason-category').focus();
+            } else {
+                // Non-override: submit immediately
+                const notes = document.getElementById('notes').value;
+                await submitReview(decision, notes, null);
+            }
+        });
     });
+
+    // Handle Submit Override button click
+    const submitOverrideBtn = document.getElementById('submit-override-btn');
+    if (submitOverrideBtn) {
+        submitOverrideBtn.addEventListener('click', async function() {
+            const resultDiv = document.getElementById('review-result');
+            const overrideReasonCategory = document.getElementById('override-reason-category');
+            const overrideNotes = document.getElementById('override-notes');
+
+            if (!pendingDecision) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Please select a classification decision first.</div>';
+                resultDiv.classList.remove('hidden');
+                return;
+            }
+
+            if (!overrideReasonCategory.value) {
+                resultDiv.innerHTML = '<div class="alert alert-warning">Please select an override reason.</div>';
+                resultDiv.classList.remove('hidden');
+                overrideReasonCategory.focus();
+                return;
+            }
+
+            // Collect override data
+            const overrideData = {
+                category: overrideReasonCategory.value
+            };
+
+            // Use override notes (or fall back to main notes if empty)
+            const notes = overrideNotes.value || document.getElementById('notes').value;
+
+            await submitReview(pendingDecision, notes, overrideData);
+        });
+    }
 })();
 </script>
 
-{% endif %}
-{% endblock %}
-
-{% block styles %}
 <style>
-/* MDRO Case Page - Using shared alert-detail-layout */
+/* MDRO Case Page - Matching guideline-adherence styling */
+
+.alert-detail-layout {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .alert-detail-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.alert-detail-main {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.alert-detail-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    position: sticky;
+    top: 1rem;
+}
+
+.alert-detail-card,
+.action-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.alert-detail-card h3,
+.action-card h3 {
+    font-size: 0.875rem;
+    color: var(--color-primary-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    border-bottom: 2px solid var(--color-primary);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    margin-top: 0;
+}
+
+.alert-detail-card h3:not(:first-child) {
+    margin-top: 1.5rem;
+}
 
 .mdro-case-page .candidate-status-bar {
     margin-bottom: 1rem;
@@ -383,7 +489,7 @@
 
 .badge-lg {
     padding: 0.5rem 1rem;
-    font-size: 0.9rem;
+    font-size: 0.875rem;
 }
 
 /* MDRO Type Badges */
@@ -398,27 +504,6 @@
 .badge-esbl { color: #fd7e14; background-color: #ffe5d0; }
 .badge-crpa { color: #0d6efd; background-color: #cfe2ff; }
 .badge-crab { color: #198754; background-color: #d1e7dd; }
-
-/* Card styling to match HAI Detection */
-.mdro-case-page .alert-detail-card {
-    padding: 1.5rem;
-}
-
-.mdro-case-page .alert-detail-card h3 {
-    font-size: 0.875rem;
-    color: var(--color-primary-dark);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 600;
-    border-bottom: 2px solid var(--color-primary);
-    padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
-    margin-top: 1.5rem;
-}
-
-.mdro-case-page .alert-detail-card h3:first-child {
-    margin-top: 0;
-}
 
 /* Classification Summary */
 .classification-summary {
@@ -473,8 +558,16 @@
     text-transform: uppercase;
 }
 
-.susc-r {
+.susc-row.susc-r {
     background: rgba(220, 53, 69, 0.05);
+}
+
+.susc-row.susc-s {
+    background: rgba(25, 135, 84, 0.05);
+}
+
+.susc-row.susc-i {
+    background: rgba(255, 193, 7, 0.1);
 }
 
 .susc-result {
@@ -514,11 +607,14 @@
     font-size: 0.8rem;
 }
 
-/* Decision Buttons */
-.decision-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+.mic-value {
+    color: var(--color-gray-500);
+    font-size: 0.8rem;
+    font-family: monospace;
+}
+
+/* Classification Buttons - Matching HAI Detection */
+.classification-buttons-single {
     margin-top: 1rem;
 }
 
@@ -535,7 +631,7 @@
     content: '';
     position: absolute;
     top: 50%;
-    width: 15%;
+    width: 20%;
     height: 1px;
     background: #e2e8f0;
 }
@@ -543,7 +639,7 @@
 .classification-divider::before { left: 0; }
 .classification-divider::after { right: 0; }
 
-.btn-confirm-mdro {
+.btn-confirm-hai {
     background: #dc2626;
     color: white;
     border: 2px solid #dc2626;
@@ -552,61 +648,48 @@
     font-size: 1rem;
 }
 
-.btn-confirm-mdro:hover {
+.btn-confirm-hai:hover {
     background: #b91c1c;
     border-color: #b91c1c;
 }
 
-.secondary-buttons {
+.secondary-buttons.mdro-buttons {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.5rem;
 }
 
-.btn-not-mdro {
+.btn-not-hai {
     background: #16a34a;
     color: white;
     border: 2px solid #16a34a;
-    padding: 0.75rem 0.5rem;
-    font-weight: 500;
-    font-size: 0.85rem;
+    padding: 1rem;
+    font-weight: 600;
+    font-size: 1rem;
 }
 
-.btn-not-mdro:hover {
+.btn-not-hai:hover {
     background: #15803d;
     border-color: #15803d;
 }
 
-.btn-needs-info {
+.btn-info-needed {
     background: #6b7280;
     color: white;
     border: 2px solid #6b7280;
-    padding: 0.75rem 0.5rem;
-    font-weight: 500;
-    font-size: 0.85rem;
+    padding: 1rem;
+    font-weight: 600;
+    font-size: 1rem;
 }
 
-.btn-needs-info:hover {
+.btn-info-needed:hover {
     background: #4b5563;
     border-color: #4b5563;
 }
 
-.decision-buttons button.selected,
+.classification-buttons-single button.selected,
 .secondary-buttons button.selected {
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
-}
-
-.btn-submit-review {
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    padding: 0.75rem;
-    font-weight: 600;
-    margin-top: 1rem;
-}
-
-.btn-submit-review:hover {
-    background: var(--color-primary-dark);
 }
 
 /* Override Section */
@@ -621,6 +704,58 @@
 
 #override-reason-section .form-control {
     background: white;
+}
+
+/* Override Submit Button */
+.override-submit-container {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-warning);
+}
+
+.btn-override-submit {
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: white;
+    background: var(--color-warning-dark, #d97706);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+
+.btn-override-submit:hover {
+    background: #b45309;
+}
+
+.btn-override-submit:active {
+    transform: scale(0.98);
+}
+
+/* Review Complete States */
+.review-complete {
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.review-complete .status-icon {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.review-confirmed {
+    background: #f0fdf4;
+    border: 1px solid #10b981;
+}
+
+.review-confirmed .status-icon { color: #10b981; }
+
+.resolved-card {
+    border: 1px solid var(--color-gray-200);
 }
 
 /* Form Controls */
@@ -644,56 +779,20 @@
     resize: vertical;
 }
 
-/* Submitted State */
-.submitted-state {
-    text-align: center;
-}
-
-.submitted-success {
-    padding: 1.5rem 1rem;
-}
-
-.submitted-success .success-icon {
-    width: 60px;
-    height: 60px;
-    background: var(--color-success);
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2rem;
-    margin: 0 auto 1rem;
-}
-
-.submitted-success h3 {
-    border: none;
-    padding: 0;
-    margin: 0 0 0.5rem 0;
-    text-transform: none;
-    letter-spacing: normal;
-    font-size: 1.25rem;
-    color: var(--color-gray-900);
-}
-
-.submitted-success p {
-    color: var(--color-gray-600);
-    margin: 0.5rem 0;
-}
-
-.submitted-success .reviewer-info {
-    font-size: 0.85rem;
-    color: var(--color-gray-500);
-    margin-top: 0.75rem;
-}
-
 .review-notes-display {
     margin-top: 1rem;
     padding: 0.75rem;
-    background: var(--color-gray-100);
+    background: rgba(255,255,255,0.5);
     border-radius: var(--radius-sm);
     font-style: italic;
     font-size: 0.875rem;
+    text-align: left;
+}
+
+.reviewer-info {
+    font-size: 0.85rem;
+    color: var(--color-gray-500);
+    margin-top: 0.5rem;
 }
 
 /* Quick links in sidebar */
@@ -706,7 +805,7 @@
 /* Alerts */
 .alert {
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     margin-bottom: 1rem;
 }
 
@@ -732,11 +831,10 @@
     margin-top: 0.5rem;
 }
 
-/* Responsive */
-@media (max-width: 1024px) {
-    .secondary-buttons {
-        grid-template-columns: 1fr;
-    }
+.text-muted {
+    color: var(--color-gray-500);
 }
 </style>
+
+{% endif %}
 {% endblock %}
