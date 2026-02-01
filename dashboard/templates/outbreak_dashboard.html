@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import stats_grid, quick_links, alert_box, empty_state %}
+
+{% block title %}Outbreak Detection - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Outbreak Detection</h1>
+    <p class="subtitle">Cluster Detection & Investigation for Infection Prevention</p>
+</div>
+
+{% if error %}
+{{ alert_box("Unable to load some data. The outbreak detection module may not be fully configured.", "warning", error) }}
+{% endif %}
+
+<!-- Stats Cards -->
+{{ stats_grid([
+    {"value": stats.active_clusters or 0, "label": "Active Clusters", "sublabel": "Requiring Attention", "variant": "danger" if stats.active_clusters else "secondary"},
+    {"value": stats.investigating_clusters or 0, "label": "Investigating", "sublabel": "Under Review", "variant": "warning" if stats.investigating_clusters else "secondary"},
+    {"value": stats.resolved_clusters or 0, "label": "Resolved", "sublabel": "All Time", "variant": "success"},
+    {"value": stats.pending_alerts or 0, "label": "Pending Alerts", "sublabel": "Unacknowledged", "variant": "info" if stats.pending_alerts else "secondary"}
+]) }}
+
+<!-- Quick Links -->
+<div class="section">
+    <h2>Quick Actions</h2>
+    {{ quick_links([
+        {"url": url_for('outbreak_detection.clusters_list'), "label": "All Clusters", "class": "btn-secondary"},
+        {"url": url_for('outbreak_detection.alerts_list'), "label": "Alerts", "class": "btn-warning" if stats.pending_alerts else "btn-secondary"},
+        {"url": url_for('mdro_surveillance.dashboard'), "label": "MDRO Surveillance", "class": "btn-primary"}
+    ]) }}
+</div>
+
+<!-- Active Clusters by Severity -->
+{% if stats.by_severity %}
+<div class="section">
+    <h2>Active Clusters by Severity</h2>
+    <div class="severity-grid">
+        {% for severity in ['critical', 'high', 'medium', 'low'] %}
+        {% set count = stats.by_severity.get(severity, 0) %}
+        <div class="severity-card severity-{{ severity }} {% if count == 0 %}severity-empty{% endif %}">
+            <div class="severity-count">{{ count }}</div>
+            <div class="severity-label">{{ severity | capitalize }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Pending Alerts -->
+{% if pending_alerts %}
+<div class="section">
+    <h2>Pending Alerts</h2>
+    <div class="alert-list">
+        {% for alert in pending_alerts[:5] %}
+        <div class="alert-item alert-{{ alert.severity }}">
+            <div class="alert-icon">
+                {% if alert.severity == 'critical' %}!
+                {% elif alert.severity == 'high' %}!
+                {% else %}i{% endif %}
+            </div>
+            <div class="alert-content">
+                <div class="alert-title">{{ alert.title }}</div>
+                <div class="alert-message">{{ alert.message }}</div>
+                <div class="alert-meta">
+                    {{ alert.created_at[:16] | replace('T', ' ') }}
+                    {% if alert.cluster_id %}
+                    | <a href="{{ url_for('outbreak_detection.cluster_detail', cluster_id=alert.cluster_id) }}">View Cluster</a>
+                    {% endif %}
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('outbreak_detection.acknowledge_alert', alert_id=alert.id) }}" class="alert-action">
+                <button type="submit" class="btn btn-sm btn-outline">Acknowledge</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% if pending_alerts | length > 5 %}
+    <p class="text-center">
+        <a href="{{ url_for('outbreak_detection.alerts_list') }}">View all {{ pending_alerts | length }} alerts</a>
+    </p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Active Clusters -->
+<div class="section">
+    <h2>Active Outbreak Clusters</h2>
+    {% if active_clusters %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Unit</th>
+                <th>Infection Type</th>
+                <th>Organism</th>
+                <th class="text-center">Cases</th>
+                <th class="text-center">Severity</th>
+                <th>First Case</th>
+                <th>Last Case</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cluster in active_clusters %}
+            <tr>
+                <td><strong>{{ cluster.unit }}</strong></td>
+                <td>
+                    <span class="badge badge-type">
+                        {{ cluster.infection_type | upper }}
+                    </span>
+                </td>
+                <td>{{ cluster.organism or '-' }}</td>
+                <td class="text-center">
+                    <span class="case-count">{{ cluster.case_count }}</span>
+                </td>
+                <td class="text-center">
+                    <span class="badge badge-severity-{{ cluster.severity.value }}">
+                        {{ cluster.severity.value | capitalize }}
+                    </span>
+                </td>
+                <td>{{ cluster.first_case_date.strftime('%Y-%m-%d') if cluster.first_case_date else '-' }}</td>
+                <td>{{ cluster.last_case_date.strftime('%Y-%m-%d') if cluster.last_case_date else '-' }}</td>
+                <td class="text-center">
+                    <a href="{{ url_for('outbreak_detection.cluster_detail', cluster_id=cluster.id) }}"
+                       class="btn btn-sm btn-primary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    {{ empty_state("No Active Clusters", "No outbreak clusters currently active. This is good news!") }}
+    {% endif %}
+</div>
+
+<!-- Clusters by Type -->
+{% if stats.by_type %}
+<div class="section">
+    <h2>Active Clusters by Infection Type</h2>
+    <div class="type-grid">
+        {% for type, count in stats.by_type.items() %}
+        <div class="type-card">
+            <div class="type-count">{{ count }}</div>
+            <div class="type-label">{{ type | upper }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block styles %}
+<style>
+    .severity-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .severity-card {
+        background: var(--surface);
+        border: 2px solid;
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    .severity-critical { border-color: #dc3545; }
+    .severity-high { border-color: #fd7e14; }
+    .severity-medium { border-color: #ffc107; }
+    .severity-low { border-color: #198754; }
+    .severity-empty { opacity: 0.5; }
+
+    .severity-count {
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+    .severity-critical .severity-count { color: #dc3545; }
+    .severity-high .severity-count { color: #fd7e14; }
+    .severity-medium .severity-count { color: #ffc107; }
+    .severity-low .severity-count { color: #198754; }
+
+    .severity-label {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    .badge-severity-critical { background-color: #dc3545; color: white; }
+    .badge-severity-high { background-color: #fd7e14; color: white; }
+    .badge-severity-medium { background-color: #ffc107; color: black; }
+    .badge-severity-low { background-color: #198754; color: white; }
+
+    .badge-type {
+        background-color: var(--primary);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+
+    .case-count {
+        display: inline-block;
+        background: var(--primary);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-weight: bold;
+    }
+
+    .type-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+    .type-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        text-align: center;
+    }
+    .type-count {
+        font-size: 2rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
+    .type-label {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+    }
+
+    /* Alert list */
+    .alert-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .alert-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid;
+    }
+    .alert-critical { border-color: #dc3545; background: #fff5f5; }
+    .alert-high { border-color: #fd7e14; background: #fff8f0; }
+    .alert-medium { border-color: #ffc107; background: #fffdf0; }
+    .alert-low { border-color: #0d6efd; background: #f0f7ff; }
+
+    .alert-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+    .alert-critical .alert-icon { background: #dc3545; color: white; }
+    .alert-high .alert-icon { background: #fd7e14; color: white; }
+    .alert-medium .alert-icon { background: #ffc107; color: black; }
+    .alert-low .alert-icon { background: #0d6efd; color: white; }
+
+    .alert-content { flex: 1; }
+    .alert-title { font-weight: 600; margin-bottom: 0.25rem; }
+    .alert-message { color: var(--text-muted); margin-bottom: 0.5rem; }
+    .alert-meta { font-size: 0.85rem; color: var(--text-muted); }
+</style>
+{% endblock %}

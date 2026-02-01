@@ -9,6 +9,8 @@ from .dashboards import dashboards_bp
 from .abx_indications import abx_indications_bp
 from .guideline_adherence import guideline_adherence_bp
 from .surgical_prophylaxis import surgical_prophylaxis_bp
+from .mdro_surveillance import mdro_surveillance_bp
+from .outbreak_detection import outbreak_detection_bp
 
 __all__ = [
     "main_bp",
@@ -20,4 +22,6 @@ __all__ = [
     "abx_indications_bp",
     "guideline_adherence_bp",
     "surgical_prophylaxis_bp",
+    "mdro_surveillance_bp",
+    "outbreak_detection_bp",
 ]

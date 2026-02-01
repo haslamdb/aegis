@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import alert_box %}
+
+{% block title %}Cluster Not Found - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Cluster Not Found</h1>
+</div>
+
+{{ alert_box("The requested cluster (" ~ cluster_id ~ ") could not be found.", "warning") }}
+
+<div class="section">
+    <p>The cluster may have been deleted or the ID may be incorrect.</p>
+    <div class="button-group">
+        <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-primary">View All Clusters</a>
+        <a href="{{ url_for('outbreak_detection.dashboard') }}" class="btn btn-outline">Dashboard</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .button-group {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+</style>
+{% endblock %}

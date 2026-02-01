@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import info_grid, alert_box, detail_list %}
+
+{% block title %}MDRO Case Detail - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>MDRO Case Details</h1>
+    <p class="subtitle">Case ID: {{ case.id[:8] }}...</p>
+</div>
+
+{% if error %}
+{{ alert_box("Unable to load case data.", "danger", error) }}
+{% endif %}
+
+{% if case %}
+<!-- Patient & Case Summary -->
+<div class="case-header">
+    <div class="case-header-main">
+        <h2>{{ case.patient_name or 'Unknown Patient' }}</h2>
+        <p class="mrn">MRN: <strong>{{ case.patient_mrn }}</strong></p>
+    </div>
+    <div class="case-header-badges">
+        <span class="badge badge-mdro badge-{{ case.mdro_type.value }} badge-lg">
+            {{ case.mdro_type.value | upper }}
+        </span>
+        {% if case.transmission_status.value == 'healthcare' %}
+        <span class="badge badge-warning badge-lg">Healthcare Onset</span>
+        {% elif case.transmission_status.value == 'community' %}
+        <span class="badge badge-info badge-lg">Community Onset</span>
+        {% elif case.transmission_status.value == 'possible_transmission' %}
+        <span class="badge badge-danger badge-lg">Possible Transmission</span>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid">
+    <!-- Culture Information -->
+    <div class="detail-card">
+        <h3>Culture Information</h3>
+        {{ detail_list([
+            {"label": "Organism", "value": case.organism},
+            {"label": "Specimen Type", "value": case.specimen_type or "Unknown"},
+            {"label": "Culture Date", "value": case.culture_date.strftime('%Y-%m-%d %H:%M')},
+            {"label": "Culture ID", "value": case.culture_id}
+        ]) }}
+    </div>
+
+    <!-- Resistance Profile -->
+    <div class="detail-card">
+        <h3>Resistance Profile</h3>
+        <div class="resistance-info">
+            <p><strong>Classification:</strong> {{ case.classification_reason }}</p>
+            {% if case.resistant_antibiotics %}
+            <p><strong>Resistant to:</strong></p>
+            <div class="resistance-list">
+                {% for abx in case.resistant_antibiotics %}
+                <span class="resistance-badge">{{ abx }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Location & Timing -->
+    <div class="detail-card">
+        <h3>Location & Timing</h3>
+        {{ detail_list([
+            {"label": "Unit", "value": case.unit or "Unknown"},
+            {"label": "Facility", "value": case.location or "Unknown"},
+            {"label": "Admission Date", "value": case.admission_date.strftime('%Y-%m-%d') if case.admission_date else "Unknown"},
+            {"label": "Days Since Admission", "value": case.days_since_admission if case.days_since_admission is not none else "Unknown"},
+            {"label": "Transmission Status", "value": case.transmission_status.value | replace('_', ' ') | title}
+        ]) }}
+    </div>
+
+    <!-- Case Status -->
+    <div class="detail-card">
+        <h3>Case Status</h3>
+        {{ detail_list([
+            {"label": "New Isolation", "value": "Yes" if case.is_new else "No (Previously known)"},
+            {"label": "Prior MDRO History", "value": "Yes" if case.prior_history else "No"},
+            {"label": "Created", "value": case.created_at.strftime('%Y-%m-%d %H:%M')},
+            {"label": "Reviewed By", "value": case.reviewed_by or "Not yet reviewed"},
+            {"label": "Reviewed At", "value": case.reviewed_at.strftime('%Y-%m-%d %H:%M') if case.reviewed_at else "Not yet reviewed"}
+        ]) }}
+        {% if case.notes %}
+        <div class="notes-section">
+            <strong>Notes:</strong>
+            <p>{{ case.notes }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Prior Cases for Patient -->
+{% if prior_cases %}
+<div class="section">
+    <h2>Patient's Prior MDRO History</h2>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>MDRO Type</th>
+                <th>Organism</th>
+                <th>Specimen</th>
+                <th>Unit</th>
+                <th>Culture Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for prior in prior_cases %}
+            <tr>
+                <td>
+                    <span class="badge badge-mdro badge-{{ prior.mdro_type.value }}">
+                        {{ prior.mdro_type.value | upper }}
+                    </span>
+                </td>
+                <td>{{ prior.organism }}</td>
+                <td>{{ prior.specimen_type or '-' }}</td>
+                <td>{{ prior.unit or '-' }}</td>
+                <td>{{ prior.culture_date.strftime('%Y-%m-%d') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Review Form -->
+<div class="section">
+    <h2>IP Review</h2>
+    <form method="POST" action="{{ url_for('mdro_surveillance.review_case', case_id=case.id) }}" class="review-form">
+        <div class="form-group">
+            <label for="reviewer">Reviewer Name</label>
+            <input type="text" name="reviewer" id="reviewer" class="form-control"
+                   value="{{ current_user.name if current_user else '' }}"
+                   placeholder="Your name" required>
+        </div>
+        <div class="form-group">
+            <label for="decision">Decision</label>
+            <select name="decision" id="decision" class="form-select" required>
+                <option value="">Select decision...</option>
+                <option value="confirmed">Confirmed MDRO - Appropriate Classification</option>
+                <option value="needs_investigation">Needs Further Investigation</option>
+                <option value="contact_precautions">Contact Precautions Initiated</option>
+                <option value="rejected">Not MDRO - Misclassification</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea name="notes" id="notes" class="form-control" rows="3"
+                      placeholder="Add any relevant notes..."></textarea>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Submit Review</button>
+        </div>
+    </form>
+</div>
+
+{% endif %}
+
+<div class="section">
+    <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-outline">&larr; Back to Cases</a>
+    <a href="{{ url_for('mdro_surveillance.dashboard') }}" class="btn btn-outline">Dashboard</a>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .case-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 1.5rem;
+        background: var(--surface);
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .case-header-main h2 {
+        margin: 0 0 0.5rem 0;
+    }
+    .case-header-main .mrn {
+        margin: 0;
+        color: var(--text-muted);
+    }
+    .case-header-badges {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+    .badge-lg {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .detail-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+    .detail-card h3 {
+        margin: 0 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .resistance-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .resistance-badge {
+        background: #f8d7da;
+        color: #dc3545;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+
+    .review-form {
+        background: var(--surface);
+        padding: 1.5rem;
+        border-radius: 8px;
+        max-width: 600px;
+    }
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-weight: 500;
+    }
+    .form-actions {
+        margin-top: 1.5rem;
+    }
+
+    .notes-section {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .badge-mdro {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 600;
+    }
+    .badge-mrsa { color: #dc3545; background-color: #f8d7da; }
+    .badge-vre { color: #6f42c1; background-color: #e8daef; }
+    .badge-cre { color: #d63384; background-color: #f8d7e8; }
+    .badge-esbl { color: #fd7e14; background-color: #ffe5d0; }
+    .badge-crpa { color: #0d6efd; background-color: #cfe2ff; }
+    .badge-crab { color: #198754; background-color: #d1e7dd; }
+</style>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import info_grid, alert_box, empty_state, reviewer_input %}
+
+{% block title %}Cluster Detail - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Outbreak Cluster</h1>
+    <p class="subtitle">{{ cluster.unit }} - {{ cluster.infection_type | upper }}</p>
+</div>
+
+{% if error %}
+{{ alert_box("Unable to load cluster details.", "warning", error) }}
+{% endif %}
+
+{% if cluster %}
+<!-- Cluster Summary -->
+<div class="section cluster-summary">
+    <div class="summary-header">
+        <div class="summary-badges">
+            <span class="badge badge-severity-{{ cluster.severity.value }}">
+                {{ cluster.severity.value | capitalize }} Severity
+            </span>
+            <span class="badge badge-status-{{ cluster.status.value }}">
+                {{ cluster.status.value | capitalize }}
+            </span>
+        </div>
+        {% if cluster.status.value != 'resolved' %}
+        <button type="button" class="btn btn-success" onclick="showResolveModal()">
+            Resolve Cluster
+        </button>
+        {% endif %}
+    </div>
+
+    {{ info_grid([
+        {'label': 'Unit', 'value': cluster.unit},
+        {'label': 'Infection Type', 'value': cluster.infection_type | upper},
+        {'label': 'Organism', 'value': cluster.organism or 'Various'},
+        {'label': 'Total Cases', 'value': cluster.case_count},
+        {'label': 'First Case', 'value': cluster.first_case_date.strftime('%Y-%m-%d') if cluster.first_case_date else '-'},
+        {'label': 'Last Case', 'value': cluster.last_case_date.strftime('%Y-%m-%d') if cluster.last_case_date else '-'},
+        {'label': 'Detected', 'value': cluster.detected_at.strftime('%Y-%m-%d %H:%M') if cluster.detected_at else '-'},
+        {'label': 'Status Changed', 'value': cluster.status_changed_at.strftime('%Y-%m-%d %H:%M') if cluster.status_changed_at else '-'}
+    ]) }}
+</div>
+
+<!-- Cases in Cluster -->
+<div class="section">
+    <h2>Cases in Cluster ({{ cluster.cases | length if cluster.cases else 0 }})</h2>
+    {% if cluster.cases %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient MRN</th>
+                <th>Source</th>
+                <th>Organism</th>
+                <th>Infection Type</th>
+                <th>Unit</th>
+                <th>Event Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for case in cluster.cases %}
+            <tr>
+                <td><strong>{{ case.patient_mrn }}</strong></td>
+                <td>
+                    <span class="badge badge-source-{{ case.source }}">
+                        {{ case.source | upper }}
+                    </span>
+                </td>
+                <td>{{ case.organism or '-' }}</td>
+                <td>{{ case.infection_type | upper }}</td>
+                <td>{{ case.unit }}</td>
+                <td>{{ case.event_date.strftime('%Y-%m-%d') if case.event_date else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    {{ empty_state("No Cases", "No cases linked to this cluster.") }}
+    {% endif %}
+</div>
+
+<!-- Resolution Notes (if resolved) -->
+{% if cluster.status.value == 'resolved' %}
+<div class="section resolution-section">
+    <h2>Resolution</h2>
+    {{ info_grid([
+        {'label': 'Resolved By', 'value': cluster.resolved_by or '-'},
+        {'label': 'Resolved At', 'value': cluster.resolved_at.strftime('%Y-%m-%d %H:%M') if cluster.resolved_at else '-'}
+    ]) }}
+    {% if cluster.notes %}
+    <div class="resolution-notes">
+        <strong>Notes:</strong>
+        <p>{{ cluster.notes }}</p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Resolve Modal -->
+<div id="resolve-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h3>Resolve Cluster</h3>
+        <form method="POST" action="{{ url_for('outbreak_detection.resolve_cluster', cluster_id=cluster.id) }}">
+            {{ reviewer_input(label="Resolved By") }}
+            <div class="form-group">
+                <label for="notes">Resolution Notes</label>
+                <textarea name="notes" id="notes" rows="4" class="form-control"
+                    placeholder="Describe the resolution..."></textarea>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="hideResolveModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">Resolve Cluster</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% else %}
+{{ empty_state("Cluster Not Found", "The requested cluster could not be loaded.") }}
+{% endif %}
+
+<div class="section">
+    <a href="{{ url_for('outbreak_detection.clusters_list') }}" class="btn btn-outline">&larr; Back to Clusters</a>
+    <a href="{{ url_for('outbreak_detection.dashboard') }}" class="btn btn-outline">Dashboard</a>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .cluster-summary {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+    .summary-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .summary-badges {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .badge-severity-critical { background-color: #dc3545; color: white; }
+    .badge-severity-high { background-color: #fd7e14; color: white; }
+    .badge-severity-medium { background-color: #ffc107; color: black; }
+    .badge-severity-low { background-color: #198754; color: white; }
+
+    .badge-status-active { background-color: #dc3545; color: white; }
+    .badge-status-investigating { background-color: #ffc107; color: black; }
+    .badge-status-resolved { background-color: #198754; color: white; }
+
+    .badge-source-mdro { background-color: #dc3545; color: white; }
+    .badge-source-hai { background-color: #0d6efd; color: white; }
+    .badge-source-cdi { background-color: #6f42c1; color: white; }
+    .badge-source-other { background-color: #6c757d; color: white; }
+
+    .resolution-section {
+        background: #d1e7dd;
+        border: 1px solid #198754;
+        border-radius: 8px;
+        padding: 1.5rem;
+    }
+    .resolution-notes {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: rgba(255,255,255,0.5);
+        border-radius: 4px;
+    }
+    .resolution-notes p {
+        margin: 0.5rem 0 0 0;
+    }
+
+    /* Modal */
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        background: var(--surface);
+        border-radius: 8px;
+        padding: 2rem;
+        max-width: 500px;
+        width: 90%;
+    }
+    .modal-content h3 {
+        margin: 0 0 1.5rem 0;
+    }
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showResolveModal() {
+    document.getElementById('resolve-modal').style.display = 'flex';
+}
+function hideResolveModal() {
+    document.getElementById('resolve-modal').style.display = 'none';
+}
+</script>
+{% endblock %}

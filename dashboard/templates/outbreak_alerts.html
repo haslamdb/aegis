@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import alert_box, empty_state, reviewer_input %}
+
+{% block title %}Outbreak Alerts - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Outbreak Alerts</h1>
+    <p class="subtitle">Pending and acknowledged alerts</p>
+</div>
+
+{% if error %}
+{{ alert_box("Unable to load alerts.", "warning", error) }}
+{% endif %}
+
+<!-- Pending Alerts -->
+<div class="section">
+    <h2>Pending Alerts ({{ pending_alerts | length if pending_alerts else 0 }})</h2>
+    {% if pending_alerts %}
+    <div class="alert-list">
+        {% for alert in pending_alerts %}
+        <div class="alert-item alert-{{ alert.severity }}">
+            <div class="alert-icon">
+                {% if alert.severity == 'critical' %}!
+                {% elif alert.severity == 'high' %}!
+                {% else %}i{% endif %}
+            </div>
+            <div class="alert-content">
+                <div class="alert-title">{{ alert.title }}</div>
+                <div class="alert-message">{{ alert.message }}</div>
+                <div class="alert-meta">
+                    <span class="badge badge-severity-{{ alert.severity }}">{{ alert.severity | capitalize }}</span>
+                    {{ alert.created_at[:16] | replace('T', ' ') }}
+                    {% if alert.cluster_id %}
+                    | <a href="{{ url_for('outbreak_detection.cluster_detail', cluster_id=alert.cluster_id) }}">View Cluster</a>
+                    {% endif %}
+                </div>
+            </div>
+            <form method="POST" action="{{ url_for('outbreak_detection.acknowledge_alert', alert_id=alert.id) }}" class="alert-action">
+                {{ reviewer_input(label="", placeholder="Your name") }}
+                <button type="submit" class="btn btn-sm btn-outline">Acknowledge</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    {{ empty_state("No Pending Alerts", "All alerts have been acknowledged.") }}
+    {% endif %}
+</div>
+
+<!-- Acknowledged Alerts -->
+<div class="section">
+    <h2>Recently Acknowledged (Last 50)</h2>
+    {% if acknowledged_alerts %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Severity</th>
+                <th>Title</th>
+                <th>Message</th>
+                <th>Created</th>
+                <th>Acknowledged</th>
+                <th>By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alert in acknowledged_alerts %}
+            <tr>
+                <td>
+                    <span class="badge badge-severity-{{ alert.severity }}">
+                        {{ alert.severity | capitalize }}
+                    </span>
+                </td>
+                <td>{{ alert.title }}</td>
+                <td>{{ alert.message[:50] }}{% if alert.message | length > 50 %}...{% endif %}</td>
+                <td>{{ alert.created_at[:16] | replace('T', ' ') }}</td>
+                <td>{{ alert.acknowledged_at[:16] | replace('T', ' ') if alert.acknowledged_at else '-' }}</td>
+                <td>{{ alert.acknowledged_by or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    {{ empty_state("No Acknowledged Alerts", "No alerts have been acknowledged yet.") }}
+    {% endif %}
+</div>
+
+<div class="section">
+    <a href="{{ url_for('outbreak_detection.dashboard') }}" class="btn btn-outline">&larr; Back to Dashboard</a>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .alert-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .alert-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid;
+    }
+    .alert-critical { border-color: #dc3545; background: #fff5f5; }
+    .alert-high { border-color: #fd7e14; background: #fff8f0; }
+    .alert-medium { border-color: #ffc107; background: #fffdf0; }
+    .alert-low { border-color: #0d6efd; background: #f0f7ff; }
+
+    .alert-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        flex-shrink: 0;
+    }
+    .alert-critical .alert-icon { background: #dc3545; color: white; }
+    .alert-high .alert-icon { background: #fd7e14; color: white; }
+    .alert-medium .alert-icon { background: #ffc107; color: black; }
+    .alert-low .alert-icon { background: #0d6efd; color: white; }
+
+    .alert-content { flex: 1; }
+    .alert-title { font-weight: 600; margin-bottom: 0.25rem; }
+    .alert-message { color: var(--text-muted); margin-bottom: 0.5rem; }
+    .alert-meta { font-size: 0.85rem; color: var(--text-muted); }
+
+    .alert-action {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: flex-end;
+    }
+    .alert-action .form-group {
+        margin: 0;
+    }
+    .alert-action input {
+        width: 150px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .badge-severity-critical { background-color: #dc3545; color: white; }
+    .badge-severity-high { background-color: #fd7e14; color: white; }
+    .badge-severity-medium { background-color: #ffc107; color: black; }
+    .badge-severity-low { background-color: #198754; color: white; }
+</style>
+{% endblock %}

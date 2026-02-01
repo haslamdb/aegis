@@ -77,6 +77,28 @@
         </div>
     </a>
 
+    <a href="{{ url_for('mdro_surveillance.dashboard') }}" class="section-card section-mdro">
+        <div class="section-icon">&#x1F9A0;</div>
+        <h2>MDRO Surveillance</h2>
+        <p>Multi-drug resistant organism tracking based on culture susceptibilities.</p>
+        <div class="section-features">
+            <span>MRSA/VRE/CRE</span>
+            <span>ESBL/CRPA/CRAB</span>
+            <span>Transmission</span>
+        </div>
+    </a>
+
+    <a href="{{ url_for('outbreak_detection.dashboard') }}" class="section-card section-outbreak">
+        <div class="section-icon">&#x1F6A8;</div>
+        <h2>Outbreak Detection</h2>
+        <p>Cluster detection and investigation across MDRO, HAI, and CDI cases.</p>
+        <div class="section-features">
+            <span>Cluster Detection</span>
+            <span>IP Alerts</span>
+            <span>Investigation</span>
+        </div>
+    </a>
+
     <a href="{{ url_for('nhsn_reporting.dashboard') }}" class="section-card section-nhsn">
         <div class="section-icon">&#x1F4CA;</div>
         <h2>NHSN Reporting</h2>
@@ -301,6 +323,28 @@
 }
 .section-approvals .section-icon {
     color: #F59E0B;
+}
+
+.section-mdro {
+    border-left-color: #DC2626;
+}
+.section-mdro:hover {
+    border-left-color: #DC2626;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(220, 38, 38, 0.1) 100%);
+}
+.section-mdro .section-icon {
+    color: #DC2626;
+}
+
+.section-outbreak {
+    border-left-color: #BE185D;
+}
+.section-outbreak:hover {
+    border-left-color: #BE185D;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(190, 24, 93, 0.1) 100%);
+}
+.section-outbreak .section-icon {
+    color: #BE185D;
 }
 
 .section-training {
