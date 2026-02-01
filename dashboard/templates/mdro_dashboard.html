@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import stats_grid, quick_links, alert_box, empty_state %}
+
+{% block title %}MDRO Surveillance - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>MDRO Surveillance</h1>
+    <p class="subtitle">Multi-Drug Resistant Organism Tracking</p>
+</div>
+
+{% if error %}
+{{ alert_box("Unable to load some data. The MDRO surveillance module may not be fully configured.", "warning", error) }}
+{% endif %}
+
+<!-- Stats Cards -->
+{{ stats_grid([
+    {"value": stats.total_cases or 0, "label": "Total MDRO Cases", "sublabel": "Last 30 Days", "variant": "primary"},
+    {"value": stats.healthcare_onset or 0, "label": "Healthcare Onset", "sublabel": ">48h After Admission", "variant": "warning"},
+    {"value": stats.community_onset or 0, "label": "Community Onset", "sublabel": "<=48h After Admission", "variant": "info"},
+    {"value": stats.by_type | length if stats.by_type else 0, "label": "MDRO Types", "sublabel": "Active", "variant": "secondary"}
+]) }}
+
+<!-- Quick Links -->
+<div class="section">
+    <h2>Quick Actions</h2>
+    {{ quick_links([
+        {"url": url_for('mdro_surveillance.cases_list'), "label": "All Cases", "class": "btn-secondary"},
+        {"url": url_for('mdro_surveillance.analytics'), "label": "Analytics", "class": "btn-info"},
+        {"url": url_for('outbreak_detection.dashboard'), "label": "Outbreak Detection", "class": "btn-danger"}
+    ]) }}
+</div>
+
+<!-- Cases by MDRO Type -->
+<div class="section">
+    <h2>Cases by MDRO Type (Last 30 Days)</h2>
+    {% if stats.by_type %}
+    <div class="mdro-type-grid">
+        {% for mdro_type, count in stats.by_type.items() %}
+        <div class="mdro-type-card mdro-{{ mdro_type }}">
+            <div class="mdro-type-count">{{ count }}</div>
+            <div class="mdro-type-label">{{ mdro_type | upper }}</div>
+            <div class="mdro-type-name">
+                {% if mdro_type == 'mrsa' %}Methicillin-resistant Staph aureus
+                {% elif mdro_type == 'vre' %}Vancomycin-resistant Enterococcus
+                {% elif mdro_type == 'cre' %}Carbapenem-resistant Enterobacteriaceae
+                {% elif mdro_type == 'esbl' %}Extended-spectrum Beta-lactamase
+                {% elif mdro_type == 'crpa' %}Carbapenem-resistant Pseudomonas
+                {% elif mdro_type == 'crab' %}Carbapenem-resistant Acinetobacter
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    {{ empty_state("No MDRO Cases", "No multi-drug resistant organisms detected in the last 30 days.") }}
+    {% endif %}
+</div>
+
+<!-- Recent Cases -->
+<div class="section">
+    <h2>Recent MDRO Cases (Last 7 Days)</h2>
+    {% if recent_cases %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>MDRO Type</th>
+                <th>Organism</th>
+                <th>Specimen</th>
+                <th>Unit</th>
+                <th>Onset</th>
+                <th>Culture Date</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for case in recent_cases[:10] %}
+            <tr>
+                <td>
+                    <strong>{{ case.patient_mrn }}</strong>
+                    {% if case.patient_name %}
+                    <br><small class="text-muted">{{ case.patient_name }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-mdro badge-{{ case.mdro_type.value }}">
+                        {{ case.mdro_type.value | upper }}
+                    </span>
+                </td>
+                <td>{{ case.organism }}</td>
+                <td>{{ case.specimen_type or '-' }}</td>
+                <td>{{ case.unit or '-' }}</td>
+                <td>
+                    {% if case.transmission_status.value == 'healthcare' %}
+                    <span class="badge badge-warning">Healthcare</span>
+                    {% elif case.transmission_status.value == 'community' %}
+                    <span class="badge badge-info">Community</span>
+                    {% else %}
+                    <span class="badge badge-secondary">{{ case.transmission_status.value }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ case.culture_date.strftime('%Y-%m-%d') }}</td>
+                <td class="text-center">
+                    <a href="{{ url_for('mdro_surveillance.case_detail', case_id=case.id) }}"
+                       class="btn btn-sm btn-secondary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if recent_cases | length > 10 %}
+    <p class="text-center">
+        <a href="{{ url_for('mdro_surveillance.cases_list') }}">View all cases</a>
+    </p>
+    {% endif %}
+    {% else %}
+    {{ empty_state("No Recent Cases", "No MDRO cases detected in the last 7 days.") }}
+    {% endif %}
+</div>
+
+<!-- Cases by Unit -->
+{% if stats.by_unit %}
+<div class="section">
+    <h2>Top Units by Case Count (Last 30 Days)</h2>
+    <div class="unit-bars">
+        {% set max_count = stats.by_unit.values() | max %}
+        {% for unit, count in stats.by_unit.items() %}
+        <div class="unit-bar-row">
+            <div class="unit-name">{{ unit }}</div>
+            <div class="unit-bar-container">
+                <div class="unit-bar" style="width: {{ (count / max_count * 100) | round(0) }}%;">
+                    <span class="unit-count">{{ count }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block styles %}
+<style>
+    .mdro-type-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .mdro-type-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: transform 0.2s;
+    }
+    .mdro-type-card:hover {
+        transform: translateY(-2px);
+    }
+    .mdro-type-count {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: var(--primary);
+    }
+    .mdro-type-label {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0.5rem 0;
+    }
+    .mdro-type-name {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    /* MDRO type colors */
+    .mdro-mrsa .mdro-type-count, .badge-mrsa { color: #dc3545; background-color: #f8d7da; }
+    .mdro-vre .mdro-type-count, .badge-vre { color: #6f42c1; background-color: #e8daef; }
+    .mdro-cre .mdro-type-count, .badge-cre { color: #d63384; background-color: #f8d7e8; }
+    .mdro-esbl .mdro-type-count, .badge-esbl { color: #fd7e14; background-color: #ffe5d0; }
+    .mdro-crpa .mdro-type-count, .badge-crpa { color: #0d6efd; background-color: #cfe2ff; }
+    .mdro-crab .mdro-type-count, .badge-crab { color: #198754; background-color: #d1e7dd; }
+
+    .badge-mdro {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+
+    /* Unit bars */
+    .unit-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    .unit-bar-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    .unit-name {
+        width: 150px;
+        font-weight: 500;
+        text-align: right;
+    }
+    .unit-bar-container {
+        flex: 1;
+        background: var(--surface-alt);
+        border-radius: 4px;
+        height: 24px;
+    }
+    .unit-bar {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-right: 0.5rem;
+        min-width: fit-content;
+    }
+    .unit-count {
+        color: white;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+</style>
+{% endblock %}
