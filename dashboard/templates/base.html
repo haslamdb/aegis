@@ -19,6 +19,8 @@
         {% set is_drug_bug = request.endpoint and request.endpoint.startswith('drug_bug.') %}
         {% set is_asp_metrics = request.endpoint and request.endpoint.startswith('asp_metrics.') %}
         {% set is_abx_approvals = request.endpoint and request.endpoint.startswith('abx_approvals.') %}
+        {% set is_mdro_surveillance = request.endpoint and request.endpoint.startswith('mdro_surveillance.') %}
+        {% set is_outbreak_detection = request.endpoint and request.endpoint.startswith('outbreak_detection.') %}
         {% set is_landing = request.endpoint == 'main.landing' %}
         <div class="nav-brand">
             <svg class="nav-shield" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -45,6 +47,10 @@
             <a href="{{ url_for('asp_metrics.dashboard') }}">ASP/IP Metrics</a>
             {% elif is_abx_approvals %}
             <a href="{{ url_for('abx_approvals.dashboard') }}">ABX Approvals</a>
+            {% elif is_mdro_surveillance %}
+            <a href="{{ url_for('mdro_surveillance.dashboard') }}">MDRO Surveillance</a>
+            {% elif is_outbreak_detection %}
+            <a href="{{ url_for('outbreak_detection.dashboard') }}">Outbreak Detection</a>
             {% else %}
             <a href="{{ url_for('main.landing') }}">AEGIS</a>
             {% endif %}
@@ -112,6 +118,20 @@
             <a href="{{ url_for('abx_approvals.reports') }}" {% if request.endpoint == 'abx_approvals.reports' %}class="active"{% endif %}>Reports</a>
             <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
             <a href="{{ url_for('abx_approvals.help_page') }}" {% if request.endpoint == 'abx_approvals.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_mdro_surveillance %}
+            <!-- MDRO Surveillance Navigation -->
+            <a href="{{ url_for('mdro_surveillance.dashboard') }}" {% if request.endpoint == 'mdro_surveillance.dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('mdro_surveillance.cases_list') }}" {% if request.endpoint in ['mdro_surveillance.cases_list', 'mdro_surveillance.case_detail'] %}class="active"{% endif %}>Cases</a>
+            <a href="{{ url_for('mdro_surveillance.analytics') }}" {% if request.endpoint == 'mdro_surveillance.analytics' %}class="active"{% endif %}>Analytics</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            <a href="{{ url_for('mdro_surveillance.help_page') }}" {% if request.endpoint == 'mdro_surveillance.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_outbreak_detection %}
+            <!-- Outbreak Detection Navigation -->
+            <a href="{{ url_for('outbreak_detection.dashboard') }}" {% if request.endpoint == 'outbreak_detection.dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('outbreak_detection.clusters_list') }}" {% if request.endpoint in ['outbreak_detection.clusters_list', 'outbreak_detection.cluster_detail'] %}class="active"{% endif %}>Clusters</a>
+            <a href="{{ url_for('outbreak_detection.alerts_list') }}" {% if request.endpoint == 'outbreak_detection.alerts_list' %}class="active"{% endif %}>Alerts</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            <a href="{{ url_for('outbreak_detection.help_page') }}" {% if request.endpoint == 'outbreak_detection.help_page' %}class="active"{% endif %}>Help</a>
             {% endif %}
         </div>
     </nav>
