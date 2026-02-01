@@ -1,0 +1,532 @@
+{% extends "base.html" %}
+
+{% block title %}Outbreak Detection Help - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Outbreak Detection - Help & Demo Guide</h1>
+    <a href="{{ url_for('outbreak_detection.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<div class="help-content">
+    <div class="help-card">
+        <h2>Overview</h2>
+        <p>The Outbreak Detection module identifies clusters of related infections for Infection Prevention
+           investigation. It aggregates cases from multiple data sources (MDRO Surveillance, HAI Detection, CDI)
+           and applies clustering algorithms to detect potential outbreaks.</p>
+
+        <h3>Key Features</h3>
+        <ul>
+            <li><strong>Multi-Source Integration</strong> - Aggregates MDRO, HAI, and CDI cases from separate modules</li>
+            <li><strong>Cluster Detection</strong> - Groups cases by infection type, unit, and time window</li>
+            <li><strong>Severity Classification</strong> - Categorizes clusters as low, medium, high, or critical</li>
+            <li><strong>IP Alerts</strong> - Generates alerts when clusters meet thresholds</li>
+            <li><strong>Investigation Workflow</strong> - Track cluster status through investigation to resolution</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>Cluster Detection Algorithm</h2>
+        <p>Clusters are formed when multiple cases of the same infection type occur in the same unit within a defined time window.</p>
+
+        <h3>Clustering Criteria</h3>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Default Value</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Time Window</strong></td>
+                    <td>14 days</td>
+                    <td>Maximum days between first and last case in cluster</td>
+                </tr>
+                <tr>
+                    <td><strong>Minimum Cases</strong></td>
+                    <td>2 cases</td>
+                    <td>Minimum number of cases required to form a cluster</td>
+                </tr>
+                <tr>
+                    <td><strong>Unit Match</strong></td>
+                    <td>Exact</td>
+                    <td>Cases must be from the same unit/ward</td>
+                </tr>
+                <tr>
+                    <td><strong>Infection Type</strong></td>
+                    <td>Exact</td>
+                    <td>Cases must have the same MDRO type or HAI type</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Cluster Severity Levels</h3>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Case Count</th>
+                    <th>Response</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-info">Low</span></td>
+                    <td>2 cases</td>
+                    <td>Monitor for additional cases</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-warning">Medium</span></td>
+                    <td>3-4 cases</td>
+                    <td>Begin investigation, review contact precautions</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-high">High</span></td>
+                    <td>5-6 cases</td>
+                    <td>Active investigation, environmental assessment</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-critical">Critical</span></td>
+                    <td>7+ cases</td>
+                    <td>Full outbreak response, notify leadership</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Data Sources</h2>
+        <p>The Outbreak Detection module pulls case data from multiple surveillance modules using data source adapters:</p>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Source</th>
+                    <th>Adapter</th>
+                    <th>Infection Types</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>MDRO Surveillance</strong></td>
+                    <td>MDROSource</td>
+                    <td>MRSA, VRE, CRE, ESBL, CRPA, CRAB</td>
+                </tr>
+                <tr>
+                    <td><strong>HAI Detection</strong></td>
+                    <td>HAISource</td>
+                    <td>CLABSI, CAUTI, SSI, VAE</td>
+                </tr>
+                <tr>
+                    <td><strong>CDI Module</strong></td>
+                    <td>CDISource</td>
+                    <td>C. difficile (HO-CDI, CO-HCFA)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <strong>Note:</strong> Each data source adapter normalizes case data into a common format for cluster analysis. The outbreak detector runs periodically to check for new clusters.
+        </div>
+    </div>
+
+    <div class="help-card">
+        <h2>Quick Start - Generate Demo Data</h2>
+
+        <h3>Create Outbreak Scenarios</h3>
+        <p>Generate demo outbreak scenarios with multiple cases:</p>
+        <pre><code># Create a random outbreak scenario
+cd /home/david/projects/aegis
+python scripts/demo_outbreak.py
+
+# Create a specific scenario
+python scripts/demo_outbreak.py --scenario mrsa-icu
+python scripts/demo_outbreak.py --scenario vre-medsurg
+python scripts/demo_outbreak.py --scenario cre-unit
+
+# Create larger cluster
+python scripts/demo_outbreak.py --scenario mrsa-icu --cases 5
+
+# Create all scenario types
+python scripts/demo_outbreak.py --all
+
+# Use direct database mode (faster, skips FHIR)
+python scripts/demo_outbreak.py --scenario mrsa-icu --direct</code></pre>
+
+        <h3>Run the Outbreak Detector</h3>
+        <p>After creating demo data, run the detector to identify clusters:</p>
+        <pre><code># Run once
+cd /home/david/projects/aegis/outbreak-detection
+python -m outbreak_src.runner --once
+
+# Run with extended lookback
+python -m outbreak_src.runner --once --days 30
+
+# Run continuously
+python -m outbreak_src.runner --continuous --interval 60
+
+# Debug mode
+python -m outbreak_src.runner --once --debug</code></pre>
+
+        <p>Then view results on the <a href="{{ url_for('outbreak_detection.dashboard') }}">Outbreak Dashboard</a>.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Demo Scenarios</h2>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Command</th>
+                    <th>Infection Type</th>
+                    <th>Unit</th>
+                    <th>Default Cases</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>MRSA ICU Outbreak</strong></td>
+                    <td><code>--scenario mrsa-icu</code></td>
+                    <td>MRSA</td>
+                    <td>ICU-A</td>
+                    <td>3</td>
+                </tr>
+                <tr>
+                    <td><strong>VRE Med-Surg</strong></td>
+                    <td><code>--scenario vre-medsurg</code></td>
+                    <td>VRE</td>
+                    <td>Med-Surg 3</td>
+                    <td>4</td>
+                </tr>
+                <tr>
+                    <td><strong>CRE Unit Cluster</strong></td>
+                    <td><code>--scenario cre-unit</code></td>
+                    <td>CRE</td>
+                    <td>Transplant</td>
+                    <td>3</td>
+                </tr>
+                <tr>
+                    <td><strong>CDI Ward</strong></td>
+                    <td><code>--scenario cdi-ward</code></td>
+                    <td>CDI</td>
+                    <td>Med-Surg 2</td>
+                    <td>4</td>
+                </tr>
+                <tr>
+                    <td><strong>CLABSI ICU</strong></td>
+                    <td><code>--scenario clabsi-icu</code></td>
+                    <td>CLABSI</td>
+                    <td>ICU-B</td>
+                    <td>2</td>
+                </tr>
+                <tr>
+                    <td><strong>Multi-Unit (Complex)</strong></td>
+                    <td><code>--scenario multi-unit</code></td>
+                    <td>MRSA</td>
+                    <td>Multiple</td>
+                    <td>6</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Cluster Lifecycle</h2>
+
+        <div class="lifecycle-flow">
+            <div class="lifecycle-step">
+                <div class="step-icon">1</div>
+                <div class="step-content">
+                    <h4>Detection</h4>
+                    <p>Detector identifies cases meeting clustering criteria</p>
+                </div>
+            </div>
+            <div class="lifecycle-arrow">&rarr;</div>
+            <div class="lifecycle-step">
+                <div class="step-icon">2</div>
+                <div class="step-content">
+                    <h4>Active</h4>
+                    <p>Cluster created with alert sent to IP</p>
+                </div>
+            </div>
+            <div class="lifecycle-arrow">&rarr;</div>
+            <div class="lifecycle-step">
+                <div class="step-icon">3</div>
+                <div class="step-content">
+                    <h4>Investigating</h4>
+                    <p>IP acknowledges and begins investigation</p>
+                </div>
+            </div>
+            <div class="lifecycle-arrow">&rarr;</div>
+            <div class="lifecycle-step">
+                <div class="step-icon">4</div>
+                <div class="step-content">
+                    <h4>Resolved</h4>
+                    <p>Investigation complete, cluster closed</p>
+                </div>
+            </div>
+        </div>
+
+        <h3>Cluster Status Definitions</h3>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th>Description</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-warning">Active</span></td>
+                    <td>Newly detected cluster awaiting IP review</td>
+                    <td>Review cases, acknowledge alert, begin investigation</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-info">Investigating</span></td>
+                    <td>IP actively investigating the cluster</td>
+                    <td>Environmental assessment, contact tracing, implement controls</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-success">Resolved</span></td>
+                    <td>Investigation complete, no new cases</td>
+                    <td>Document findings, close cluster</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Alert Types</h2>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Alert Type</th>
+                    <th>Trigger</th>
+                    <th>Priority</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>New Cluster</strong></td>
+                    <td>New cluster detected meeting minimum threshold</td>
+                    <td>Based on severity (low/medium/high/critical)</td>
+                </tr>
+                <tr>
+                    <td><strong>Cluster Growth</strong></td>
+                    <td>Existing cluster gains additional cases</td>
+                    <td>Escalates with severity increase</td>
+                </tr>
+                <tr>
+                    <td><strong>Severity Upgrade</strong></td>
+                    <td>Cluster crosses severity threshold</td>
+                    <td>New severity level</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>IP Investigation Workflow</h2>
+
+        <ol>
+            <li><strong>Acknowledge Alert</strong> - Mark alert as received and begin investigation</li>
+            <li><strong>Review Cases</strong> - Examine all cases in the cluster for common factors</li>
+            <li><strong>Environmental Assessment</strong> - Inspect unit for potential transmission sources</li>
+            <li><strong>Contact Tracing</strong> - Identify exposed patients and staff</li>
+            <li><strong>Implement Controls</strong> - Enhanced cleaning, cohorting, contact precautions</li>
+            <li><strong>Monitor</strong> - Watch for new cases over defined period</li>
+            <li><strong>Resolve</strong> - Close cluster when investigation complete and transmission stopped</li>
+        </ol>
+
+        <h3>Investigation Checklist</h3>
+        <ul>
+            <li>Common room or equipment exposure</li>
+            <li>Shared healthcare workers</li>
+            <li>Temporal relationship between cases</li>
+            <li>Prior contact between patients</li>
+            <li>Environmental culture results</li>
+            <li>Hand hygiene compliance observations</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>Dashboard Pages</h2>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Page</th>
+                    <th>URL</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Dashboard</strong></td>
+                    <td><a href="{{ url_for('outbreak_detection.dashboard') }}">/outbreak-detection/</a></td>
+                    <td>Overview with stats, active clusters, and pending alerts</td>
+                </tr>
+                <tr>
+                    <td><strong>Clusters</strong></td>
+                    <td><a href="{{ url_for('outbreak_detection.clusters_list') }}">/outbreak-detection/clusters</a></td>
+                    <td>All clusters with status filtering</td>
+                </tr>
+                <tr>
+                    <td><strong>Alerts</strong></td>
+                    <td><a href="{{ url_for('outbreak_detection.alerts_list') }}">/outbreak-detection/alerts</a></td>
+                    <td>Pending and acknowledged alerts</td>
+                </tr>
+                <tr>
+                    <td><strong>Help</strong></td>
+                    <td><a href="{{ url_for('outbreak_detection.help_page') }}">/outbreak-detection/help</a></td>
+                    <td>This page</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Architecture</h2>
+        <pre class="architecture-diagram">
++-------------------+     +-------------------+     +-------------------+
+|  MDRO Surveillance|     |   HAI Detection   |     |   CDI Module      |
+|  (mdro_src)       |     |   (hai_src)       |     |   (cdi_src)       |
++--------+----------+     +---------+---------+     +---------+---------+
+         |                          |                         |
+         |   MDROSource             |   HAISource             |   CDISource
+         v                          v                         v
++-------------------------------------------------------------------------+
+|                        Outbreak Detector                                 |
+|                    (outbreak_src/detector.py)                           |
+|                                                                         |
+|  +----------------+    +----------------+    +------------------+       |
+|  | Aggregate Cases|--&gt;| Cluster by     |--&gt;| Calculate        |       |
+|  | from Sources   |    | Type + Unit    |    | Severity         |       |
+|  +----------------+    +----------------+    +------------------+       |
++-------------------------------------------------------------------------+
+                                    |
+                                    v
+                    +-------------------------------+
+                    |      Outbreak Database        |
+                    |   (outbreak_clusters table)   |
+                    |   (outbreak_alerts table)     |
+                    +-------------------------------+
+                                    |
+                    +---------------+---------------+
+                    v                               v
+         +-------------------+           +-------------------+
+         |   IP Alerts       |           |   Dashboard       |
+         |  (Notifications)  |           |   (Flask Routes)  |
+         +-------------------+           +-------------------+
+        </pre>
+    </div>
+
+    <div class="help-card">
+        <h2>Troubleshooting</h2>
+
+        <h3>No clusters detected</h3>
+        <pre><code># Check if source data exists
+sqlite3 ~/.aegis/mdro.db "SELECT COUNT(*) FROM mdro_cases"
+sqlite3 ~/.aegis/nhsn.db "SELECT COUNT(*) FROM hai_events"
+
+# Run detector with debug
+cd /home/david/projects/aegis/outbreak-detection
+python -m outbreak_src.runner --once --debug</code></pre>
+
+        <h3>Clear outbreak data and start fresh</h3>
+        <pre><code># Remove outbreak database
+rm -f ~/.aegis/outbreak.db
+
+# Reinitialize
+cd /home/david/projects/aegis/outbreak-detection
+python -c "from outbreak_src.db import OutbreakDatabase; OutbreakDatabase()"</code></pre>
+
+        <h3>Check cluster contents</h3>
+        <pre><code>sqlite3 ~/.aegis/outbreak.db "SELECT id, infection_type, unit, case_count, severity, status FROM outbreak_clusters"</code></pre>
+    </div>
+
+    <div class="help-card">
+        <h2>Related Modules</h2>
+        <ul>
+            <li><a href="{{ url_for('mdro_surveillance.dashboard') }}">MDRO Surveillance</a> - Source for MDRO case data</li>
+            <li><a href="{{ url_for('hai_detection.dashboard') }}">HAI Detection</a> - Source for HAI case data</li>
+            <li><a href="{{ url_for('nhsn_reporting.dashboard') }}">NHSN Reporting</a> - Quarterly reporting for confirmed events</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.badge-high { background-color: #f97316; color: white; }
+
+.lifecycle-flow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1.5rem 0;
+}
+
+.lifecycle-step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--surface, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 8px;
+    padding: 1rem;
+    min-width: 180px;
+}
+
+.step-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary, #3b82f6);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.step-content h4 {
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+}
+
+.step-content p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted, #6b7280);
+}
+
+.lifecycle-arrow {
+    font-size: 1.5rem;
+    color: var(--text-muted, #6b7280);
+}
+
+@media (max-width: 768px) {
+    .lifecycle-flow {
+        flex-direction: column;
+    }
+    .lifecycle-arrow {
+        transform: rotate(90deg);
+    }
+}
+
+.architecture-diagram {
+    background: var(--surface-alt, #f8f9fa);
+    padding: 1rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    overflow-x: auto;
+}
+</style>
+{% endblock %}

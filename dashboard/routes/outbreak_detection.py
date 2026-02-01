@@ -244,3 +244,9 @@ def api_active_clusters():
         return jsonify([c.to_dict() for c in clusters])
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@outbreak_detection_bp.route("/help")
+def help_page():
+    """Outbreak detection help and demo guide."""
+    return render_template("outbreak_help.html")

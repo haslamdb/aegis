@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+
+{% block title %}MDRO Surveillance Help - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>MDRO Surveillance - Help & Demo Guide</h1>
+    <a href="{{ url_for('mdro_surveillance.dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<div class="help-content">
+    <div class="help-card">
+        <h2>Overview</h2>
+        <p>The MDRO Surveillance module automatically detects and tracks Multi-Drug Resistant Organisms from
+           microbiology culture results. It provides real-time surveillance for Infection Prevention teams
+           and feeds case data to the Outbreak Detection module for cluster analysis.</p>
+
+        <h3>Key Features</h3>
+        <ul>
+            <li><strong>Automated Detection</strong> - Classifies organisms as MDRO based on susceptibility patterns</li>
+            <li><strong>Transmission Tracking</strong> - Categorizes cases as healthcare-onset or community-onset</li>
+            <li><strong>Case Management</strong> - IP review workflow for each case</li>
+            <li><strong>Analytics</strong> - Trend analysis by MDRO type, unit, and time period</li>
+            <li><strong>Integration</strong> - Exports cases to Outbreak Detection for cluster analysis</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>MDRO Classification Criteria</h2>
+        <p>Classification follows CDC/NHSN definitions for consistency between real-time surveillance and quarterly NHSN AR reporting.</p>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>MDRO Type</th>
+                    <th>Full Name</th>
+                    <th>Organisms</th>
+                    <th>Resistance Criteria</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-mrsa">MRSA</span></td>
+                    <td>Methicillin-resistant Staphylococcus aureus</td>
+                    <td>S. aureus</td>
+                    <td>Oxacillin R, Methicillin R, Nafcillin R, or Cefoxitin R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-vre">VRE</span></td>
+                    <td>Vancomycin-resistant Enterococcus</td>
+                    <td>E. faecalis, E. faecium</td>
+                    <td>Vancomycin R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-cre">CRE</span></td>
+                    <td>Carbapenem-resistant Enterobacterales</td>
+                    <td>E. coli, Klebsiella, Enterobacter, Citrobacter, Serratia, Proteus, etc.</td>
+                    <td>Meropenem R, Imipenem R, Ertapenem R, or Doripenem R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-esbl">ESBL</span></td>
+                    <td>Extended-spectrum Beta-lactamase</td>
+                    <td>E. coli, Klebsiella spp, P. mirabilis</td>
+                    <td>Ceftriaxone R, Ceftazidime R, Cefotaxime R, or Aztreonam R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-crpa">CRPA</span></td>
+                    <td>Carbapenem-resistant Pseudomonas aeruginosa</td>
+                    <td>P. aeruginosa</td>
+                    <td>Meropenem R, Imipenem R, or Doripenem R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-crab">CRAB</span></td>
+                    <td>Carbapenem-resistant Acinetobacter baumannii</td>
+                    <td>A. baumannii</td>
+                    <td>Meropenem R, Imipenem R, or Doripenem R</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert alert-info">
+            <strong>Note:</strong> CRE classification takes precedence over ESBL. If an organism is resistant to carbapenems, it is classified as CRE rather than ESBL.
+        </div>
+    </div>
+
+    <div class="help-card">
+        <h2>Transmission Classification</h2>
+        <p>Cases are classified based on time from hospital admission to culture collection:</p>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Classification</th>
+                    <th>Definition</th>
+                    <th>IP Implications</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-info">Community Onset</span></td>
+                    <td>Culture collected &le;48 hours after admission</td>
+                    <td>Patient arrived with MDRO; focus on screening and isolation protocols</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-warning">Healthcare Onset</span></td>
+                    <td>Culture collected &gt;48 hours after admission</td>
+                    <td>Possible hospital acquisition; investigate potential transmission and environmental factors</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Quick Start - Generate Demo Data</h2>
+
+        <h3>Create MDRO Cases</h3>
+        <p>Generate demo patients with various MDRO scenarios:</p>
+        <pre><code># Create a random MDRO case
+cd /home/david/projects/aegis
+python scripts/demo_mdro.py
+
+# Create a specific MDRO type
+python scripts/demo_mdro.py --scenario mrsa
+python scripts/demo_mdro.py --scenario vre
+python scripts/demo_mdro.py --scenario cre
+python scripts/demo_mdro.py --scenario esbl
+python scripts/demo_mdro.py --scenario crpa
+python scripts/demo_mdro.py --scenario crab
+
+# Specify onset type
+python scripts/demo_mdro.py --scenario mrsa --onset healthcare
+python scripts/demo_mdro.py --scenario vre --onset community
+
+# Specify unit
+python scripts/demo_mdro.py --scenario mrsa --unit "ICU-A"
+
+# Create all scenario types
+python scripts/demo_mdro.py --all</code></pre>
+
+        <h3>Run the MDRO Monitor</h3>
+        <p>After creating demo data, run the monitor to detect MDRO cases:</p>
+        <pre><code># Run once
+cd /home/david/projects/aegis/mdro-surveillance
+python -m mdro_src.runner --once
+
+# Run with extended lookback
+python -m mdro_src.runner --once --hours 72
+
+# Run continuously
+python -m mdro_src.runner --continuous --interval 30
+
+# Debug mode
+python -m mdro_src.runner --once --debug</code></pre>
+
+        <p>Then view results on the <a href="{{ url_for('mdro_surveillance.dashboard') }}">MDRO Dashboard</a>.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Demo Scenarios</h2>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Scenario</th>
+                    <th>Command</th>
+                    <th>Organism</th>
+                    <th>Key Resistance</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>MRSA</strong></td>
+                    <td><code>--scenario mrsa</code></td>
+                    <td>Staphylococcus aureus</td>
+                    <td>Oxacillin R, Cefoxitin R</td>
+                </tr>
+                <tr>
+                    <td><strong>VRE</strong></td>
+                    <td><code>--scenario vre</code></td>
+                    <td>Enterococcus faecium</td>
+                    <td>Vancomycin R</td>
+                </tr>
+                <tr>
+                    <td><strong>CRE</strong></td>
+                    <td><code>--scenario cre</code></td>
+                    <td>Klebsiella pneumoniae</td>
+                    <td>Meropenem R, Ertapenem R</td>
+                </tr>
+                <tr>
+                    <td><strong>ESBL</strong></td>
+                    <td><code>--scenario esbl</code></td>
+                    <td>Escherichia coli</td>
+                    <td>Ceftriaxone R, Ceftazidime R</td>
+                </tr>
+                <tr>
+                    <td><strong>CRPA</strong></td>
+                    <td><code>--scenario crpa</code></td>
+                    <td>Pseudomonas aeruginosa</td>
+                    <td>Meropenem R, Imipenem R</td>
+                </tr>
+                <tr>
+                    <td><strong>CRAB</strong></td>
+                    <td><code>--scenario crab</code></td>
+                    <td>Acinetobacter baumannii</td>
+                    <td>Meropenem R, Imipenem R</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>IP Case Review Workflow</h2>
+        <p>When reviewing an MDRO case, the Infection Preventionist can:</p>
+
+        <ol>
+            <li><strong>View Case Details</strong> - Patient info, organism, susceptibilities, unit, culture date</li>
+            <li><strong>Check Transmission Status</strong> - Verify community vs healthcare onset classification</li>
+            <li><strong>Review Prior Cases</strong> - See patient's previous MDRO history</li>
+            <li><strong>Add Review Notes</strong> - Document investigation findings and actions taken</li>
+            <li><strong>Mark Decision</strong> - Confirm case, request follow-up, or close as resolved</li>
+        </ol>
+
+        <h3>Review Decisions</h3>
+        <ul>
+            <li><strong>Confirmed</strong> - Case verified as MDRO, proceed with IP protocols</li>
+            <li><strong>Needs Investigation</strong> - Additional review needed (contact precautions, environmental assessment)</li>
+            <li><strong>Resolved</strong> - Case closed, no further action needed</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>Integration with Outbreak Detection</h2>
+        <p>MDRO cases are automatically exported to the Outbreak Detection module for cluster analysis.</p>
+
+        <h3>Data Flow</h3>
+        <pre class="architecture-diagram">
+MDRO Surveillance                    Outbreak Detection
++------------------+                 +------------------+
+| Culture Results  |                 | MDROSource       |
+| (FHIR Server)    |                 | (Data Adapter)   |
++--------+---------+                 +--------+---------+
+         |                                    |
+         v                                    v
++------------------+    API Export   +------------------+
+| MDRO Classifier  +---------------->| Cluster Detector |
+| (CDC/NHSN Rules) |                 | (Time + Unit)    |
++--------+---------+                 +--------+---------+
+         |                                    |
+         v                                    v
++------------------+                 +------------------+
+| MDRO Cases DB    |                 | Outbreak Alerts  |
+| (SQLite)         |                 | (IP Notification)|
++------------------+                 +------------------+
+        </pre>
+
+        <h3>API Export</h3>
+        <p>Cases can be exported programmatically:</p>
+        <pre><code>GET /mdro-surveillance/api/export?days=14</code></pre>
+
+        <p>Returns JSON with case details for clustering analysis.</p>
+    </div>
+
+    <div class="help-card">
+        <h2>Dashboard Pages</h2>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Page</th>
+                    <th>URL</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Dashboard</strong></td>
+                    <td><a href="{{ url_for('mdro_surveillance.dashboard') }}">/mdro-surveillance/</a></td>
+                    <td>Overview with stats, recent cases, and MDRO type breakdown</td>
+                </tr>
+                <tr>
+                    <td><strong>Cases</strong></td>
+                    <td><a href="{{ url_for('mdro_surveillance.cases_list') }}">/mdro-surveillance/cases</a></td>
+                    <td>All cases with filtering by type, unit, and time period</td>
+                </tr>
+                <tr>
+                    <td><strong>Analytics</strong></td>
+                    <td><a href="{{ url_for('mdro_surveillance.analytics') }}">/mdro-surveillance/analytics</a></td>
+                    <td>Trend analysis and reporting charts</td>
+                </tr>
+                <tr>
+                    <td><strong>Help</strong></td>
+                    <td><a href="{{ url_for('mdro_surveillance.help_page') }}">/mdro-surveillance/help</a></td>
+                    <td>This page</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Troubleshooting</h2>
+
+        <h3>FHIR server not responding</h3>
+        <pre><code># Check if HAPI FHIR container is running
+docker ps | grep hapi
+
+# Restart if needed
+cd asp-bacteremia-alerts
+docker-compose down && docker-compose up -d</code></pre>
+
+        <h3>Clear MDRO data and start fresh</h3>
+        <pre><code># Remove MDRO database
+rm -f ~/.aegis/mdro.db
+
+# Clear FHIR server data
+cd asp-bacteremia-alerts
+docker-compose down && docker-compose up -d</code></pre>
+
+        <h3>Check database contents</h3>
+        <pre><code>sqlite3 ~/.aegis/mdro.db "SELECT mdro_type, COUNT(*) FROM mdro_cases GROUP BY mdro_type"</code></pre>
+    </div>
+
+    <div class="help-card">
+        <h2>Related Modules</h2>
+        <ul>
+            <li><a href="{{ url_for('outbreak_detection.dashboard') }}">Outbreak Detection</a> - Cluster detection and investigation</li>
+            <li><a href="{{ url_for('hai_detection.dashboard') }}">HAI Detection</a> - Healthcare-associated infection surveillance</li>
+            <li><a href="{{ url_for('nhsn_reporting.ar_detail') }}">NHSN AR Reporting</a> - Quarterly antimicrobial resistance reporting</li>
+            <li><a href="{{ url_for('drug_bug.dashboard') }}">Drug-Bug Mismatch</a> - Therapy coverage alerts</li>
+        </ul>
+    </div>
+</div>
+
+<style>
+.badge-mrsa { background-color: #f8d7da; color: #dc3545; }
+.badge-vre { background-color: #e8daef; color: #6f42c1; }
+.badge-cre { background-color: #f8d7e8; color: #d63384; }
+.badge-esbl { background-color: #ffe5d0; color: #fd7e14; }
+.badge-crpa { background-color: #cfe2ff; color: #0d6efd; }
+.badge-crab { background-color: #d1e7dd; color: #198754; }
+
+.architecture-diagram {
+    background: var(--surface-alt, #f8f9fa);
+    padding: 1rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    overflow-x: auto;
+}
+</style>
+{% endblock %}

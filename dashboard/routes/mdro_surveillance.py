@@ -227,3 +227,9 @@ def api_export():
         return jsonify(cases)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@mdro_surveillance_bp.route("/help")
+def help_page():
+    """MDRO surveillance help and demo guide."""
+    return render_template("mdro_help.html")

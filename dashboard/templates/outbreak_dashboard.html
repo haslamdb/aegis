@@ -27,7 +27,8 @@
     {{ quick_links([
         {"url": url_for('outbreak_detection.clusters_list'), "label": "All Clusters", "class": "btn-secondary"},
         {"url": url_for('outbreak_detection.alerts_list'), "label": "Alerts", "class": "btn-warning" if stats.pending_alerts else "btn-secondary"},
-        {"url": url_for('mdro_surveillance.dashboard'), "label": "MDRO Surveillance", "class": "btn-primary"}
+        {"url": url_for('mdro_surveillance.dashboard'), "label": "MDRO Surveillance", "class": "btn-primary"},
+        {"url": url_for('outbreak_detection.help_page'), "label": "Help", "class": "btn-outline"}
     ]) }}
 </div>
 
