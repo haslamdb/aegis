@@ -5,7 +5,7 @@ Creates patients with positive cultures and susceptibility patterns that
 will trigger MDRO classification (MRSA, VRE, CRE, ESBL, CRPA, CRAB).
 
 Usage:
-    # Single MRSA case
+    # Single MRSA case (healthcare-onset by default)
     python demo_mdro.py --scenario mrsa
 
     # Single VRE case
@@ -14,8 +14,15 @@ Usage:
     # All MDRO types
     python demo_mdro.py --all
 
-    # Community-onset (culture on admission day)
+    # Specify onset type
+    python demo_mdro.py --scenario mrsa --onset healthcare
+    python demo_mdro.py --scenario mrsa --onset community
+
+    # Shorthand for community-onset
     python demo_mdro.py --scenario mrsa --community
+
+    # Specify unit
+    python demo_mdro.py --scenario mrsa --unit "ICU-A"
 
     # Interactive mode
     python demo_mdro.py --interactive
@@ -363,7 +370,8 @@ def main():
     parser = argparse.ArgumentParser(description="Generate MDRO demo patients", formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
     parser.add_argument("--scenario", "-s", choices=list(SCENARIOS.keys()), help="Specific MDRO scenario")
     parser.add_argument("--all", action="store_true", help="Run all MDRO scenarios")
-    parser.add_argument("--community", action="store_true", help="Create as community-onset (<=48h)")
+    parser.add_argument("--onset", choices=["healthcare", "community"], default="healthcare", help="Onset type (default: healthcare)")
+    parser.add_argument("--community", action="store_true", help="Shorthand for --onset community")
     parser.add_argument("--unit", type=str, help="Specific unit for the case")
     parser.add_argument("--interactive", "-i", action="store_true", help="Interactive mode")
     parser.add_argument("--fhir-url", default="http://localhost:8081/fhir", help="FHIR server URL")
@@ -390,6 +398,9 @@ def main():
 
     results = []
 
+    # Determine onset type (--community flag or --onset argument)
+    community_onset = args.community or args.onset == "community"
+
     if args.interactive:
         print("\n=== MDRO Surveillance Demo - Interactive Mode ===\n")
         for key, scenario in SCENARIOS.items():
@@ -399,18 +410,18 @@ def main():
             if choice == "q":
                 break
             if choice in SCENARIOS:
-                results.append(run_scenario(choice, args.fhir_url, args.community, args.unit, args.dry_run))
+                results.append(run_scenario(choice, args.fhir_url, community_onset, args.unit, args.dry_run))
             else:
                 print("Invalid scenario.")
     elif args.scenario:
-        results = [run_scenario(args.scenario, args.fhir_url, args.community, args.unit, args.dry_run)]
+        results = [run_scenario(args.scenario, args.fhir_url, community_onset, args.unit, args.dry_run)]
     elif args.all:
         print("\n" + "=" * 60)
         print("RUNNING ALL MDRO SCENARIOS")
         print("=" * 60)
         for key in SCENARIOS:
             if key != "mssa":  # Skip non-MDRO control
-                results.append(run_scenario(key, args.fhir_url, args.community, args.unit, args.dry_run))
+                results.append(run_scenario(key, args.fhir_url, community_onset, args.unit, args.dry_run))
     else:
         parser.error("Specify --scenario, --all, or --interactive")
 
