@@ -369,6 +369,11 @@ class MDROFHIRClient:
         if not antibiotic:
             return None
 
+        # Strip LOINC suffix like " [Susceptibility]" or " [Minimum inhibitory concentration]"
+        # Common LOINC display format: "Oxacillin [Susceptibility]"
+        if "[" in antibiotic:
+            antibiotic = antibiotic.split("[")[0].strip()
+
         # Get interpretation (S/I/R)
         result = None
         for interp in observation.get("interpretation", []):

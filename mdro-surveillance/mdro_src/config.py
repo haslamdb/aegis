@@ -16,7 +16,7 @@ class MDROConfig:
     # FHIR settings (shared with other modules)
     FHIR_BASE_URL: str = os.environ.get(
         "FHIR_BASE_URL",
-        "http://localhost:8080/fhir"
+        "http://localhost:8081/fhir"
     )
 
     # Epic FHIR (if using Epic)
