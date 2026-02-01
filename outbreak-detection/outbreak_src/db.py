@@ -187,6 +187,48 @@ class OutbreakDatabase:
                 return self._row_to_cluster(row, conn)
             return None
 
+    def update_cluster_status(
+        self,
+        cluster_id: str,
+        status: ClusterStatus,
+        notes: str | None = None,
+        updated_by: str | None = None,
+    ) -> bool:
+        """Update a cluster's status.
+
+        Args:
+            cluster_id: The cluster to update
+            status: New status (active, investigating, resolved)
+            notes: Optional notes about the status change
+            updated_by: Who made the update
+
+        Returns:
+            True if update succeeded, False if cluster not found
+        """
+        with self._get_connection() as conn:
+            # Check cluster exists
+            existing = conn.execute(
+                "SELECT id FROM outbreak_clusters WHERE id = ?",
+                (cluster_id,),
+            ).fetchone()
+            if not existing:
+                return False
+
+            # Update status
+            conn.execute(
+                """
+                UPDATE outbreak_clusters
+                SET status = ?, resolution_notes = ?
+                WHERE id = ?
+                """,
+                (status.value, notes, cluster_id),
+            )
+            conn.commit()
+            logger.info(
+                f"Updated cluster {cluster_id} status to {status.value} by {updated_by}"
+            )
+            return True
+
     def _row_to_cluster(self, row: sqlite3.Row, conn: sqlite3.Connection) -> OutbreakCluster:
         """Convert database row to OutbreakCluster."""
         # Get cases for this cluster

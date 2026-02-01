@@ -151,6 +151,72 @@ def resolve_cluster(cluster_id: str):
         return jsonify({"error": str(e)}), 500
 
 
+@outbreak_detection_bp.route("/clusters/<cluster_id>/status", methods=["POST"])
+def update_cluster_status(cluster_id: str):
+    """Update cluster status (confirm, investigate, resolve, or mark as not outbreak)."""
+    try:
+        db = get_outbreak_db()
+        user = get_user_from_request()
+
+        cluster = db.get_cluster(cluster_id)
+        if not cluster:
+            return jsonify({"error": "Cluster not found"}), 404
+
+        new_status = request.form.get("status")
+        notes = request.form.get("notes")
+        decision = request.form.get("decision")
+        reviewer = request.form.get("reviewer") or user.get("name", "Unknown")
+
+        # Handle resolve/not_outbreak decisions
+        if new_status == "resolved":
+            detector = OutbreakDetector(db)
+            success = detector.resolve_cluster(
+                cluster_id=cluster_id,
+                resolved_by=reviewer,
+                notes=notes,
+            )
+            if success:
+                return jsonify({"success": True})
+            else:
+                return jsonify({"error": "Failed to resolve cluster"}), 500
+
+        if new_status == "not_outbreak":
+            # Mark as resolved with note that IP determined it's not an outbreak
+            override_reason = request.form.get("override_reason", "")
+            full_notes = f"[NOT AN OUTBREAK] {override_reason}"
+            if notes:
+                full_notes += f"\nAdditional notes: {notes}"
+
+            detector = OutbreakDetector(db)
+            success = detector.resolve_cluster(
+                cluster_id=cluster_id,
+                resolved_by=reviewer,
+                notes=full_notes,
+            )
+            if success:
+                return jsonify({"success": True})
+            else:
+                return jsonify({"error": "Failed to mark as not outbreak"}), 500
+
+        # Handle status changes (active, investigating)
+        try:
+            status_enum = ClusterStatus(new_status)
+        except ValueError:
+            return jsonify({"error": f"Invalid status: {new_status}"}), 400
+
+        db.update_cluster_status(
+            cluster_id=cluster_id,
+            status=status_enum,
+            notes=notes,
+            updated_by=reviewer,
+        )
+
+        return jsonify({"success": True})
+    except Exception as e:
+        current_app.logger.error(f"Error updating cluster status: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @outbreak_detection_bp.route("/alerts")
 def alerts_list():
     """List all alerts."""

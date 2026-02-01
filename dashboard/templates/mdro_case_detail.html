@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% from "macros/components.html" import info_grid, alert_box, detail_list %}
+{% from "macros/components.html" import info_grid, alert_box, detail_list, status_badge, reviewer_input %}
 
 {% block title %}MDRO Case Detail - {{ app_name }}{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1>MDRO Case Details</h1>
-    <p class="subtitle">Case ID: {{ case.id[:8] }}...</p>
+    <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-secondary">Back to Cases</a>
 </div>
 
 {% if error %}
@@ -14,253 +14,729 @@
 {% endif %}
 
 {% if case %}
-<!-- Patient & Case Summary -->
-<div class="case-header">
-    <div class="case-header-main">
-        <h2>{{ case.patient_name or 'Unknown Patient' }}</h2>
-        <p class="mrn">MRN: <strong>{{ case.patient_mrn }}</strong></p>
-    </div>
-    <div class="case-header-badges">
-        <span class="badge badge-mdro badge-{{ case.mdro_type.value }} badge-lg">
-            {{ case.mdro_type.value | upper }}
-        </span>
-        {% if case.transmission_status.value == 'healthcare' %}
-        <span class="badge badge-warning badge-lg">Healthcare Onset</span>
-        {% elif case.transmission_status.value == 'community' %}
-        <span class="badge badge-info badge-lg">Community Onset</span>
-        {% elif case.transmission_status.value == 'possible_transmission' %}
-        <span class="badge badge-danger badge-lg">Possible Transmission</span>
-        {% endif %}
-    </div>
-</div>
+<div class="alert-detail-layout mdro-case-page">
+    <!-- Left Column: Case Information -->
+    <div class="alert-detail-main">
+        <!-- Status Badge -->
+        <div class="candidate-status-bar">
+            <span class="badge badge-mdro badge-{{ case.mdro_type.value }} badge-lg">
+                {{ case.mdro_type.value | upper }}
+            </span>
+            {% if case.transmission_status.value == 'healthcare' %}
+            <span class="badge badge-warning badge-lg">Healthcare Onset</span>
+            {% elif case.transmission_status.value == 'community' %}
+            <span class="badge badge-info badge-lg">Community Onset</span>
+            {% elif case.transmission_status.value == 'possible_transmission' %}
+            <span class="badge badge-danger badge-lg">Possible Transmission</span>
+            {% endif %}
+        </div>
 
-<div class="detail-grid">
-    <!-- Culture Information -->
-    <div class="detail-card">
-        <h3>Culture Information</h3>
-        {{ detail_list([
-            {"label": "Organism", "value": case.organism},
-            {"label": "Specimen Type", "value": case.specimen_type or "Unknown"},
-            {"label": "Culture Date", "value": case.culture_date.strftime('%Y-%m-%d %H:%M')},
-            {"label": "Culture ID", "value": case.culture_id}
-        ]) }}
-    </div>
+        <!-- Patient Information -->
+        <div class="alert-detail-card">
+            <h3>Patient Information</h3>
+            {{ detail_list([
+                {'label': 'Patient Name', 'value': case.patient_name or 'Unknown', 'bold': true},
+                {'label': 'MRN', 'value': case.patient_mrn, 'class': 'patient-mrn'},
+                {'label': 'Unit', 'value': case.unit or 'Unknown'},
+                {'label': 'Facility', 'value': case.location or 'Unknown'}
+            ]) }}
 
-    <!-- Resistance Profile -->
-    <div class="detail-card">
-        <h3>Resistance Profile</h3>
-        <div class="resistance-info">
-            <p><strong>Classification:</strong> {{ case.classification_reason }}</p>
+            <h3>Culture Information</h3>
+            {{ detail_list([
+                {'label': 'Organism', 'value': case.organism, 'bold': true},
+                {'label': 'Specimen Type', 'value': case.specimen_type or 'Unknown'},
+                {'label': 'Culture Date', 'value': case.culture_date.strftime('%m/%d/%Y %H:%M')},
+                {'label': 'Culture ID', 'value': case.culture_id}
+            ]) }}
+        </div>
+
+        <!-- Resistance Profile / Susceptibility -->
+        <div class="alert-detail-card">
+            <h3>Resistance Profile</h3>
+            <div class="classification-summary">
+                <div class="classification-badge-row">
+                    <span class="badge badge-mdro badge-{{ case.mdro_type.value }} badge-lg">
+                        {{ case.mdro_type.value | upper }}
+                    </span>
+                    <span class="classification-text">{{ case.classification_reason }}</span>
+                </div>
+            </div>
+
             {% if case.resistant_antibiotics %}
-            <p><strong>Resistant to:</strong></p>
-            <div class="resistance-list">
-                {% for abx in case.resistant_antibiotics %}
-                <span class="resistance-badge">{{ abx }}</span>
-                {% endfor %}
+            <div class="susceptibility-section">
+                <h4>Resistant Antibiotics</h4>
+                <table class="susceptibility-table">
+                    <thead>
+                        <tr>
+                            <th>Antibiotic</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for abx in case.resistant_antibiotics %}
+                        <tr class="susc-r">
+                            <td>{{ abx | capitalize }}</td>
+                            <td>
+                                <div class="susc-result">
+                                    <span class="susc-badge susc-r">R</span>
+                                    <span class="susc-text">Resistant</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
             {% endif %}
         </div>
-    </div>
 
-    <!-- Location & Timing -->
-    <div class="detail-card">
-        <h3>Location & Timing</h3>
-        {{ detail_list([
-            {"label": "Unit", "value": case.unit or "Unknown"},
-            {"label": "Facility", "value": case.location or "Unknown"},
-            {"label": "Admission Date", "value": case.admission_date.strftime('%Y-%m-%d') if case.admission_date else "Unknown"},
-            {"label": "Days Since Admission", "value": case.days_since_admission if case.days_since_admission is not none else "Unknown"},
-            {"label": "Transmission Status", "value": case.transmission_status.value | replace('_', ' ') | title}
-        ]) }}
-    </div>
+        <!-- Timing & Classification -->
+        <div class="alert-detail-card">
+            <h3>Timing & Classification</h3>
+            {{ info_grid([
+                {'label': 'Admission Date', 'value': case.admission_date.strftime('%m/%d/%Y') if case.admission_date else 'Unknown'},
+                {'label': 'Days Since Admission', 'value': case.days_since_admission if case.days_since_admission is not none else 'Unknown'},
+                {'label': 'Transmission Status', 'value': case.transmission_status.value | replace('_', ' ') | title},
+                {'label': 'New Isolation', 'value': 'Yes' if case.is_new else 'No (Previously known)'}
+            ]) }}
 
-    <!-- Case Status -->
-    <div class="detail-card">
-        <h3>Case Status</h3>
-        {{ detail_list([
-            {"label": "New Isolation", "value": "Yes" if case.is_new else "No (Previously known)"},
-            {"label": "Prior MDRO History", "value": "Yes" if case.prior_history else "No"},
-            {"label": "Created", "value": case.created_at.strftime('%Y-%m-%d %H:%M')},
-            {"label": "Reviewed By", "value": case.reviewed_by or "Not yet reviewed"},
-            {"label": "Reviewed At", "value": case.reviewed_at.strftime('%Y-%m-%d %H:%M') if case.reviewed_at else "Not yet reviewed"}
-        ]) }}
-        {% if case.notes %}
-        <div class="notes-section">
-            <strong>Notes:</strong>
-            <p>{{ case.notes }}</p>
+            <h3>Case Status</h3>
+            {{ info_grid([
+                {'label': 'Prior MDRO History', 'value': 'Yes' if case.prior_history else 'No'},
+                {'label': 'Created', 'value': case.created_at.strftime('%m/%d/%Y %H:%M')},
+                {'label': 'Reviewed By', 'value': case.reviewed_by or 'Not yet reviewed'},
+                {'label': 'Reviewed At', 'value': case.reviewed_at.strftime('%m/%d/%Y %H:%M') if case.reviewed_at else '-'}
+            ]) }}
+        </div>
+
+        <!-- Prior Cases for Patient -->
+        {% if prior_cases %}
+        <div class="alert-detail-card">
+            <h3>Patient's Prior MDRO History</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>MDRO Type</th>
+                        <th>Organism</th>
+                        <th>Specimen</th>
+                        <th>Unit</th>
+                        <th>Culture Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prior in prior_cases %}
+                    <tr>
+                        <td>
+                            <span class="badge badge-mdro badge-{{ prior.mdro_type.value }}">
+                                {{ prior.mdro_type.value | upper }}
+                            </span>
+                        </td>
+                        <td>{{ prior.organism }}</td>
+                        <td>{{ prior.specimen_type or '-' }}</td>
+                        <td>{{ prior.unit or '-' }}</td>
+                        <td>{{ prior.culture_date.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
         {% endif %}
     </div>
+
+    <!-- Right Column: IP Review Actions -->
+    <div class="alert-detail-sidebar">
+        {% if not case.reviewed_by %}
+        <div id="review-form-container">
+            <div class="action-card">
+                <h3>IP Review Decision</h3>
+                {{ reviewer_input() }}
+
+                <div class="decision-buttons">
+                    <button type="button" class="btn btn-confirm-mdro btn-block" data-decision="confirmed">
+                        Confirm {{ case.mdro_type.value | upper }}
+                    </button>
+                </div>
+
+                <div class="classification-divider">
+                    <span>Or classify as Not {{ case.mdro_type.value | upper }}:</span>
+                </div>
+
+                <div class="secondary-buttons">
+                    <button type="button" class="btn btn-not-mdro btn-block" data-decision="rejected">
+                        Not {{ case.mdro_type.value | upper }}
+                    </button>
+                    <button type="button" class="btn btn-needs-info btn-block" data-decision="needs_more_info">
+                        Needs More Info
+                    </button>
+                </div>
+            </div>
+
+            <!-- Override Reason Section (shown when rejecting) -->
+            <div class="action-card hidden" id="override-reason-section">
+                <h3>Override Reason</h3>
+                <p class="text-muted override-message" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                    You are overriding the automated MDRO classification. Please indicate why:
+                </p>
+                <div class="form-group">
+                    <select id="override-reason-category" class="form-control">
+                        <option value="">-- Select a reason --</option>
+                        <option value="susceptibility_error">Susceptibility Interpretation Error</option>
+                        <option value="organism_misidentified">Organism Misidentified</option>
+                        <option value="contamination">Contamination / Not True Infection</option>
+                        <option value="duplicate_culture">Duplicate Culture</option>
+                        <option value="criteria_not_met">MDRO Criteria Not Met</option>
+                        <option value="clinical_context">Clinical Context (colonization only)</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="action-card" id="notes-section">
+                <h3>Notes</h3>
+                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">
+                    Add any notes about your review decision (optional)
+                </p>
+                <div class="form-group">
+                    <textarea name="notes" id="notes" rows="3" class="form-textarea" placeholder="Additional details..."></textarea>
+                </div>
+                <button type="button" class="btn btn-submit-review btn-block" id="submit-review-btn">
+                    Submit Review
+                </button>
+            </div>
+        </div>
+
+        <!-- Success state (shown after submission) -->
+        <div id="review-success-container" class="hidden">
+            <div class="action-card submitted-state">
+                <div class="submitted-success">
+                    <div class="success-icon">&#10003;</div>
+                    <h3>Review Submitted</h3>
+                    <p id="success-message">Your review has been recorded.</p>
+                </div>
+                <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
+                    Return to Cases
+                </a>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- Already reviewed -->
+        <div class="action-card submitted-state">
+            <div class="submitted-success">
+                <div class="success-icon">&#10003;</div>
+                <h3>Review Complete</h3>
+                <p>This case has been reviewed.</p>
+                <span class="badge badge-success badge-lg">Reviewed</span>
+                <p class="reviewer-info">by {{ case.reviewed_by }} on {{ case.reviewed_at.strftime('%Y-%m-%d %H:%M') if case.reviewed_at else '' }}</p>
+                {% if case.notes %}
+                <p class="review-notes-display">{{ case.notes }}</p>
+                {% endif %}
+            </div>
+            <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-primary btn-block" style="margin-top: 1.5rem;">
+                Return to Cases
+            </a>
+        </div>
+        {% endif %}
+
+        <div class="action-card">
+            <h3>Quick Links</h3>
+            <div class="quick-links-vertical">
+                <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-outline btn-block">&larr; Back to Cases</a>
+                <a href="{{ url_for('mdro_surveillance.dashboard') }}" class="btn btn-outline btn-block">Dashboard</a>
+            </div>
+        </div>
+    </div>
 </div>
 
-<!-- Prior Cases for Patient -->
-{% if prior_cases %}
-<div class="section">
-    <h2>Patient's Prior MDRO History</h2>
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>MDRO Type</th>
-                <th>Organism</th>
-                <th>Specimen</th>
-                <th>Unit</th>
-                <th>Culture Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for prior in prior_cases %}
-            <tr>
-                <td>
-                    <span class="badge badge-mdro badge-{{ prior.mdro_type.value }}">
-                        {{ prior.mdro_type.value | upper }}
-                    </span>
-                </td>
-                <td>{{ prior.organism }}</td>
-                <td>{{ prior.specimen_type or '-' }}</td>
-                <td>{{ prior.unit or '-' }}</td>
-                <td>{{ prior.culture_date.strftime('%Y-%m-%d') }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+<script>
+(function() {
+    // Currently selected decision
+    let selectedDecision = null;
+
+    // Check if decision is an override (disagreeing with system classification)
+    function isOverride(decision) {
+        // If rejecting MDRO classification, it's an override
+        return decision === 'rejected';
+    }
+
+    // Update UI based on selected decision
+    function updateUI(decision) {
+        selectedDecision = decision;
+
+        // Show/hide override section
+        const overrideSection = document.getElementById('override-reason-section');
+        if (isOverride(decision)) {
+            overrideSection.classList.remove('hidden');
+        } else {
+            overrideSection.classList.add('hidden');
+        }
+    }
+
+    // Handle decision button clicks
+    document.querySelectorAll('.decision-buttons button, .secondary-buttons button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const decision = this.getAttribute('data-decision');
+
+            // Update button states
+            document.querySelectorAll('.decision-buttons button, .secondary-buttons button').forEach(b => {
+                b.classList.remove('selected');
+            });
+            this.classList.add('selected');
+
+            updateUI(decision);
+        });
+    });
+
+    // Show error message
+    function showError(message) {
+        const existing = document.querySelector('.submit-error');
+        if (existing) existing.remove();
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'alert alert-danger submit-error';
+        errorDiv.textContent = message;
+        document.getElementById('notes-section').insertBefore(
+            errorDiv,
+            document.getElementById('submit-review-btn')
+        );
+    }
+
+    // Handle submit
+    document.getElementById('submit-review-btn').addEventListener('click', async function() {
+        const reviewer = document.getElementById('reviewer').value;
+        const notes = document.getElementById('notes').value;
+
+        // Remove any existing error
+        const existing = document.querySelector('.submit-error');
+        if (existing) existing.remove();
+
+        if (!reviewer.trim()) {
+            showError('Please enter your name');
+            document.getElementById('reviewer').focus();
+            return;
+        }
+
+        if (!selectedDecision) {
+            showError('Please select a decision');
+            return;
+        }
+
+        const data = {
+            reviewer: reviewer,
+            decision: selectedDecision,
+            notes: notes
+        };
+
+        // Add override reason if applicable
+        if (isOverride(selectedDecision)) {
+            const overrideReason = document.getElementById('override-reason-category').value;
+            if (overrideReason) {
+                data.override_reason = overrideReason;
+                // Append to notes if reason selected
+                const reasonText = document.querySelector(`#override-reason-category option[value="${overrideReason}"]`).text;
+                data.notes = `[Override: ${reasonText}] ${notes}`.trim();
+            }
+        }
+
+        try {
+            const response = await fetch('{{ url_for("mdro_surveillance.review_case", case_id=case.id) }}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                // Hide the form and show success state
+                document.getElementById('review-form-container').classList.add('hidden');
+
+                let msg = 'Your review has been recorded.';
+                if (isOverride(selectedDecision)) {
+                    msg = 'Your review has been recorded. Override logged for quality tracking.';
+                }
+                document.getElementById('success-message').textContent = msg;
+                document.getElementById('review-success-container').classList.remove('hidden');
+            } else {
+                showError('Error: ' + result.error);
+            }
+        } catch (err) {
+            showError('Failed to submit: ' + err.message);
+        }
+    });
+})();
+</script>
+
 {% endif %}
-
-<!-- Review Form -->
-<div class="section">
-    <h2>IP Review</h2>
-    <form method="POST" action="{{ url_for('mdro_surveillance.review_case', case_id=case.id) }}" class="review-form">
-        <div class="form-group">
-            <label for="reviewer">Reviewer Name</label>
-            <input type="text" name="reviewer" id="reviewer" class="form-control"
-                   value="{{ current_user.name if current_user else '' }}"
-                   placeholder="Your name" required>
-        </div>
-        <div class="form-group">
-            <label for="decision">Decision</label>
-            <select name="decision" id="decision" class="form-select" required>
-                <option value="">Select decision...</option>
-                <option value="confirmed">Confirmed MDRO - Appropriate Classification</option>
-                <option value="needs_investigation">Needs Further Investigation</option>
-                <option value="contact_precautions">Contact Precautions Initiated</option>
-                <option value="rejected">Not MDRO - Misclassification</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label for="notes">Notes</label>
-            <textarea name="notes" id="notes" class="form-control" rows="3"
-                      placeholder="Add any relevant notes..."></textarea>
-        </div>
-        <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Submit Review</button>
-        </div>
-    </form>
-</div>
-
-{% endif %}
-
-<div class="section">
-    <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-outline">&larr; Back to Cases</a>
-    <a href="{{ url_for('mdro_surveillance.dashboard') }}" class="btn btn-outline">Dashboard</a>
-</div>
 {% endblock %}
 
 {% block styles %}
 <style>
-    .case-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        padding: 1.5rem;
-        background: var(--surface);
-        border-radius: 8px;
-        margin-bottom: 2rem;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    .case-header-main h2 {
-        margin: 0 0 0.5rem 0;
-    }
-    .case-header-main .mrn {
-        margin: 0;
-        color: var(--text-muted);
-    }
-    .case-header-badges {
-        display: flex;
-        gap: 0.5rem;
-        flex-wrap: wrap;
-    }
-    .badge-lg {
-        padding: 0.5rem 1rem;
-        font-size: 1rem;
-    }
+/* MDRO Case Page - Using shared alert-detail-layout */
 
-    .detail-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-    .detail-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 1.5rem;
-    }
-    .detail-card h3 {
-        margin: 0 0 1rem 0;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid var(--border);
-    }
+.mdro-case-page .candidate-status-bar {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
 
-    .resistance-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-top: 0.5rem;
-    }
-    .resistance-badge {
-        background: #f8d7da;
-        color: #dc3545;
-        padding: 0.25rem 0.75rem;
-        border-radius: 4px;
-        font-weight: 500;
-    }
+.badge-lg {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
 
-    .review-form {
-        background: var(--surface);
-        padding: 1.5rem;
-        border-radius: 8px;
-        max-width: 600px;
-    }
-    .form-group {
-        margin-bottom: 1rem;
-    }
-    .form-group label {
-        display: block;
-        margin-bottom: 0.25rem;
-        font-weight: 500;
-    }
-    .form-actions {
-        margin-top: 1.5rem;
-    }
+/* MDRO Type Badges */
+.badge-mdro {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.badge-mrsa { color: #dc3545; background-color: #f8d7da; }
+.badge-vre { color: #6f42c1; background-color: #e8daef; }
+.badge-cre { color: #d63384; background-color: #f8d7e8; }
+.badge-esbl { color: #fd7e14; background-color: #ffe5d0; }
+.badge-crpa { color: #0d6efd; background-color: #cfe2ff; }
+.badge-crab { color: #198754; background-color: #d1e7dd; }
 
-    .notes-section {
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--border);
-    }
+/* Card styling to match HAI Detection */
+.mdro-case-page .alert-detail-card {
+    padding: 1.5rem;
+}
 
-    .badge-mdro {
-        padding: 0.25rem 0.5rem;
-        border-radius: 4px;
-        font-weight: 600;
+.mdro-case-page .alert-detail-card h3 {
+    font-size: 0.875rem;
+    color: var(--color-primary-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    border-bottom: 2px solid var(--color-primary);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    margin-top: 1.5rem;
+}
+
+.mdro-case-page .alert-detail-card h3:first-child {
+    margin-top: 0;
+}
+
+/* Classification Summary */
+.classification-summary {
+    padding: 1rem;
+    background: var(--color-gray-50);
+    border-radius: var(--radius-md);
+    margin-bottom: 1rem;
+}
+
+.classification-badge-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.classification-text {
+    font-weight: 500;
+    color: var(--color-gray-700);
+}
+
+/* Susceptibility Section */
+.susceptibility-section {
+    margin-top: 1rem;
+}
+
+.susceptibility-section h4 {
+    font-size: 0.8rem;
+    color: var(--color-gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+}
+
+.susceptibility-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.susceptibility-table th,
+.susceptibility-table td {
+    padding: 0.5rem;
+    text-align: left;
+    border-bottom: 1px solid var(--color-gray-200);
+}
+
+.susceptibility-table th {
+    font-weight: 600;
+    color: var(--color-gray-600);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.susc-r {
+    background: rgba(220, 53, 69, 0.05);
+}
+
+.susc-result {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.susc-badge {
+    display: inline-block;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 1.5rem;
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.susc-badge.susc-r {
+    background: #dc3545;
+    color: white;
+}
+
+.susc-badge.susc-s {
+    background: #198754;
+    color: white;
+}
+
+.susc-badge.susc-i {
+    background: #ffc107;
+    color: black;
+}
+
+.susc-text {
+    color: var(--color-gray-600);
+    font-size: 0.8rem;
+}
+
+/* Decision Buttons */
+.decision-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.classification-divider {
+    margin: 1rem 0;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.8rem;
+    position: relative;
+}
+
+.classification-divider::before,
+.classification-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 15%;
+    height: 1px;
+    background: #e2e8f0;
+}
+
+.classification-divider::before { left: 0; }
+.classification-divider::after { right: 0; }
+
+.btn-confirm-mdro {
+    background: #dc2626;
+    color: white;
+    border: 2px solid #dc2626;
+    padding: 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.btn-confirm-mdro:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.secondary-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.btn-not-mdro {
+    background: #16a34a;
+    color: white;
+    border: 2px solid #16a34a;
+    padding: 0.75rem 0.5rem;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.btn-not-mdro:hover {
+    background: #15803d;
+    border-color: #15803d;
+}
+
+.btn-needs-info {
+    background: #6b7280;
+    color: white;
+    border: 2px solid #6b7280;
+    padding: 0.75rem 0.5rem;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.btn-needs-info:hover {
+    background: #4b5563;
+    border-color: #4b5563;
+}
+
+.decision-buttons button.selected,
+.secondary-buttons button.selected {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+}
+
+.btn-submit-review {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 0.75rem;
+    font-weight: 600;
+    margin-top: 1rem;
+}
+
+.btn-submit-review:hover {
+    background: var(--color-primary-dark);
+}
+
+/* Override Section */
+#override-reason-section {
+    border: 2px solid var(--color-warning);
+    background: var(--color-warning-light);
+}
+
+#override-reason-section h3 {
+    color: var(--color-warning-dark, #92400e);
+}
+
+#override-reason-section .form-control {
+    background: white;
+}
+
+/* Form Controls */
+.form-control,
+.form-textarea {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-sm);
+    font-size: 0.875rem;
+}
+
+.form-control:focus,
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+}
+
+.form-textarea {
+    resize: vertical;
+}
+
+/* Submitted State */
+.submitted-state {
+    text-align: center;
+}
+
+.submitted-success {
+    padding: 1.5rem 1rem;
+}
+
+.submitted-success .success-icon {
+    width: 60px;
+    height: 60px;
+    background: var(--color-success);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 1rem;
+}
+
+.submitted-success h3 {
+    border: none;
+    padding: 0;
+    margin: 0 0 0.5rem 0;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 1.25rem;
+    color: var(--color-gray-900);
+}
+
+.submitted-success p {
+    color: var(--color-gray-600);
+    margin: 0.5rem 0;
+}
+
+.submitted-success .reviewer-info {
+    font-size: 0.85rem;
+    color: var(--color-gray-500);
+    margin-top: 0.75rem;
+}
+
+.review-notes-display {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--color-gray-100);
+    border-radius: var(--radius-sm);
+    font-style: italic;
+    font-size: 0.875rem;
+}
+
+/* Quick links in sidebar */
+.quick-links-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+/* Alerts */
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.alert-danger {
+    background: #fef2f2;
+    border: 1px solid #ef4444;
+    color: #991b1b;
+}
+
+.alert-success {
+    background: #f0fdf4;
+    border: 1px solid #10b981;
+    color: #065f46;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Data table in card */
+.mdro-case-page .data-table {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .secondary-buttons {
+        grid-template-columns: 1fr;
     }
-    .badge-mrsa { color: #dc3545; background-color: #f8d7da; }
-    .badge-vre { color: #6f42c1; background-color: #e8daef; }
-    .badge-cre { color: #d63384; background-color: #f8d7e8; }
-    .badge-esbl { color: #fd7e14; background-color: #ffe5d0; }
-    .badge-crpa { color: #0d6efd; background-color: #cfe2ff; }
-    .badge-crab { color: #198754; background-color: #d1e7dd; }
+}
 </style>
 {% endblock %}
