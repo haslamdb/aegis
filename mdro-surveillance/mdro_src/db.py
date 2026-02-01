@@ -48,12 +48,12 @@ class MDRODatabase:
                 INSERT OR REPLACE INTO mdro_cases (
                     id, patient_id, patient_mrn, patient_name,
                     culture_id, culture_date, specimen_type, organism,
-                    mdro_type, resistant_antibiotics, classification_reason,
+                    mdro_type, resistant_antibiotics, susceptibilities, classification_reason,
                     location, unit, admission_date, days_since_admission,
                     transmission_status,
                     is_new, prior_history, created_at,
                     reviewed_at, reviewed_by, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     case.id,
@@ -66,6 +66,7 @@ class MDRODatabase:
                     case.organism,
                     case.mdro_type.value,
                     json.dumps(case.resistant_antibiotics),
+                    json.dumps(case.susceptibilities),
                     case.classification_reason,
                     case.location,
                     case.unit,
@@ -186,6 +187,15 @@ class MDRODatabase:
 
     def _row_to_case(self, row: sqlite3.Row) -> MDROCase:
         """Convert database row to MDROCase."""
+        # Handle susceptibilities - may not exist in older records or be NULL
+        susceptibilities = []
+        try:
+            susc_data = row["susceptibilities"]
+            if susc_data:
+                susceptibilities = json.loads(susc_data)
+        except (KeyError, TypeError, IndexError):
+            pass
+
         return MDROCase(
             id=row["id"],
             patient_id=row["patient_id"],
@@ -197,6 +207,7 @@ class MDRODatabase:
             organism=row["organism"],
             mdro_type=MDROType(row["mdro_type"]),
             resistant_antibiotics=json.loads(row["resistant_antibiotics"] or "[]"),
+            susceptibilities=susceptibilities,
             classification_reason=row["classification_reason"] or "",
             location=row["location"] or "",
             unit=row["unit"] or "",

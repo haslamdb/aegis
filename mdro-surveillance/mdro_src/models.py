@@ -37,6 +37,9 @@ class MDROCase:
     # Location/timing
     location: str
     unit: str
+
+    # Full susceptibility results (optional - may not be present for older cases)
+    susceptibilities: list[dict] = field(default_factory=list)
     admission_date: Optional[datetime] = None
     days_since_admission: Optional[int] = None
 
@@ -69,6 +72,7 @@ class MDROCase:
             "organism": self.organism,
             "mdro_type": self.mdro_type.value,
             "resistant_antibiotics": self.resistant_antibiotics,
+            "susceptibilities": self.susceptibilities,
             "classification_reason": self.classification_reason,
             "location": self.location,
             "unit": self.unit,

@@ -186,6 +186,7 @@ class MDROMonitor:
             organism=classification.organism,
             mdro_type=classification.mdro_type,
             resistant_antibiotics=classification.resistant_antibiotics,
+            susceptibilities=culture.susceptibilities,
             classification_reason=classification.classification_reason,
             location=culture.location or "",
             unit=culture.unit or "",
