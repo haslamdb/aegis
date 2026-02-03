@@ -713,7 +713,7 @@ def main():
 
         if not args.dry_run:
             print("\nTo test, run the drug-bug mismatch monitor:")
-            print("  cd drug-bug-mismatch && python -m src.runner --lookback 24")
+            print("  cd drug-bug-mismatch && python -m drugbug_src.runner --lookback 24")
 
     return 0
 
