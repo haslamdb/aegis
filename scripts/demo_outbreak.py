@@ -249,7 +249,7 @@ def create_cluster_direct(
         cursor.execute("""
             INSERT INTO outbreak_clusters (
                 id, infection_type, organism, unit, status, severity,
-                case_count, first_case_date, last_case_date, detected_at
+                case_count, first_case_date, last_case_date, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             cluster_id,

@@ -623,7 +623,7 @@ def bundle_detail(bundle_id):
     if not bundle:
         return render_template("guideline_adherence_bundle_not_found.html", bundle_id=bundle_id), 404
 
-    db = get_adherence_db()
+    db = get_episode_db()
     metrics = None
     recent_episodes = []
 
