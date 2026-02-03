@@ -3330,3 +3330,454 @@ table a.btn:hover {
     border-radius: var(--radius-sm);
     color: var(--color-gray-700);
 }
+
+/* ============================================
+   Outbreak Detection Module
+   ============================================ */
+
+/* Severity Grid - 4 equal columns for severity cards */
+.severity-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 768px) {
+    .severity-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .severity-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Severity Card - bordered cards with severity-specific colors */
+.severity-card {
+    background: var(--color-white);
+    border: 2px solid;
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.severity-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.severity-card.severity-empty {
+    opacity: 0.5;
+}
+
+.severity-critical { border-color: var(--color-danger); }
+.severity-high { border-color: #fd7e14; }
+.severity-medium { border-color: var(--color-warning); }
+.severity-low { border-color: var(--color-success); }
+
+.severity-count {
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+.severity-critical .severity-count { color: var(--color-danger); }
+.severity-high .severity-count { color: #fd7e14; }
+.severity-medium .severity-count { color: var(--color-warning); }
+.severity-low .severity-count { color: var(--color-success); }
+
+.severity-label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-gray-500);
+}
+
+/* Severity Badges */
+.badge-severity-critical { background-color: var(--color-danger); color: white; }
+.badge-severity-high { background-color: #fd7e14; color: white; }
+.badge-severity-medium { background-color: var(--color-warning); color: black; }
+.badge-severity-low { background-color: var(--color-success); color: white; }
+
+/* Type Badge - for infection type labels */
+.badge-type {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Case Count - pill-shaped counter */
+.case-count {
+    display: inline-block;
+    background: var(--color-primary);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-weight: bold;
+}
+
+/* Type Grid - responsive grid for type cards */
+.type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.type-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    text-align: center;
+    transition: transform var(--transition-fast);
+}
+
+.type-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.type-card .type-count {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--color-primary);
+}
+
+.type-card .type-label {
+    font-size: 0.9rem;
+    color: var(--color-gray-500);
+}
+
+/* Alert List - vertical list of alert items */
+.alert-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.alert-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border-left: 4px solid;
+}
+
+.alert-item.alert-critical { border-color: var(--color-danger); background: var(--color-danger-light); }
+.alert-item.alert-high { border-color: #fd7e14; background: #fff8f0; }
+.alert-item.alert-medium { border-color: var(--color-warning); background: var(--color-warning-light); }
+.alert-item.alert-low { border-color: var(--color-primary); background: var(--color-info-light); }
+
+.alert-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.alert-critical .alert-icon { background: var(--color-danger); color: white; }
+.alert-high .alert-icon { background: #fd7e14; color: white; }
+.alert-medium .alert-icon { background: var(--color-warning); color: black; }
+.alert-low .alert-icon { background: var(--color-primary); color: white; }
+
+.alert-item .alert-content { flex: 1; }
+.alert-item .alert-title { font-weight: 600; margin-bottom: 0.25rem; }
+.alert-item .alert-message { color: var(--color-gray-500); margin-bottom: 0.5rem; }
+.alert-item .alert-meta { font-size: 0.85rem; color: var(--color-gray-500); }
+
+/* ============================================
+   MDRO Surveillance Module
+   ============================================ */
+
+/* MDRO Type Grid */
+.mdro-type-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+/* MDRO Type Card */
+.mdro-type-card {
+    background: var(--color-white);
+    border: 1px solid var(--color-gray-200);
+    border-radius: var(--radius-md);
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform var(--transition-fast);
+}
+
+.mdro-type-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.mdro-type-count {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--color-primary);
+}
+
+.mdro-type-label {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.5rem 0;
+}
+
+.mdro-type-name {
+    font-size: 0.85rem;
+    color: var(--color-gray-500);
+}
+
+/* MDRO Type Colors */
+.mdro-mrsa .mdro-type-count { color: var(--color-danger); }
+.mdro-vre .mdro-type-count { color: #6f42c1; }
+.mdro-cre .mdro-type-count { color: #d63384; }
+.mdro-esbl .mdro-type-count { color: #fd7e14; }
+.mdro-crpa .mdro-type-count { color: #0d6efd; }
+.mdro-crab .mdro-type-count { color: var(--color-success); }
+
+/* MDRO Badges */
+.badge-mdro {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.badge-mrsa { color: var(--color-danger); background-color: var(--color-danger-light); }
+.badge-vre { color: #6f42c1; background-color: #e8daef; }
+.badge-cre { color: #d63384; background-color: #f8d7e8; }
+.badge-esbl { color: #fd7e14; background-color: #ffe5d0; }
+.badge-crpa { color: #0d6efd; background-color: #cfe2ff; }
+.badge-crab { color: var(--color-success); background-color: var(--color-success-light); }
+
+/* Unit Bars - horizontal bar chart for units */
+.unit-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.unit-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.unit-name {
+    width: 150px;
+    font-weight: 500;
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.unit-bar-container {
+    flex: 1;
+    background: var(--color-gray-100);
+    border-radius: 4px;
+    height: 24px;
+}
+
+.unit-bar {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 0.5rem;
+    min-width: fit-content;
+}
+
+.unit-count {
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .unit-name {
+        width: 100px;
+        font-size: 0.875rem;
+    }
+}
+
+/* ============================================
+   Guideline Adherence Module
+   ============================================ */
+
+/* Dashboard Summary - horizontal stats row */
+.dashboard-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Summary Card - stats card with icon */
+.summary-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.summary-icon {
+    font-size: 2rem;
+}
+
+.summary-content {
+    flex: 1;
+}
+
+.summary-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-gray-800);
+}
+
+.summary-label {
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+/* Guideline Cards - clickable cards for bundles */
+.guideline-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.guideline-card {
+    display: block;
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    background: var(--color-gray-50);
+    border-left: 4px solid var(--color-secondary);
+    text-decoration: none;
+    color: inherit;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.guideline-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.guideline-card h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+    color: var(--color-gray-800);
+}
+
+.guideline-card p {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.875rem;
+    color: var(--color-gray-600);
+}
+
+.bundle-stat {
+    margin-bottom: 0.5rem;
+}
+
+/* Compliance Badge - percentage indicator */
+.compliance-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.compliance-badge.success {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+.compliance-badge.warning {
+    background: var(--color-warning-light);
+    color: var(--color-warning);
+}
+
+.compliance-badge.danger {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+/* Element Count Badge */
+.element-count {
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    background: var(--color-secondary);
+    color: white;
+}
+
+/* Status Badges for Guideline Adherence */
+.badge-status-active {
+    background: var(--color-info-light);
+    color: var(--color-primary);
+}
+
+.badge-status-complete {
+    background: var(--color-success-light);
+    color: var(--color-success);
+}
+
+/* ============================================
+   Shared Section Card Styling
+   ============================================ */
+
+/* Section with card styling - used in guideline adherence and other dashboards */
+.section.section-card {
+    background: var(--color-white);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.section.section-card h2 {
+    margin-top: 0;
+}
+
+.section-footer {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-gray-200);
+}
+
+/* Summary icon color utilities */
+.summary-icon.icon-success { color: var(--color-success); }
+.summary-icon.icon-primary { color: var(--color-primary); }
+.summary-icon.icon-warning { color: var(--color-warning); }
+.summary-icon.icon-danger { color: var(--color-danger); }
+.summary-icon.icon-info { color: var(--color-info); }
+
+/* Page subtitle styling */
+.page-header .subtitle,
+.subtitle {
+    color: var(--color-gray-500);
+    font-size: 1rem;
+    margin-top: 0.25rem;
+}
+
+/* Header actions - buttons in page header */
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}

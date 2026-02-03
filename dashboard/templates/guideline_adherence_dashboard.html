@@ -16,7 +16,7 @@
 <!-- Stats Cards -->
 <div class="dashboard-summary">
     <div class="summary-card">
-        <div class="summary-icon" style="color: var(--color-success);">&#x1F4C8;</div>
+        <div class="summary-icon icon-success">&#x1F4C8;</div>
         <div class="summary-content">
             {% if metrics and metrics.element_rates %}
                 {% set total_rate = namespace(sum=0, count=0) %}
@@ -32,21 +32,21 @@
         </div>
     </div>
     <div class="summary-card">
-        <div class="summary-icon" style="color: var(--color-primary);">&#x1F4CB;</div>
+        <div class="summary-icon icon-primary">&#x1F4CB;</div>
         <div class="summary-content">
             <div class="summary-value">{{ bundles|length }}</div>
             <div class="summary-label">Guidelines Tracked</div>
         </div>
     </div>
     <div class="summary-card">
-        <div class="summary-icon" style="color: var(--color-warning);">&#x1F50D;</div>
+        <div class="summary-icon icon-warning">&#x1F50D;</div>
         <div class="summary-content">
             <div class="summary-value">{{ metrics.episode_counts.total if metrics and metrics.episode_counts else '--' }}</div>
             <div class="summary-label">Episodes (30 days)</div>
         </div>
     </div>
     <div class="summary-card">
-        <div class="summary-icon" style="color: var(--color-danger);">&#x26A0;</div>
+        <div class="summary-icon icon-danger">&#x26A0;</div>
         <div class="summary-content">
             <div class="summary-value">{{ active_episodes|length }}</div>
             <div class="summary-label">Active Monitoring</div>
@@ -56,7 +56,7 @@
 
 <!-- Active Episodes -->
 {% if active_episodes %}
-<div class="section">
+<div class="section section-card">
     <h2>Recent Active Episodes</h2>
     <table class="data-table">
         <thead>
@@ -85,16 +85,16 @@
             {% endfor %}
         </tbody>
     </table>
-    <div style="margin-top: 1rem;">
+    <div class="section-footer">
         <a href="{{ url_for('guideline_adherence.active_episodes') }}" class="btn btn-secondary">View All Active Episodes</a>
     </div>
 </div>
 {% else %}
-<div class="section">
+<div class="section section-card">
     <h2>Active Episodes</h2>
     <div class="empty-state">
         <p>No active episodes currently being monitored.</p>
-        <p style="font-size: 0.875rem; color: var(--color-gray-500);">
+        <p class="text-muted">
             Episodes appear here when patients are identified with conditions matching monitored bundles.
         </p>
     </div>
@@ -103,7 +103,7 @@
 
 <!-- Bundle Stats -->
 {% if bundle_stats %}
-<div class="section">
+<div class="section section-card">
     <h2>Bundle Compliance</h2>
     <div class="guideline-cards">
         {% for bs in bundle_stats %}
@@ -121,171 +121,4 @@
     </div>
 </div>
 {% endif %}
-
-<style>
-.header-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.section {
-    background: var(--color-white);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    box-shadow: var(--shadow-md);
-    margin-bottom: 1.5rem;
-}
-
-.section h2 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    font-size: 1.25rem;
-    color: var(--color-gray-800);
-}
-
-.dashboard-summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-}
-
-.summary-card {
-    background: var(--color-white);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    box-shadow: var(--shadow-md);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-}
-
-.summary-icon {
-    font-size: 2rem;
-}
-
-.summary-value {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--color-gray-800);
-}
-
-.summary-label {
-    font-size: 0.875rem;
-    color: var(--color-gray-600);
-}
-
-.guideline-cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-}
-
-.guideline-card {
-    display: block;
-    padding: 1rem;
-    border-radius: var(--radius-md);
-    background: var(--color-gray-50);
-    border-left: 4px solid #7C3AED;
-    text-decoration: none;
-    color: inherit;
-    transition: transform 0.1s, box-shadow 0.1s;
-}
-
-.guideline-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-}
-
-.guideline-card h4 {
-    margin: 0 0 0.5rem 0;
-    font-size: 1rem;
-    color: var(--color-gray-800);
-}
-
-.guideline-card p {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.875rem;
-    color: var(--color-gray-600);
-}
-
-.bundle-stat {
-    margin-bottom: 0.5rem;
-}
-
-.compliance-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
-
-.compliance-badge.success {
-    background: var(--color-success-light);
-    color: var(--color-success);
-}
-
-.compliance-badge.warning {
-    background: var(--color-warning-light);
-    color: var(--color-warning);
-}
-
-.compliance-badge.danger {
-    background: var(--color-danger-light);
-    color: var(--color-danger);
-}
-
-.element-count {
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.25rem 0.5rem;
-    border-radius: 9999px;
-    background: #7C3AED;
-    color: white;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.data-table th,
-.data-table td {
-    padding: 0.75rem;
-    text-align: left;
-    border-bottom: 1px solid var(--color-gray-200);
-}
-
-.data-table th {
-    font-weight: 600;
-    color: var(--color-gray-600);
-    font-size: 0.875rem;
-}
-
-.patient-name {
-    font-weight: 500;
-}
-
-.patient-mrn {
-    font-size: 0.75rem;
-    color: var(--color-gray-500);
-}
-
-.badge-status-active {
-    background: var(--color-primary-light);
-    color: var(--color-primary);
-}
-
-.badge-status-complete {
-    background: var(--color-success-light);
-    color: var(--color-success);
-}
-
-.empty-state {
-    text-align: center;
-    padding: 2rem;
-    color: var(--color-gray-500);
-}
-</style>
 {% endblock %}
