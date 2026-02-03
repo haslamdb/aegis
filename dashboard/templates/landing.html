@@ -9,7 +9,17 @@
 </div>
 
 <div class="section-cards">
-    <!-- Top row: ASP Alerts, HAI Detection, Antibiotic Indications, Guideline Adherence -->
+    <a href="{{ url_for('abx_approvals.dashboard') }}" class="section-card section-approvals">
+        <div class="section-icon">&#x1F4DE;</div>
+        <h2>ABX Approvals</h2>
+        <p>Phone-based antibiotic approval requests with allergy-aware recommendations.</p>
+        <div class="section-features">
+            <span>Approval Workflow</span>
+            <span>Allergy Alerts</span>
+            <span>Clinical Context</span>
+        </div>
+    </a>
+
     <a href="{{ url_for('asp_alerts.alerts_active') }}" class="section-card section-alerts">
         <div class="section-icon">&#x26A0;</div>
         <h2>ASP Alerts</h2>
@@ -21,14 +31,14 @@
         </div>
     </a>
 
-    <a href="{{ url_for('hai_detection.dashboard') }}" class="section-card section-hai">
-        <div class="section-icon">&#x1F3E5;</div>
-        <h2>HAI Detection</h2>
-        <p>Healthcare-associated infection detection using NHSN surveillance criteria.</p>
+    <a href="{{ url_for('drug_bug.dashboard') }}" class="section-card section-drugbug">
+        <div class="section-icon">&#x1F9EC;</div>
+        <h2>Drug-Bug Mismatch</h2>
+        <p>Real-time detection of therapy-organism mismatches based on culture susceptibilities.</p>
         <div class="section-features">
-            <span>CLABSI Detection</span>
-            <span>CAUTI Detection</span>
-            <span>Surveillance</span>
+            <span>Coverage Gaps</span>
+            <span>Resistance Alerts</span>
+            <span>De-escalation</span>
         </div>
     </a>
 
@@ -43,37 +53,14 @@
         </div>
     </a>
 
-    <a href="{{ url_for('guideline_adherence.dashboard') }}" class="section-card section-guidelines">
-        <div class="section-icon">&#x1F4CB;</div>
-        <h2>Guideline Adherence</h2>
-        <p>Population-level tracking of clinical guideline and care bundle compliance.</p>
+    <a href="{{ url_for('hai_detection.dashboard') }}" class="section-card section-hai">
+        <div class="section-icon">&#x1F3E5;</div>
+        <h2>HAI Detection</h2>
+        <p>Healthcare-associated infection detection using NHSN surveillance criteria.</p>
         <div class="section-features">
-            <span>Bundle Tracking</span>
-            <span>Compliance %</span>
-            <span>JC Reporting</span>
-        </div>
-    </a>
-
-    <!-- Bottom row: Surgical Prophylaxis, Drug-Bug Mismatch, NHSN Reporting, Dashboards -->
-    <a href="{{ url_for('surgical_prophylaxis.dashboard') }}" class="section-card section-surgical">
-        <div class="section-icon">&#x1FA7A;</div>
-        <h2>Surgical Prophylaxis</h2>
-        <p>Perioperative antibiotic validation for timing, agent selection, and duration.</p>
-        <div class="section-features">
-            <span>Timing Validation</span>
-            <span>Agent Selection</span>
-            <span>Duration Monitor</span>
-        </div>
-    </a>
-
-    <a href="{{ url_for('drug_bug.dashboard') }}" class="section-card section-drugbug">
-        <div class="section-icon">&#x1F9EC;</div>
-        <h2>Drug-Bug Mismatch</h2>
-        <p>Real-time detection of therapy-organism mismatches based on culture susceptibilities.</p>
-        <div class="section-features">
-            <span>Coverage Gaps</span>
-            <span>Resistance Alerts</span>
-            <span>De-escalation</span>
+            <span>CLABSI Detection</span>
+            <span>CAUTI Detection</span>
+            <span>Surveillance</span>
         </div>
     </a>
 
@@ -110,14 +97,25 @@
         </div>
     </a>
 
-    <a href="{{ url_for('abx_approvals.dashboard') }}" class="section-card section-approvals">
-        <div class="section-icon">&#x1F4DE;</div>
-        <h2>ABX Approvals</h2>
-        <p>Phone-based antibiotic approval requests with allergy-aware recommendations.</p>
+    <a href="{{ url_for('surgical_prophylaxis.dashboard') }}" class="section-card section-surgical">
+        <div class="section-icon">&#x1FA7A;</div>
+        <h2>Surgical Prophylaxis</h2>
+        <p>Perioperative antibiotic validation for timing, agent selection, and duration.</p>
         <div class="section-features">
-            <span>Approval Workflow</span>
-            <span>Allergy Alerts</span>
-            <span>Clinical Context</span>
+            <span>Timing Validation</span>
+            <span>Agent Selection</span>
+            <span>Duration Monitor</span>
+        </div>
+    </a>
+
+    <a href="{{ url_for('guideline_adherence.dashboard') }}" class="section-card section-guidelines">
+        <div class="section-icon">&#x1F4CB;</div>
+        <h2>Guideline Adherence</h2>
+        <p>Population-level tracking of clinical guideline and care bundle compliance.</p>
+        <div class="section-features">
+            <span>Bundle Tracking</span>
+            <span>Compliance %</span>
+            <span>JC Reporting</span>
         </div>
     </a>
 
