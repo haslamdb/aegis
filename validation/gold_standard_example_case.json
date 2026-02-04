@@ -1,0 +1,307 @@
+{
+  "$schema_description": "AEGIS Gold Standard Case - Example NICU CLABSI (LCBI Criterion 3)",
+  "$instructions": "Copy this template for each adjudicated case. Fill in all fields. Use null for facts not documented in clinical notes (distinct from false, which means documented-as-absent).",
+
+  "case_id": "GS-CLABSI-001",
+  "patient": {
+    "mrn": "REPLACE_WITH_MRN",
+    "csn": "REPLACE_WITH_CSN",
+    "age_months": 1,
+    "admission_date": "2025-06-10",
+    "discharge_date": "2025-07-02",
+    "unit": "NICU A",
+    "service": "Neonatology"
+  },
+  "central_lines": [
+    {
+      "line_number": 1,
+      "type": "UVC",
+      "site": "umbilical",
+      "insert_date": "2025-06-10",
+      "remove_date": "2025-06-18",
+      "days_in_place": 8,
+      "status": "removed"
+    },
+    {
+      "line_number": 2,
+      "type": "PICC",
+      "site": "right upper extremity",
+      "insert_date": "2025-06-12",
+      "remove_date": null,
+      "days_in_place": null,
+      "status": "active_at_culture"
+    }
+  ],
+  "cl_eligible": {
+    "line_present_gte_2_calendar_days": true,
+    "line_in_place_on_event_date_or_day_before": true,
+    "notes": "PICC in place since day 2, culture obtained day 5"
+  },
+  "cultures": [
+    {
+      "set_number": 1,
+      "collection_datetime": "2025-06-15T14:30:00",
+      "organism": "Staphylococcus epidermidis",
+      "organism_classification": "common_commensal",
+      "draw_site": "central_line",
+      "bottles_positive": 2,
+      "total_bottles": 2,
+      "time_to_positivity_hours": 18.5,
+      "susceptibilities": {
+        "oxacillin": "R",
+        "vancomycin": "S",
+        "daptomycin": "S",
+        "linezolid": "S"
+      }
+    },
+    {
+      "set_number": 2,
+      "collection_datetime": "2025-06-15T14:35:00",
+      "organism": "Staphylococcus epidermidis",
+      "organism_classification": "common_commensal",
+      "draw_site": "peripheral",
+      "bottles_positive": 1,
+      "total_bottles": 2,
+      "time_to_positivity_hours": 22.0,
+      "susceptibilities": {
+        "oxacillin": "R",
+        "vancomycin": "S",
+        "daptomycin": "S",
+        "linezolid": "S"
+      }
+    }
+  ],
+  "commensal_criteria_met": {
+    "gte_2_sets_from_separate_draws": true,
+    "same_organism": true,
+    "notes": "CoNS from both CL and peripheral draws, same susceptibility pattern"
+  },
+  "signs_symptoms": {
+    "structured_data": {
+      "fever": {
+        "present": true,
+        "value": 38.4,
+        "unit": "celsius",
+        "datetime": "2025-06-15T12:00:00",
+        "source": "flowsheet_vital_signs"
+      },
+      "hypothermia": {
+        "present": false,
+        "value": null,
+        "source": "flowsheet_vital_signs"
+      },
+      "wbc": {
+        "value": 22.5,
+        "unit": "x10e3/uL",
+        "abnormal": true,
+        "datetime": "2025-06-15T06:00:00",
+        "source": "lab_result"
+      },
+      "anc": {
+        "value": 8500,
+        "unit": "cells/uL",
+        "datetime": "2025-06-15T06:00:00",
+        "source": "lab_result"
+      },
+      "bands": {
+        "value": 12,
+        "unit": "percent",
+        "abnormal": true,
+        "datetime": "2025-06-15T06:00:00",
+        "source": "lab_result"
+      },
+      "crp": {
+        "value": 4.2,
+        "unit": "mg/dL",
+        "datetime": "2025-06-15T06:00:00",
+        "source": "lab_result"
+      },
+      "apnea": {
+        "present": true,
+        "source": "flowsheet_nursing"
+      },
+      "bradycardia": {
+        "present": false,
+        "source": "flowsheet_vital_signs"
+      },
+      "hypotension": {
+        "present": null,
+        "source": null,
+        "notes": "BP not routinely documented in this age group"
+      }
+    },
+    "note_extracted_data": {
+      "fever": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - Neonatology",
+          "datetime": "2025-06-15T16:00:00",
+          "author": "Dr. Smith",
+          "relevant_text_location": "Assessment section, paragraph 2"
+        }
+      },
+      "hypothermia": {
+        "expected_extraction": false,
+        "source_note": null,
+        "notes": "Not mentioned in any note"
+      },
+      "apnea": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - Neonatology",
+          "datetime": "2025-06-15T16:00:00",
+          "author": "Dr. Smith",
+          "relevant_text_location": "Events overnight section"
+        }
+      },
+      "bradycardia": {
+        "expected_extraction": null,
+        "notes": "Not mentioned in notes (documented only in flowsheets as absent)"
+      },
+      "hypotension": {
+        "expected_extraction": null,
+        "notes": "Not discussed in any note"
+      },
+      "physician_attributes_to_line": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "ID Consult Note",
+          "datetime": "2025-06-16T10:00:00",
+          "author": "Dr. Jones",
+          "relevant_text_location": "Assessment section: 'likely CLABSI given positive cultures from PICC'"
+        }
+      },
+      "physician_treats_as_bsi": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - Neonatology",
+          "datetime": "2025-06-16T08:00:00",
+          "author": "Dr. Smith",
+          "relevant_text_location": "Plan section: 'started vancomycin for CLABSI'"
+        }
+      },
+      "new_antibiotic_name": {
+        "expected_extraction": "vancomycin",
+        "source_note": {
+          "note_type": "Progress Note - Neonatology",
+          "datetime": "2025-06-15T16:00:00",
+          "author": "Dr. Smith"
+        }
+      },
+      "new_antibiotic_duration_days": {
+        "expected_extraction": 14,
+        "source_note": {
+          "note_type": "ID Consult Note",
+          "datetime": "2025-06-16T10:00:00",
+          "author": "Dr. Jones",
+          "relevant_text_location": "Recommendations: '14 days of vancomycin'"
+        }
+      },
+      "other_infection_source_documented": {
+        "expected_extraction": false,
+        "notes": "No alternate source mentioned"
+      },
+      "other_infection_source_type": {
+        "expected_extraction": null
+      },
+      "mucositis_documented": {
+        "expected_extraction": null,
+        "notes": "Not applicable, not mentioned"
+      },
+      "diarrhea_documented": {
+        "expected_extraction": null
+      },
+      "gvhd_grade": {
+        "expected_extraction": null
+      },
+      "line_present_documented": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - Neonatology",
+          "datetime": "2025-06-15T16:00:00",
+          "author": "Dr. Smith",
+          "relevant_text_location": "Access section: 'PICC in right arm'"
+        }
+      },
+      "line_type_from_notes": {
+        "expected_extraction": "PICC"
+      }
+    }
+  },
+  "secondary_source_assessment": {
+    "uti_present": false,
+    "pneumonia_present": false,
+    "ssi_present": false,
+    "skin_soft_tissue_present": false,
+    "intra_abdominal_present": false,
+    "cdiff_present": false,
+    "other_source": null,
+    "same_organism_at_other_site": false,
+    "notes": "No other positive cultures. No clinical evidence of alternate source."
+  },
+  "mbi_lcbi_assessment": {
+    "applicable": false,
+    "enteric_organism": false,
+    "anc_below_500": false,
+    "gvhd_grade_gte_3": false,
+    "diarrhea_criteria_met": false,
+    "mucositis_documented": false,
+    "mbi_criteria_met": false,
+    "notes": "CoNS is not an enteric organism. MBI assessment not applicable."
+  },
+  "expected_classification": {
+    "nhsn_class": "LCBI_CRITERION_3",
+    "criterion_pathway": "Age <1 year, common commensal (CoNS) in 1+ blood culture set, signs/symptoms present (fever, apnea, elevated WBC), physician initiated appropriate antimicrobial treatment (vancomycin x 14 days). Although 2 sets were positive (would also meet Criterion 2), Criterion 3 is the most specific pathway for this age group.",
+    "mbi_lcbi": false,
+    "secondary_bsi": false,
+    "nhsn_reportable": true,
+    "event_date": "2025-06-15",
+    "unit_attribution": "NICU A",
+    "repeat_infection_period": false,
+    "prior_event_date": null
+  },
+  "historic_comparison": {
+    "vigilanz_classification": "CLABSI",
+    "vigilanz_event_date": "2025-06-15",
+    "concordant": true,
+    "discrepancy_notes": null
+  },
+  "notes_files": [
+    {
+      "filename": "note_001.txt",
+      "note_type": "Progress Note - Neonatology",
+      "datetime": "2025-06-15T08:00:00",
+      "author": "Dr. Smith",
+      "relevant": true
+    },
+    {
+      "filename": "note_002.txt",
+      "note_type": "Progress Note - Neonatology",
+      "datetime": "2025-06-15T16:00:00",
+      "author": "Dr. Smith",
+      "relevant": true
+    },
+    {
+      "filename": "note_003.txt",
+      "note_type": "ID Consult Note",
+      "datetime": "2025-06-16T10:00:00",
+      "author": "Dr. Jones",
+      "relevant": true
+    },
+    {
+      "filename": "note_004.txt",
+      "note_type": "Nursing Note",
+      "datetime": "2025-06-15T20:00:00",
+      "author": "RN Williams",
+      "relevant": true
+    }
+  ],
+  "hallucination_risks": [
+    "Note 001 contains 'no fevers overnight' in the morning note, but patient developed fever later that day documented in note 002. LLM must extract temporal context correctly.",
+    "Note 003 (ID consult) references 'previous CLABSI in last admission' - LLM must not extract this as a current event.",
+    "Note 001 contains template text 'Central line: [  ]' - LLM must not extract this as indicating line absence."
+  ],
+  "adjudicator": "DBH",
+  "adjudication_date": "2026-02-15",
+  "rationale": "Clear CLABSI case. 28-day-old in NICU with PICC in place since day 2. Developed fever and apnea on day 5 with elevated WBC and bands. Two sets of blood cultures drawn (one from PICC, one peripheral) both grew CoNS with identical susceptibility pattern. ID consulted, recommended vancomycin x 14 days. No alternate source identified. Meets LCBI Criterion 3 (age <1 year). Concordant with Vigilanz classification."
+}
