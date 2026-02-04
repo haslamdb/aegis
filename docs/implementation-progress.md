@@ -2,7 +2,7 @@
 
 Tracking file for implementing the AEGIS expansion plan. See `aegis_implementation_plan.md` for full specifications.
 
-**Last Updated:** 2026-01-24
+**Last Updated:** 2026-02-03
 
 ---
 
@@ -510,4 +510,13 @@ The plan proposes separate model classes for each HAI type. Our existing `HAICan
 | 2026-01-31 | 6 | Training Stats dashboard page with extraction/review/correction metrics |
 | 2026-01-31 | 6 | Dashboard improvements: History page, metrics grouped by bundle, rounded adherence % |
 | 2026-01-31 | 6 | Fixed button visibility on Active Episodes, updated help page with new features |
+| 2026-02-03 | 7 | **FHIR Conversion:** Refactored HAI module to prefer FHIR over Clarity for real-time |
+| 2026-02-03 | 7 | Added separate config: DEVICE_SOURCE, CULTURE_SOURCE, VENTILATOR_SOURCE (all default fhir) |
+| 2026-02-03 | 7 | Added factory functions: get_urinary_catheter_source, get_urine_culture_source, get_cdi_test_source |
+| 2026-02-03 | 7 | Updated hai_src/data/__init__.py with proper exports for all factory functions |
+| 2026-02-03 | 7 | **IS Integration Doc:** Created docs/integration-requirements.md (630 lines) |
+| 2026-02-03 | 7 | Documented all FHIR resources, LOINC codes, SNOMED codes, HL7 messages across all modules |
+| 2026-02-03 | 7 | Added terminology guidance for IS meeting, compute requirements, security architecture |
+| 2026-02-03 | 7 | **Multi-site Analytics Roadmap:** Added Section 7 for future federated analytics consortium |
+| 2026-02-03 | 7 | Defined de-identified data elements for training feedback and override pattern analysis |
 
