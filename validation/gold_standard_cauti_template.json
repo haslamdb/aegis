@@ -1,0 +1,203 @@
+{
+  "$schema_description": "AEGIS Gold Standard Case - CAUTI (Catheter-Associated Urinary Tract Infection)",
+  "$instructions": "Copy this template for each adjudicated case. Fill in all fields. Use null for facts not documented in clinical notes (distinct from false, which means documented-as-absent).",
+
+  "case_id": "GS-CAUTI-001",
+  "patient": {
+    "mrn": "REPLACE_WITH_MRN",
+    "csn": "REPLACE_WITH_CSN",
+    "age_years": 72,
+    "admission_date": "2025-07-01",
+    "discharge_date": "2025-07-10",
+    "unit": "Medical ICU",
+    "service": "Internal Medicine"
+  },
+  "urinary_catheter": {
+    "catheter_type": "Foley",
+    "site": "urethral",
+    "insert_date": "2025-07-01",
+    "remove_date": "2025-07-08",
+    "days_in_place_at_culture": 5,
+    "status_at_culture": "in_place",
+    "indication": "strict I/O monitoring"
+  },
+  "iuc_eligible": {
+    "catheter_present_gte_2_calendar_days": true,
+    "catheter_in_place_on_event_date_or_day_before": true,
+    "notes": "Foley placed on admission, culture obtained day 5"
+  },
+  "cultures": [
+    {
+      "collection_datetime": "2025-07-05T14:00:00",
+      "specimen_type": "catheter_urine",
+      "organism": "Escherichia coli",
+      "cfu_ml": 100000,
+      "organism_count": 1,
+      "susceptibilities": {
+        "ampicillin": "R",
+        "ciprofloxacin": "S",
+        "nitrofurantoin": "S",
+        "trimethoprim_sulfamethoxazole": "S"
+      }
+    }
+  ],
+  "culture_criteria_met": {
+    "gte_100000_cfu_ml": true,
+    "lte_2_organisms": true,
+    "not_mixed_flora": true,
+    "notes": "Single organism E. coli at 10^5 CFU/mL"
+  },
+  "signs_symptoms": {
+    "structured_data": {
+      "fever": {
+        "present": true,
+        "value": 38.6,
+        "unit": "celsius",
+        "datetime": "2025-07-05T08:00:00",
+        "source": "flowsheet_vital_signs"
+      },
+      "suprapubic_tenderness": {
+        "present": null,
+        "source": null,
+        "notes": "Not assessed in ICU setting"
+      },
+      "cva_tenderness": {
+        "present": false,
+        "source": "physical_exam",
+        "notes": "Documented as 'no CVA tenderness' in progress note"
+      },
+      "urgency": {
+        "present": null,
+        "source": null,
+        "notes": "Not assessable - patient has catheter"
+      },
+      "frequency": {
+        "present": null,
+        "source": null,
+        "notes": "Not assessable - patient has catheter"
+      },
+      "dysuria": {
+        "present": null,
+        "source": null,
+        "notes": "Not assessable - patient has catheter"
+      }
+    },
+    "note_extracted_data": {
+      "fever": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-07-05T16:00:00",
+          "author": "Dr. Adams",
+          "relevant_text_location": "Vitals section: 'Tmax 38.6'"
+        }
+      },
+      "suprapubic_tenderness": {
+        "expected_extraction": null,
+        "notes": "Not documented in notes"
+      },
+      "cva_tenderness": {
+        "expected_extraction": false,
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-07-05T16:00:00",
+          "author": "Dr. Adams",
+          "relevant_text_location": "Exam: 'No CVA tenderness bilaterally'"
+        }
+      },
+      "physician_suspects_uti": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-07-05T16:00:00",
+          "author": "Dr. Adams",
+          "relevant_text_location": "Assessment: 'Concern for CAUTI given fever and positive UA'"
+        }
+      },
+      "physician_diagnoses_uti": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-07-06T08:00:00",
+          "author": "Dr. Adams",
+          "relevant_text_location": "Assessment: 'CAUTI confirmed with E. coli, starting cipro'"
+        }
+      },
+      "catheter_documented": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Nursing Note",
+          "datetime": "2025-07-05T12:00:00",
+          "author": "RN Chen"
+        }
+      },
+      "alternative_diagnoses_mentioned": {
+        "expected_extraction": ["pneumonia workup negative"],
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-07-05T16:00:00",
+          "author": "Dr. Adams"
+        }
+      }
+    }
+  },
+  "age_rule_assessment": {
+    "patient_age": 72,
+    "patient_gt_65": true,
+    "fever_alone_sufficient": false,
+    "has_non_fever_symptom": false,
+    "notes": "Patient >65, so fever alone is insufficient for CAUTI. However, symptomatic UTI diagnosis documented by physician meets criteria."
+  },
+  "asymptomatic_bacteriuria_assessment": {
+    "is_asb": false,
+    "symptom_present": true,
+    "symptom_type": "fever",
+    "clinical_team_treating_as_uti": true,
+    "notes": "Fever present, team treating as UTI - not ASB"
+  },
+  "expected_classification": {
+    "nhsn_class": "CAUTI",
+    "criterion_pathway": "IUC in place >2 days, urine culture positive >=10^5 CFU/mL with single organism, fever documented. Although >65 years (fever alone less specific), physician documented UTI diagnosis and initiated treatment.",
+    "nhsn_reportable": true,
+    "event_date": "2025-07-05",
+    "unit_attribution": "Medical ICU"
+  },
+  "notes_files": [
+    {
+      "filename": "note_001.txt",
+      "note_type": "Progress Note - Medicine",
+      "datetime": "2025-07-05T08:00:00",
+      "author": "Dr. Adams",
+      "relevant": true
+    },
+    {
+      "filename": "note_002.txt",
+      "note_type": "Progress Note - Medicine",
+      "datetime": "2025-07-05T16:00:00",
+      "author": "Dr. Adams",
+      "relevant": true
+    },
+    {
+      "filename": "note_003.txt",
+      "note_type": "Progress Note - Medicine",
+      "datetime": "2025-07-06T08:00:00",
+      "author": "Dr. Adams",
+      "relevant": true
+    },
+    {
+      "filename": "note_004.txt",
+      "note_type": "Nursing Note",
+      "datetime": "2025-07-05T12:00:00",
+      "author": "RN Chen",
+      "relevant": true
+    }
+  ],
+  "hallucination_risks": [
+    "Note 001 discusses 'prior UTI 6 months ago' in history - LLM must not confuse with current episode.",
+    "Note 002 mentions 'UA pending' before culture confirmed - temporal extraction is critical.",
+    "Nursing note documents 'Foley draining clear yellow urine' - LLM should not interpret 'clear' as absence of infection."
+  ],
+  "adjudicator": "REPLACE_WITH_INITIALS",
+  "adjudication_date": "REPLACE_WITH_DATE",
+  "rationale": "72yo patient admitted to MICU with Foley catheter placed on admission. On day 5, developed fever to 38.6C. UA and urine culture obtained, growing E. coli >10^5 CFU/mL. No CVA tenderness. CXR negative for pneumonia. Team diagnosed CAUTI and started ciprofloxacin. Meets NHSN CAUTI criteria: IUC >2 days, positive culture with single organism >=10^5, fever present with physician diagnosis."
+}

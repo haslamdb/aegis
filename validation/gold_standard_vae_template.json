@@ -1,0 +1,223 @@
+{
+  "$schema_description": "AEGIS Gold Standard Case - VAE (Ventilator-Associated Event)",
+  "$instructions": "Copy this template for each adjudicated case. Fill in all fields. Use null for facts not documented in clinical notes (distinct from false, which means documented-as-absent).",
+
+  "case_id": "GS-VAE-001",
+  "patient": {
+    "mrn": "REPLACE_WITH_MRN",
+    "csn": "REPLACE_WITH_CSN",
+    "age_years": 58,
+    "admission_date": "2025-08-01",
+    "discharge_date": "2025-08-20",
+    "unit": "Surgical ICU",
+    "service": "Trauma Surgery"
+  },
+  "ventilation_episode": {
+    "intubation_date": "2025-08-01",
+    "intubation_indication": "respiratory failure post motor vehicle collision",
+    "extubation_date": "2025-08-15",
+    "ventilator_days": 14,
+    "ventilator_mode_initial": "AC/VC"
+  },
+  "vent_eligible": {
+    "gte_2_calendar_days_on_vent": true,
+    "baseline_period_identified": true,
+    "notes": "Intubated day 1, stable baseline days 3-4, worsening began day 5"
+  },
+  "daily_vent_parameters": [
+    {"day": 1, "date": "2025-08-01", "min_fio2": 60, "min_peep": 8},
+    {"day": 2, "date": "2025-08-02", "min_fio2": 50, "min_peep": 8},
+    {"day": 3, "date": "2025-08-03", "min_fio2": 40, "min_peep": 5, "baseline_start": true},
+    {"day": 4, "date": "2025-08-04", "min_fio2": 40, "min_peep": 5, "baseline_end": true},
+    {"day": 5, "date": "2025-08-05", "min_fio2": 55, "min_peep": 8, "worsening_start": true},
+    {"day": 6, "date": "2025-08-06", "min_fio2": 60, "min_peep": 10, "worsening_day_2": true},
+    {"day": 7, "date": "2025-08-07", "min_fio2": 60, "min_peep": 10}
+  ],
+  "vac_criteria": {
+    "baseline_period": "Days 3-4",
+    "baseline_fio2": 40,
+    "baseline_peep": 5,
+    "worsening_period": "Days 5-6",
+    "fio2_increase_gte_20_points": true,
+    "fio2_increase_value": 20,
+    "peep_increase_gte_3_cmh2o": true,
+    "peep_increase_value": 5,
+    "worsening_sustained_2_days": true,
+    "vac_met": true,
+    "vac_onset_date": "2025-08-05"
+  },
+  "ivac_criteria": {
+    "temperature_abnormality": {
+      "fever_gt_38": true,
+      "fever_value_celsius": 39.1,
+      "fever_date": "2025-08-05",
+      "hypothermia_lt_36": false
+    },
+    "wbc_abnormality": {
+      "leukocytosis_gt_12000": true,
+      "leukocytosis_value": 18500,
+      "leukopenia_lt_4000": false
+    },
+    "new_antimicrobial": {
+      "started": true,
+      "antimicrobial_names": ["piperacillin-tazobactam", "vancomycin"],
+      "start_date": "2025-08-05",
+      "route": "IV",
+      "continued_gte_4_days": true,
+      "duration_days": 10
+    },
+    "ivac_met": true
+  },
+  "vap_criteria": {
+    "purulent_secretions": {
+      "documented": true,
+      "description": "thick yellow-green secretions",
+      "date": "2025-08-05"
+    },
+    "respiratory_culture": {
+      "obtained": true,
+      "specimen_type": "BAL",
+      "collection_date": "2025-08-05",
+      "organism": "Pseudomonas aeruginosa",
+      "colony_count": "10^5 CFU/mL",
+      "meets_quantitative_threshold": true
+    },
+    "gram_stain": {
+      "pmn_gte_25": true,
+      "epithelial_lte_10": true,
+      "pmn_count": 42,
+      "epithelial_count": 3
+    },
+    "possible_vap_met": true,
+    "probable_vap_met": true
+  },
+  "signs_symptoms": {
+    "structured_data": {
+      "fever": {
+        "present": true,
+        "value": 39.1,
+        "unit": "celsius",
+        "datetime": "2025-08-05T06:00:00",
+        "source": "flowsheet_vital_signs"
+      },
+      "wbc": {
+        "value": 18.5,
+        "unit": "x10e3/uL",
+        "abnormal": true,
+        "datetime": "2025-08-05T04:00:00",
+        "source": "lab_result"
+      }
+    },
+    "note_extracted_data": {
+      "fever": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - SICU",
+          "datetime": "2025-08-05T08:00:00",
+          "author": "Dr. Martinez",
+          "relevant_text_location": "Vitals: 'Tmax overnight 39.1'"
+        }
+      },
+      "leukocytosis": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - SICU",
+          "datetime": "2025-08-05T08:00:00",
+          "author": "Dr. Martinez",
+          "relevant_text_location": "Labs: 'WBC up to 18.5 from 10.2 yesterday'"
+        }
+      },
+      "purulent_secretions": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Respiratory Therapy Note",
+          "datetime": "2025-08-05T06:30:00",
+          "author": "RT Wilson",
+          "relevant_text_location": "'Thick yellow-green secretions suctioned from ETT'"
+        }
+      },
+      "new_antimicrobials": {
+        "expected_extraction": ["piperacillin-tazobactam", "vancomycin"],
+        "source_note": {
+          "note_type": "Progress Note - SICU",
+          "datetime": "2025-08-05T08:00:00",
+          "author": "Dr. Martinez",
+          "relevant_text_location": "Plan: 'Starting pip-tazo and vancomycin for suspected VAP'"
+        }
+      },
+      "worsening_oxygenation": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - SICU",
+          "datetime": "2025-08-05T08:00:00",
+          "author": "Dr. Martinez",
+          "relevant_text_location": "'Required increased FiO2 and PEEP overnight'"
+        }
+      },
+      "vap_suspected_by_team": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - SICU",
+          "datetime": "2025-08-05T08:00:00",
+          "author": "Dr. Martinez",
+          "relevant_text_location": "Assessment: 'Suspected VAP'"
+        }
+      },
+      "alternative_diagnoses": {
+        "expected_extraction": ["ARDS ruled out"],
+        "source_note": {
+          "note_type": "Progress Note - SICU",
+          "datetime": "2025-08-06T08:00:00",
+          "author": "Dr. Martinez"
+        }
+      }
+    }
+  },
+  "expected_classification": {
+    "nhsn_class": "PROBABLE_VAP",
+    "vae_tier": "TIER_3",
+    "criterion_pathway": "VAC criteria met (FiO2 increased >=20 points, PEEP increased >=3 cmH2O for 2 days after 2-day baseline). IVAC criteria met (fever, WBC >12k, new antimicrobials >=4 days). Probable VAP met (purulent secretions AND positive quantitative BAL culture with organism meeting threshold).",
+    "nhsn_reportable": true,
+    "event_date": "2025-08-05",
+    "unit_attribution": "Surgical ICU"
+  },
+  "notes_files": [
+    {
+      "filename": "note_001.txt",
+      "note_type": "Progress Note - SICU",
+      "datetime": "2025-08-05T08:00:00",
+      "author": "Dr. Martinez",
+      "relevant": true
+    },
+    {
+      "filename": "note_002.txt",
+      "note_type": "Respiratory Therapy Note",
+      "datetime": "2025-08-05T06:30:00",
+      "author": "RT Wilson",
+      "relevant": true
+    },
+    {
+      "filename": "note_003.txt",
+      "note_type": "Progress Note - SICU",
+      "datetime": "2025-08-06T08:00:00",
+      "author": "Dr. Martinez",
+      "relevant": true
+    },
+    {
+      "filename": "note_004.txt",
+      "note_type": "ID Consult Note",
+      "datetime": "2025-08-06T14:00:00",
+      "author": "Dr. Patel",
+      "relevant": true
+    }
+  ],
+  "hallucination_risks": [
+    "Day 2 note mentions 'improving respiratory status' - LLM must recognize this is BEFORE the worsening period.",
+    "RT note from day 1 mentions 'bloody secretions post-intubation' - this is trauma-related, not infection.",
+    "ID consult discusses 'prior hospitalization with VAP 2 years ago' - must not confuse with current episode.",
+    "Vent settings in notes may be documented as 'current' vs 'overnight minimum' - extraction must use correct values."
+  ],
+  "adjudicator": "REPLACE_WITH_INITIALS",
+  "adjudication_date": "REPLACE_WITH_DATE",
+  "rationale": "58yo trauma patient intubated for respiratory failure. Stable baseline on vent days 3-4 (FiO2 40%, PEEP 5). Day 5 developed fever, leukocytosis, increased vent requirements (FiO2 60%, PEEP 10) sustained for 2 days. Started on pip-tazo and vancomycin for suspected VAP. BAL obtained showing Pseudomonas at 10^5 CFU/mL with purulent secretions. Meets all criteria for Probable VAP (VAC + IVAC + purulent secretions + positive quantitative culture)."
+}

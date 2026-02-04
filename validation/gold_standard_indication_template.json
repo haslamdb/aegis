@@ -1,0 +1,123 @@
+{
+  "$schema_description": "AEGIS Gold Standard Case - Indication Extraction (Antimicrobial Stewardship)",
+  "$instructions": "Copy this template for each adjudicated case. Fill in all fields. Use null for facts not documented in clinical notes.",
+
+  "case_id": "GS-IND-001",
+  "patient": {
+    "mrn": "REPLACE_WITH_MRN",
+    "csn": "REPLACE_WITH_CSN",
+    "age_years": 45,
+    "admission_date": "2025-11-01",
+    "discharge_date": "2025-11-05",
+    "unit": "Medicine Floor 3A",
+    "service": "Internal Medicine"
+  },
+  "antibiotic_order": {
+    "antibiotic_name": "ceftriaxone",
+    "dose": "1g IV q24h",
+    "order_datetime": "2025-11-01T18:30:00",
+    "epic_indication": "Empiric",
+    "ordering_provider": "Dr. Garcia"
+  },
+  "expected_extraction": {
+    "primary_indication": {
+      "value": "community_acquired_pneumonia",
+      "taxonomy_id": "cap",
+      "display_name": "Community-Acquired Pneumonia",
+      "category": "respiratory"
+    },
+    "indication_confidence": {
+      "value": "definite",
+      "notes": "Explicitly documented as 'CAP' in assessment"
+    },
+    "therapy_intent": {
+      "value": "empiric",
+      "notes": "Started before culture results"
+    },
+    "supporting_evidence": {
+      "expected_items": [
+        "cough x 5 days",
+        "fever to 39.2C",
+        "RLL infiltrate on CXR",
+        "WBC 14.5"
+      ],
+      "notes": "All four items should be extracted"
+    },
+    "evidence_quotes": {
+      "expected_quotes": [
+        "Presenting with productive cough x 5 days and fever",
+        "CXR shows right lower lobe infiltrate"
+      ],
+      "notes": "Quotes should be verbatim or near-verbatim"
+    },
+    "culture_organism": {
+      "value": null,
+      "notes": "No cultures back at time of order"
+    },
+    "culture_site": {
+      "value": null
+    },
+    "red_flags": {
+      "indication_not_documented": false,
+      "likely_viral": false,
+      "asymptomatic_bacteriuria": false,
+      "never_appropriate": false
+    }
+  },
+  "note_sources": {
+    "primary_indication_source": {
+      "note_type": "Admission H&P",
+      "datetime": "2025-11-01T16:00:00",
+      "author": "Dr. Garcia",
+      "relevant_text_location": "Assessment: 'Community-acquired pneumonia'"
+    },
+    "evidence_sources": [
+      {
+        "evidence_item": "cough x 5 days",
+        "note_type": "Admission H&P",
+        "relevant_text_location": "HPI paragraph 1"
+      },
+      {
+        "evidence_item": "fever to 39.2C",
+        "note_type": "Admission H&P",
+        "relevant_text_location": "Vitals section"
+      },
+      {
+        "evidence_item": "RLL infiltrate on CXR",
+        "note_type": "Admission H&P",
+        "relevant_text_location": "Imaging section"
+      }
+    ]
+  },
+  "notes_files": [
+    {
+      "filename": "note_001.txt",
+      "note_type": "Admission H&P",
+      "datetime": "2025-11-01T16:00:00",
+      "author": "Dr. Garcia",
+      "relevant": true
+    },
+    {
+      "filename": "note_002.txt",
+      "note_type": "ED Note",
+      "datetime": "2025-11-01T14:00:00",
+      "author": "Dr. Kim",
+      "relevant": true
+    }
+  ],
+  "hallucination_risks": [
+    "H&P mentions 'history of CAP 2 years ago' - must not confuse with current diagnosis.",
+    "ED note says 'rule out pneumonia' before CXR - extraction should use final diagnosis.",
+    "Nursing note mentions 'patient states he had a cold last week' - cold ≠ current pneumonia."
+  ],
+  "negative_cases_to_avoid": {
+    "should_not_extract": [
+      "URI (notes say 'productive cough', not URI)",
+      "bronchitis (CXR has infiltrate, so this is pneumonia)",
+      "sepsis (no shock or organ dysfunction documented)"
+    ]
+  },
+  "adjudicator": "REPLACE_WITH_INITIALS",
+  "adjudication_date": "REPLACE_WITH_DATE",
+  "rationale": "45yo admitted with 5 days of productive cough and fever. CXR shows RLL infiltrate. Documented as CAP in assessment. Started on ceftriaxone empirically. Clear indication extraction case with definite confidence."
+}

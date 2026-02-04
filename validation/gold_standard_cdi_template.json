@@ -1,0 +1,198 @@
+{
+  "$schema_description": "AEGIS Gold Standard Case - CDI (Clostridioides difficile Infection)",
+  "$instructions": "Copy this template for each adjudicated case. Fill in all fields. Use null for facts not documented in clinical notes (distinct from false, which means documented-as-absent).",
+
+  "case_id": "GS-CDI-001",
+  "patient": {
+    "mrn": "REPLACE_WITH_MRN",
+    "csn": "REPLACE_WITH_CSN",
+    "age_years": 71,
+    "admission_date": "2025-10-01",
+    "discharge_date": "2025-10-08",
+    "unit": "Medicine Floor 4B",
+    "service": "Internal Medicine"
+  },
+  "admission_context": {
+    "admission_diagnosis": "Community-acquired pneumonia",
+    "initial_antibiotics": ["ceftriaxone", "azithromycin"],
+    "antibiotic_start_date": "2025-10-01"
+  },
+  "cdi_test": {
+    "test_date": "2025-10-05",
+    "test_datetime": "2025-10-05T10:30:00",
+    "test_type": "PCR_toxin_gene",
+    "loinc_code": "80685-5",
+    "test_result": "positive",
+    "specimen_type": "stool",
+    "is_formed_stool": false,
+    "stool_consistency": "liquid"
+  },
+  "timing_assessment": {
+    "admission_date": "2025-10-01",
+    "specimen_date": "2025-10-05",
+    "specimen_day": 5,
+    "specimen_gt_3_days_after_admission": true,
+    "onset_type": "healthcare_facility",
+    "notes": "Specimen collected day 5 (>3 days) = Healthcare-facility onset (HO-CDI)"
+  },
+  "recurrence_assessment": {
+    "prior_cdi_in_system": false,
+    "days_since_last_cdi": null,
+    "recurrence_status": "incident",
+    "notes": "No prior CDI LabID events in system. This is an incident case."
+  },
+  "co_hcfa_assessment": {
+    "applicable": false,
+    "prior_discharge_within_4_weeks": false,
+    "prior_discharge_date": null,
+    "prior_discharge_facility": null,
+    "notes": "Not applicable - this is HO-CDI, not CO-CDI"
+  },
+  "clinical_findings": {
+    "diarrhea": {
+      "documented": true,
+      "onset_date": "2025-10-04",
+      "frequency": "8 episodes",
+      "consistency": "liquid, watery",
+      "duration_days": 2
+    },
+    "abdominal_symptoms": {
+      "cramping": true,
+      "tenderness": true,
+      "distension": false
+    },
+    "systemic_symptoms": {
+      "fever": true,
+      "fever_value_celsius": 38.2,
+      "leukocytosis": true,
+      "wbc_value": 15800
+    }
+  },
+  "risk_factors": {
+    "recent_antibiotics": true,
+    "antibiotic_names": ["ceftriaxone", "azithromycin"],
+    "antibiotic_duration_days": 4,
+    "age_gt_65": true,
+    "recent_hospitalization": false,
+    "ppi_use": true,
+    "immunocompromised": false
+  },
+  "treatment": {
+    "cdi_treatment_initiated": true,
+    "treatment_type": "oral vancomycin",
+    "treatment_dose": "125mg QID",
+    "treatment_start_date": "2025-10-05",
+    "treatment_duration_planned": 10,
+    "offending_antibiotics_stopped": true,
+    "antibiotics_stopped_date": "2025-10-05"
+  },
+  "signs_symptoms": {
+    "note_extracted_data": {
+      "diarrhea": {
+        "expected_extraction": true,
+        "expected_frequency": 8,
+        "expected_consistency": "liquid/watery",
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-10-05T08:00:00",
+          "author": "Dr. Park",
+          "relevant_text_location": "Overnight events: 'Developed 8 episodes of watery diarrhea'"
+        }
+      },
+      "prior_cdi_history": {
+        "expected_extraction": false,
+        "source_note": null,
+        "notes": "No prior CDI documented in notes"
+      },
+      "recent_antibiotic_use": {
+        "expected_extraction": true,
+        "expected_antibiotics": ["ceftriaxone", "azithromycin"],
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-10-05T08:00:00",
+          "author": "Dr. Park",
+          "relevant_text_location": "Assessment: 'CDI likely antibiotic-associated, on ceftriaxone/azithro x4 days'"
+        }
+      },
+      "cdi_suspected_by_team": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-10-05T08:00:00",
+          "author": "Dr. Park",
+          "relevant_text_location": "Assessment: 'Concern for C. diff given watery diarrhea on antibiotics'"
+        }
+      },
+      "cdi_diagnosed": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-10-05T16:00:00",
+          "author": "Dr. Park",
+          "relevant_text_location": "Update: 'C. diff PCR positive, starting oral vancomycin'"
+        }
+      },
+      "treatment_documented": {
+        "expected_extraction": "oral vancomycin",
+        "source_note": {
+          "note_type": "Progress Note - Medicine",
+          "datetime": "2025-10-05T16:00:00",
+          "author": "Dr. Park"
+        }
+      },
+      "alternative_diagnoses": {
+        "expected_extraction": null,
+        "notes": "No alternative diagnoses mentioned"
+      }
+    }
+  },
+  "expected_classification": {
+    "nhsn_class": "HO_CDI",
+    "onset_type": "healthcare_facility",
+    "is_recurrent": false,
+    "recurrence_status": "incident",
+    "criterion_pathway": "Positive C. diff PCR on unformed stool. Specimen collected day 5 (>3 days after admission) = Healthcare-facility onset. No prior CDI events = Incident case.",
+    "nhsn_reportable": true,
+    "event_date": "2025-10-05",
+    "unit_attribution": "Medicine Floor 4B"
+  },
+  "notes_files": [
+    {
+      "filename": "note_001.txt",
+      "note_type": "Admission H&P",
+      "datetime": "2025-10-01T14:00:00",
+      "author": "Dr. Park",
+      "relevant": true
+    },
+    {
+      "filename": "note_002.txt",
+      "note_type": "Progress Note - Medicine",
+      "datetime": "2025-10-05T08:00:00",
+      "author": "Dr. Park",
+      "relevant": true
+    },
+    {
+      "filename": "note_003.txt",
+      "note_type": "Progress Note - Medicine",
+      "datetime": "2025-10-05T16:00:00",
+      "author": "Dr. Park",
+      "relevant": true
+    },
+    {
+      "filename": "note_004.txt",
+      "note_type": "Nursing Note",
+      "datetime": "2025-10-05T06:00:00",
+      "author": "RN Davis",
+      "relevant": true
+    }
+  ],
+  "hallucination_risks": [
+    "H&P mentions 'no recent diarrhea' on admission - LLM must recognize diarrhea developed AFTER admission.",
+    "Note mentions 'patient reports loose stools at home occasionally' - this is baseline, not current CDI symptoms.",
+    "Day 3 note mentions 'bowel sounds present' - not relevant to diarrhea assessment.",
+    "Nursing note documents 'incontinent episode' - must determine if this is diarrhea or incontinence."
+  ],
+  "adjudicator": "REPLACE_WITH_INITIALS",
+  "adjudication_date": "REPLACE_WITH_DATE",
+  "rationale": "71yo admitted for CAP, started on ceftriaxone and azithromycin. Day 5 developed 8 episodes of watery diarrhea. C. diff PCR sent and positive. Stool was unformed. Started on oral vancomycin, ceftriaxone and azithromycin discontinued. Meets NHSN CDI LabID criteria: positive PCR on unformed stool. Specimen day 5 (>3 days) = HO-CDI. No prior CDI = Incident case. Healthcare-facility onset, incident CDI."
+}
