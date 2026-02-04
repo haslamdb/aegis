@@ -27,8 +27,13 @@ class Config:
     """HAI Detection configuration."""
 
     # --- Data Sources ---
+    # FHIR is preferred for real-time HAI surveillance. Clarity should only be used
+    # for large historical data extractions where FHIR pagination would be too slow.
     NOTE_SOURCE: str = os.getenv("NOTE_SOURCE", "fhir")  # fhir, clarity, or both
+    DEVICE_SOURCE: str = os.getenv("DEVICE_SOURCE", "fhir")  # fhir or clarity
+    CULTURE_SOURCE: str = os.getenv("CULTURE_SOURCE", "fhir")  # fhir or clarity
     PROCEDURE_SOURCE: str = os.getenv("PROCEDURE_SOURCE", "fhir")  # fhir, clarity, or mock
+    VENTILATOR_SOURCE: str = os.getenv("VENTILATOR_SOURCE", "fhir")  # fhir only
     FHIR_BASE_URL: str = os.getenv("FHIR_BASE_URL", "http://localhost:8081/fhir")
     CLARITY_CONNECTION_STRING: str | None = os.getenv("CLARITY_CONNECTION_STRING")
 

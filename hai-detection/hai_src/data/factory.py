@@ -4,7 +4,15 @@ import logging
 
 from ..config import Config
 from .base import BaseNoteSource, BaseDeviceSource, BaseCultureSource, BaseVentilatorSource
-from .fhir_source import FHIRNoteSource, FHIRDeviceSource, FHIRCultureSource, FHIRVentilatorSource
+from .fhir_source import (
+    FHIRNoteSource,
+    FHIRDeviceSource,
+    FHIRCultureSource,
+    FHIRVentilatorSource,
+    FHIRUrinaryCatheterSource,
+    FHIRUrineCultureSource,
+    FHIRCDITestSource,
+)
 from .clarity_source import ClarityNoteSource, ClarityDeviceSource, ClarityCultureSource
 from .procedure_source import (
     BaseProcedureSource,
@@ -19,8 +27,12 @@ logger = logging.getLogger(__name__)
 def get_note_source(source_type: str | None = None) -> BaseNoteSource:
     """Get the configured note source.
 
+    FHIR is strongly preferred for real-time HAI surveillance as it provides
+    immediate access to clinical notes. Clarity should only be used for bulk
+    historical extraction where FHIR pagination would be impractical.
+
     Args:
-        source_type: Override source type (fhir, clarity). Uses config if not specified.
+        source_type: Override source type (fhir, clarity, both). Uses config if not specified.
 
     Returns:
         Configured note source implementation.
@@ -31,18 +43,22 @@ def get_note_source(source_type: str | None = None) -> BaseNoteSource:
         if not Config.is_clarity_configured():
             logger.warning("Clarity not configured, falling back to FHIR")
             return FHIRNoteSource()
+        logger.info("Using Clarity for note source (consider FHIR for real-time)")
         return ClarityNoteSource()
 
     if source == "both":
-        # Return a composite source that tries both
+        # Return a composite source that tries both (deduplicates results)
         return CompositeNoteSource()
 
-    # Default to FHIR
+    # Default to FHIR (preferred for real-time surveillance)
     return FHIRNoteSource()
 
 
 def get_device_source(source_type: str | None = None) -> BaseDeviceSource:
     """Get the configured device source.
+
+    FHIR is strongly preferred for real-time HAI surveillance as it provides
+    current device status. Clarity should only be used for historical analysis.
 
     Args:
         source_type: Override source type (fhir, clarity). Uses config if not specified.
@@ -50,20 +66,25 @@ def get_device_source(source_type: str | None = None) -> BaseDeviceSource:
     Returns:
         Configured device source implementation.
     """
-    source = source_type or Config.NOTE_SOURCE  # Use same source as notes
+    source = source_type or Config.DEVICE_SOURCE
 
     if source == "clarity":
         if not Config.is_clarity_configured():
             logger.warning("Clarity not configured, falling back to FHIR")
             return FHIRDeviceSource()
+        logger.info("Using Clarity for device source (consider FHIR for real-time)")
         return ClarityDeviceSource()
 
-    # Default to FHIR
+    # Default to FHIR (preferred for real-time surveillance)
     return FHIRDeviceSource()
 
 
 def get_culture_source(source_type: str | None = None) -> BaseCultureSource:
     """Get the configured culture source.
+
+    FHIR is strongly preferred for real-time HAI surveillance as it provides
+    current culture results as they finalize. Clarity should only be used for
+    bulk historical extraction where FHIR pagination would be impractical.
 
     Args:
         source_type: Override source type (fhir, clarity). Uses config if not specified.
@@ -71,15 +92,16 @@ def get_culture_source(source_type: str | None = None) -> BaseCultureSource:
     Returns:
         Configured culture source implementation.
     """
-    source = source_type or Config.NOTE_SOURCE
+    source = source_type or Config.CULTURE_SOURCE
 
     if source == "clarity":
         if not Config.is_clarity_configured():
             logger.warning("Clarity not configured, falling back to FHIR")
             return FHIRCultureSource()
+        logger.info("Using Clarity for culture source (consider FHIR for real-time)")
         return ClarityCultureSource()
 
-    # Default to FHIR
+    # Default to FHIR (preferred for real-time surveillance)
     return FHIRCultureSource()
 
 
@@ -151,38 +173,93 @@ class CompositeNoteSource(BaseNoteSource):
 def get_procedure_source(source_type: str | None = None) -> BaseProcedureSource:
     """Get the configured procedure source for SSI monitoring.
 
+    FHIR is preferred for real-time SSI surveillance. Clarity should only
+    be used for bulk historical extraction. Mock is available for development.
+
     Args:
-        source_type: Override source type (mock, fhir, clarity). Uses config if not specified.
+        source_type: Override source type (fhir, clarity, mock). Uses config if not specified.
 
     Returns:
         Configured procedure source implementation.
     """
-    source = source_type or getattr(Config, "PROCEDURE_SOURCE", "mock")
+    source = source_type or Config.PROCEDURE_SOURCE
 
     if source == "clarity":
         if not Config.is_clarity_configured():
-            logger.warning("Clarity not configured, falling back to mock")
-            return MockProcedureSource()
+            logger.warning("Clarity not configured, falling back to FHIR")
+            return FHIRProcedureSource()
+        logger.info("Using Clarity for procedure source (consider FHIR for real-time)")
         return ClarityProcedureSource()
 
-    if source == "fhir":
-        return FHIRProcedureSource()
+    if source == "mock":
+        return MockProcedureSource()
 
-    # Default to mock for development
-    return MockProcedureSource()
+    # Default to FHIR (preferred for real-time surveillance)
+    return FHIRProcedureSource()
 
 
 def get_ventilator_source(source_type: str | None = None) -> BaseVentilatorSource:
     """Get the configured ventilator source for VAE monitoring.
 
+    FHIR is the only supported source for ventilator data. VAE surveillance
+    requires real-time access to FiO2/PEEP parameters which FHIR provides
+    through Observation resources.
+
     Args:
         source_type: Override source type (fhir). Uses config if not specified.
 
     Returns:
-        Configured ventilator source implementation.
+        Configured ventilator source implementation (FHIR only).
     """
-    source = source_type or getattr(Config, "VENTILATOR_SOURCE", "fhir")
+    source = source_type or Config.VENTILATOR_SOURCE
 
-    # Currently only FHIR source is implemented
-    # Clarity ventilator source could be added in the future
+    if source != "fhir":
+        logger.warning(f"Ventilator source '{source}' not supported, using FHIR")
+
+    # FHIR is the only source for real-time ventilator parameters
     return FHIRVentilatorSource()
+
+
+# ============================================================
+# CAUTI-specific data source factories
+# ============================================================
+
+def get_urinary_catheter_source() -> FHIRUrinaryCatheterSource:
+    """Get the urinary catheter source for CAUTI monitoring.
+
+    FHIR is the only supported source for urinary catheter tracking.
+    Queries DeviceUseStatement resources for indwelling urinary catheters.
+
+    Returns:
+        FHIRUrinaryCatheterSource for real-time catheter tracking.
+    """
+    return FHIRUrinaryCatheterSource()
+
+
+def get_urine_culture_source() -> FHIRUrineCultureSource:
+    """Get the urine culture source for CAUTI monitoring.
+
+    FHIR is the only supported source for urine cultures with CFU values.
+    Queries DiagnosticReport resources for urine culture results.
+
+    Returns:
+        FHIRUrineCultureSource for real-time urine culture retrieval.
+    """
+    return FHIRUrineCultureSource()
+
+
+# ============================================================
+# CDI-specific data source factories
+# ============================================================
+
+def get_cdi_test_source() -> FHIRCDITestSource:
+    """Get the CDI test source for C. difficile surveillance.
+
+    FHIR is the only supported source for CDI test results. Queries
+    Observation resources for toxin and molecular test results, and
+    Encounter resources for admission/discharge timing.
+
+    Returns:
+        FHIRCDITestSource for real-time CDI surveillance.
+    """
+    return FHIRCDITestSource()
