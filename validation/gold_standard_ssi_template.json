@@ -1,0 +1,259 @@
+{
+  "$schema_description": "AEGIS Gold Standard Case - SSI (Surgical Site Infection)",
+  "$instructions": "Copy this template for each adjudicated case. Fill in all fields. Use null for facts not documented in clinical notes (distinct from false, which means documented-as-absent).",
+
+  "case_id": "GS-SSI-001",
+  "patient": {
+    "mrn": "REPLACE_WITH_MRN",
+    "csn": "REPLACE_WITH_CSN",
+    "age_years": 64,
+    "admission_date": "2025-09-01",
+    "discharge_date": "2025-09-05",
+    "readmission_date": "2025-09-12",
+    "readmission_discharge_date": "2025-09-18",
+    "unit": "General Surgery",
+    "service": "General Surgery"
+  },
+  "procedure": {
+    "procedure_code": "44140",
+    "procedure_name": "Partial colectomy",
+    "procedure_date": "2025-09-01",
+    "procedure_datetime": "2025-09-01T10:30:00",
+    "nhsn_category": "COLO",
+    "wound_class": 2,
+    "wound_class_description": "clean-contaminated",
+    "duration_minutes": 145,
+    "asa_score": 3,
+    "implant_used": false,
+    "emergency": false,
+    "laparoscopic": false,
+    "surgeon": "Dr. Thompson"
+  },
+  "ssi_eligible": {
+    "nhsn_operative_procedure": true,
+    "within_surveillance_window": true,
+    "surveillance_window_days": 30,
+    "days_post_op_at_infection": 11,
+    "notes": "Colectomy has 30-day surveillance window. Patient readmitted day 11 post-op."
+  },
+  "wound_assessments": [
+    {
+      "assessment_date": "2025-09-02",
+      "days_post_op": 1,
+      "location": "midline abdominal incision",
+      "drainage": "none",
+      "erythema": "minimal periincisional",
+      "warmth": false,
+      "tenderness": "mild, expected post-op",
+      "dehiscence": false,
+      "source": "Surgical Progress Note"
+    },
+    {
+      "assessment_date": "2025-09-04",
+      "days_post_op": 3,
+      "location": "midline abdominal incision",
+      "drainage": "scant serosanguinous",
+      "erythema": "none",
+      "warmth": false,
+      "tenderness": "minimal",
+      "dehiscence": false,
+      "source": "Surgical Progress Note"
+    },
+    {
+      "assessment_date": "2025-09-12",
+      "days_post_op": 11,
+      "location": "midline abdominal incision",
+      "drainage": "purulent",
+      "drainage_description": "thick yellow-green purulent discharge",
+      "erythema": "spreading, 3cm from incision edge",
+      "warmth": true,
+      "tenderness": "significant",
+      "dehiscence": "partial superficial",
+      "source": "ED Note"
+    }
+  ],
+  "cultures": [
+    {
+      "collection_date": "2025-09-12",
+      "specimen_type": "wound_swab",
+      "specimen_location": "superficial incision",
+      "organism": "Staphylococcus aureus",
+      "organism_mrsa": false,
+      "organism_additional": "Enterococcus faecalis",
+      "susceptibilities": {
+        "oxacillin": "S",
+        "vancomycin": "S",
+        "clindamycin": "S"
+      }
+    }
+  ],
+  "ssi_type_findings": {
+    "superficial_incisional": {
+      "purulent_drainage_from_superficial": true,
+      "purulent_drainage_quote": "thick yellow-green purulent discharge from incision",
+      "organisms_from_culture": true,
+      "organism_identified": "Staphylococcus aureus, Enterococcus faecalis",
+      "pain_tenderness": true,
+      "localized_swelling": true,
+      "erythema": true,
+      "heat": true,
+      "incision_deliberately_opened": true,
+      "physician_diagnosis": true,
+      "diagnosis_quote": "Superficial SSI of abdominal incision",
+      "criteria_met": ["criterion_1_purulent_drainage", "criterion_2_positive_culture", "criterion_3_signs_plus_opened", "criterion_4_physician_diagnosis"]
+    },
+    "deep_incisional": {
+      "purulent_drainage_from_deep": false,
+      "deep_dehiscence": false,
+      "abscess_on_exam": false,
+      "abscess_on_imaging": false,
+      "abscess_on_reoperation": false,
+      "physician_diagnosis_deep": false,
+      "criteria_met": []
+    },
+    "organ_space": {
+      "purulent_drainage_from_drain": false,
+      "organisms_from_organ_space": false,
+      "abscess_on_imaging": false,
+      "abscess_on_reoperation": false,
+      "physician_diagnosis_organ_space": false,
+      "criteria_met": []
+    }
+  },
+  "signs_symptoms": {
+    "structured_data": {
+      "fever": {
+        "present": true,
+        "value": 38.3,
+        "unit": "celsius",
+        "datetime": "2025-09-12T14:00:00",
+        "source": "flowsheet_vital_signs"
+      },
+      "wbc": {
+        "value": 14.2,
+        "unit": "x10e3/uL",
+        "abnormal": true,
+        "datetime": "2025-09-12T15:00:00",
+        "source": "lab_result"
+      }
+    },
+    "note_extracted_data": {
+      "purulent_drainage": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "ED Note",
+          "datetime": "2025-09-12T14:30:00",
+          "author": "Dr. Lee",
+          "relevant_text_location": "Exam: 'Purulent drainage from mid-portion of abdominal incision'"
+        }
+      },
+      "erythema": {
+        "expected_extraction": true,
+        "expected_value": "spreading, 3cm from incision",
+        "source_note": {
+          "note_type": "ED Note",
+          "datetime": "2025-09-12T14:30:00",
+          "author": "Dr. Lee",
+          "relevant_text_location": "Exam: 'Erythema extending 3cm from incision edges'"
+        }
+      },
+      "warmth": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "ED Note",
+          "datetime": "2025-09-12T14:30:00",
+          "author": "Dr. Lee"
+        }
+      },
+      "tenderness": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "ED Note",
+          "datetime": "2025-09-12T14:30:00",
+          "author": "Dr. Lee"
+        }
+      },
+      "incision_opened": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Surgical Consult Note",
+          "datetime": "2025-09-12T16:00:00",
+          "author": "Dr. Thompson",
+          "relevant_text_location": "Procedure: 'Opened mid-portion of incision for drainage'"
+        }
+      },
+      "physician_diagnosis_ssi": {
+        "expected_extraction": true,
+        "source_note": {
+          "note_type": "Surgical Consult Note",
+          "datetime": "2025-09-12T16:00:00",
+          "author": "Dr. Thompson",
+          "relevant_text_location": "Assessment: 'Superficial SSI of abdominal incision'"
+        }
+      },
+      "antibiotic_treatment": {
+        "expected_extraction": ["cephalexin"],
+        "source_note": {
+          "note_type": "Surgical Consult Note",
+          "datetime": "2025-09-12T16:00:00",
+          "author": "Dr. Thompson"
+        }
+      }
+    }
+  },
+  "expected_classification": {
+    "nhsn_class": "SUPERFICIAL_SSI",
+    "ssi_type": "superficial_incisional",
+    "criterion_pathway": "Superficial SSI: Purulent drainage from superficial incision (Criterion 1), positive culture with organisms (Criterion 2), signs present with incision deliberately opened (Criterion 3), and physician diagnosis (Criterion 4). All four criteria met.",
+    "nhsn_reportable": true,
+    "event_date": "2025-09-12",
+    "nhsn_specific_site": null,
+    "organism_for_report": "Staphylococcus aureus"
+  },
+  "notes_files": [
+    {
+      "filename": "note_001.txt",
+      "note_type": "Operative Report",
+      "datetime": "2025-09-01T12:30:00",
+      "author": "Dr. Thompson",
+      "relevant": true
+    },
+    {
+      "filename": "note_002.txt",
+      "note_type": "Surgical Progress Note",
+      "datetime": "2025-09-02T08:00:00",
+      "author": "Dr. Thompson",
+      "relevant": true
+    },
+    {
+      "filename": "note_003.txt",
+      "note_type": "Discharge Summary",
+      "datetime": "2025-09-05T14:00:00",
+      "author": "Dr. Thompson",
+      "relevant": true
+    },
+    {
+      "filename": "note_004.txt",
+      "note_type": "ED Note",
+      "datetime": "2025-09-12T14:30:00",
+      "author": "Dr. Lee",
+      "relevant": true
+    },
+    {
+      "filename": "note_005.txt",
+      "note_type": "Surgical Consult Note",
+      "datetime": "2025-09-12T16:00:00",
+      "author": "Dr. Thompson",
+      "relevant": true
+    }
+  ],
+  "hallucination_risks": [
+    "Discharge summary on day 5 documents 'wound healing well' - LLM must not apply this to day 11 assessment.",
+    "Operative report mentions 'contamination from bowel contents' - this describes wound class, not infection.",
+    "ED note mentions 'patient had wound infection after prior surgery 5 years ago' - must not confuse with current episode.",
+    "Post-op day 1 note documents 'mild erythema' which is normal - different from day 11 'spreading erythema'."
+  ],
+  "adjudicator": "REPLACE_WITH_INITIALS",
+  "adjudication_date": "REPLACE_WITH_DATE",
+  "rationale": "64yo underwent colectomy (COLO procedure), discharged POD 4 with wound healing well. Readmitted POD 11 with fever, purulent drainage from incision, spreading erythema, warmth, and tenderness. Surgeon opened incision for drainage. Wound culture positive for S. aureus and E. faecalis. Started on cephalexin. Meets NHSN Superficial SSI criteria: within 30-day window, purulent drainage, positive culture, signs with deliberate opening, and physician diagnosis."
+}
