@@ -342,7 +342,7 @@ The system uses Large Language Models for clinical note extraction. Options:
 │  │                  (AEGIS Platform)                       │ │
 │  │   - Runs in isolated VLAN or DMZ                       │ │
 │  │   - Read-only access to clinical systems               │ │
-│  │   - No PHI stored long-term (alerts only)              │ │
+│  │   - PHI stored locally for longitudinal tracking       │ │
 │  └─────────────────────────────────────────────────────────┘│
 │                                                              │
 │  ┌─────────────────────────────────────────────────────────┐│
@@ -359,16 +359,22 @@ The system uses Large Language Models for clinical note extraction. Options:
 |-----------|-----------|---------|---------|
 | Alerts & interventions | Indefinite | Encrypted database | Program analytics, intervention tracking, outcome measurement |
 | Patient identifiers in alerts | Indefinite | Encrypted database | Longitudinal tracking, deduplication |
+| Antibiotic usage data | Indefinite | Encrypted database | Multi-year trends, stewardship program evaluation, research |
+| HAI events & classifications | Indefinite | Encrypted database | Infection rate tracking, NHSN benchmarking, outcome analysis |
+| Culture & susceptibility data | Indefinite | Encrypted database | Resistance trends, antibiogram generation, outbreak detection |
 | Extracted clinical text | Session only | Memory (not persisted) | LLM processing |
 | NHSN reports | 7 years | Encrypted files | Regulatory compliance |
 | Audit logs | 1 year minimum | Log files | Security compliance |
 
-**Rationale for Long-term Alert Storage:**
+**Rationale for Long-term Data Storage:**
 - Track antimicrobial stewardship program interventions over time
 - Measure impact of alerts on prescribing behavior
 - Identify trends in HAI rates and resistance patterns
 - Support quality improvement and research initiatives
 - Enable retrospective analysis of alert accuracy and clinical outcomes
+- Generate multi-year antibiograms and resistance trend reports
+- Longitudinal analysis of antibiotic utilization (DOT, DDD trends)
+- Research on prescribing patterns and patient outcomes
 
 ### 5.4 Compliance Considerations
 
