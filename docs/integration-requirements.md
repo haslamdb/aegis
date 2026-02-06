@@ -272,7 +272,7 @@ The system monitors ~40 antibiotic medication codes including:
 | **CPU** | 4 cores | 8 cores |
 | **RAM** | 16 GB | 32 GB |
 | **Storage** | 100 GB SSD | 250 GB SSD |
-| **OS** | Ubuntu 22.04 LTS | Same |
+| **OS** | Ubuntu 24.04 LTS | Same |
 | **Python** | 3.11+ | 3.12 |
 
 **Network Requirements:**
