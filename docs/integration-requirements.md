@@ -397,6 +397,48 @@ The system uses Large Language Models for clinical note extraction. Options:
 | **LLM** | Large Language Model - AI for text understanding | "The LLM extracts clinical findings from notes" |
 | **Inference** | Running an AI model to get predictions | "We need a GPU server for local LLM inference" |
 
+### Epic-Specific Terms
+
+| Term | Definition | Example Usage |
+|------|------------|---------------|
+| **App Orchard** | Epic's app marketplace for third-party integrations | "Do we need to register through App Orchard or is this an internal app?" |
+| **Interconnect** | Epic's web services middleware layer that hosts FHIR APIs | "The FHIR endpoint runs on Interconnect" |
+| **Caboodle** | Epic's enterprise data warehouse (newer than Clarity) | "Do you use Clarity or Caboodle for reporting?" |
+| **Hyperspace** | Epic's main clinical user interface | "This is a backend system, not a Hyperspace integration" |
+
+### Security & Authentication Terms
+
+| Term | Definition | Example Usage |
+|------|------------|---------------|
+| **Client Credentials Grant** | OAuth flow for server-to-server auth (no user involved) | "We'll use the client credentials grant, not authorization code" |
+| **JWKS** | JSON Web Key Set - public keys for JWT verification | "We'll publish our public key via a JWKS endpoint" |
+| **Scopes** | OAuth permission levels defining what data can be accessed | "We're requesting `system/*.read` scope for read-only access" |
+| **Service Account** | Non-human account for system-to-system authentication | "We need a service account for Clarity access" |
+| **BAA** | Business Associate Agreement - HIPAA requirement for vendors handling PHI | "If using cloud LLM, we need a BAA with Anthropic" |
+| **Secrets Manager** | Secure storage for credentials and API keys | "Credentials will be stored in a secrets manager, not config files" |
+
+### Integration & Infrastructure Terms
+
+| Term | Definition | Example Usage |
+|------|------------|---------------|
+| **Sandbox** | Non-production test environment with synthetic data | "Can we get sandbox access first to validate our queries?" |
+| **Rate Limiting** | API throttling to prevent overload | "What are the rate limits on the FHIR endpoint?" |
+| **Bulk FHIR** | FHIR specification for large data exports | "We don't need Bulk FHIR - our queries are per-patient" |
+| **DMZ** | Demilitarized zone - network segment between internal and external | "The app server could run in the DMZ" |
+| **USCDI** | US Core Data for Interoperability - required data elements | "We're querying standard USCDI data elements" |
+| **CDS Hooks** | Clinical Decision Support integration standard | "Future: we could expose alerts via CDS Hooks in Epic" |
+
+### Common IS Questions & Answers
+
+| Question | Answer |
+|----------|--------|
+| "Is this patient-facing?" | No, this is a backend clinical decision support system for ID/IP staff |
+| "Does it write data back to Epic?" | No, read-only access. Alerts are stored in a separate database |
+| "Where does PHI go?" | PHI stays on-premises. Only de-identified metrics could optionally be shared |
+| "What if the FHIR API is down?" | The system queues requests and retries; no clinical workflow depends on it |
+| "How do you handle PHI in the LLM?" | Local GPU inference keeps PHI on-premises; cloud option requires BAA |
+| "What's the blast radius if compromised?" | Read-only access limits risk; no ability to modify clinical data |
+
 ### Correct Phrasing for Requests
 
 **FHIR Access:**
