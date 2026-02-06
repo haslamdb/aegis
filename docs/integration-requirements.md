@@ -35,6 +35,8 @@ The application is a **clinical decision support system** that performs:
 
 **Scope Requested:** `system/*.read` (read-only access to all FHIR resources listed below)
 
+**Phased Approach:** We want to start in sandbox to test our integration against synthetic data - validating field mappings, search parameters, and data transforms before requesting production access.
+
 ### 1.2 FHIR Resources Required
 
 | Resource | Search Parameters | Use Case |
