@@ -459,7 +459,7 @@ The system uses Large Language Models for clinical note extraction. Options:
 > "We're requesting **read-only SQL access** to the **Clarity reporting database** for **batch extraction** of historical data for NHSN reporting. This is **not for real-time queries**."
 
 **Compute Resources:**
-> "The application requires a **dedicated application server** for the surveillance platform and optionally a **GPU-enabled workstation** for **local AI inference** to keep PHI on-premises."
+> "The application requires a **dedicated application server** for the surveillance platform and a **GPU-enabled workstation** for **local AI inference** to keep PHI on-premises."
 
 **Security:**
 > "We recommend deploying the application in an **isolated network segment** with **firewall rules** permitting only the required connections to clinical data sources. All credentials should be stored in a **secrets manager** or **environment variables**, not in configuration files."
