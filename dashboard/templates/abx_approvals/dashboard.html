@@ -28,10 +28,69 @@
     ]) }}
 </div>
 
-<!-- Pending Requests -->
+<!-- Pending Re-approval Requests -->
+{% set pending_reapprovals = pending_requests | selectattr('is_reapproval', 'equalto', true) | list %}
+{% if pending_reapprovals %}
 <div class="section">
-    <h2>Pending Requests</h2>
-    {% if pending_requests %}
+    <h2>
+        <span class="badge badge-warning" style="font-size: 0.7em; vertical-align: middle;">Re-approval</span>
+        Pending Re-approval Requests
+    </h2>
+    <p class="subtitle">Patients who reached their approval end date and are still on the same antibiotic</p>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Antibiotic</th>
+                <th>Approval Chain</th>
+                <th>Created</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in pending_reapprovals %}
+            <tr class="reapproval-row">
+                <td>
+                    <strong>{{ req.patient_mrn }}</strong>
+                    {% if req.patient_name %}
+                    <br><small class="text-muted">{{ req.patient_name }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <strong>{{ req.antibiotic_name }}</strong>
+                    {% if req.antibiotic_dose %}
+                    <br><small class="text-muted">{{ req.antibiotic_dose }} {{ req.antibiotic_route or '' }}</small>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-info">
+                        {% if req.approval_chain_count == 0 %}
+                            1st Re-approval
+                        {% elif req.approval_chain_count == 1 %}
+                            2nd Re-approval
+                        {% elif req.approval_chain_count == 2 %}
+                            3rd Re-approval
+                        {% else %}
+                            {{ req.approval_chain_count + 1 }}th Re-approval
+                        {% endif %}
+                    </span>
+                </td>
+                <td data-timestamp="{{ req.created_at.isoformat() }}">{{ req.created_at.strftime('%m/%d %H:%M') }}</td>
+                <td class="text-center">
+                    <a href="{{ url_for('abx_approvals.approval_detail', approval_id=req.id) }}" class="btn btn-sm btn-warning">Review</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<!-- Pending New Requests -->
+{% set pending_new = pending_requests | rejectattr('is_reapproval', 'equalto', true) | list %}
+<div class="section">
+    <h2>Pending New Requests</h2>
+    {% if pending_new %}
     <table class="data-table">
         <thead>
             <tr>
@@ -44,7 +103,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for req in pending_requests %}
+            {% for req in pending_new %}
             <tr>
                 <td>
                     <strong>{{ req.patient_mrn }}</strong>
@@ -74,7 +133,7 @@
         </tbody>
     </table>
     {% else %}
-    {{ empty_state("No pending requests. All requests have been processed.", url_for('abx_approvals.new_request'), "Create New Request") }}
+    {{ empty_state("No pending new requests. All requests have been processed.", url_for('abx_approvals.new_request'), "Create New Request") }}
     {% endif %}
 </div>
 
@@ -164,6 +223,14 @@
     border-radius: 10px;
     font-size: 0.75rem;
     font-weight: 600;
+}
+
+.reapproval-row {
+    background: #fffbeb;
+}
+
+.reapproval-row:hover {
+    background: #fef3c7;
 }
 </style>
 {% endblock %}

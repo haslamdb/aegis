@@ -76,10 +76,21 @@ Unlike system-generated alerts (bacteremia, guideline deviations), antibiotic ap
 
 | Decision | Badge | Use Case |
 |----------|-------|----------|
-| **Approved** | Green | Requested antibiotic is appropriate for the clinical situation |
-| **Changed Therapy** | Yellow | Recommend a different antibiotic (must specify alternative) |
-| **Recommend ID Consult** | Red | Complex case requiring Infectious Disease consultation |
+| **Approved** | Green | Requested antibiotic is appropriate (specify approval duration) |
+| **Suggested Alternate** | Yellow | Recommend a different antibiotic (must specify alternative) |
+| **Suggested Discontinue** | Orange | Recommend stopping the antibiotic |
+| **Requested ID Consult** | Red | Complex case requiring Infectious Disease consultation |
 | **Deferred** | Gray | Need more information; plan to call back after review |
+| **No Action Needed** | Blue | Reviewed, no changes recommended |
+| **Spoke with Team** | Purple | Discussed with care team, pending decision |
+
+### Duration Tracking (for "Approved" decisions)
+
+When selecting "Approved", you must specify an approval duration:
+- **Predefined options:** 24h, 48h, 72h, 5 days, 7 days, 10 days, 14 days
+- **Custom:** Enter any number of days (1-30)
+
+The system calculates a **planned end date** (approval date + duration + 1-day grace period) and automatically rechecks at that time to see if the patient is still on the same antibiotic.
 
 ## Clinical Context
 
@@ -212,11 +223,18 @@ POST /abx-approvals/api/abc123/decide
 | `duration_requested_hours` | int | Requested duration |
 | `prescriber_name` | string | Requesting prescriber (optional) |
 | `status` | enum | PENDING, COMPLETED |
-| `decision` | enum | approved, changed_therapy, denied, deferred |
+| `decision` | enum | approved, suggested_alternate, suggested_discontinue, requested_id_consult, deferred, no_action_needed, spoke_with_team |
 | `decision_by` | string | Reviewer who made decision |
 | `decision_at` | datetime | When decision was recorded |
 | `decision_notes` | string | Free-text notes |
-| `alternative_recommended` | string | For changed_therapy decisions |
+| `alternative_recommended` | string | For suggested_alternate decisions |
+| **`approval_duration_hours`** | **int** | **Approved duration in hours (NEW)** |
+| **`planned_end_date`** | **datetime** | **When to recheck (approval date + duration + grace) (NEW)** |
+| **`is_reapproval`** | **bool** | **Whether this is a re-approval request (NEW)** |
+| **`parent_approval_id`** | **string** | **ID of parent approval if re-approval (NEW)** |
+| **`approval_chain_count`** | **int** | **Number of times this has been re-approved (NEW)** |
+| **`recheck_status`** | **string** | **pending, completed, discontinued, extended (NEW)** |
+| **`last_recheck_date`** | **datetime** | **When last automatic recheck occurred (NEW)** |
 | `created_at` | datetime | When request was created |
 | `created_by` | string | Who created the request |
 
@@ -265,11 +283,88 @@ The module queries FHIR R4 resources for clinical context:
 6. **Use Deferred** when you need more clinical context
 7. **Recommend ID consult** for complex or failing patients
 
+## Automatic Re-approval Workflow
+
+**New Feature (2026-02-06):** The system now automatically tracks approval durations and creates re-approval requests when needed.
+
+### How It Works
+
+1. **Pharmacist approves with duration** (e.g., "approved for 3 days")
+2. **System calculates planned end date:**
+   - Approval date + duration + 1-day grace period
+   - If end date falls on weekend, check on Friday before
+3. **Automatic recheck runs 3x daily** (6am, 12pm, 6pm via cron)
+4. **At planned end date:**
+   - System queries FHIR for current medications
+   - If patient **still on same antibiotic** → creates **re-approval request**
+   - If patient **discontinued** → marks approval as complete
+
+### Re-approval Requests
+
+Re-approval requests are:
+- Marked as **re-approval** (not a new request)
+- Linked to the **parent approval** (approval chain)
+- Displayed separately on dashboard with **chain count badge** ("1st re-approval", "2nd re-approval", etc.)
+- Sent via **email notification** to ASP team
+
+### Approval Chains
+
+The system tracks sequential approvals:
+- **1st approval** → chain count = 0
+- **1st re-approval** → chain count = 1 (after recheck)
+- **2nd re-approval** → chain count = 2 (after 2nd recheck)
+- And so on...
+
+You can view the full chain by clicking through the parent approval links on detail pages.
+
+### Weekend Handling
+
+If the planned end date falls on Saturday or Sunday, the system checks on **Friday before** to alert the team in advance.
+
+### Grace Period
+
+A 1-day grace period is automatically added to all approvals to allow for order discontinuation lag time.
+
+## Notifications
+
+### Email Notifications (Re-approvals)
+
+When a re-approval request is created, an email is sent to the ASP team with:
+- Patient name and MRN
+- Location
+- Antibiotic details
+- Original approval date and reviewer
+- Previous approval duration
+- Re-approval number in chain
+- Link to review request
+
+**Future Enhancement:** Epic Secure Chat integration to notify prescribers directly (planned but not yet implemented).
+
+## Analytics & Reporting
+
+The Reports page now includes comprehensive **Re-approval Analytics**:
+
+### Key Metrics
+- **Total re-approvals** - Count of continuation requests
+- **Re-approval rate** - Percentage of all approvals that get continued
+- **Longest chain** - Maximum sequential re-approvals for any patient
+- **Average chain length** - Mean number of sequential approvals
+- **Most re-approved antibiotics** - Which antibiotics are most frequently continued
+
+### Compliance Tracking
+- **Stopped at approved duration** - Patients who discontinued on time
+- **Continued beyond duration** - Patients who remained on antibiotic
+- **Compliance rate** - Percentage who stopped as approved
+
+### Duration Metrics
+- **Average approval duration** - Mean approved duration across all requests
+- **Recheck status breakdown** - Pending, Extended, Completed
+
 ## Comparison with Other Modules
 
 | Module | Trigger | Workflow |
 |--------|---------|----------|
-| **Antibiotic Approvals** | Manual (phone call) | Pharmacist reviews and decides in real-time |
+| **Antibiotic Approvals** | Manual (phone call) | Pharmacist reviews and decides in real-time; system auto-rechecks at end of approval duration |
 | **Broad-Spectrum Alerts** | Automatic (72h threshold) | System detects, ASP reviews retrospectively |
 | **Indication Monitoring** | Automatic (missing indication) | System flags, pharmacist validates |
 

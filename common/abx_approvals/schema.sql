@@ -32,10 +32,21 @@ CREATE TABLE IF NOT EXISTS abx_approval_requests (
     -- For changed_therapy decisions
     alternative_recommended TEXT,
 
+    -- Duration tracking and re-approval
+    approval_duration_hours INTEGER,
+    planned_end_date TIMESTAMP,
+    is_reapproval BOOLEAN DEFAULT 0,
+    parent_approval_id TEXT,
+    approval_chain_count INTEGER DEFAULT 0,
+    recheck_status TEXT,  -- pending, completed, discontinued, extended
+    last_recheck_date TIMESTAMP,
+
     -- Workflow
     status TEXT DEFAULT 'pending',  -- pending, completed
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_by TEXT
+    created_by TEXT,
+
+    FOREIGN KEY (parent_approval_id) REFERENCES abx_approval_requests(id)
 );
 
 -- Indexes for common queries
@@ -44,6 +55,10 @@ CREATE INDEX IF NOT EXISTS idx_approval_status ON abx_approval_requests(status);
 CREATE INDEX IF NOT EXISTS idx_approval_created ON abx_approval_requests(created_at);
 CREATE INDEX IF NOT EXISTS idx_approval_decision ON abx_approval_requests(decision);
 CREATE INDEX IF NOT EXISTS idx_approval_antibiotic ON abx_approval_requests(antibiotic_name);
+CREATE INDEX IF NOT EXISTS idx_approval_planned_end ON abx_approval_requests(planned_end_date);
+CREATE INDEX IF NOT EXISTS idx_approval_recheck_status ON abx_approval_requests(recheck_status);
+CREATE INDEX IF NOT EXISTS idx_approval_parent ON abx_approval_requests(parent_approval_id);
+CREATE INDEX IF NOT EXISTS idx_approval_is_reapproval ON abx_approval_requests(is_reapproval);
 
 -- Audit trail for compliance
 CREATE TABLE IF NOT EXISTS abx_approval_audit (

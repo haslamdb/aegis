@@ -377,6 +377,7 @@ def api_decide(approval_id: str):
             decision_by=decision_by,
             decision_notes=data.get("decision_notes"),
             alternative_recommended=data.get("alternative_recommended"),
+            approval_duration_hours=data.get("approval_duration_hours"),
         )
 
         if success:

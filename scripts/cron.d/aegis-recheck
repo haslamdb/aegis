@@ -1,0 +1,19 @@
+# AEGIS Antibiotic Approval Recheck Cron Job
+#
+# This cron job runs the approval recheck scheduler to automatically
+# check approvals that have reached their planned end date.
+#
+# Schedule: Runs 3 times daily (6am, 12pm, 6pm)
+#
+# Installation:
+#   sudo cp /home/david/projects/aegis/scripts/cron.d/aegis-recheck /etc/cron.d/
+#   sudo chmod 644 /etc/cron.d/aegis-recheck
+#   sudo systemctl restart cron  # or crond on some systems
+#
+# Logs are written to /var/log/aegis/recheck.log
+# Make sure log directory exists:
+#   sudo mkdir -p /var/log/aegis
+#   sudo chown david:david /var/log/aegis
+
+# Run at 6am, 12pm, and 6pm every day
+0 6,12,18 * * * david /usr/bin/python3 /home/david/projects/aegis/scripts/run_approval_recheck.py >> /var/log/aegis/recheck.log 2>&1

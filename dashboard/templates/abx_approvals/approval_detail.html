@@ -16,6 +16,34 @@
 <div class="alert-detail-layout">
     <!-- Left Column: Request Details -->
     <div class="alert-detail-main">
+        <!-- Re-approval Banner -->
+        {% if approval.is_reapproval %}
+        <div class="reapproval-banner">
+            <span class="reapproval-icon">🔄</span>
+            <div>
+                <strong>Re-approval Request</strong>
+                <p>
+                    This is
+                    {% if approval.approval_chain_count == 0 %}
+                        the 1st re-approval
+                    {% elif approval.approval_chain_count == 1 %}
+                        the 2nd re-approval
+                    {% elif approval.approval_chain_count == 2 %}
+                        the 3rd re-approval
+                    {% else %}
+                        the {{ approval.approval_chain_count + 1 }}th re-approval
+                    {% endif %}
+                    for this patient.
+                    {% if approval.parent_approval_id %}
+                    <a href="{{ url_for('abx_approvals.approval_detail', approval_id=approval.parent_approval_id) }}">
+                        View previous approval →
+                    </a>
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Status Banner -->
         <div class="status-banner status-{{ approval.status }}">
             <span class="status-icon">
@@ -24,7 +52,7 @@
             <span class="status-text">
                 {% if approval.status == 'completed' %}
                     {% if approval.decision %}
-                        <span class="badge badge-lg badge-{{ 'success' if approval.decision == 'approved' else 'warning' if approval.decision == 'changed_therapy' else 'danger' if approval.decision == 'denied' else 'secondary' }}">
+                        <span class="badge badge-lg badge-{{ 'success' if approval.decision == 'approved' else 'warning' if approval.decision == 'changed_therapy' or approval.decision == 'suggested_alternate' else 'danger' if approval.decision == 'denied' or approval.decision == 'suggested_discontinue' else 'secondary' }}">
                             {{ ApprovalDecision.display_name(approval.decision) }}
                         </span>
                         by {{ approval.decision_by or 'Unknown' }}
@@ -40,6 +68,33 @@
                 {% endif %}
             </span>
         </div>
+
+        <!-- Approval Duration & Follow-up Info -->
+        {% if approval.decision == 'approved' and approval.approval_duration_hours %}
+        <div class="duration-info-card">
+            <h4>Approval Duration & Follow-up</h4>
+            {{ info_grid([
+                {'label': 'Approved Duration', 'value': ((approval.approval_duration_hours // 24)|string ~ ' days') if approval.approval_duration_hours >= 24 else (approval.approval_duration_hours|string ~ ' hours')},
+                {'label': 'Planned End Date', 'value': approval.planned_end_date.strftime('%m/%d/%Y %H:%M') if approval.planned_end_date else none},
+                {'label': 'Recheck Status', 'value': (approval.recheck_status | replace('_', ' ') | title) if approval.recheck_status else 'N/A'},
+                {'label': 'Last Recheck', 'value': approval.last_recheck_date.strftime('%m/%d/%Y %H:%M') if approval.last_recheck_date else 'Not yet checked'}
+            ]) }}
+            {% if approval.recheck_status == 'pending' %}
+            <div class="info-message">
+                Automatic recheck will occur on {{ approval.planned_end_date.strftime('%m/%d/%Y') }}
+                to see if patient is still on this antibiotic.
+            </div>
+            {% elif approval.recheck_status == 'extended' %}
+            <div class="info-message success">
+                Patient was still on antibiotic at end of approval period. A new re-approval request was created.
+            </div>
+            {% elif approval.recheck_status == 'completed' %}
+            <div class="info-message success">
+                Patient discontinued antibiotic. No further action needed.
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
 
         <!-- Patient Information -->
         <div class="alert-detail-card">
@@ -347,6 +402,39 @@
 </div>
 
 <style>
+.reapproval-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    background: #fffbeb;
+    border: 2px solid #f59e0b;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.reapproval-icon {
+    font-size: 1.5rem;
+}
+
+.reapproval-banner strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #92400e;
+}
+
+.reapproval-banner p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #78350f;
+}
+
+.reapproval-banner a {
+    color: #0369a1;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
 .status-banner {
     display: flex;
     align-items: center;
@@ -372,6 +460,36 @@
 
 .status-text {
     font-size: 0.95rem;
+}
+
+.duration-info-card {
+    background: #f0f9ff;
+    border: 1px solid #0ea5e9;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.duration-info-card h4 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #075985;
+}
+
+.info-message {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: #fef3c7;
+    border-left: 4px solid #f59e0b;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: #78350f;
+}
+
+.info-message.success {
+    background: #ecfdf5;
+    border-left-color: #10b981;
+    color: #065f46;
 }
 
 .badge-lg {

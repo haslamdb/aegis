@@ -10,18 +10,31 @@ import json
 class ApprovalDecision(Enum):
     """Possible decisions for an antibiotic approval request."""
     APPROVED = "approved"
-    CHANGED_THERAPY = "changed_therapy"
-    DENIED = "denied"
+    SUGGESTED_ALTERNATE = "suggested_alternate"
+    SUGGESTED_DISCONTINUE = "suggested_discontinue"
+    REQUESTED_ID_CONSULT = "requested_id_consult"
     DEFERRED = "deferred"  # Needs more info, will call back
+    NO_ACTION_NEEDED = "no_action_needed"
+    SPOKE_WITH_TEAM = "spoke_with_team"
+
+    # Legacy - kept for backwards compatibility
+    CHANGED_THERAPY = "changed_therapy"  # Deprecated, use SUGGESTED_ALTERNATE
+    DENIED = "denied"  # Deprecated, use SUGGESTED_DISCONTINUE
 
     @classmethod
     def display_name(cls, decision: "ApprovalDecision | str") -> str:
         """Get human-readable display name for a decision."""
         display_names = {
             cls.APPROVED: "Approved",
+            cls.SUGGESTED_ALTERNATE: "Suggested Alternate",
+            cls.SUGGESTED_DISCONTINUE: "Suggested Discontinue",
+            cls.REQUESTED_ID_CONSULT: "Requested ID Consult",
+            cls.DEFERRED: "Deferred",
+            cls.NO_ACTION_NEEDED: "No Action Needed",
+            cls.SPOKE_WITH_TEAM: "Spoke with Team",
+            # Legacy
             cls.CHANGED_THERAPY: "Changed Therapy",
             cls.DENIED: "Denied",
-            cls.DEFERRED: "Deferred",
         }
         if isinstance(decision, str):
             try:
@@ -80,6 +93,15 @@ class ApprovalRequest:
     decision_notes: str | None = None
     alternative_recommended: str | None = None
 
+    # Duration tracking and re-approval
+    approval_duration_hours: int | None = None
+    planned_end_date: datetime | None = None
+    is_reapproval: bool = False
+    parent_approval_id: str | None = None
+    approval_chain_count: int = 0
+    recheck_status: str | None = None  # pending, completed, discontinued, extended
+    last_recheck_date: datetime | None = None
+
     # Workflow
     status: str = "pending"
     created_at: datetime = field(default_factory=datetime.now)
@@ -115,6 +137,13 @@ class ApprovalRequest:
             "decision_at": self.decision_at.isoformat() if self.decision_at else None,
             "decision_notes": self.decision_notes,
             "alternative_recommended": self.alternative_recommended,
+            "approval_duration_hours": self.approval_duration_hours,
+            "planned_end_date": self.planned_end_date.isoformat() if self.planned_end_date else None,
+            "is_reapproval": self.is_reapproval,
+            "parent_approval_id": self.parent_approval_id,
+            "approval_chain_count": self.approval_chain_count,
+            "recheck_status": self.recheck_status,
+            "last_recheck_date": self.last_recheck_date.isoformat() if self.last_recheck_date else None,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "created_by": self.created_by,
@@ -153,9 +182,16 @@ class ApprovalRequest:
             decision_at=parse_datetime(row[15]),
             decision_notes=row[16],
             alternative_recommended=row[17],
-            status=row[18],
-            created_at=parse_datetime(row[19]),
-            created_by=row[20],
+            approval_duration_hours=row[18],
+            planned_end_date=parse_datetime(row[19]),
+            is_reapproval=bool(row[20]) if row[20] is not None else False,
+            parent_approval_id=row[21],
+            approval_chain_count=row[22] if row[22] is not None else 0,
+            recheck_status=row[23],
+            last_recheck_date=parse_datetime(row[24]),
+            status=row[25],
+            created_at=parse_datetime(row[26]),
+            created_by=row[27],
         )
 
 

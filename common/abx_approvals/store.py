@@ -80,6 +80,33 @@ class AbxApprovalStore:
 
         self._init_db()
 
+    @staticmethod
+    def calculate_planned_end_date(
+        approval_date: datetime,
+        duration_hours: int,
+        grace_period_days: int = 1
+    ) -> datetime:
+        """Calculate planned end date with grace period and weekend handling.
+
+        Args:
+            approval_date: When the approval was given
+            duration_hours: Approved duration in hours
+            grace_period_days: Grace period in days (default: 1)
+
+        Returns:
+            Planned end date adjusted for grace period and weekends
+        """
+        # Calculate base end date (approval date + duration + grace period)
+        end_date = approval_date + timedelta(hours=duration_hours) + timedelta(days=grace_period_days)
+
+        # If end date falls on Saturday (5) or Sunday (6), check Friday before
+        if end_date.weekday() in (5, 6):
+            # Move back to Friday
+            days_back = end_date.weekday() - 4
+            end_date = end_date - timedelta(days=days_back)
+
+        return end_date
+
     def _init_db(self) -> None:
         """Initialize database schema."""
         schema_path = Path(__file__).parent / "schema.sql"
@@ -116,6 +143,8 @@ class AbxApprovalStore:
         prescriber_pager: str | None = None,
         clinical_context: dict | None = None,
         created_by: str | None = None,
+        is_reapproval: bool = False,
+        parent_approval_id: str | None = None,
     ) -> ApprovalRequest:
         """Create a new approval request.
 
@@ -133,6 +162,8 @@ class AbxApprovalStore:
             prescriber_pager: Prescriber pager number
             clinical_context: Dict with cultures, current meds, etc.
             created_by: User creating the request
+            is_reapproval: Whether this is a re-approval request
+            parent_approval_id: ID of parent approval if this is a re-approval
 
         Returns:
             The created ApprovalRequest
@@ -140,6 +171,13 @@ class AbxApprovalStore:
         approval_id = self._generate_id()
         now = datetime.now()
         context_json = json.dumps(clinical_context) if clinical_context else None
+
+        # Calculate approval chain count if this is a re-approval
+        approval_chain_count = 0
+        if is_reapproval and parent_approval_id:
+            parent = self.get_request(parent_approval_id)
+            if parent:
+                approval_chain_count = parent.approval_chain_count + 1
 
         with self._connect() as conn:
             conn.execute(
@@ -149,35 +187,43 @@ class AbxApprovalStore:
                     antibiotic_name, antibiotic_dose, antibiotic_route,
                     indication, duration_requested_hours,
                     prescriber_name, prescriber_pager,
-                    clinical_context, status, created_at, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    clinical_context,
+                    is_reapproval, parent_approval_id, approval_chain_count,
+                    status, created_at, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     approval_id, patient_id, patient_mrn, patient_name, patient_location,
                     antibiotic_name, antibiotic_dose, antibiotic_route,
                     indication, duration_requested_hours,
                     prescriber_name, prescriber_pager,
-                    context_json, ApprovalStatus.PENDING.value, now.isoformat(), created_by
+                    context_json,
+                    is_reapproval, parent_approval_id, approval_chain_count,
+                    ApprovalStatus.PENDING.value, now.isoformat(), created_by
                 )
             )
 
             # Audit log
+            audit_details = f"Request for {antibiotic_name}"
+            if is_reapproval:
+                audit_details = f"Re-approval request for {antibiotic_name} (chain #{approval_chain_count + 1})"
+
             conn.execute(
                 """
                 INSERT INTO abx_approval_audit (approval_id, action, performed_by, performed_at, details)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (approval_id, AuditAction.CREATED.value, created_by, now.isoformat(),
-                 f"Request for {antibiotic_name}")
+                (approval_id, AuditAction.CREATED.value, created_by, now.isoformat(), audit_details)
             )
 
             conn.commit()
 
-        logger.info(f"Created approval request {approval_id} for {antibiotic_name} (patient {patient_mrn})")
+        log_msg = f"Created {'re-approval' if is_reapproval else 'approval'} request {approval_id} for {antibiotic_name} (patient {patient_mrn})"
+        logger.info(log_msg)
 
         # Log to unified metrics store
         _log_abx_activity(
-            activity_type="request_created",
+            activity_type="request_created" if not is_reapproval else "reapproval_request_created",
             entity_id=approval_id,
             entity_type="approval_request",
             action_taken="created",
@@ -186,6 +232,9 @@ class AbxApprovalStore:
             details={
                 "antibiotic": antibiotic_name,
                 "prescriber": prescriber_name,
+                "is_reapproval": is_reapproval,
+                "parent_approval_id": parent_approval_id,
+                "approval_chain_count": approval_chain_count,
             },
         )
 
@@ -203,6 +252,9 @@ class AbxApprovalStore:
             prescriber_name=prescriber_name,
             prescriber_pager=prescriber_pager,
             clinical_context=clinical_context or {},
+            is_reapproval=is_reapproval,
+            parent_approval_id=parent_approval_id,
+            approval_chain_count=approval_chain_count,
             status=ApprovalStatus.PENDING.value,
             created_at=now,
             created_by=created_by,
@@ -218,7 +270,11 @@ class AbxApprovalStore:
                        indication, duration_requested_hours,
                        prescriber_name, prescriber_pager, clinical_context,
                        decision, decision_by, decision_at, decision_notes,
-                       alternative_recommended, status, created_at, created_by
+                       alternative_recommended,
+                       approval_duration_hours, planned_end_date, is_reapproval,
+                       parent_approval_id, approval_chain_count, recheck_status,
+                       last_recheck_date,
+                       status, created_at, created_by
                 FROM abx_approval_requests WHERE id = ?
                 """,
                 (approval_id,)
@@ -236,15 +292,17 @@ class AbxApprovalStore:
         decision_by: str,
         decision_notes: str | None = None,
         alternative_recommended: str | None = None,
+        approval_duration_hours: int | None = None,
     ) -> bool:
         """Record a decision on an approval request.
 
         Args:
             approval_id: The approval request ID
-            decision: The decision (approved, changed_therapy, denied, deferred)
+            decision: The decision (approved, suggested_alternate, etc.)
             decision_by: Who made the decision
             decision_notes: Notes about the decision
-            alternative_recommended: For changed_therapy, the recommended alternative
+            alternative_recommended: For suggested_alternate, the recommended alternative
+            approval_duration_hours: For approved, the approved duration in hours
 
         Returns:
             True if decision was recorded successfully
@@ -260,18 +318,30 @@ class AbxApprovalStore:
         # Get request info for activity logging
         request = self.get_request(approval_id)
 
+        # Calculate planned_end_date if decision is "approved" and duration is provided
+        planned_end_date = None
+        recheck_status = None
+        if decision_value == ApprovalDecision.APPROVED.value and approval_duration_hours:
+            planned_end_date = self.calculate_planned_end_date(now, approval_duration_hours)
+            recheck_status = "pending"
+
         with self._connect() as conn:
             cursor = conn.execute(
                 """
                 UPDATE abx_approval_requests
                 SET decision = ?, decision_by = ?, decision_at = ?,
                     decision_notes = ?, alternative_recommended = ?,
+                    approval_duration_hours = ?, planned_end_date = ?,
+                    recheck_status = ?,
                     status = ?
                 WHERE id = ? AND status = ?
                 """,
                 (
                     decision_value, decision_by, now.isoformat(),
                     decision_notes, alternative_recommended,
+                    approval_duration_hours,
+                    planned_end_date.isoformat() if planned_end_date else None,
+                    recheck_status,
                     ApprovalStatus.COMPLETED.value,
                     approval_id, ApprovalStatus.PENDING.value
                 )
@@ -414,7 +484,11 @@ class AbxApprovalStore:
                        indication, duration_requested_hours,
                        prescriber_name, prescriber_pager, clinical_context,
                        decision, decision_by, decision_at, decision_notes,
-                       alternative_recommended, status, created_at, created_by
+                       alternative_recommended,
+                       approval_duration_hours, planned_end_date, is_reapproval,
+                       parent_approval_id, approval_chain_count, recheck_status,
+                       last_recheck_date,
+                       status, created_at, created_by
                 FROM abx_approval_requests
                 WHERE {where_clause}
                 ORDER BY created_at DESC
@@ -428,6 +502,38 @@ class AbxApprovalStore:
     def list_pending(self) -> list[ApprovalRequest]:
         """List all pending approval requests."""
         return self.list_requests(status=ApprovalStatus.PENDING)
+
+    def list_approvals_needing_recheck(self) -> list[ApprovalRequest]:
+        """List approved requests that have reached their planned_end_date and need rechecking.
+
+        Returns approvals where:
+        - recheck_status = 'pending'
+        - planned_end_date is today or in the past
+        """
+        now = datetime.now().date().isoformat()
+
+        with self._connect() as conn:
+            cursor = conn.execute(
+                """
+                SELECT id, patient_id, patient_mrn, patient_name, patient_location,
+                       antibiotic_name, antibiotic_dose, antibiotic_route,
+                       indication, duration_requested_hours,
+                       prescriber_name, prescriber_pager, clinical_context,
+                       decision, decision_by, decision_at, decision_notes,
+                       alternative_recommended,
+                       approval_duration_hours, planned_end_date, is_reapproval,
+                       parent_approval_id, approval_chain_count, recheck_status,
+                       last_recheck_date,
+                       status, created_at, created_by
+                FROM abx_approval_requests
+                WHERE recheck_status = 'pending'
+                  AND date(planned_end_date) <= ?
+                ORDER BY planned_end_date ASC
+                """,
+                (now,)
+            )
+
+            return [ApprovalRequest.from_row(tuple(row)) for row in cursor.fetchall()]
 
     def get_audit_log(self, approval_id: str) -> list[ApprovalAuditEntry]:
         """Get audit history for an approval request."""
@@ -671,6 +777,122 @@ class AbxApprovalStore:
             analytics["by_day_of_week"] = [
                 {"day": row[0], "count": row[1]} for row in cursor.fetchall()
             ]
+
+            # Re-approval metrics
+            # Total re-approval requests
+            cursor = conn.execute(
+                """
+                SELECT COUNT(*) FROM abx_approval_requests
+                WHERE created_at >= ? AND is_reapproval = 1
+                """,
+                (cutoff,)
+            )
+            analytics["total_reapprovals"] = cursor.fetchone()[0]
+
+            # Re-approval rate (percentage of all requests)
+            if analytics["total_requests"] > 0:
+                analytics["reapproval_rate"] = round(
+                    analytics["total_reapprovals"] / analytics["total_requests"] * 100, 1
+                )
+            else:
+                analytics["reapproval_rate"] = 0
+
+            # Average approval chain length
+            cursor = conn.execute(
+                """
+                SELECT AVG(approval_chain_count) FROM abx_approval_requests
+                WHERE created_at >= ? AND is_reapproval = 1
+                """,
+                (cutoff,)
+            )
+            avg_chain = cursor.fetchone()[0]
+            analytics["avg_chain_length"] = round(avg_chain, 1) if avg_chain else 0
+
+            # Max approval chain count
+            cursor = conn.execute(
+                """
+                SELECT MAX(approval_chain_count) FROM abx_approval_requests
+                WHERE created_at >= ? AND is_reapproval = 1
+                """,
+                (cutoff,)
+            )
+            max_chain = cursor.fetchone()[0]
+            analytics["max_chain_length"] = max_chain if max_chain else 0
+
+            # Most frequently re-approved antibiotics
+            cursor = conn.execute(
+                """
+                SELECT antibiotic_name, COUNT(*) as count
+                FROM abx_approval_requests
+                WHERE created_at >= ? AND is_reapproval = 1
+                GROUP BY antibiotic_name
+                ORDER BY count DESC
+                LIMIT 10
+                """,
+                (cutoff,)
+            )
+            analytics["most_reapproved_antibiotics"] = [
+                {"name": row[0], "count": row[1]}
+                for row in cursor.fetchall()
+            ]
+
+            # Recheck status breakdown
+            cursor = conn.execute(
+                """
+                SELECT recheck_status, COUNT(*) as count
+                FROM abx_approval_requests
+                WHERE created_at >= ?
+                  AND decision = 'approved'
+                  AND recheck_status IS NOT NULL
+                GROUP BY recheck_status
+                """,
+                (cutoff,)
+            )
+            analytics["recheck_status_breakdown"] = [
+                {"status": row[0], "count": row[1]}
+                for row in cursor.fetchall()
+            ]
+
+            # Average approval duration for approved requests
+            cursor = conn.execute(
+                """
+                SELECT AVG(approval_duration_hours) FROM abx_approval_requests
+                WHERE created_at >= ?
+                  AND decision = 'approved'
+                  AND approval_duration_hours IS NOT NULL
+                """,
+                (cutoff,)
+            )
+            avg_duration = cursor.fetchone()[0]
+            analytics["avg_approval_duration_hours"] = round(avg_duration) if avg_duration else None
+            if avg_duration:
+                analytics["avg_approval_duration_days"] = round(avg_duration / 24, 1)
+
+            # Compliance rate (how many actually stopped at approved duration)
+            cursor = conn.execute(
+                """
+                SELECT
+                    COUNT(CASE WHEN recheck_status = 'completed' THEN 1 END) as stopped,
+                    COUNT(CASE WHEN recheck_status = 'extended' THEN 1 END) as continued,
+                    COUNT(*) as total
+                FROM abx_approval_requests
+                WHERE created_at >= ?
+                  AND decision = 'approved'
+                  AND recheck_status IN ('completed', 'extended')
+                """,
+                (cutoff,)
+            )
+            compliance_row = cursor.fetchone()
+            if compliance_row and compliance_row[2] > 0:
+                analytics["compliance_rate"] = round(compliance_row[0] / compliance_row[2] * 100, 1)
+                analytics["compliance_stopped"] = compliance_row[0]
+                analytics["compliance_continued"] = compliance_row[1]
+                analytics["compliance_total"] = compliance_row[2]
+            else:
+                analytics["compliance_rate"] = None
+                analytics["compliance_stopped"] = 0
+                analytics["compliance_continued"] = 0
+                analytics["compliance_total"] = 0
 
             return analytics
 

@@ -134,6 +134,115 @@
     </div>
 </div>
 
+<!-- Re-approval Analytics Section -->
+<div class="section-header">
+    <h2>Re-approval Analytics</h2>
+    <p class="subtitle">Tracking continuation requests and approval durations</p>
+</div>
+
+<!-- Re-approval Stats Grid -->
+{{ stats_grid([
+    {"value": analytics.total_reapprovals, "label": "Total Re-approvals", "sublabel": "Last " ~ analytics.period_days ~ " days", "variant": "warning"},
+    {"value": (analytics.reapproval_rate|string ~ "%") if analytics.reapproval_rate else "0%", "label": "Re-approval Rate", "sublabel": "% of all requests", "variant": "info"},
+    {"value": analytics.max_chain_length, "label": "Longest Chain", "sublabel": "Max sequential approvals", "variant": "danger"},
+    {"value": analytics.avg_chain_length, "label": "Avg Chain Length", "variant": "primary"}
+]) }}
+
+<!-- Re-approval Report Grid -->
+<div class="report-grid">
+    <!-- Most Re-approved Antibiotics -->
+    <div class="report-card">
+        <h3>Most Frequently Re-approved</h3>
+        {% if analytics.most_reapproved_antibiotics %}
+        <table class="data-table compact">
+            <thead>
+                <tr>
+                    <th>Antibiotic</th>
+                    <th class="text-right">Re-approvals</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in analytics.most_reapproved_antibiotics[:5] %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td class="text-right"><span class="badge badge-warning">{{ item.count }}</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No re-approval data available.</p>
+        {% endif %}
+    </div>
+
+    <!-- Compliance Rate -->
+    <div class="report-card">
+        <h3>Approval Duration Compliance</h3>
+        {% if analytics.compliance_rate is not none %}
+        {{ metric_rows([
+            {'label': 'Stopped at Approved Duration', 'value': analytics.compliance_stopped, 'value_class': 'text-success'},
+            {'label': 'Continued Beyond Duration', 'value': analytics.compliance_continued, 'value_class': 'text-warning'},
+            {'label': 'Compliance Rate', 'value': (analytics.compliance_rate|string ~ "%"), 'value_class': 'text-primary'}
+        ]) }}
+        <div class="compliance-visual" style="margin-top: 1rem;">
+            <div class="compliance-bar">
+                <div class="compliance-stopped" style="width: {{ analytics.compliance_rate }}%;"></div>
+                <div class="compliance-continued" style="width: {{ 100 - analytics.compliance_rate }}%;"></div>
+            </div>
+            <div class="compliance-legend">
+                <span><span class="legend-dot stopped"></span> Stopped ({{ analytics.compliance_rate }}%)</span>
+                <span><span class="legend-dot continued"></span> Continued ({{ 100 - analytics.compliance_rate }}%)</span>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-muted">No compliance data available yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Average Approval Duration -->
+    <div class="report-card">
+        <h3>Average Approval Duration</h3>
+        {% if analytics.avg_approval_duration_hours %}
+        <div class="metric-display">
+            <div class="metric-value">{{ analytics.avg_approval_duration_days }} days</div>
+            <div class="metric-subtitle">({{ analytics.avg_approval_duration_hours }} hours)</div>
+        </div>
+        <p class="text-muted" style="margin-top: 1rem;">Average duration for approved requests</p>
+        {% else %}
+        <p class="text-muted">No duration data available.</p>
+        {% endif %}
+    </div>
+
+    <!-- Recheck Status Breakdown -->
+    <div class="report-card">
+        <h3>Recheck Status</h3>
+        {% if analytics.recheck_status_breakdown %}
+        <table class="data-table compact">
+            <thead>
+                <tr>
+                    <th>Status</th>
+                    <th class="text-right">Count</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in analytics.recheck_status_breakdown %}
+                <tr>
+                    <td>
+                        <span class="badge badge-{{ 'warning' if item.status == 'pending' else 'info' if item.status == 'extended' else 'success' }}">
+                            {{ item.status | replace('_', ' ') | title }}
+                        </span>
+                    </td>
+                    <td class="text-right">{{ item.count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-muted">No recheck data available.</p>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Daily Trend -->
 <div class="report-card full-width">
     <h3>Daily Request Trend</h3>
@@ -324,6 +433,88 @@
     .report-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Re-approval Analytics Section */
+.section-header {
+    margin: 3rem 0 1.5rem 0;
+}
+
+.section-header h2 {
+    margin: 0 0 0.5rem 0;
+    color: var(--color-gray-800);
+}
+
+.section-header .subtitle {
+    margin: 0;
+    color: var(--color-gray-500);
+    font-size: 0.9rem;
+}
+
+/* Compliance Visualization */
+.compliance-visual {
+    margin-top: 1rem;
+}
+
+.compliance-bar {
+    display: flex;
+    height: 30px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: var(--color-gray-200);
+}
+
+.compliance-stopped {
+    background: var(--color-success);
+    transition: width 0.3s ease;
+}
+
+.compliance-continued {
+    background: var(--color-warning);
+    transition: width 0.3s ease;
+}
+
+.compliance-legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.legend-dot.stopped {
+    background: var(--color-success);
+}
+
+.legend-dot.continued {
+    background: var(--color-warning);
+}
+
+/* Metric Display */
+.metric-display {
+    text-align: center;
+    padding: 1.5rem;
+    background: var(--color-gray-50);
+    border-radius: 8px;
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.metric-subtitle {
+    font-size: 0.875rem;
+    color: var(--color-gray-500);
+    margin-top: 0.25rem;
 }
 </style>
 {% endblock %}

@@ -192,18 +192,54 @@
                 <button type="button" class="btn btn-approve btn-block" data-decision="approved">
                     Approve
                 </button>
-                <button type="button" class="btn btn-change btn-block" data-decision="changed_therapy">
-                    Change Therapy
+                <button type="button" class="btn btn-change btn-block" data-decision="suggested_alternate">
+                    Suggest Alternate
                 </button>
-                <button type="button" class="btn btn-deny btn-block" data-decision="denied">
-                    Recommend ID Consult
+                <button type="button" class="btn btn-deny btn-block" data-decision="suggested_discontinue">
+                    Suggest Discontinue
+                </button>
+                <button type="button" class="btn btn-idconsult btn-block" data-decision="requested_id_consult">
+                    Request ID Consult
                 </button>
                 <button type="button" class="btn btn-defer btn-block" data-decision="deferred">
                     Defer (Need More Info)
                 </button>
+                <button type="button" class="btn btn-noaction btn-block" data-decision="no_action_needed">
+                    No Action Needed
+                </button>
+                <button type="button" class="btn btn-spokewith btn-block" data-decision="spoke_with_team">
+                    Spoke with Team
+                </button>
             </div>
 
-            <div id="alternative-section" class="hidden">
+            <div id="approval-duration-section" class="hidden" style="margin-top: 1rem;">
+                <div class="form-group">
+                    <label for="approval_duration">Approval Duration *</label>
+                    <select id="approval_duration" name="approval_duration" class="form-control">
+                        <option value="">Select duration...</option>
+                        <option value="24">24 hours (1 day)</option>
+                        <option value="48">48 hours (2 days)</option>
+                        <option value="72">72 hours (3 days)</option>
+                        <option value="120">5 days</option>
+                        <option value="168">7 days</option>
+                        <option value="240">10 days</option>
+                        <option value="336">14 days</option>
+                        <option value="custom">Custom (enter days)</option>
+                    </select>
+                </div>
+                <div id="custom-duration-section" class="hidden form-group">
+                    <label for="custom_duration_days">Custom Duration (days) *</label>
+                    <input type="number"
+                           id="custom_duration_days"
+                           name="custom_duration_days"
+                           min="1"
+                           max="30"
+                           placeholder="Enter number of days"
+                           class="form-control">
+                </div>
+            </div>
+
+            <div id="alternative-section" class="hidden" style="margin-top: 1rem;">
                 <div class="form-group">
                     <label for="alternative_recommended">Recommended Alternative *</label>
                     <input type="text"
@@ -248,14 +284,32 @@ document.querySelectorAll('.decision-buttons button').forEach(btn => {
         });
         this.classList.add('selected');
 
-        // Show/hide alternative field
+        // Show/hide duration selector for "approved" decision
+        const durationSection = document.getElementById('approval-duration-section');
+        if (decision === 'approved') {
+            durationSection.classList.remove('hidden');
+        } else {
+            durationSection.classList.add('hidden');
+        }
+
+        // Show/hide alternative field for "suggested_alternate" decision
         const altSection = document.getElementById('alternative-section');
-        if (decision === 'changed_therapy') {
+        if (decision === 'suggested_alternate' || decision === 'changed_therapy') {
             altSection.classList.remove('hidden');
         } else {
             altSection.classList.add('hidden');
         }
     });
+});
+
+// Custom duration handler
+document.getElementById('approval_duration').addEventListener('change', function() {
+    const customSection = document.getElementById('custom-duration-section');
+    if (this.value === 'custom') {
+        customSection.classList.remove('hidden');
+    } else {
+        customSection.classList.add('hidden');
+    }
 });
 
 // Submit handler
@@ -284,7 +338,27 @@ document.getElementById('submit-btn').addEventListener('click', async function()
         return;
     }
 
-    if (selectedDecision === 'changed_therapy') {
+    // Validate decision-specific fields
+    if (selectedDecision === 'approved') {
+        const durationSelect = document.getElementById('approval_duration').value;
+        if (!durationSelect) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Please select an approval duration.</div>';
+            resultDiv.classList.remove('hidden');
+            document.getElementById('approval_duration').focus();
+            return;
+        }
+        if (durationSelect === 'custom') {
+            const customDays = document.getElementById('custom_duration_days').value;
+            if (!customDays || customDays < 1) {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Please enter a valid custom duration (days).</div>';
+                resultDiv.classList.remove('hidden');
+                document.getElementById('custom_duration_days').focus();
+                return;
+            }
+        }
+    }
+
+    if (selectedDecision === 'suggested_alternate' || selectedDecision === 'changed_therapy') {
         const alt = document.getElementById('alternative_recommended').value.trim();
         if (!alt) {
             resultDiv.innerHTML = '<div class="alert alert-danger">Please enter the recommended alternative.</div>';
@@ -326,14 +400,27 @@ document.getElementById('submit-btn').addEventListener('click', async function()
             return;
         }
 
+        // Calculate approval_duration_hours if decision is "approved"
+        let approvalDurationHours = null;
+        if (selectedDecision === 'approved') {
+            const durationSelect = document.getElementById('approval_duration').value;
+            if (durationSelect === 'custom') {
+                const customDays = parseInt(document.getElementById('custom_duration_days').value);
+                approvalDurationHours = customDays * 24;
+            } else {
+                approvalDurationHours = parseInt(durationSelect);
+            }
+        }
+
         // Then record the decision
         const decisionData = {
             decision: selectedDecision,
             reviewer: reviewer,
             decision_notes: document.getElementById('decision_notes').value.trim() || null,
-            alternative_recommended: selectedDecision === 'changed_therapy'
+            alternative_recommended: (selectedDecision === 'suggested_alternate' || selectedDecision === 'changed_therapy')
                 ? document.getElementById('alternative_recommended').value.trim()
                 : null,
+            approval_duration_hours: approvalDurationHours,
         };
 
         const decideResponse = await fetch('/abx-approvals/api/' + createResult.approval_id + '/decide', {
@@ -408,6 +495,10 @@ document.getElementById('submit-btn').addEventListener('click', async function()
     border: 2px solid var(--color-warning);
 }
 
+.btn-change:hover {
+    background: #ca8a04;
+}
+
 .btn-deny {
     background: var(--color-danger);
     color: white;
@@ -418,6 +509,16 @@ document.getElementById('submit-btn').addEventListener('click', async function()
     background: #b91c1c;
 }
 
+.btn-idconsult {
+    background: #f97316;
+    color: white;
+    border: 2px solid #f97316;
+}
+
+.btn-idconsult:hover {
+    background: #ea580c;
+}
+
 .btn-defer {
     background: var(--color-gray-400);
     color: white;
@@ -426,6 +527,26 @@ document.getElementById('submit-btn').addEventListener('click', async function()
 
 .btn-defer:hover {
     background: var(--color-gray-500);
+}
+
+.btn-noaction {
+    background: #6366f1;
+    color: white;
+    border: 2px solid #6366f1;
+}
+
+.btn-noaction:hover {
+    background: #4f46e5;
+}
+
+.btn-spokewith {
+    background: #8b5cf6;
+    color: white;
+    border: 2px solid #8b5cf6;
+}
+
+.btn-spokewith:hover {
+    background: #7c3aed;
 }
 
 .decision-buttons button.selected {

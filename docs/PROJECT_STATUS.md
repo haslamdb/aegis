@@ -11,7 +11,20 @@
 **Phase:** Active Development
 **Priority:** High - Primary clinical informatics project
 
-### Recent Work (2026-02-05)
+### Recent Work (2026-02-06)
+- **ABX Approvals: Duration Tracking & Auto Re-approval** (MAJOR FEATURE)
+  - Added approval duration tracking with predefined and custom durations
+  - Implemented automatic recheck scheduler (runs 3x daily via cron)
+  - Creates re-approval requests when patients still on antibiotics at end of approval period
+  - Tracks approval chains (1st, 2nd, 3rd re-approvals, etc.)
+  - Weekend handling (checks Friday before if end date falls on weekend)
+  - Enhanced dashboard to separate re-approvals from new requests
+  - Added comprehensive re-approval analytics (re-approval rate, compliance tracking, chain metrics)
+  - Email notifications for re-approval requests
+  - Updated decision types (7 options now: Approved, Suggested Alternate, Suggested Discontinue, etc.)
+  - Created cron job setup and validation scripts
+
+### Previous Work (2026-02-05)
 - Verified CDI detection module is complete (all 31 tests passing)
 - Updated project status to reflect CAUTI, VAE, and CDI completion
 - All 5 HAI types now implemented: CLABSI, SSI, CAUTI, VAE, CDI
@@ -52,6 +65,7 @@
 | **Guideline Adherence** | Complete | 7 bundles including febrile infant |
 | **Surgical Prophylaxis** | Core Complete | Dashboard pending |
 | **Antimicrobial Usage Alerts** | Functional | Duration monitoring |
+| **ABX Approvals** | Production | Duration tracking, auto re-approval, chain tracking |
 | **NHSN Reporting (AU/AR)** | Functional | CSV export working |
 | **Outbreak Detection** | Demo Ready | Clustering algorithm working |
 | **Dashboard** | Production | Running at aegis-asp.com |
@@ -106,6 +120,7 @@
 
 | Date | Work Completed |
 |------|----------------|
+| 2026-02-06 | **ABX Approvals Duration Tracking & Auto Re-approval:** Added approval duration tracking, automatic recheck scheduler (cron 3x/day), re-approval request creation, approval chain tracking, weekend handling, enhanced analytics, email notifications, 7 decision types, dashboard separation of re-approvals, comprehensive testing docs |
 | 2026-02-05 | Verified CDI module complete (all 31 tests pass), updated status to reflect all 5 HAI types now complete |
 | 2026-02-04 | LLM extraction validation framework, gold standard templates for all HAI types + indication, validation runner, prioritized roadmap |
 | 2026-02-03 | FHIR conversion for HAI module, IS integration requirements doc, multi-site analytics roadmap, GitHub Project Tracker setup, planned module issues created |
