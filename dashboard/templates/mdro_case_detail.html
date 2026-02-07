@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% from "macros/components.html" import info_grid, alert_box, detail_list, status_badge, reviewer_input %}
+{% from "_components/detail_layout.html" import detail_page, detail_sidebar, detail_main, detail_sidebar_section, detail_main_section, detail_action_bar, detail_field, detail_field_badge, detail_status_bar %}
+{% from "macros/components.html" import alert_box, reviewer_input %}
 
 {% block title %}MDRO Case Detail - {{ app_name }}{% endblock %}
 
@@ -14,45 +15,56 @@
 {% endif %}
 
 {% if case %}
-<div class="alert-detail-layout mdro-case-page">
-    <!-- Left Column: Case Information -->
-    <div class="alert-detail-main">
-        <!-- Status Badge -->
-        <div class="candidate-status-bar">
-            <span class="badge badge-mdro badge-{{ case.mdro_type.value }} badge-lg">
-                {{ case.mdro_type.value | upper }}
-            </span>
-            {% if case.transmission_status.value == 'healthcare' %}
-            <span class="badge badge-warning badge-lg">Healthcare Onset</span>
-            {% elif case.transmission_status.value == 'community' %}
-            <span class="badge badge-info badge-lg">Community Onset</span>
-            {% elif case.transmission_status.value == 'possible_transmission' %}
-            <span class="badge badge-danger badge-lg">Possible Transmission</span>
-            {% endif %}
-        </div>
+{# Status badges above the two-column layout #}
+{% call detail_status_bar() %}
+    <span class="badge badge-mdro badge-{{ case.mdro_type.value }} badge-lg">
+        {{ case.mdro_type.value | upper }}
+    </span>
+    {% if case.transmission_status.value == 'healthcare' %}
+    <span class="badge badge-warning badge-lg">Healthcare Onset</span>
+    {% elif case.transmission_status.value == 'community' %}
+    <span class="badge badge-info badge-lg">Community Onset</span>
+    {% elif case.transmission_status.value == 'possible_transmission' %}
+    <span class="badge badge-danger badge-lg">Possible Transmission</span>
+    {% endif %}
+{% endcall %}
 
-        <!-- Patient Information -->
-        <div class="alert-detail-card">
-            <h3>Patient Information</h3>
-            {{ detail_list([
-                {'label': 'Patient Name', 'value': case.patient_name or 'Unknown', 'bold': true},
-                {'label': 'MRN', 'value': case.patient_mrn, 'class': 'patient-mrn'},
-                {'label': 'Unit', 'value': case.unit or 'Unknown'},
-                {'label': 'Facility', 'value': case.location or 'Unknown'}
-            ]) }}
+{% call detail_page() %}
+    {# Left Column: Patient Context #}
+    {% call detail_sidebar() %}
+        {% call detail_sidebar_section("Patient Information") %}
+            {{ detail_field("Patient Name", '<strong>' ~ (case.patient_name or 'Unknown') ~ '</strong>') }}
+            {{ detail_field("MRN", '<span class="patient-mrn">' ~ case.patient_mrn ~ '</span>') }}
+            {{ detail_field("Unit", case.unit or 'Unknown') }}
+            {{ detail_field("Facility", case.location or 'Unknown') }}
+        {% endcall %}
 
-            <h3>Culture Information</h3>
-            {{ detail_list([
-                {'label': 'Organism', 'value': case.organism, 'bold': true},
-                {'label': 'Specimen Type', 'value': case.specimen_type or 'Unknown'},
-                {'label': 'Culture Date', 'value': case.culture_date.strftime('%m/%d/%Y %H:%M')},
-                {'label': 'Culture ID', 'value': case.culture_id}
-            ]) }}
-        </div>
+        {% call detail_sidebar_section("Culture Information") %}
+            {{ detail_field("Organism", '<strong>' ~ case.organism ~ '</strong>') }}
+            {{ detail_field("Specimen Type", case.specimen_type or 'Unknown') }}
+            {{ detail_field("Culture Date", case.culture_date.strftime('%m/%d/%Y %H:%M')) }}
+            {{ detail_field("Culture ID", case.culture_id) }}
+        {% endcall %}
 
-        <!-- Resistance Profile / Susceptibility -->
-        <div class="alert-detail-card">
-            <h3>Resistance Profile</h3>
+        {% call detail_sidebar_section("Timing & Classification") %}
+            {{ detail_field("Admission Date", case.admission_date.strftime('%m/%d/%Y') if case.admission_date else 'Unknown') }}
+            {{ detail_field("Days Since Admission", case.days_since_admission if case.days_since_admission is not none else 'Unknown') }}
+            {{ detail_field("Transmission", case.transmission_status.value | replace('_', ' ') | title) }}
+            {{ detail_field("New Isolation", 'Yes' if case.is_new else 'No (Previously known)') }}
+        {% endcall %}
+
+        {% call detail_sidebar_section("Case Status") %}
+            {{ detail_field("Prior MDRO History", 'Yes' if case.prior_history else 'No') }}
+            {{ detail_field("Created", case.created_at.strftime('%m/%d/%Y %H:%M')) }}
+            {{ detail_field("Reviewed By", case.reviewed_by or 'Not yet reviewed') }}
+            {{ detail_field("Reviewed At", case.reviewed_at.strftime('%m/%d/%Y %H:%M') if case.reviewed_at else '---') }}
+        {% endcall %}
+    {% endcall %}
+
+    {# Right Column: Details + Actions #}
+    {% call detail_main() %}
+        {# Resistance Profile #}
+        {% call detail_main_section("Resistance Profile") %}
             <div class="classification-summary">
                 <div class="classification-badge-row">
                     <span class="badge badge-mdro badge-{{ case.mdro_type.value }} badge-lg">
@@ -120,31 +132,11 @@
                 </table>
             </div>
             {% endif %}
-        </div>
+        {% endcall %}
 
-        <!-- Timing & Classification -->
-        <div class="alert-detail-card">
-            <h3>Timing & Classification</h3>
-            {{ info_grid([
-                {'label': 'Admission Date', 'value': case.admission_date.strftime('%m/%d/%Y') if case.admission_date else 'Unknown'},
-                {'label': 'Days Since Admission', 'value': case.days_since_admission if case.days_since_admission is not none else 'Unknown'},
-                {'label': 'Transmission Status', 'value': case.transmission_status.value | replace('_', ' ') | title},
-                {'label': 'New Isolation', 'value': 'Yes' if case.is_new else 'No (Previously known)'}
-            ]) }}
-
-            <h3>Case Status</h3>
-            {{ info_grid([
-                {'label': 'Prior MDRO History', 'value': 'Yes' if case.prior_history else 'No'},
-                {'label': 'Created', 'value': case.created_at.strftime('%m/%d/%Y %H:%M')},
-                {'label': 'Reviewed By', 'value': case.reviewed_by or 'Not yet reviewed'},
-                {'label': 'Reviewed At', 'value': case.reviewed_at.strftime('%m/%d/%Y %H:%M') if case.reviewed_at else '-'}
-            ]) }}
-        </div>
-
-        <!-- Prior Cases for Patient -->
+        {# Prior MDRO History #}
         {% if prior_cases %}
-        <div class="alert-detail-card">
-            <h3>Patient's Prior MDRO History</h3>
+        {% call detail_main_section("Patient's Prior MDRO History") %}
             <table class="data-table">
                 <thead>
                     <tr>
@@ -171,15 +163,12 @@
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
+        {% endcall %}
         {% endif %}
-    </div>
 
-    <!-- Right Column: IP Review Actions -->
-    <div class="alert-detail-sidebar">
+        {# IP Review Actions #}
         {% if not case.reviewed_by %}
-        <div class="action-card">
-            <h3>Classification Decision</h3>
+        {% call detail_main_section("Classification Decision") %}
             {{ reviewer_input() }}
 
             <div class="classification-buttons-single">
@@ -200,59 +189,60 @@
                     Needs More Info
                 </button>
             </div>
+        {% endcall %}
+
+        {# Override Reason (shown when disagreeing with system classification) #}
+        <div class="detail-section hidden" id="override-reason-section">
+            <h3 class="detail-section__title" style="color: var(--color-warning-dark, #92400e);">Override Reason</h3>
+            <div class="detail-section__content">
+                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
+                    You are overriding the automated MDRO classification. Please indicate why:
+                </p>
+                <div class="form-group">
+                    <select id="override-reason-category" class="form-control">
+                        <option value="">-- Select a reason --</option>
+                        <option value="susceptibility_error">Susceptibility Interpretation Error</option>
+                        <option value="organism_misidentified">Organism Misidentified</option>
+                        <option value="contamination">Contamination / Not True Infection</option>
+                        <option value="duplicate_culture">Duplicate Culture</option>
+                        <option value="criteria_not_met">MDRO Criteria Not Met</option>
+                        <option value="clinical_context">Clinical Context (colonization only)</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label for="override-notes" style="font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; display: block;">Additional notes (optional)</label>
+                    <textarea id="override-notes" rows="2" class="form-textarea" placeholder="Any additional context about this override..."></textarea>
+                </div>
+
+                <div class="override-submit-container">
+                    <button type="button" class="btn btn-override-submit" id="submit-override-btn">
+                        Submit Override
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <!-- Override Reason (shown when disagreeing with system classification) -->
-        <div class="action-card hidden" id="override-reason-section">
-            <h3>Override Reason</h3>
-            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.75rem;">
-                You are overriding the automated MDRO classification. Please indicate why:
-            </p>
-            <div class="form-group">
-                <select id="override-reason-category" class="form-control">
-                    <option value="">-- Select a reason --</option>
-                    <option value="susceptibility_error">Susceptibility Interpretation Error</option>
-                    <option value="organism_misidentified">Organism Misidentified</option>
-                    <option value="contamination">Contamination / Not True Infection</option>
-                    <option value="duplicate_culture">Duplicate Culture</option>
-                    <option value="criteria_not_met">MDRO Criteria Not Met</option>
-                    <option value="clinical_context">Clinical Context (colonization only)</option>
-                    <option value="other">Other</option>
-                </select>
-            </div>
-
-            <!-- Override Notes -->
-            <div class="form-group" style="margin-top: 1rem;">
-                <label for="override-notes" style="font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; display: block;">Additional notes (optional)</label>
-                <textarea id="override-notes" rows="2" class="form-textarea" placeholder="Any additional context about this override..."></textarea>
-            </div>
-
-            <!-- Submit Override Button -->
-            <div class="override-submit-container">
-                <button type="button" class="btn btn-override-submit" id="submit-override-btn">
-                    Submit Override
-                </button>
-            </div>
-        </div>
-
-        <div class="action-card" id="notes-section">
-            <h3>Notes</h3>
-            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">
-                Add any notes about your classification decision (optional)
-            </p>
-            <div class="form-group">
-                <textarea name="notes" id="notes" rows="3" class="form-textarea" placeholder="Additional details..."></textarea>
+        <div class="detail-section" id="notes-section">
+            <h3 class="detail-section__title">Notes</h3>
+            <div class="detail-section__content">
+                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 0.5rem;">
+                    Add any notes about your classification decision (optional)
+                </p>
+                <div class="form-group">
+                    <textarea name="notes" id="notes" rows="3" class="form-textarea" placeholder="Additional details..."></textarea>
+                </div>
             </div>
         </div>
 
         <div id="review-result" class="hidden"></div>
 
         {% else %}
-        <!-- Already reviewed -->
-        <div class="action-card resolved-card">
-            <h3>Classification Complete</h3>
+        {# Already reviewed #}
+        {% call detail_main_section("Classification Complete") %}
             <div class="review-complete review-confirmed">
-                <span class="status-icon">✓</span>
+                <span class="status-icon">&#x2713;</span>
                 <strong>Case Reviewed</strong>
                 <p>This case has been reviewed by {{ case.reviewed_by }}.</p>
                 <p class="reviewer-info">{{ case.reviewed_at.strftime('%Y-%m-%d %H:%M') if case.reviewed_at else '' }}</p>
@@ -260,18 +250,15 @@
                 <p class="review-notes-display">{{ case.notes }}</p>
                 {% endif %}
             </div>
-        </div>
+        {% endcall %}
         {% endif %}
 
-        <div class="action-card">
-            <h3>Quick Links</h3>
-            <div class="quick-links-vertical">
-                <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-outline btn-block">&larr; Back to Cases</a>
-                <a href="{{ url_for('mdro_surveillance.dashboard') }}" class="btn btn-outline btn-block">Dashboard</a>
-            </div>
-        </div>
-    </div>
-</div>
+        {% call detail_action_bar() %}
+            <a href="{{ url_for('mdro_surveillance.cases_list') }}" class="btn btn-secondary">&larr; Back to Cases</a>
+            <a href="{{ url_for('mdro_surveillance.dashboard') }}" class="btn btn-secondary">Dashboard</a>
+        {% endcall %}
+    {% endcall %}
+{% endcall %}
 
 <script>
 (function() {
@@ -426,65 +413,12 @@
 </script>
 
 <style>
-/* MDRO Case Page - Matching guideline-adherence styling */
+/* MDRO Case Detail - Page-specific styles only */
+/* Layout is handled by shared detail-layout CSS in style.css */
 
-.alert-detail-layout {
-    display: grid;
-    grid-template-columns: 1fr 350px;
-    gap: 1.5rem;
-    align-items: start;
-}
-
-@media (max-width: 1024px) {
-    .alert-detail-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-.alert-detail-main {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.alert-detail-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    position: sticky;
-    top: 1rem;
-}
-
-.alert-detail-card,
-.action-card {
-    background: var(--color-white);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    box-shadow: var(--shadow-md);
-}
-
-.alert-detail-card h3,
-.action-card h3 {
-    font-size: 0.875rem;
-    color: var(--color-primary-dark);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+.patient-mrn {
+    font-family: monospace;
     font-weight: 600;
-    border-bottom: 2px solid var(--color-primary);
-    padding-bottom: 0.5rem;
-    margin-bottom: 1rem;
-    margin-top: 0;
-}
-
-.alert-detail-card h3:not(:first-child) {
-    margin-top: 1.5rem;
-}
-
-.mdro-case-page .candidate-status-bar {
-    margin-bottom: 1rem;
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
 }
 
 .badge-lg {
@@ -558,17 +492,9 @@
     text-transform: uppercase;
 }
 
-.susc-row.susc-r {
-    background: rgba(220, 53, 69, 0.05);
-}
-
-.susc-row.susc-s {
-    background: rgba(25, 135, 84, 0.05);
-}
-
-.susc-row.susc-i {
-    background: rgba(255, 193, 7, 0.1);
-}
+.susc-row.susc-r { background: rgba(220, 53, 69, 0.05); }
+.susc-row.susc-s { background: rgba(25, 135, 84, 0.05); }
+.susc-row.susc-i { background: rgba(255, 193, 7, 0.1); }
 
 .susc-result {
     display: flex;
@@ -587,20 +513,9 @@
     font-size: 0.75rem;
 }
 
-.susc-badge.susc-r {
-    background: #dc3545;
-    color: white;
-}
-
-.susc-badge.susc-s {
-    background: #198754;
-    color: white;
-}
-
-.susc-badge.susc-i {
-    background: #ffc107;
-    color: black;
-}
+.susc-badge.susc-r { background: #dc3545; color: white; }
+.susc-badge.susc-s { background: #198754; color: white; }
+.susc-badge.susc-i { background: #ffc107; color: black; }
 
 .susc-text {
     color: var(--color-gray-600);
@@ -613,7 +528,7 @@
     font-family: monospace;
 }
 
-/* Classification Buttons - Matching HAI Detection */
+/* Classification Buttons */
 .classification-buttons-single {
     margin-top: 1rem;
 }
@@ -698,15 +613,10 @@
     background: var(--color-warning-light);
 }
 
-#override-reason-section h3 {
-    color: var(--color-warning-dark, #92400e);
-}
-
 #override-reason-section .form-control {
     background: white;
 }
 
-/* Override Submit Button */
 .override-submit-container {
     margin-top: 1.25rem;
     padding-top: 1rem;
@@ -726,13 +636,8 @@
     transition: background 0.15s, transform 0.1s;
 }
 
-.btn-override-submit:hover {
-    background: #b45309;
-}
-
-.btn-override-submit:active {
-    transform: scale(0.98);
-}
+.btn-override-submit:hover { background: #b45309; }
+.btn-override-submit:active { transform: scale(0.98); }
 
 /* Review Complete States */
 .review-complete {
@@ -754,8 +659,20 @@
 
 .review-confirmed .status-icon { color: #10b981; }
 
-.resolved-card {
-    border: 1px solid var(--color-gray-200);
+.review-notes-display {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: rgba(255,255,255,0.5);
+    border-radius: var(--radius-sm);
+    font-style: italic;
+    font-size: 0.875rem;
+    text-align: left;
+}
+
+.reviewer-info {
+    font-size: 0.85rem;
+    color: var(--color-gray-500);
+    margin-top: 0.5rem;
 }
 
 /* Form Controls */
@@ -777,29 +694,6 @@
 
 .form-textarea {
     resize: vertical;
-}
-
-.review-notes-display {
-    margin-top: 1rem;
-    padding: 0.75rem;
-    background: rgba(255,255,255,0.5);
-    border-radius: var(--radius-sm);
-    font-style: italic;
-    font-size: 0.875rem;
-    text-align: left;
-}
-
-.reviewer-info {
-    font-size: 0.85rem;
-    color: var(--color-gray-500);
-    margin-top: 0.5rem;
-}
-
-/* Quick links in sidebar */
-.quick-links-vertical {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
 }
 
 /* Alerts */
@@ -825,14 +719,14 @@
     display: none !important;
 }
 
-/* Data table in card */
-.mdro-case-page .data-table {
-    width: 100%;
-    margin-top: 0.5rem;
-}
-
 .text-muted {
     color: var(--color-gray-500);
+}
+
+/* Data table in detail */
+.data-table {
+    width: 100%;
+    margin-top: 0.5rem;
 }
 </style>
 

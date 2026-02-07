@@ -20,6 +20,7 @@ from .models import (
     DailySnapshot,
     InterventionTarget,
     InterventionOutcome,
+    ProviderSession,
 )
 
 logger = logging.getLogger(__name__)
@@ -1096,3 +1097,186 @@ class MetricsStore:
             }
 
             return summary
+
+    # =========================================================================
+    # Provider Session Operations
+    # =========================================================================
+
+    def start_session(
+        self,
+        provider_id: str | None = None,
+        provider_name: str | None = None,
+    ) -> str:
+        """Start a new provider review session.
+
+        Returns the session_id (UUID).
+        """
+        import uuid
+        session_id = str(uuid.uuid4())
+        now = datetime.now()
+
+        with self._connect() as conn:
+            conn.execute(
+                """INSERT INTO provider_sessions
+                (session_id, provider_id, provider_name, started_at, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'active', ?, ?)""",
+                (session_id, provider_id, provider_name, now.isoformat(), now.isoformat(), now.isoformat())
+            )
+        return session_id
+
+    def update_session(
+        self,
+        session_id: str,
+        action_type: str,
+        module: str | None = None,
+        location_code: str | None = None,
+    ) -> None:
+        """Update a session with a new action.
+
+        Increments counters and updates module/location tracking.
+        """
+        now = datetime.now()
+
+        with self._connect() as conn:
+            # Get current session data
+            row = conn.execute(
+                "SELECT * FROM provider_sessions WHERE session_id = ?",
+                (session_id,)
+            ).fetchone()
+
+            if not row:
+                return
+
+            # Update counts
+            updates = {"total_actions": (row["total_actions"] or 0) + 1}
+
+            if action_type in ("review", "acknowledgment", "resolution", "view"):
+                updates["alerts_reviewed"] = (row["alerts_reviewed"] or 0) + 1
+            if action_type == "acknowledgment":
+                updates["alerts_acknowledged"] = (row["alerts_acknowledged"] or 0) + 1
+            if action_type == "resolution":
+                updates["alerts_resolved"] = (row["alerts_resolved"] or 0) + 1
+            if action_type == "review":
+                updates["cases_reviewed"] = (row["cases_reviewed"] or 0) + 1
+
+            # Update module breakdown
+            module_breakdown = json.loads(row["module_breakdown"]) if row["module_breakdown"] else {}
+            if module:
+                module_breakdown[module] = module_breakdown.get(module, 0) + 1
+
+            # Update modules accessed
+            modules_accessed = json.loads(row["modules_accessed"]) if row["modules_accessed"] else []
+            if module and module not in modules_accessed:
+                modules_accessed.append(module)
+
+            # Update locations covered
+            locations_covered = json.loads(row["locations_covered"]) if row["locations_covered"] else []
+            if location_code and location_code not in locations_covered:
+                locations_covered.append(location_code)
+
+            conn.execute(
+                """UPDATE provider_sessions SET
+                    alerts_reviewed = ?, alerts_acknowledged = ?,
+                    alerts_resolved = ?, cases_reviewed = ?,
+                    total_actions = ?, module_breakdown = ?,
+                    modules_accessed = ?, locations_covered = ?,
+                    updated_at = ?
+                WHERE session_id = ?""",
+                (
+                    updates.get("alerts_reviewed", row["alerts_reviewed"] or 0),
+                    updates.get("alerts_acknowledged", row["alerts_acknowledged"] or 0),
+                    updates.get("alerts_resolved", row["alerts_resolved"] or 0),
+                    updates.get("cases_reviewed", row["cases_reviewed"] or 0),
+                    updates["total_actions"],
+                    json.dumps(module_breakdown),
+                    json.dumps(modules_accessed),
+                    json.dumps(locations_covered),
+                    now.isoformat(),
+                    session_id,
+                )
+            )
+
+    def end_session(self, session_id: str) -> None:
+        """End a provider review session and calculate duration."""
+        now = datetime.now()
+
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT started_at FROM provider_sessions WHERE session_id = ?",
+                (session_id,)
+            ).fetchone()
+
+            if not row:
+                return
+
+            started_at = datetime.fromisoformat(row["started_at"])
+            duration = (now - started_at).total_seconds() / 60.0
+
+            conn.execute(
+                """UPDATE provider_sessions SET
+                    ended_at = ?, duration_minutes = ?,
+                    status = 'completed', updated_at = ?
+                WHERE session_id = ?""",
+                (now.isoformat(), round(duration, 1), now.isoformat(), session_id)
+            )
+
+    def get_session(self, session_id: str) -> dict | None:
+        """Get a session by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM provider_sessions WHERE session_id = ?",
+                (session_id,)
+            ).fetchone()
+            if not row:
+                return None
+            return self._session_row_to_dict(row)
+
+    def get_session_stats(self, days: int = 30) -> dict:
+        """Get session statistics for reporting."""
+        cutoff = (date.today() - timedelta(days=days)).isoformat()
+
+        with self._connect() as conn:
+            # Total sessions
+            total = conn.execute(
+                "SELECT COUNT(*) FROM provider_sessions WHERE date(started_at) >= ?",
+                (cutoff,)
+            ).fetchone()[0]
+
+            # Completed sessions with duration
+            completed = conn.execute(
+                """SELECT COUNT(*) as cnt,
+                    AVG(duration_minutes) as avg_duration,
+                    AVG(alerts_reviewed) as avg_alerts,
+                    AVG(total_actions) as avg_actions
+                FROM provider_sessions
+                WHERE status = 'completed' AND date(started_at) >= ?""",
+                (cutoff,)
+            ).fetchone()
+
+            return {
+                "total_sessions": total,
+                "completed_sessions": completed["cnt"] or 0,
+                "avg_duration_minutes": round(completed["avg_duration"], 1) if completed["avg_duration"] is not None else None,
+                "avg_alerts_per_session": round(completed["avg_alerts"], 1) if completed["avg_alerts"] is not None else None,
+                "avg_actions_per_session": round(completed["avg_actions"], 1) if completed["avg_actions"] is not None else None,
+            }
+
+    def _session_row_to_dict(self, row) -> dict:
+        """Convert a session row to a dictionary."""
+        return {
+            "session_id": row["session_id"],
+            "provider_id": row["provider_id"],
+            "provider_name": row["provider_name"],
+            "started_at": row["started_at"],
+            "ended_at": row["ended_at"],
+            "duration_minutes": row["duration_minutes"],
+            "alerts_reviewed": row["alerts_reviewed"],
+            "alerts_acknowledged": row["alerts_acknowledged"],
+            "alerts_resolved": row["alerts_resolved"],
+            "cases_reviewed": row["cases_reviewed"],
+            "total_actions": row["total_actions"],
+            "module_breakdown": json.loads(row["module_breakdown"]) if row["module_breakdown"] else {},
+            "modules_accessed": json.loads(row["modules_accessed"]) if row["modules_accessed"] else [],
+            "locations_covered": json.loads(row["locations_covered"]) if row["locations_covered"] else [],
+            "status": row["status"],
+        }

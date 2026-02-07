@@ -652,3 +652,47 @@ class InterventionOutcome:
             created_at=parse_datetime(row["created_at"]),
             updated_at=parse_datetime(row["updated_at"]),
         )
+
+
+@dataclass
+class ProviderSession:
+    """Tracks a provider's review session."""
+    id: int | None = None
+    session_id: str = ""
+    provider_id: str | None = None
+    provider_name: str | None = None
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    duration_minutes: float | None = None
+    alerts_reviewed: int = 0
+    alerts_acknowledged: int = 0
+    alerts_resolved: int = 0
+    cases_reviewed: int = 0
+    total_actions: int = 0
+    module_breakdown: dict = field(default_factory=dict)
+    modules_accessed: list[str] = field(default_factory=list)
+    locations_covered: list[str] = field(default_factory=list)
+    status: str = "active"
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "provider_id": self.provider_id,
+            "provider_name": self.provider_name,
+            "started_at": self.started_at.isoformat() if self.started_at else None,
+            "ended_at": self.ended_at.isoformat() if self.ended_at else None,
+            "duration_minutes": self.duration_minutes,
+            "alerts_reviewed": self.alerts_reviewed,
+            "alerts_acknowledged": self.alerts_acknowledged,
+            "alerts_resolved": self.alerts_resolved,
+            "cases_reviewed": self.cases_reviewed,
+            "total_actions": self.total_actions,
+            "module_breakdown": self.module_breakdown,
+            "modules_accessed": self.modules_accessed,
+            "locations_covered": self.locations_covered,
+            "status": self.status,
+        }

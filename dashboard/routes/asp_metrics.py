@@ -10,7 +10,7 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-from flask import Blueprint, render_template, request, jsonify, Response
+from flask import Blueprint, current_app, render_template, request, jsonify, Response
 
 from dashboard.utils.api_response import api_success, api_error
 
@@ -481,6 +481,58 @@ def intervention_detail(session_id: int):
 
 
 # =============================================================================
+# LLM Performance Dashboard
+# =============================================================================
+
+@asp_metrics_bp.route("/llm-performance")
+def llm_performance():
+    """Cross-module LLM extraction performance dashboard."""
+    days = request.args.get("days", 30, type=int)
+    module_filter = request.args.get("module")
+    try:
+        from common.llm_tracking import LLMDecisionTracker
+        tracker = LLMDecisionTracker()
+
+        # Overall accuracy stats
+        overall_stats = tracker.get_accuracy_stats(module=module_filter, days=days)
+
+        # Module comparison
+        module_comparison = tracker.get_module_comparison(days=days)
+
+        # Confidence calibration
+        calibration = tracker.get_confidence_calibration(module=module_filter, days=days)
+
+        # Recent overrides
+        overrides = tracker.list_decisions(
+            module=module_filter,
+            outcome="overridden",
+            limit=20,
+        )
+
+        return render_template(
+            "asp_metrics_llm_performance.html",
+            stats=overall_stats,
+            module_comparison=module_comparison,
+            calibration=calibration,
+            recent_overrides=overrides,
+            current_days=days,
+            current_module=module_filter,
+        )
+    except Exception as e:
+        current_app.logger.error(f"Error loading LLM performance: {e}")
+        return render_template(
+            "asp_metrics_llm_performance.html",
+            stats={"total_reviewed": 0, "acceptance_rate": None, "override_rate": None, "override_reasons": {}},
+            module_comparison=[],
+            calibration=[],
+            recent_overrides=[],
+            current_days=days,
+            current_module=module_filter,
+            error=str(e),
+        )
+
+
+# =============================================================================
 # API Endpoints
 # =============================================================================
 
@@ -542,6 +594,21 @@ def api_activity_summary():
         return api_success(data=summary)
     except Exception as e:
         logger.error(f"Error in activity summary API: {e}")
+        return api_error(str(e), 500)
+
+
+@asp_metrics_bp.route("/api/llm-stats")
+def api_llm_stats():
+    """Get LLM accuracy stats as JSON."""
+    try:
+        from common.llm_tracking import LLMDecisionTracker
+        tracker = LLMDecisionTracker()
+        days = int(request.args.get("days", "30"))
+        module = request.args.get("module")
+
+        stats = tracker.get_accuracy_stats(module=module, days=days)
+        return api_success(data=stats)
+    except Exception as e:
         return api_error(str(e), 500)
 
 

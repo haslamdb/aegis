@@ -248,3 +248,43 @@ CREATE TABLE IF NOT EXISTS intervention_outcomes (
 CREATE INDEX IF NOT EXISTS idx_outcome_target ON intervention_outcomes(target_id);
 CREATE INDEX IF NOT EXISTS idx_outcome_session ON intervention_outcomes(session_id);
 CREATE INDEX IF NOT EXISTS idx_outcome_improvement ON intervention_outcomes(is_improvement);
+
+-- Provider review sessions - groups activities into logical sessions
+CREATE TABLE IF NOT EXISTS provider_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Session identification
+    session_id TEXT NOT NULL UNIQUE,   -- UUID for the session
+    provider_id TEXT,                  -- Badge ID or user identifier
+    provider_name TEXT,
+
+    -- Session timing
+    started_at TIMESTAMP NOT NULL,
+    ended_at TIMESTAMP,
+    duration_minutes REAL,            -- Calculated from started_at to ended_at
+
+    -- Activity counts
+    alerts_reviewed INTEGER DEFAULT 0,
+    alerts_acknowledged INTEGER DEFAULT 0,
+    alerts_resolved INTEGER DEFAULT 0,
+    cases_reviewed INTEGER DEFAULT 0,
+    total_actions INTEGER DEFAULT 0,
+
+    -- Module breakdown (JSON)
+    module_breakdown TEXT,            -- JSON: {"asp_alerts": 5, "hai": 3, ...}
+
+    -- Session metadata
+    modules_accessed TEXT,            -- JSON array of module names accessed
+    locations_covered TEXT,           -- JSON array of location codes
+
+    -- Status
+    status TEXT NOT NULL DEFAULT 'active',  -- active, completed, abandoned
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_provider ON provider_sessions(provider_id);
+CREATE INDEX IF NOT EXISTS idx_session_started ON provider_sessions(started_at);
+CREATE INDEX IF NOT EXISTS idx_session_status ON provider_sessions(status);

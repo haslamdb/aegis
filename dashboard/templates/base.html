@@ -122,6 +122,7 @@
             <a href="{{ url_for('asp_metrics.targets') }}" {% if request.endpoint and 'target' in request.endpoint %}class="active"{% endif %}>Targets</a>
             <a href="{{ url_for('asp_metrics.trends') }}" {% if request.endpoint == 'asp_metrics.trends' %}class="active"{% endif %}>Trends</a>
             <a href="{{ url_for('asp_metrics.interventions') }}" {% if request.endpoint and 'intervention' in request.endpoint %}class="active"{% endif %}>Interventions</a>
+            <a href="{{ url_for('asp_metrics.llm_performance') }}" {% if request.endpoint == 'asp_metrics.llm_performance' %}class="active"{% endif %}>LLM Performance</a>
             <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
             {% elif is_abx_approvals %}
             <!-- ABX Approvals Navigation -->

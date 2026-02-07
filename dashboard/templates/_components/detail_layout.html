@@ -1,0 +1,106 @@
+{#
+Standardized two-column detail page layout.
+
+Usage:
+    {% from "_components/detail_layout.html" import detail_page, detail_sidebar, detail_main, detail_sidebar_section, detail_main_section, detail_action_bar, detail_field, detail_field_badge, detail_status_bar, detail_timeline, timeline_entry %}
+
+    {% call detail_page() %}
+        {% call detail_sidebar() %}
+            {% call detail_sidebar_section("Patient Information") %}
+                {{ detail_field("MRN", patient_mrn) }}
+                {{ detail_field("Name", patient_name) }}
+            {% endcall %}
+        {% endcall %}
+        {% call detail_main() %}
+            {% call detail_main_section("Details") %}
+                ... content ...
+            {% endcall %}
+            {% call detail_action_bar() %}
+                <button>Acknowledge</button>
+            {% endcall %}
+        {% endcall %}
+    {% endcall %}
+#}
+
+{% macro detail_page() %}
+<div class="detail-layout">
+    {{ caller() }}
+</div>
+{% endmacro %}
+
+{% macro detail_sidebar() %}
+<aside class="detail-layout__sidebar">
+    {{ caller() }}
+</aside>
+{% endmacro %}
+
+{% macro detail_main() %}
+<div class="detail-layout__main">
+    {{ caller() }}
+</div>
+{% endmacro %}
+
+{% macro detail_sidebar_section(title) %}
+<div class="detail-section">
+    <h3 class="detail-section__title">{{ title }}</h3>
+    <div class="detail-section__content">
+        {{ caller() }}
+    </div>
+</div>
+{% endmacro %}
+
+{% macro detail_main_section(title, id="") %}
+<div class="detail-section" {% if id %}id="{{ id }}"{% endif %}>
+    <h3 class="detail-section__title">{{ title }}</h3>
+    <div class="detail-section__content">
+        {{ caller() }}
+    </div>
+</div>
+{% endmacro %}
+
+{% macro detail_action_bar() %}
+<div class="detail-action-bar">
+    {{ caller() }}
+</div>
+{% endmacro %}
+
+{% macro detail_field(label, value, empty_text="---") %}
+<div class="detail-field">
+    <span class="detail-field__label">{{ label }}:</span>
+    <span class="detail-field__value">{{ value if value else empty_text }}</span>
+</div>
+{% endmacro %}
+
+{% macro detail_field_badge(label, badge_html) %}
+<div class="detail-field">
+    <span class="detail-field__label">{{ label }}:</span>
+    <span class="detail-field__value">{{ badge_html }}</span>
+</div>
+{% endmacro %}
+
+{# Status bar for displaying badges at the top of a detail page #}
+{% macro detail_status_bar() %}
+<div class="detail-status-bar">
+    {{ caller() }}
+</div>
+{% endmacro %}
+
+{# Timeline component for audit logs and event history #}
+{% macro detail_timeline() %}
+<div class="detail-timeline">
+    {{ caller() }}
+</div>
+{% endmacro %}
+
+{# Individual timeline entry #}
+{% macro timeline_entry(time, action, actor="", details="") %}
+<div class="detail-timeline__entry">
+    <div class="detail-timeline__marker"></div>
+    <div class="detail-timeline__content">
+        <div class="detail-timeline__time">{{ time }}</div>
+        <div class="detail-timeline__action">{{ action }}</div>
+        {% if actor %}<div class="detail-timeline__actor">{{ actor }}</div>{% endif %}
+        {% if details %}<div class="detail-timeline__details">{{ details }}</div>{% endif %}
+    </div>
+</div>
+{% endmacro %}

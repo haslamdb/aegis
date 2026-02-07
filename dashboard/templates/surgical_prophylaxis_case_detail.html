@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_components/detail_layout.html" import detail_page, detail_sidebar, detail_main, detail_sidebar_section, detail_main_section, detail_action_bar, detail_field, detail_field_badge %}
 
 {% block title %}Case {{ case.case_id }} - {{ app_name }}{% endblock %}
 
@@ -10,206 +11,107 @@
     </div>
 </div>
 
-<div class="case-layout">
-    <!-- Case Info -->
-    <div class="section case-info">
-        <h2>Case Information</h2>
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">Case ID</span>
-                <span class="info-value">{{ case.case_id }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Patient MRN</span>
-                <span class="info-value patient-mrn">{{ case.patient_mrn }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Encounter</span>
-                <span class="info-value">{{ case.encounter_id or '-' }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Procedure</span>
-                <span class="info-value">{{ case.procedure_description or '-' }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Category</span>
-                <span class="info-value">{{ case.procedure_category|replace('_', ' ')|title if case.procedure_category else '-' }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">CPT Codes</span>
-                <span class="info-value">{{ case.cpt_codes|join(', ') if case.cpt_codes else '-' }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Surgeon</span>
-                <span class="info-value">{{ case.surgeon_name or '-' }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Location</span>
-                <span class="info-value">{{ case.location or '-' }}</span>
-            </div>
-        </div>
+{% call detail_page() %}
+    {# Left Column: Patient Context #}
+    {% call detail_sidebar() %}
+        {% call detail_sidebar_section("Patient Information") %}
+            {{ detail_field("Patient MRN", '<span class="patient-mrn">' ~ case.patient_mrn ~ '</span>') }}
+            {{ detail_field("Case ID", case.case_id) }}
+            {{ detail_field("Encounter", case.encounter_id or '-') }}
+            {{ detail_field("Weight", case.patient_weight_kg ~ ' kg') }}
+            {{ detail_field("Age", case.patient_age_years|round(1) ~ ' years') }}
+        {% endcall %}
 
-        <h3>Timing</h3>
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">Scheduled OR</span>
-                <span class="info-value">{{ case.scheduled_or_time[:16] if case.scheduled_or_time else '-' }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Actual Incision</span>
-                <span class="info-value">{{ case.actual_incision_time[:16] if case.actual_incision_time else '-' }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Surgery End</span>
-                <span class="info-value">{{ case.surgery_end_time[:16] if case.surgery_end_time else '-' }}</span>
-            </div>
-        </div>
+        {% call detail_sidebar_section("Patient Factors") %}
+            {{ detail_field("Emergency", 'Yes' if case.is_emergency else 'No') }}
+            {{ detail_field("Beta-Lactam Allergy", 'Yes' if case.has_beta_lactam_allergy else 'No') }}
+            {{ detail_field("MRSA Colonized", 'Yes' if case.mrsa_colonized else 'No') }}
+        {% endcall %}
 
-        <h3>Patient Factors</h3>
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">Weight</span>
-                <span class="info-value">{{ case.patient_weight_kg }} kg</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Age</span>
-                <span class="info-value">{{ case.patient_age_years|round(1) }} years</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Emergency</span>
-                <span class="info-value">{{ 'Yes' if case.is_emergency else 'No' }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Beta-Lactam Allergy</span>
-                <span class="info-value">{{ 'Yes' if case.has_beta_lactam_allergy else 'No' }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">MRSA Colonized</span>
-                <span class="info-value">{{ 'Yes' if case.mrsa_colonized else 'No' }}</span>
-            </div>
-        </div>
-    </div>
+        {% call detail_sidebar_section("Timing") %}
+            {{ detail_field("Scheduled OR", case.scheduled_or_time[:16] if case.scheduled_or_time else '-') }}
+            {{ detail_field("Actual Incision", case.actual_incision_time[:16] if case.actual_incision_time else '-') }}
+            {{ detail_field("Surgery End", case.surgery_end_time[:16] if case.surgery_end_time else '-') }}
+        {% endcall %}
+    {% endcall %}
 
-    <!-- Evaluation Results -->
-    {% if evaluation %}
-    <div class="section evaluation-results">
-        <h2>Compliance Evaluation</h2>
+    {# Right Column: Procedure Details + Evaluation #}
+    {% call detail_main() %}
+        {% call detail_main_section("Procedure Details") %}
+            {{ detail_field("Procedure", case.procedure_description or '-') }}
+            {{ detail_field("Category", case.procedure_category|replace('_', ' ')|title if case.procedure_category else '-') }}
+            {{ detail_field("CPT Codes", case.cpt_codes|join(', ') if case.cpt_codes else '-') }}
+            {{ detail_field("Surgeon", case.surgeon_name or '-') }}
+            {{ detail_field("Location", case.location or '-') }}
+        {% endcall %}
 
-        <div class="eval-summary">
-            <div class="eval-score">
-                {% if evaluation.excluded %}
-                <span class="score-value excluded">N/A</span>
-                <span class="score-label">Excluded</span>
-                {% else %}
-                <span class="score-value {% if evaluation.compliance_score >= 90 %}success{% elif evaluation.compliance_score >= 70 %}warning{% else %}danger{% endif %}">
-                    {{ evaluation.compliance_score|round(0)|int }}%
-                </span>
-                <span class="score-label">Compliance Score</span>
-                {% endif %}
-            </div>
-            <div class="eval-meta">
-                {% if evaluation.excluded %}
-                <p><strong>Exclusion Reason:</strong> {{ evaluation.exclusion_reason }}</p>
-                {% else %}
-                <p><strong>Bundle Compliant:</strong> {{ 'Yes' if evaluation.bundle_compliant else 'No' }}</p>
-                <p><strong>Elements Met:</strong> {{ evaluation.elements_met }}/{{ evaluation.elements_total }}</p>
-                {% endif %}
-                <p><strong>Evaluated:</strong> {{ evaluation.evaluation_time[:16] if evaluation.evaluation_time else '-' }}</p>
-            </div>
-        </div>
-
-        {% if not evaluation.excluded %}
-        <h3>Element Results</h3>
-        <div class="element-results">
-            {% for elem in evaluation.elements %}
-            <div class="element-row">
-                <div class="element-status">
-                    {% if elem.status == 'met' %}
-                    <span class="status-icon success">&#x2713;</span>
-                    {% elif elem.status == 'not_met' %}
-                    <span class="status-icon danger">&#x2717;</span>
-                    {% elif elem.status == 'n/a' %}
-                    <span class="status-icon neutral">-</span>
+        {# Compliance Evaluation #}
+        {% if evaluation %}
+        {% call detail_main_section("Compliance Evaluation") %}
+            <div class="eval-summary">
+                <div class="eval-score">
+                    {% if evaluation.excluded %}
+                    <span class="score-value excluded">N/A</span>
+                    <span class="score-label">Excluded</span>
                     {% else %}
-                    <span class="status-icon neutral">?</span>
+                    <span class="score-value {% if evaluation.compliance_score >= 90 %}success{% elif evaluation.compliance_score >= 70 %}warning{% else %}danger{% endif %}">
+                        {{ evaluation.compliance_score|round(0)|int }}%
+                    </span>
+                    <span class="score-label">Compliance Score</span>
                     {% endif %}
                 </div>
-                <div class="element-info">
-                    <span class="element-name">{{ elem.name }}</span>
-                    <span class="element-details">{{ elem.details or '-' }}</span>
+                <div class="eval-meta">
+                    {% if evaluation.excluded %}
+                    <p><strong>Exclusion Reason:</strong> {{ evaluation.exclusion_reason }}</p>
+                    {% else %}
+                    <p><strong>Bundle Compliant:</strong> {{ 'Yes' if evaluation.bundle_compliant else 'No' }}</p>
+                    <p><strong>Elements Met:</strong> {{ evaluation.elements_met }}/{{ evaluation.elements_total }}</p>
+                    {% endif %}
+                    <p><strong>Evaluated:</strong> {{ evaluation.evaluation_time[:16] if evaluation.evaluation_time else '-' }}</p>
                 </div>
             </div>
-            {% endfor %}
-        </div>
+
+            {% if not evaluation.excluded %}
+            <h4 class="sp-element-results-title">Element Results</h4>
+            <div class="element-results">
+                {% for elem in evaluation.elements %}
+                <div class="element-row">
+                    <div class="element-status">
+                        {% if elem.status == 'met' %}
+                        <span class="status-icon success">&#x2713;</span>
+                        {% elif elem.status == 'not_met' %}
+                        <span class="status-icon danger">&#x2717;</span>
+                        {% elif elem.status == 'n/a' %}
+                        <span class="status-icon neutral">-</span>
+                        {% else %}
+                        <span class="status-icon neutral">?</span>
+                        {% endif %}
+                    </div>
+                    <div class="element-info">
+                        <span class="element-name">{{ elem.name }}</span>
+                        <span class="element-details">{{ elem.details or '-' }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endcall %}
+        {% else %}
+        {% call detail_main_section("Compliance Evaluation") %}
+            <div class="empty-state">
+                <p>No evaluation available for this case.</p>
+            </div>
+        {% endcall %}
         {% endif %}
-    </div>
-    {% else %}
-    <div class="section">
-        <h2>Compliance Evaluation</h2>
-        <div class="empty-state">
-            <p>No evaluation available for this case.</p>
-        </div>
-    </div>
-    {% endif %}
-</div>
+
+        {% call detail_action_bar() %}
+            <a href="{{ url_for('surgical_prophylaxis.case_list') }}" class="btn btn-secondary">Back to Cases</a>
+        {% endcall %}
+    {% endcall %}
+{% endcall %}
 
 <style>
-.case-layout {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-}
-
-@media (max-width: 1024px) {
-    .case-layout {
-        grid-template-columns: 1fr;
-    }
-}
-
-.section {
-    background: var(--color-white);
-    border-radius: var(--radius-lg);
-    padding: 1.5rem;
-    box-shadow: var(--shadow-md);
-}
-
-.section h2 {
-    margin-top: 0;
-    margin-bottom: 1rem;
-    font-size: 1.25rem;
-    color: var(--color-gray-800);
-}
-
-.section h3 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.75rem;
-    font-size: 1rem;
-    color: var(--color-gray-700);
-}
-
-.info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 1rem;
-}
-
-.info-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.info-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--color-gray-500);
-    text-transform: uppercase;
-}
-
-.info-value {
-    font-size: 0.875rem;
-    color: var(--color-gray-800);
-}
+/* Surgical Prophylaxis Detail - Page-specific styles */
 
 .patient-mrn {
     font-family: monospace;
@@ -254,6 +156,16 @@
 .eval-meta p {
     margin: 0.5rem 0;
     font-size: 0.875rem;
+}
+
+.sp-element-results-title {
+    margin-top: 1rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-gray-600);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .element-results {

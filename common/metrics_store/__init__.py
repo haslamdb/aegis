@@ -16,6 +16,7 @@ from .models import (
     DailySnapshot,
     InterventionTarget,
     InterventionOutcome,
+    ProviderSession,
 )
 from .store import MetricsStore
 from .aggregator import MetricsAggregator, LocationScore, ServiceScore, ResolutionPatterns
@@ -33,6 +34,7 @@ __all__ = [
     "DailySnapshot",
     "InterventionTarget",
     "InterventionOutcome",
+    "ProviderSession",
     "MetricsStore",
     "MetricsAggregator",
     "LocationScore",
