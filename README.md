@@ -29,14 +29,20 @@ The landing page provides access to the following modules:
 
 | Section | URL | Description |
 |---------|-----|-------------|
+| **ABX Approvals** | [/abx-approvals/](https://aegis-asp.com/abx-approvals/) | Phone-based antibiotic approval workflow with duration tracking and auto re-approval |
 | **ASP Alerts** | [/asp-alerts/](https://aegis-asp.com/asp-alerts/) | Antimicrobial stewardship alerts (bacteremia, usage, indications) |
-| **Antibiotic Approvals** | [/abx-approvals/](https://aegis-asp.com/abx-approvals/) | Phone-based antibiotic approval workflow with clinical context |
-| **HAI Detection** | [/hai-detection/](https://aegis-asp.com/hai-detection/) | CLABSI and SSI candidate screening with IP review workflow |
+| **Drug-Bug Mismatch** | [/drug-bug-mismatch/](https://aegis-asp.com/drug-bug-mismatch/) | Real-time therapy-organism mismatch detection |
+| **Antibiotic Indications** | [/abx-indications/](https://aegis-asp.com/abx-indications/) | ICD-10 based antibiotic appropriateness classification |
+| **HAI Detection** | [/hai-detection/](https://aegis-asp.com/hai-detection/) | All 5 HAI types: CLABSI, SSI, CAUTI, VAE, CDI |
+| **MDRO Surveillance** | [/mdro-surveillance/](https://aegis-asp.com/mdro-surveillance/) | Multi-drug resistant organism tracking |
+| **Outbreak Detection** | [/outbreak-detection/](https://aegis-asp.com/outbreak-detection/) | Cluster detection and investigation |
 | **NHSN Reporting** | [/nhsn-reporting/](https://aegis-asp.com/nhsn-reporting/) | AU, AR, and HAI data aggregation with NHSN submission |
+| **Surgical Prophylaxis** | [/surgical-prophylaxis/](https://aegis-asp.com/surgical-prophylaxis/) | Perioperative antibiotic compliance evaluation |
 | **Guideline Adherence** | [/guideline-adherence/](https://aegis-asp.com/guideline-adherence/) | Bundle compliance monitoring (Sepsis, Febrile Infant, CAP, etc.) |
-| **Surgical Prophylaxis** | [/surgical-prophylaxis/](https://aegis-asp.com/surgical-prophylaxis/) | Surgical prophylaxis compliance (coming soon) |
+| **Action Analytics** | [/action-analytics/](https://aegis-asp.com/action-analytics/) | Cross-module ASP/IP action tracking and workload analysis |
+| **Dashboards** | [/dashboards/](https://aegis-asp.com/dashboards/) | Analytics dashboards for trends and operational insights |
 
-The demo environment includes synthetic patient data for testing alert, HAI detection, guideline adherence, and NHSN reporting workflows.
+The demo environment includes synthetic patient data for testing all module workflows.
 
 ## Architecture
 
@@ -45,14 +51,19 @@ aegis/
 ├── common/                         # Shared infrastructure
 │   ├── channels/                   # Email, Teams webhooks
 │   ├── alert_store/                # Persistent alert tracking (SQLite)
-│   └── abx_approvals/              # Antibiotic approval request storage
-├── dashboard/                      # Web dashboard for alert management
+│   ├── abx_approvals/              # Antibiotic approval request storage
+│   └── metrics_store/              # Provider activity, sessions, daily snapshots
+├── dashboard/                      # Web dashboard (13 modules)
 ├── asp-bacteremia-alerts/          # Blood culture coverage monitoring
 ├── antimicrobial-usage-alerts/     # Broad-spectrum usage monitoring
 ├── guideline-adherence/            # Real-time guideline bundle monitoring
 ├── surgical-prophylaxis/           # Surgical prophylaxis compliance
-├── hai-detection/                  # HAI candidate detection, LLM extraction, IP review
+├── hai-detection/                  # HAI candidate detection (5 types), LLM extraction, IP review
 ├── nhsn-reporting/                 # AU/AR reporting, NHSN submission
+├── drug-bug-mismatch/              # Therapy-organism mismatch detection
+├── mdro-surveillance/              # Multi-drug resistant organism tracking
+├── outbreak-detection/             # Cluster detection and investigation
+├── validation/                     # LLM extraction validation framework
 ├── scripts/                        # Demo and utility scripts
 └── docs/                           # Documentation
 ```
@@ -113,9 +124,12 @@ Phone-based antibiotic approval workflow for pharmacists handling prospective re
 - **Clinical context display** - MDR history, drug allergies, renal function
 - Current antibiotics and recent culture susceptibilities
 - Allergy-aware susceptibility flagging
-- Decision tracking (Approved, Changed Therapy, Deny, Defer)
+- Duration tracking with predefined and custom approval periods
+- Automatic re-approval workflow (cron-based scheduler, 3x daily)
+- Approval chain tracking (1st, 2nd, 3rd re-approvals)
+- Decision tracking (7 types: Approved, Suggested Alternate, Suggested Discontinue, etc.)
 - Audit trail for compliance reporting
-- Analytics dashboard with approval metrics
+- Analytics dashboard with approval and re-approval metrics
 
 **Clinical Alerts:**
 | Alert Type | Description |
@@ -190,9 +204,9 @@ Automated monitoring of surgical antimicrobial prophylaxis compliance following 
 Healthcare-Associated Infection (HAI) candidate detection, LLM-assisted classification, and IP review workflow. Uses rule-based screening combined with LLM fact extraction and deterministic NHSN rules to identify HAI candidates.
 
 **Features:**
-- **CLABSI detection** per CDC/NHSN surveillance criteria
-- **SSI detection** with Superficial, Deep, and Organ/Space classification
-- Clinical note retrieval from FHIR or Clarity
+- **All 5 HAI types** - CLABSI, SSI, CAUTI, VAE, CDI per CDC/NHSN surveillance criteria
+- SSI with Superficial, Deep, and Organ/Space classification
+- FHIR-preferred data sourcing with Clarity fallback (configurable per data type)
 - Local Ollama LLM extraction (PHI-safe, no BAA required)
 - **LLM extracts facts, rules apply logic** - Separation ensures auditability
 - Dashboard integration for IP review workflow
@@ -218,16 +232,22 @@ NHSN data aggregation and submission including Antibiotic Use (AU), Antimicrobia
 
 ### dashboard
 
-Web-based dashboard providing a unified interface for all AEGIS modules. The landing page at `/` provides navigation to four main sections:
+Web-based dashboard providing a unified interface for all AEGIS modules. The landing page at `/` provides navigation to 13 modules:
 
 **Sections:**
+- **ABX Approvals** (`/abx-approvals/`) - Approval workflow with duration tracking and auto re-approval
 - **ASP Alerts** (`/asp-alerts/`) - Antimicrobial stewardship alert management
-- **Antibiotic Approvals** (`/abx-approvals/`) - Phone-based approval workflow with clinical context
-- **HAI Detection** (`/hai-detection/`) - CLABSI and SSI candidate screening and IP review workflow
+- **Drug-Bug Mismatch** (`/drug-bug-mismatch/`) - Therapy-organism mismatch detection
+- **Antibiotic Indications** (`/abx-indications/`) - ICD-10 appropriateness classification
+- **HAI Detection** (`/hai-detection/`) - All 5 HAI types with IP review workflow
+- **MDRO Surveillance** (`/mdro-surveillance/`) - Multi-drug resistant organism tracking
+- **Outbreak Detection** (`/outbreak-detection/`) - Cluster detection and investigation
 - **NHSN Reporting** (`/nhsn-reporting/`) - AU, AR, and HAI data aggregation with NHSN submission
+- **Surgical Prophylaxis** (`/surgical-prophylaxis/`) - Perioperative antibiotic compliance
 - **Guideline Adherence** (`/guideline-adherence/`) - Bundle compliance monitoring and metrics
-- **Surgical Prophylaxis** (`/surgical-prophylaxis/`) - Surgical prophylaxis compliance (coming soon)
-- **Dashboards** (`/dashboards/`) - Analytics dashboards (coming soon)
+- **Action Analytics** (`/action-analytics/`) - Cross-module ASP/IP action tracking
+- **Dashboards** (`/dashboards/`) - Analytics dashboards and trends
+- **Model Training** (`/dashboards/model-training`) - LLM training data collection progress
 
 **Features:**
 - Active and historical alert views with filtering
@@ -261,10 +281,11 @@ The [National Healthcare Safety Network (NHSN)](https://www.cdc.gov/nhsn/) is th
 
 | HAI Type | Status | Description |
 |----------|--------|-------------|
-| **CLABSI** | Implemented | Central Line-Associated Bloodstream Infection |
-| **SSI** | Implemented | Surgical Site Infection (Superficial, Deep, Organ/Space) |
-| **CAUTI** | Planned | Catheter-Associated Urinary Tract Infection |
-| **VAE** | Planned | Ventilator-Associated Events |
+| **CLABSI** | Complete | Central Line-Associated Bloodstream Infection |
+| **SSI** | Complete | Surgical Site Infection (Superficial, Deep, Organ/Space) |
+| **CAUTI** | Complete | Catheter-Associated Urinary Tract Infection |
+| **VAE** | Complete | Ventilator-Associated Events |
+| **CDI** | Complete | Clostridioides difficile Infection |
 
 ### How It Works
 
@@ -287,7 +308,7 @@ The [National Healthcare Safety Network (NHSN)](https://www.cdc.gov/nhsn/) is th
                                ▼
                     ┌────────────────────┐
                     │   LLM Extraction   │  Extract clinical facts
-                    │  (Ollama llama3.1) │  from notes (local, PHI-safe)
+                    │ (Ollama llama3.3)  │  from notes (local, PHI-safe)
                     └────────────────────┘
                                │
                                ▼
@@ -503,13 +524,19 @@ Each module uses environment variables for configuration. Copy `.env.template` t
 | High | **Natural Language Query Interface** | Allow ASP/IPC users to query data in plain English (e.g., "Show E. coli resistance in urine isolates over 10 years"). Uses Claude API with BAA for SQL generation; PHI stays on-premises |
 | High | **Interactive Analytics Dashboards** | Plotly-based interactive charts for resistance trends, antibiotic usage patterns, HAI rates over time. Drill-down capability, date range selection, export to PDF/PNG |
 | High | **Automated Metrics** | Auto-generate DOT reports, benchmarks, and quality metrics with AI-written narrative summaries |
-| High | **Bug-Drug Mismatch** | Identify when organisms are not covered by current therapy; suggest alternatives |
 | High | **Real-Time Pre-Op Alerting** | Alert surgical team via Epic Secure Chat when patient arrives in OR without prophylaxis |
+| High | **Allergy Delabeling** | Identify patients with likely false penicillin allergy labels for assessment (#14) |
+| High | **Epic Communicator** | Secure messaging integration for clinician notifications (#16) |
 | Medium | **Predictive Risk Models** | ML models to identify patients at high risk for resistant infections or C. diff |
-| Medium | **Duration Optimization** | Evidence-based duration recommendations at approval with reassessment triggers |
 | Low | **Automated Approvals** | AI pre-screening of antibiotic approval requests with auto-approval or ASP referral |
 
 **Recently Implemented:**
+- ✅ **Action Analytics** - Cross-module ASP/IP action tracking with 6 dashboard pages, API, and CSV export
+- ✅ **ABX Duration Tracking** - Approval duration tracking with automatic re-approval workflow
+- ✅ **Drug-Bug Mismatch** - Real-time therapy-organism mismatch detection with de-escalation recommendations
+- ✅ **MDRO Surveillance** - Multi-drug resistant organism tracking (MRSA, VRE, CRE, ESBL, CRPA, CRAB)
+- ✅ **Outbreak Detection** - Cluster detection and investigation across MDRO, HAI, and CDI cases
+- ✅ **HAI Detection (all 5 types)** - CLABSI, SSI, CAUTI, VAE, CDI with FHIR-preferred data sourcing
 - ✅ **Guideline Adherence** - Real-time bundle monitoring with 7 guidelines including Febrile Infant (AAP 2021)
 - ✅ **Surgical Prophylaxis** - 6-element compliance monitoring with CPT-based evaluation
 
@@ -545,71 +572,42 @@ flask run
 ```
 aegis/
 ├── common/
-│   ├── channels/              # Notification channels
-│   │   ├── email.py
-│   │   └── teams.py
-│   ├── alert_store/           # Persistent alert storage
-│   │   ├── models.py
-│   │   ├── store.py
-│   │   └── schema.sql
-│   └── abx_approvals/         # Antibiotic approval storage
-│       ├── models.py
-│       └── store.py
+│   ├── channels/              # Notification channels (Email, Teams)
+│   ├── alert_store/           # Persistent alert storage (SQLite)
+│   ├── abx_approvals/         # Antibiotic approval storage with duration tracking
+│   └── metrics_store/         # Provider activity, sessions, daily snapshots, action analyzer
 ├── dashboard/
-│   ├── app.py                 # Flask application
-│   ├── routes/                # API and view routes
-│   ├── templates/             # Jinja2 templates
+│   ├── app.py                 # Flask application factory (13 blueprints)
+│   ├── routes/                # Blueprint route modules
+│   ├── templates/             # Jinja2 templates with reusable components
 │   ├── static/                # CSS
 │   └── deploy/                # Production deployment configs
-├── asp-bacteremia-alerts/
+├── asp-bacteremia-alerts/     # Blood culture coverage monitoring
+├── antimicrobial-usage-alerts/# Broad-spectrum usage monitoring
+├── guideline-adherence/       # Real-time guideline bundle monitoring (7 bundles)
+├── surgical-prophylaxis/      # Surgical prophylaxis compliance (6-element bundle)
+├── hai-detection/             # HAI candidate detection (5 types: CLABSI, SSI, CAUTI, VAE, CDI)
 │   └── src/
-│       ├── alerters/          # Notification handlers
-│       ├── monitor.py         # Main monitoring service
-│       └── coverage_rules.py  # Antibiotic coverage logic
-├── antimicrobial-usage-alerts/
-│   └── src/
-│       ├── alerters/          # Notification handlers
-│       ├── monitor.py         # Usage monitoring service
-│       └── runner.py          # CLI entry point
-├── guideline-adherence/
-│   └── src/
-│       ├── checkers/          # Element checkers (lab, medication, note)
-│       ├── monitor.py         # Guideline adherence monitor
-│       ├── fhir_client.py     # FHIR data access
-│       └── runner.py          # CLI entry point
-├── surgical-prophylaxis/
-│   └── src/
-│       ├── evaluator.py       # 6-element bundle evaluation
-│       ├── monitor.py         # Prophylaxis compliance monitor
-│       ├── fhir_client.py     # FHIR data access
-│       └── runner.py          # CLI entry point
-├── hai-detection/
-│   └── src/
-│       ├── candidates/        # Rule-based HAI detection (CLABSI, SSI)
+│       ├── candidates/        # Rule-based HAI detection
 │       ├── classifiers/       # LLM classification
-│       ├── extraction/        # LLM fact extraction (CLABSI, SSI)
-│       ├── rules/             # NHSN rules engines (CLABSI, SSI)
+│       ├── extraction/        # LLM fact extraction
+│       ├── rules/             # NHSN rules engines
 │       ├── data/              # FHIR/Clarity data access
 │       ├── llm/               # Ollama/Claude backends
-│       ├── notes/             # Clinical note processing
-│       ├── review/            # IP review workflow
 │       └── monitor.py         # Main orchestration service
-├── nhsn-reporting/
-│   └── src/
-│       ├── data/              # AU/AR data extraction
-│       ├── cda/               # CDA document generation
-│       └── direct/            # NHSN DIRECT protocol submission
+├── nhsn-reporting/            # AU/AR reporting, NHSN submission
+├── drug-bug-mismatch/         # Therapy-organism mismatch detection
+├── mdro-surveillance/         # MDRO tracking (MRSA, VRE, CRE, ESBL, CRPA, CRAB)
+├── outbreak-detection/        # Cluster detection and investigation
+├── validation/                # LLM extraction validation framework
+│   ├── validation_runner.py   # Validation engine with field-level scoring
+│   └── gold_standard/         # Gold standard templates for all HAI types
 ├── scripts/                   # Demo and utility scripts
-│   ├── demo_blood_culture.py
-│   ├── demo_antimicrobial_usage.py
-│   ├── demo_clabsi.py         # CLABSI candidate generator
-│   ├── demo_ssi.py            # SSI candidate generator
-│   └── generate_pediatric_data.py
 └── docs/                      # Documentation
+    ├── PROJECT_STATUS.md      # Project status and session log
     ├── demo-workflow.md       # Complete demo guide
-    ├── abx-approvals.md       # Antibiotic approvals workflow
-    ├── ABX_INDICATION_JC_REQUIREMENTS.md  # Joint Commission indication requirements
-    └── AEGIS_OPTIMIZATION_GUIDE.md        # LLM performance optimization
+    ├── integration-requirements.md  # IS integration requirements
+    └── AEGIS_OPTIMIZATION_GUIDE.md  # LLM performance optimization
 ```
 
 ## Model Training & Continuous Improvement

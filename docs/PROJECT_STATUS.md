@@ -21,6 +21,9 @@
   - Queries existing provider_activity, provider_sessions, metrics_daily_snapshot tables
   - Pulls approval analytics from AbxApprovalStore
   - All pages verified working with real data (79 actions found in MetricsStore)
+- **Surgical Prophylaxis UI fixes**
+  - Fixed raw HTML rendering in MRN field on case detail page
+  - Moved Procedure Details to sidebar; Compliance Evaluation now tops the main panel
 - **ABX Approvals: Duration Tracking & Auto Re-approval** (MAJOR FEATURE)
   - Added approval duration tracking with predefined and custom durations
   - Implemented automatic recheck scheduler (runs 3x daily via cron)
