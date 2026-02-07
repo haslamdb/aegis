@@ -15,6 +15,7 @@ class AlertType(Enum):
     GUIDELINE_DEVIATION = "guideline_deviation"  # Guideline bundle element not met
     SURGICAL_PROPHYLAXIS = "surgical_prophylaxis"  # Surgical prophylaxis non-compliance
     DRUG_BUG_MISMATCH = "drug_bug_mismatch"  # Culture shows resistance to current therapy
+    DOSING_ALERT = "dosing_alert"      # Antimicrobial dosing verification alert
     NHSN_CLABSI = "nhsn_clabsi"        # NHSN CLABSI candidate
     NHSN_SSI = "nhsn_ssi"              # NHSN SSI candidate
     NHSN_VAE = "nhsn_vae"              # NHSN VAE candidate

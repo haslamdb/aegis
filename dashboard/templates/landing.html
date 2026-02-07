@@ -20,6 +20,17 @@
         </div>
     </a>
 
+    <a href="{{ url_for('dosing_verification.active') }}" class="section-card section-dosing">
+        <div class="section-icon">&#x1F489;</div>
+        <h2>Dosing Verification</h2>
+        <p>Real-time verification of antimicrobial dosing, interval, and route based on clinical indication and patient factors.</p>
+        <div class="section-features">
+            <span>Dose Verification</span>
+            <span>Renal Adjustment</span>
+            <span>Allergy Checks</span>
+        </div>
+    </a>
+
     <a href="{{ url_for('asp_alerts.alerts_active') }}" class="section-card section-alerts">
         <div class="section-icon">&#x26A0;</div>
         <h2>ASP Alerts</h2>
@@ -332,6 +343,17 @@
 }
 .section-approvals .section-icon {
     color: #F59E0B;
+}
+
+.section-dosing {
+    border-left-color: #10B981;
+}
+.section-dosing:hover {
+    border-left-color: #10B981;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(16, 185, 129, 0.1) 100%);
+}
+.section-dosing .section-icon {
+    color: #10B981;
 }
 
 .section-mdro {

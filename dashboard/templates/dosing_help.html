@@ -1,0 +1,489 @@
+{% extends "base.html" %}
+
+{% block title %}Dosing Verification Help - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dosing Verification Help</h1>
+    <p class="subtitle">Documentation & Guidelines</p>
+</div>
+
+<!-- Sub-navigation -->
+<div class="module-nav">
+    <a href="{{ url_for('dosing_verification.active') }}" class="module-nav-link">Dashboard</a>
+    <a href="{{ url_for('dosing_verification.active') }}" class="module-nav-link">Active</a>
+    <a href="{{ url_for('dosing_verification.history') }}" class="module-nav-link">History</a>
+    <a href="{{ url_for('dosing_verification.reports') }}" class="module-nav-link">Reports</a>
+    <a href="{{ url_for('dosing_verification.help_page') }}" class="module-nav-link active">Help</a>
+    <a href="{{ url_for('main.landing') }}" class="module-nav-link">Main</a>
+</div>
+
+<div class="help-content">
+    <!-- Overview -->
+    <section class="help-section">
+        <h2>Overview</h2>
+        <p>
+            The Dosing Verification module provides real-time verification of antimicrobial dosing, interval, and route based on clinical indication, patient factors, and drug interactions. It generates tiered alerts when dosing is inappropriate for the clinical context.
+        </p>
+        <p>
+            <strong>Design Philosophy:</strong> While the ABX Indications module answers "Why is this patient on this antibiotic?", the Dosing Verification module answers "Is the dose correct for that reason?"
+        </p>
+    </section>
+
+    <!-- Alert Types -->
+    <section class="help-section">
+        <h2>Alert Types</h2>
+        <div class="alert-types-grid">
+            <div class="alert-type-card">
+                <h3>Subtherapeutic Dose</h3>
+                <p>Dose is too low for the clinical indication (e.g., CNS infection requires higher doses for blood-brain barrier penetration).</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Supratherapeutic Dose</h3>
+                <p>Dose exceeds safe maximums or appropriate levels for the indication.</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Wrong Interval</h3>
+                <p>Dosing frequency doesn't match indication requirements (e.g., endocarditis synergy dosing requires q8h, not q24h).</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Wrong Route</h3>
+                <p>Route is inappropriate for the indication (e.g., IV vancomycin for C. difficile doesn't reach the colon).</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>No Renal Adjustment</h3>
+                <p>Patient has renal impairment but dose has not been reduced appropriately.</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Weight Dose Mismatch</h3>
+                <p>Dose is not weight-appropriate (obesity dosing, pediatric weight-based dosing).</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Age Dose Mismatch</h3>
+                <p>Dose is not age-appropriate (neonatal, pediatric, adult variations).</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Drug Interaction</h3>
+                <p>Significant drug-drug interaction detected (e.g., linezolid + SSRI = serotonin syndrome risk).</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Contraindicated</h3>
+                <p>Drug is contraindicated in this clinical context (e.g., daptomycin for pneumonia - inactivated by surfactant).</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Allergy Alert</h3>
+                <p>Direct allergy match or cross-reactive drug class (e.g., penicillin → cephalosporin cross-reactivity).</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Duration Issues</h3>
+                <p>Therapy duration is longer or shorter than guideline recommendations.</p>
+            </div>
+
+            <div class="alert-type-card">
+                <h3>Extended Infusion Candidate</h3>
+                <p>Patient would benefit from extended infusion of beta-lactam (critically ill, difficult organism).</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Severity Tiers -->
+    <section class="help-section">
+        <h2>Severity Tiers</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Severity</th>
+                    <th>Notification</th>
+                    <th>Examples</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-critical">CRITICAL</span></td>
+                    <td>Real-time Teams + Email</td>
+                    <td>Wrong route (IV vanc for CDI), contraindicated drug (daptomycin for pneumonia), dangerous DDI (linezolid + SSRI)</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-warning">HIGH</span></td>
+                    <td>Email + Dashboard</td>
+                    <td>Subtherapeutic for severe infection, no renal adjustment with impairment, allergy contraindications</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-info">MODERATE</span></td>
+                    <td>Dashboard only</td>
+                    <td>Duration optimization, extended infusion candidates, minor interval adjustments</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- User Actions -->
+    <section class="help-section">
+        <h2>User Actions</h2>
+        <div class="workflow-steps">
+            <div class="workflow-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h4>Review Alert</h4>
+                    <p>Review the alert details, patient context, and clinical reasoning. Alerts show current dose vs. expected dose with supporting guideline references.</p>
+                </div>
+            </div>
+
+            <div class="workflow-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h4>Assess Clinical Context</h4>
+                    <p>Consider patient-specific factors: allergies, renal function, weight, co-medications, and clinical indication. Left sidebar shows complete patient context.</p>
+                </div>
+            </div>
+
+            <div class="workflow-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h4>Take Action</h4>
+                    <p>Resolve the alert by selecting the appropriate resolution action and documenting your clinical reasoning.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Resolution Options -->
+    <section class="help-section">
+        <h2>Resolution Options</h2>
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Resolution</th>
+                    <th>When to Use</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Dose Adjusted</strong></td>
+                    <td>Dose was changed based on alert recommendation</td>
+                </tr>
+                <tr>
+                    <td><strong>Interval Adjusted</strong></td>
+                    <td>Dosing frequency was changed</td>
+                </tr>
+                <tr>
+                    <td><strong>Route Changed</strong></td>
+                    <td>Route of administration was changed (IV → PO, etc.)</td>
+                </tr>
+                <tr>
+                    <td><strong>Therapy Changed</strong></td>
+                    <td>Switched to a different antimicrobial</td>
+                </tr>
+                <tr>
+                    <td><strong>Therapy Stopped</strong></td>
+                    <td>Antimicrobial was discontinued</td>
+                </tr>
+                <tr>
+                    <td><strong>Clinical Justification</strong></td>
+                    <td>Dose is intentional with documented clinical reasoning (non-standard dosing with valid rationale)</td>
+                </tr>
+                <tr>
+                    <td><strong>Discussed with Team</strong></td>
+                    <td>Discussed with medical team; they will address</td>
+                </tr>
+                <tr>
+                    <td><strong>Messaged Team</strong></td>
+                    <td>Sent message to care team about the alert</td>
+                </tr>
+                <tr>
+                    <td><strong>Escalated to Attending</strong></td>
+                    <td>Escalated to attending physician for decision</td>
+                </tr>
+                <tr>
+                    <td><strong>No Action Needed</strong></td>
+                    <td>Alert reviewed but no action required</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Workflow -->
+    <section class="help-section">
+        <h2>Workflow</h2>
+        <h3>How Alerts are Generated</h3>
+        <ol class="workflow-list">
+            <li>Monitor polls active antimicrobial orders from FHIR every 15 minutes</li>
+            <li>For each patient with active orders:
+                <ul>
+                    <li>Retrieves clinical indication from ABX Indications module</li>
+                    <li>Fetches patient factors: age, weight, height, renal function, dialysis status</li>
+                    <li>Collects co-medications for drug interaction checking</li>
+                    <li>Retrieves documented allergies</li>
+                </ul>
+            </li>
+            <li>Rules engine evaluates orders against:
+                <ul>
+                    <li>Indication-specific dosing tables (IDSA guidelines, local protocols)</li>
+                    <li>Renal adjustment requirements</li>
+                    <li>Weight-based dosing appropriateness</li>
+                    <li>Age-based dosing (neonatal, pediatric, adult)</li>
+                    <li>Drug-drug interactions</li>
+                    <li>Route verification (PO vancomycin for CDI, not IV)</li>
+                    <li>Duration appropriateness</li>
+                </ul>
+            </li>
+            <li>Flags are generated for any discrepancies</li>
+            <li>Alerts are deduplicated (one active alert per drug per patient per flag type)</li>
+            <li>Notifications are sent based on severity tier (critical → Teams + Email, high → Email, moderate → dashboard only)</li>
+        </ol>
+
+        <h3>Review Process</h3>
+        <ol class="workflow-list">
+            <li>Pharmacist receives notification (Teams/Email for critical/high, or checks dashboard for moderate)</li>
+            <li>Opens alert detail page to review clinical context and dosing issue</li>
+            <li>Reviews patient factors, current medications, allergies, and indication</li>
+            <li>Considers guideline recommendations and rule source references</li>
+            <li>Takes appropriate action: dose adjustment, clinical justification, or team communication</li>
+            <li>Documents resolution with notes explaining clinical reasoning</li>
+            <li>Alert is marked resolved and logged to metrics store for quality tracking</li>
+        </ol>
+    </section>
+
+    <!-- Clinical References -->
+    <section class="help-section">
+        <h2>Clinical References</h2>
+        <p>Dosing rules are based on the following guidelines:</p>
+        <ul class="reference-list">
+            <li><strong>IDSA Meningitis Guidelines 2024</strong> - CNS penetration dosing</li>
+            <li><strong>AHA Endocarditis Guidelines 2015</strong> - Synergy dosing, high-dose therapy</li>
+            <li><strong>IDSA/SHEA CDI Guidelines 2021</strong> - PO vancomycin, fidaxomicin</li>
+            <li><strong>IDSA/ASHP Vancomycin Guidelines 2020</strong> - AUC-based dosing, target troughs</li>
+            <li><strong>IDSA MRSA Guidelines</strong> - Bacteremia vs. skin/soft tissue dosing</li>
+            <li><strong>IDSA Aspergillosis Guidelines 2016</strong> - Voriconazole TDM requirements</li>
+            <li><strong>ATS/IDSA HAP/VAP Guidelines 2016</strong> - Extended infusion candidates</li>
+            <li><strong>FDA Black Box Warnings</strong> - Contraindications, serious DDIs</li>
+            <li><strong>Local CCHMC Protocols</strong> - Institution-specific refinements</li>
+        </ul>
+    </section>
+
+    <!-- FAQ -->
+    <section class="help-section">
+        <h2>Frequently Asked Questions</h2>
+        <div class="faq-list">
+            <div class="faq-item">
+                <h4>Why am I getting an alert for a dose that seems appropriate?</h4>
+                <p>The rules engine compares doses to evidence-based guidelines, which may differ from standard dosing for special situations (e.g., meningitis requires 2x standard dosing for CNS penetration). If the dose is intentional, use "Clinical Justification" and document your reasoning.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>What if the indication extraction is wrong?</h4>
+                <p>If the ABX Indications module extracted the wrong indication, the dosing rules may not apply correctly. Correct the indication in the ABX Indications module first, then the dosing alert will auto-resolve on the next monitoring cycle.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>How do I handle alerts for renal dosing when the patient's renal function just changed?</h4>
+                <p>The monitor uses the most recent SCr and eGFR values. If renal function just changed and the dose hasn't been updated yet, acknowledge the alert and message the team. The alert will re-trigger if the dose remains unadjusted.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>Can I suppress alerts for specific patients?</h4>
+                <p>Not currently. All patients with active antimicrobial orders are evaluated. If alerts are clinically inappropriate for a specific scenario, use "Clinical Justification" with detailed notes so the system can learn from feedback.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>How are drug interactions prioritized?</h4>
+                <p>Drug-drug interactions are tiered by severity: contraindicated combinations (e.g., linezolid + SSRI) generate critical alerts; interactions requiring dose adjustment or monitoring (e.g., voriconazole + tacrolimus) generate high alerts.</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>What happens to old unresolved alerts?</h4>
+                <p>Alerts pending for >72 hours are auto-accepted as "no action taken" to prevent queue buildup. These are tracked separately in analytics to identify potential system issues.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="help-section">
+        <h2>Support</h2>
+        <p>For questions or issues with the Dosing Verification module, contact:</p>
+        <ul>
+            <li><strong>ASP Team:</strong> [asp-team@example.com]</li>
+            <li><strong>Technical Support:</strong> [aegis-support@example.com]</li>
+        </ul>
+    </section>
+</div>
+
+<style>
+.help-content {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.help-section {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.help-section:last-child {
+    border-bottom: none;
+}
+
+.help-section h2 {
+    color: #0a7ea4;
+    margin-bottom: 1rem;
+}
+
+.help-section h3 {
+    margin-top: 1.5rem;
+    color: #495057;
+}
+
+.alert-types-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.alert-type-card {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-left: 4px solid #0a7ea4;
+    border-radius: 4px;
+}
+
+.alert-type-card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    color: #212529;
+}
+
+.alert-type-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #6c757d;
+}
+
+.help-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.help-table th,
+.help-table td {
+    padding: 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.help-table thead th {
+    background: #f8f9fa;
+    font-weight: 600;
+}
+
+.help-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.workflow-steps {
+    margin-top: 1rem;
+}
+
+.workflow-step {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.step-number {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: #0a7ea4;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.step-content h4 {
+    margin: 0 0 0.5rem 0;
+    color: #212529;
+}
+
+.step-content p {
+    margin: 0;
+    color: #6c757d;
+}
+
+.workflow-list,
+.reference-list {
+    line-height: 1.8;
+}
+
+.workflow-list li,
+.reference-list li {
+    margin-bottom: 0.5rem;
+}
+
+.workflow-list ul {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.faq-list {
+    margin-top: 1rem;
+}
+
+.faq-item {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.faq-item h4 {
+    margin: 0 0 0.5rem 0;
+    color: #0a7ea4;
+}
+
+.faq-item p {
+    margin: 0;
+    color: #495057;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 3px;
+}
+
+.badge-critical {
+    background: #dc3545;
+    color: white;
+}
+
+.badge-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background: #17a2b8;
+    color: white;
+}
+</style>
+{% endblock %}

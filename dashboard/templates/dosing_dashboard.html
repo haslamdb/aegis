@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import stats_grid, filter_form, empty_state, quick_links %}
+
+{% block title %}Dosing Verification - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dosing Verification</h1>
+    <p class="subtitle">Antimicrobial Dosing Verification & Alerting</p>
+</div>
+
+<!-- Sub-navigation -->
+<div class="module-nav">
+    <a href="{{ url_for('dosing_verification.active') }}" class="module-nav-link active">Dashboard</a>
+    <a href="{{ url_for('dosing_verification.active') }}" class="module-nav-link">Active</a>
+    <a href="{{ url_for('dosing_verification.history') }}" class="module-nav-link">History</a>
+    <a href="{{ url_for('dosing_verification.reports') }}" class="module-nav-link">Reports</a>
+    <a href="{{ url_for('dosing_verification.help_page') }}" class="module-nav-link">Help</a>
+    <a href="{{ url_for('main.landing') }}" class="module-nav-link">Main</a>
+</div>
+
+<!-- Stats Cards -->
+{{ stats_grid([
+    {"value": stats.active_alerts or 0, "label": "Active Alerts", "sublabel": "Awaiting review", "variant": "primary"},
+    {"value": stats.critical_count or 0, "label": "Critical", "sublabel": "Real-time notifications", "variant": "critical"},
+    {"value": stats.high_count or 0, "label": "High Priority", "sublabel": "Email alerts", "variant": "warning"},
+    {"value": stats.resolved_today or 0, "label": "Resolved Today", "sublabel": "Actions taken", "variant": "success"}
+]) }}
+
+<!-- Quick Links -->
+<div class="section">
+    <h2>Quick Actions</h2>
+    {{ quick_links([
+        {"url": url_for('dosing_verification.history'), "label": "View History", "class": "btn-secondary"},
+        {"url": url_for('dosing_verification.reports'), "label": "Analytics Dashboard", "class": "btn-success"},
+        {"url": url_for('dosing_verification.help_page'), "label": "Help & Documentation", "class": "btn-info"}
+    ]) }}
+</div>
+
+<!-- Filters -->
+<div class="section">
+    <h2>Active Dose Alerts</h2>
+    {{ filter_form([
+        {"name": "severity", "label": "Severity", "options": [("", "All Severities")] + severity_options, "current": current_severity},
+        {"name": "flag_type", "label": "Flag Type", "options": [("", "All Types")] + flag_type_options, "current": current_flag_type},
+        {"name": "drug", "label": "Drug", "options": [("", "All Drugs")] + drug_options, "current": current_drug}
+    ]) }}
+</div>
+
+<!-- Active Alerts Table -->
+<div class="section">
+    {% if alerts %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Severity</th>
+                <th>Patient</th>
+                <th>Drug</th>
+                <th>Issue</th>
+                <th>Expected Dose</th>
+                <th>Actual Dose</th>
+                <th>Created</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alert in alerts %}
+            <tr class="clickable-row" data-href="{{ url_for('dosing_verification.alert_detail', alert_id=alert.id) }}">
+                <td>
+                    <span class="badge badge-{{ 'critical' if alert.severity == 'critical' else 'warning' if alert.severity == 'high' else 'info' }}">
+                        {{ alert.severity | upper }}
+                    </span>
+                </td>
+                <td>
+                    <strong>{{ alert.patient_mrn }}</strong>
+                    {% if alert.patient_name %}
+                    <br><small class="text-muted">{{ alert.patient_name }}</small>
+                    {% endif %}
+                </td>
+                <td><strong>{{ alert.drug }}</strong></td>
+                <td>{{ alert.flag_type | replace('_', ' ') | title }}</td>
+                <td class="expected-dose">{{ alert.expected_dose or '-' }}</td>
+                <td class="actual-dose">{{ alert.actual_dose or '-' }}</td>
+                <td data-timestamp="{{ alert.created_at }}">
+                    {{ alert.created_at[:16] | replace('T', ' ') if alert.created_at else '-' }}
+                </td>
+                <td class="text-center">
+                    <a href="{{ url_for('dosing_verification.alert_detail', alert_id=alert.id) }}" class="btn btn-sm btn-primary">Review</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    {{ empty_state("No active dosing alerts. All current orders appear appropriate.", url_for('dosing_verification.history'), "View resolved alerts") }}
+    {% endif %}
+</div>
+
+<script>
+// Make table rows clickable
+document.querySelectorAll('.clickable-row').forEach(row => {
+    row.addEventListener('click', function(e) {
+        if (!e.target.closest('a, button')) {
+            window.location.href = this.dataset.href;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -87,6 +87,7 @@ ABX Indications remains a passive monitoring/tracking module. This module is the
 | `dosing-verification/src/rules/weight_rules.py` | Weight-based dosing (obesity, pediatric) |
 | `dosing-verification/src/rules/age_rules.py` | Age-based dosing (neonatal, pediatric, adult) |
 | `dosing-verification/src/rules/interaction_rules.py` | Drug-drug interaction checks |
+| `dosing-verification/src/rules/allergy_rules.py` | Allergy contraindications and cross-reactivity checks |
 | `dosing-verification/src/rules/route_rules.py` | Route verification (e.g., PO vancomycin for CDI) |
 | `dosing-verification/src/rules/duration_rules.py` | Duration appropriateness |
 | `dosing-verification/src/fhir_client.py` | FHIR data fetching (extends DrugBugFHIRClient pattern) |
@@ -135,6 +136,8 @@ class DoseFlagType(str, Enum):
     AGE_DOSE_MISMATCH = "age_dose_mismatch"           # Dose not age-appropriate
     MAX_DOSE_EXCEEDED = "max_dose_exceeded"            # Exceeds absolute max
     DRUG_INTERACTION = "drug_interaction"              # Significant DDI
+    ALLERGY_CONTRAINDICATED = "allergy_contraindicated"  # Direct match to documented allergy
+    ALLERGY_CROSS_REACTIVITY = "allergy_cross_reactivity"  # Cross-reactive drug class (e.g., PCN→ceph)
     DURATION_EXCESSIVE = "duration_excessive"          # Duration longer than guideline
     DURATION_INSUFFICIENT = "duration_insufficient"    # Duration shorter than guideline
     CONTRAINDICATED = "contraindicated"                # Drug contraindicated in this context
@@ -415,6 +418,7 @@ class DosingRulesEngine:
     def __init__(self, config=None):
         self.rules = [
             ContraindicationRules(),    # Check first: contraindicated scenarios
+            AllergyRules(),             # Allergy contraindications and cross-reactivity
             RouteRules(),               # Wrong route (e.g., IV vancomycin for CDI)
             IndicationDoseRules(),      # Indication-specific dosing
             RenalAdjustmentRules(),     # Renal dose adjustments
@@ -873,6 +877,286 @@ DRUG_INTERACTIONS = [
 ]
 ```
 
+### Allergy Checking Rules
+
+The allergy rules module checks for both direct allergy contraindications and cross-reactivity patterns between drug classes. Severity-based alerting ensures critical allergies generate high-severity alerts while less concerning cross-reactivities generate moderate alerts.
+
+```python
+# dosing-verification/src/rules/allergy_rules.py
+
+class AllergySeverity(str, Enum):
+    """Severity of allergic reaction documented."""
+    SEVERE = "severe"           # Anaphylaxis, angioedema, SJS/TEN, severe cutaneous reactions
+    MODERATE = "moderate"       # Urticaria, rash with systemic symptoms
+    MILD = "mild"              # Mild rash, pruritus only
+
+DIRECT_ALLERGY_CONTRAINDICATIONS = {
+    # Direct match: patient documented allergy to the exact drug being ordered
+    # Always flag as CRITICAL regardless of original reaction severity
+    # Exception: mild reactions may be overridden with clinical justification
+}
+
+# Penicillin → Cephalosporin Cross-Reactivity Matrix
+# Based on R-group similarity (Journal of Allergy and Clinical Immunology 2015;135:AB403)
+PENICILLIN_CEPHALOSPORIN_CROSS_REACTIVITY = {
+    "penicillin": {
+        # Cephalosporins with identical R1 side chains (high cross-reactivity: 20-30%)
+        "high_risk_cephalosporins": [
+            "cephalexin",      # R1 side chain identical to ampicillin/amoxicillin
+            "cefaclor",        # R1 side chain identical to ampicillin/amoxicillin
+            "cefadroxil",      # R1 side chain identical to ampicillin/amoxicillin
+            "cefprozil",       # R1 side chain similar to ampicillin
+        ],
+        # Cephalosporins with dissimilar R1 side chains (low cross-reactivity: 1-3%)
+        "low_risk_cephalosporins": [
+            "ceftriaxone",     # Dissimilar R1 side chain
+            "cefotaxime",      # Dissimilar R1 side chain
+            "ceftazidime",     # Dissimilar R1 side chain
+            "cefepime",        # Dissimilar R1 side chain
+            "ceftaroline",     # Dissimilar R1 side chain
+            "cefazolin",       # Dissimilar R1 side chain
+        ],
+        "source": "Pichichero 2015 JACI, AAAAI Practice Parameters 2010",
+    },
+    "amoxicillin": {
+        "high_risk_cephalosporins": ["cephalexin", "cefaclor", "cefadroxil", "cefprozil"],
+        "low_risk_cephalosporins": ["ceftriaxone", "cefotaxime", "ceftazidime", "cefepime", "ceftaroline", "cefazolin"],
+        "source": "R1 side chain similarity analysis",
+    },
+    "ampicillin": {
+        "high_risk_cephalosporins": ["cephalexin", "cefaclor", "cefadroxil", "cefprozil"],
+        "low_risk_cephalosporins": ["ceftriaxone", "cefotaxime", "ceftazidime", "cefepime", "ceftaroline", "cefazolin"],
+        "source": "R1 side chain similarity analysis",
+    },
+}
+
+# Beta-lactam cross-reactivity
+BETA_LACTAM_CROSS_REACTIVITY = {
+    "penicillin": {
+        "carbapenems": {
+            "cross_reactivity_rate": "1-2%",
+            "severity": "moderate",
+            "note": "Carbapenems generally safe in PCN allergy unless severe/recent IgE-mediated reaction",
+            "source": "Antimicrob Agents Chemother 2015;59:7465",
+        },
+        "aztreonam": {
+            "cross_reactivity_rate": "<1%",
+            "severity": "moderate",
+            "note": "Aztreonam safe except with ceftazidime allergy (identical R1 side chain)",
+            "source": "Ann Pharmacother 2007;41:1133",
+        },
+    },
+}
+
+# Sulfonamide cross-reactivity
+SULFONAMIDE_CROSS_REACTIVITY = {
+    "sulfa_antibiotic": {
+        "drugs": ["sulfamethoxazole", "sulfadiazine", "sulfisoxazole"],
+        "non_antibiotic_sulfonamides": {
+            "cross_reactivity_rate": "10-15%",
+            "drugs": ["furosemide", "hydrochlorothiazide", "celecoxib", "sulfasalazine"],
+            "note": "Non-antibiotic sulfonamides have different side chains, lower cross-reactivity",
+            "source": "J Allergy Clin Immunol Pract 2014;2:52",
+        },
+    },
+}
+
+# Fluoroquinolone cross-reactivity
+FLUOROQUINOLONE_CROSS_REACTIVITY = {
+    "ciprofloxacin": {
+        "cross_reactive": ["levofloxacin", "moxifloxacin", "ofloxacin", "gemifloxacin"],
+        "cross_reactivity_rate": "30-50%",
+        "severity": "high",
+        "note": "High cross-reactivity within fluoroquinolone class",
+        "source": "J Allergy Clin Immunol Pract 2017;5:1607",
+    },
+}
+
+# Macrolide cross-reactivity
+MACROLIDE_CROSS_REACTIVITY = {
+    "erythromycin": {
+        "cross_reactive": ["azithromycin", "clarithromycin"],
+        "cross_reactivity_rate": "30-40%",
+        "severity": "high",
+        "note": "Significant cross-reactivity within macrolide class",
+        "source": "Ann Allergy Asthma Immunol 2009;103:442",
+    },
+}
+
+ALLERGY_CHECKING_RULES = [
+    {
+        "type": "direct_allergy",
+        "description": "Flag when patient has documented allergy to the exact drug being ordered",
+        "severity_mapping": {
+            AllergySeverity.SEVERE: "critical",  # Anaphylaxis, angioedema, SJS/TEN
+            AllergySeverity.MODERATE: "critical",  # Urticaria with systemic symptoms
+            AllergySeverity.MILD: "high",  # Mild rash (may be overridable with justification)
+        },
+        "message_template": "{drug} is contraindicated: patient has documented {severity} allergy ({reaction})",
+        "recommendation": "Consider alternative antimicrobial. If no alternative, consult Allergy/Immunology for desensitization protocol.",
+    },
+    {
+        "type": "penicillin_cephalosporin_high_risk",
+        "description": "Penicillin allergy + high-risk cephalosporin (identical R1 side chain)",
+        "allergy_class": "penicillin",
+        "ordered_drugs": PENICILLIN_CEPHALOSPORIN_CROSS_REACTIVITY["penicillin"]["high_risk_cephalosporins"],
+        "cross_reactivity_rate": "20-30%",
+        "severity_mapping": {
+            AllergySeverity.SEVERE: "critical",  # Severe PCN allergy + high-risk ceph
+            AllergySeverity.MODERATE: "high",
+            AllergySeverity.MILD: "moderate",
+        },
+        "message_template": "{drug} shares R1 side chain with penicillin: 20-30% cross-reactivity risk",
+        "recommendation": "Use dissimilar cephalosporin (ceftriaxone, cefepime) or non-beta-lactam alternative",
+        "source": "Pichichero 2015 JACI",
+    },
+    {
+        "type": "penicillin_cephalosporin_low_risk",
+        "description": "Penicillin allergy + low-risk cephalosporin (dissimilar R1 side chain)",
+        "allergy_class": "penicillin",
+        "ordered_drugs": PENICILLIN_CEPHALOSPORIN_CROSS_REACTIVITY["penicillin"]["low_risk_cephalosporins"],
+        "cross_reactivity_rate": "1-3%",
+        "severity_mapping": {
+            AllergySeverity.SEVERE: "high",  # Still alert for severe PCN allergy even with low-risk ceph
+            AllergySeverity.MODERATE: "moderate",
+            AllergySeverity.MILD: "moderate",  # Informational only
+        },
+        "message_template": "{drug} has dissimilar R1 side chain to penicillin: 1-3% cross-reactivity risk",
+        "recommendation": "Generally safe. Monitor for hypersensitivity. Consider avoiding if recent severe PCN reaction.",
+        "source": "Pichichero 2015 JACI",
+    },
+    {
+        "type": "penicillin_carbapenem",
+        "description": "Penicillin allergy + carbapenem",
+        "allergy_class": "penicillin",
+        "ordered_drugs": ["meropenem", "imipenem", "ertapenem", "doripenem"],
+        "cross_reactivity_rate": "1-2%",
+        "severity_mapping": {
+            AllergySeverity.SEVERE: "high",  # Recent severe PCN reaction
+            AllergySeverity.MODERATE: "moderate",
+            AllergySeverity.MILD: "moderate",
+        },
+        "message_template": "Carbapenem with penicillin allergy: 1-2% cross-reactivity risk",
+        "recommendation": "Generally safe unless recent severe IgE-mediated reaction. Monitor first dose.",
+        "source": "Antimicrob Agents Chemother 2015;59:7465",
+    },
+    {
+        "type": "ceftazidime_aztreonam",
+        "description": "Ceftazidime allergy + aztreonam (identical R1 side chain)",
+        "allergy_drug": "ceftazidime",
+        "ordered_drug": "aztreonam",
+        "cross_reactivity_rate": "High",
+        "severity": "high",
+        "message_template": "Aztreonam shares R1 side chain with ceftazidime: cross-reactivity likely",
+        "recommendation": "Avoid aztreonam if ceftazidime allergy documented. Use alternative (carbapenem, fluoroquinolone).",
+        "source": "Ann Pharmacother 2007;41:1133",
+    },
+    {
+        "type": "fluoroquinolone_cross_reactivity",
+        "description": "Fluoroquinolone allergy + different fluoroquinolone",
+        "allergy_class": "fluoroquinolone",
+        "cross_reactivity_rate": "30-50%",
+        "severity": "high",
+        "message_template": "Fluoroquinolone class cross-reactivity: 30-50% risk",
+        "recommendation": "Avoid fluoroquinolones if class allergy documented. Use alternative class.",
+        "source": "J Allergy Clin Immunol Pract 2017;5:1607",
+    },
+    {
+        "type": "macrolide_cross_reactivity",
+        "description": "Macrolide allergy + different macrolide",
+        "allergy_class": "macrolide",
+        "cross_reactivity_rate": "30-40%",
+        "severity": "high",
+        "message_template": "Macrolide class cross-reactivity: 30-40% risk",
+        "recommendation": "Avoid macrolides if class allergy documented. Consider alternative (fluoroquinolone, doxycycline).",
+        "source": "Ann Allergy Asthma Immunol 2009;103:442",
+    },
+]
+
+# Allergy severity classification logic
+def classify_allergy_severity(reaction_description: str, criticality: str = None) -> AllergySeverity:
+    """
+    Classify allergy severity based on reaction description and FHIR criticality.
+
+    SEVERE: anaphylaxis, angioedema, SJS/TEN, severe cutaneous reactions, respiratory distress
+    MODERATE: urticaria, rash with systemic symptoms (fever, arthralgia), serum sickness
+    MILD: isolated rash, pruritus, nausea/GI upset
+    """
+    reaction_lower = reaction_description.lower()
+
+    severe_keywords = [
+        "anaphylaxis", "anaphylactic", "angioedema", "sjs", "stevens-johnson",
+        "ten", "toxic epidermal necrolysis", "dress", "serum sickness",
+        "respiratory distress", "bronchospasm", "hypotension", "shock",
+        "life-threatening", "epinephrine", "epipen"
+    ]
+
+    moderate_keywords = [
+        "urticaria", "hives", "rash with fever", "systemic symptoms",
+        "arthralgia", "multi-system"
+    ]
+
+    for keyword in severe_keywords:
+        if keyword in reaction_lower:
+            return AllergySeverity.SEVERE
+
+    for keyword in moderate_keywords:
+        if keyword in reaction_lower:
+            return AllergySeverity.MODERATE
+
+    if criticality == "high":
+        return AllergySeverity.SEVERE
+
+    return AllergySeverity.MILD
+
+# Clinical decision support messages
+ALLERGY_ALERT_MESSAGES = {
+    "severe_direct_match": """
+    CRITICAL: {drug} is CONTRAINDICATED
+    - Patient has documented SEVERE allergy to {drug} ({reaction})
+    - Reaction type: {severity}
+    - Documented: {date}
+
+    RECOMMENDATION:
+    - DO NOT administer {drug}
+    - Select alternative antimicrobial from different class
+    - If no alternative exists, consult Allergy/Immunology for desensitization protocol
+    """,
+
+    "high_risk_cross_reactivity": """
+    HIGH RISK: Cross-reactivity alert
+    - Patient has {allergy_severity} allergy to {allergy_drug} ({reaction})
+    - {ordered_drug} has {cross_reactivity_rate} cross-reactivity with {allergy_drug}
+    - Shared structural feature: {structural_similarity}
+
+    RECOMMENDATION:
+    - Consider alternative from different class
+    - If essential, obtain Allergy/Immunology consultation
+    - Monitor first dose in controlled setting
+    """,
+
+    "low_risk_cross_reactivity": """
+    MODERATE RISK: Cross-reactivity consideration
+    - Patient has {allergy_severity} allergy to {allergy_drug} ({reaction})
+    - {ordered_drug} has {cross_reactivity_rate} cross-reactivity with {allergy_drug}
+
+    RECOMMENDATION:
+    - Generally safe to use with monitoring
+    - Counsel patient on potential reaction
+    - Monitor for hypersensitivity during first 2-3 doses
+    - Have epinephrine available for first dose if severe prior reaction
+    """,
+}
+```
+
+**Implementation notes:**
+1. Allergy data is fetched from FHIR `AllergyIntolerance` resource including substance, reaction, severity, and criticality
+2. The engine first checks for direct drug match (ALLERGY_CONTRAINDICATED)
+3. If no direct match, checks cross-reactivity patterns based on drug class and structural similarity
+4. Severity mapping: severe allergy + high-risk cross-reactivity = CRITICAL alert; severe allergy + low-risk = HIGH; mild allergy + low-risk = MODERATE
+5. Clinical context matters: recent severe reaction (within 1 year) increases alert severity by one tier
+6. All allergy alerts include recommendation for alternative antimicrobials and monitoring guidance
+
 ### Contraindication / Route Rules
 
 ```python
@@ -1315,11 +1599,12 @@ email.send(EmailMessage(
 2. **Rules engine skeleton** — `dosing-verification/src/rules_engine.py` with `PatientContext` and `BaseRuleModule`
 3. **Indication rules** — Meningitis, endocarditis, CDI, candidemia (highest clinical impact)
 4. **Route rules** — IV vancomycin for CDI, nitrofurantoin for bacteremia, daptomycin for pneumonia
-5. **DoseAlertStore** — CRUD, status transitions, audit log
-6. **Dashboard routes** — Active list, detail page with review workflow, history
-7. **Templates** — Using harmonized components (detail_layout, stat_cards, filters, data_tables, status_badges, action_buttons)
-8. **App integration** — Register blueprint, add nav, add landing card, add about entry
-9. **Demo data** — Script to generate sample dose alerts for testing
+5. **Allergy rules** — Direct allergy contraindications and cross-reactivity (penicillin→cephalosporin matrix, fluoroquinolone class, macrolide class)
+6. **DoseAlertStore** — CRUD, status transitions, audit log
+7. **Dashboard routes** — Active list, detail page with review workflow, history
+8. **Templates** — Using harmonized components (detail_layout, stat_cards, filters, data_tables, status_badges, action_buttons)
+9. **App integration** — Register blueprint, add nav, add landing card, add about entry
+10. **Demo data** — Script to generate sample dose alerts for testing
 
 ### Phase 2: Patient Factor Rules + FHIR Integration
 
@@ -1351,11 +1636,10 @@ email.send(EmailMessage(
 **Goal:** Refinement and edge cases.
 
 1. **TDM integration** — Flag when vancomycin/aminoglycoside levels are due but not ordered
-2. **Allergy cross-reactivity** — Penicillin allergy → cephalosporin safety assessment
-3. **CRRT dosing** — Specialized rules for continuous renal replacement therapy
-4. **Auto-acceptance** — Auto-accept moderate alerts after configurable timeout
-5. **Cron scheduling** — Periodic re-evaluation (new labs may change renal status)
-6. **Validation framework** — Gold standard cases for rules engine accuracy testing
+2. **CRRT dosing** — Specialized rules for continuous renal replacement therapy
+3. **Auto-acceptance** — Auto-accept moderate alerts after configurable timeout
+4. **Cron scheduling** — Periodic re-evaluation (new labs may change renal status)
+5. **Validation framework** — Gold standard cases for rules engine accuracy testing
 
 ---
 
@@ -1382,6 +1666,8 @@ Build gold standard test cases for each rule category:
 | Route | CDI + IV vancomycin | WRONG_ROUTE (critical) |
 | Renal | CrCl 20 + full-dose meropenem | NO_RENAL_ADJUSTMENT (high) |
 | DDI | Linezolid + sertraline | DRUG_INTERACTION (critical) |
+| Allergy (direct) | Penicillin allergy (severe) + amoxicillin ordered | ALLERGY_CONTRAINDICATED (critical) |
+| Allergy (cross-react) | Penicillin allergy (severe) + cephalexin ordered | ALLERGY_CROSS_REACTIVITY (critical) |
 | Peds | Neonate + ceftriaxone + elevated bilirubin | CONTRAINDICATED (critical) |
 | Duration | UTI + 14 days ciprofloxacin | DURATION_EXCESSIVE (moderate) |
 

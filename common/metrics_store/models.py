@@ -29,6 +29,7 @@ class ModuleSource(Enum):
     MDRO_SURVEILLANCE = "mdro_surveillance"  # MDRO surveillance module
     OUTBREAK_DETECTION = "outbreak_detection"  # Outbreak detection module
     NHSN_REPORTING = "nhsn_reporting"    # NHSN reporting module
+    DOSING_VERIFICATION = "dosing_verification"  # Dosing verification module
 
 
 class InterventionType(Enum):
@@ -292,6 +293,11 @@ class DailySnapshot:
     surgical_prophylaxis_compliant: int = 0
     surgical_prophylaxis_compliance_rate: float | None = None
 
+    # Dosing verification metrics
+    dosing_alerts_created: int = 0
+    dosing_alerts_resolved: int = 0
+    dosing_dose_adjusted_count: int = 0
+
     # LLM extraction accuracy metrics
     llm_extractions_total: int = 0
     llm_accepted_count: int = 0
@@ -344,6 +350,9 @@ class DailySnapshot:
             "surgical_prophylaxis_cases": self.surgical_prophylaxis_cases,
             "surgical_prophylaxis_compliant": self.surgical_prophylaxis_compliant,
             "surgical_prophylaxis_compliance_rate": self.surgical_prophylaxis_compliance_rate,
+            "dosing_alerts_created": self.dosing_alerts_created,
+            "dosing_alerts_resolved": self.dosing_alerts_resolved,
+            "dosing_dose_adjusted_count": self.dosing_dose_adjusted_count,
             "llm_extractions_total": self.llm_extractions_total,
             "llm_accepted_count": self.llm_accepted_count,
             "llm_modified_count": self.llm_modified_count,
@@ -422,6 +431,9 @@ class DailySnapshot:
             surgical_prophylaxis_cases=safe_get("surgical_prophylaxis_cases"),
             surgical_prophylaxis_compliant=safe_get("surgical_prophylaxis_compliant"),
             surgical_prophylaxis_compliance_rate=safe_get("surgical_prophylaxis_compliance_rate", None),
+            dosing_alerts_created=safe_get("dosing_alerts_created"),
+            dosing_alerts_resolved=safe_get("dosing_alerts_resolved"),
+            dosing_dose_adjusted_count=safe_get("dosing_dose_adjusted_count"),
             llm_extractions_total=safe_get("llm_extractions_total", 0),
             llm_accepted_count=safe_get("llm_accepted_count", 0),
             llm_modified_count=safe_get("llm_modified_count", 0),

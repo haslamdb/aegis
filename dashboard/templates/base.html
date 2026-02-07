@@ -22,6 +22,7 @@
         {% set is_mdro_surveillance = request.endpoint and request.endpoint.startswith('mdro_surveillance.') %}
         {% set is_outbreak_detection = request.endpoint and request.endpoint.startswith('outbreak_detection.') %}
         {% set is_action_analytics = request.endpoint and request.endpoint.startswith('action_analytics.') %}
+        {% set is_dosing_verification = request.endpoint and request.endpoint.startswith('dosing_verification.') %}
         {% set is_landing = request.endpoint == 'main.landing' %}
         <div class="nav-brand">
             <svg class="nav-shield" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -54,6 +55,8 @@
             <a href="{{ url_for('outbreak_detection.dashboard') }}">Outbreak Detection</a>
             {% elif is_action_analytics %}
             <a href="{{ url_for('action_analytics.dashboard') }}">Action Analytics</a>
+            {% elif is_dosing_verification %}
+            <a href="{{ url_for('dosing_verification.active') }}">Dosing Verification</a>
             {% else %}
             <a href="{{ url_for('main.landing') }}">AEGIS</a>
             {% endif %}
@@ -158,6 +161,13 @@
             <a href="{{ url_for('action_analytics.by_unit') }}" {% if request.endpoint == 'action_analytics.by_unit' %}class="active"{% endif %}>By Unit</a>
             <a href="{{ url_for('action_analytics.time_spent') }}" {% if request.endpoint == 'action_analytics.time_spent' %}class="active"{% endif %}>Time Spent</a>
             <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            {% elif is_dosing_verification %}
+            <!-- Dosing Verification Navigation -->
+            <a href="{{ url_for('dosing_verification.active') }}" {% if request.endpoint in ['dosing_verification.active', 'dosing_verification.index', 'dosing_verification.alert_detail'] %}class="active"{% endif %}>Active</a>
+            <a href="{{ url_for('dosing_verification.history') }}" {% if request.endpoint == 'dosing_verification.history' %}class="active"{% endif %}>History</a>
+            <a href="{{ url_for('dosing_verification.reports') }}" {% if request.endpoint == 'dosing_verification.reports' %}class="active"{% endif %}>Reports</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
+            <a href="{{ url_for('dosing_verification.help_page') }}" {% if request.endpoint == 'dosing_verification.help_page' %}class="active"{% endif %}>Help</a>
             {% endif %}
         </div>
     </nav>

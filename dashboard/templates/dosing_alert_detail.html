@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import detail_list, info_grid %}
+
+{% block title %}Dosing Alert {{ alert.id[:8] }} - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dosing Alert Details</h1>
+    <a href="{{ url_for('dosing_verification.active') }}" class="btn btn-secondary">Back to Active</a>
+</div>
+
+<!-- Status Bar -->
+<div class="alert-status-bar">
+    <span class="badge badge-{{ 'critical' if alert.severity == 'critical' else 'warning' if alert.severity == 'high' else 'info' }}">
+        {{ alert.severity | upper }}
+    </span>
+    <span class="badge badge-status-{{ alert.status }}">{{ alert.status | upper }}</span>
+    <span class="alert-flag-type">{{ alert.flag_type | replace('_', ' ') | title }}</span>
+</div>
+
+<!-- Two-column layout -->
+<div class="alert-detail-layout alert-detail-page">
+    <!-- Left Column: Patient Context -->
+    <div class="alert-detail-sidebar">
+        <!-- Patient Information -->
+        <div class="detail-section">
+            <h3>Patient Information</h3>
+            {{ detail_list([
+                {'label': 'MRN', 'value': alert.patient_mrn, 'bold': true},
+                {'label': 'Name', 'value': alert.patient_name},
+                {'label': 'Encounter', 'value': alert.encounter_id}
+            ]) }}
+        </div>
+
+        <!-- Patient Factors -->
+        {% if patient_factors %}
+        <div class="detail-section">
+            <h3>Patient Factors</h3>
+            {{ info_grid([
+                {'label': 'Age', 'value': (patient_factors.age_years|string ~ ' years') if patient_factors.age_years is not none else none},
+                {'label': 'Weight', 'value': (patient_factors.weight_kg|string ~ ' kg') if patient_factors.weight_kg is not none else none},
+                {'label': 'Height', 'value': (patient_factors.height_cm|string ~ ' cm') if patient_factors.height_cm is not none else none}
+            ]) }}
+        </div>
+
+        <!-- Renal Function -->
+        <div class="detail-section">
+            <h3>Renal Function</h3>
+            {{ info_grid([
+                {'label': 'SCr', 'value': (patient_factors.scr|string ~ ' mg/dL') if patient_factors.scr is not none else none},
+                {'label': 'eGFR', 'value': (patient_factors.gfr|round(0)|int|string ~ ' mL/min') if patient_factors.gfr is not none else none},
+                {'label': 'Dialysis', 'value': 'Yes' if patient_factors.is_on_dialysis else 'No'}
+            ]) }}
+        </div>
+        {% endif %}
+
+        <!-- Current Antimicrobials -->
+        {% if assessment and assessment.medications_evaluated %}
+        <div class="detail-section">
+            <h3>Current Antimicrobials</h3>
+            <ul class="medication-list">
+                {% for med in assessment.medications_evaluated %}
+                <li>
+                    <strong>{{ med.drug }}</strong><br>
+                    <small>{{ med.dose }} {{ med.dose_unit }} {{ med.interval }} {{ med.route }}</small>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Co-Medications -->
+        {% if assessment and assessment.co_medications %}
+        <div class="detail-section">
+            <h3>Co-Medications</h3>
+            <ul class="medication-list">
+                {% for med in assessment.co_medications %}
+                <li>{{ med.drug }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Allergies -->
+        <div class="detail-section">
+            <h3>Allergies</h3>
+            {% if patient_factors and patient_factors.allergies %}
+            <ul class="allergy-list">
+                {% for allergy in patient_factors.allergies %}
+                <li>
+                    {{ allergy.substance }}
+                    {% if allergy.severity %}
+                    <span class="badge badge-{{ 'danger' if allergy.severity == 'life-threatening' else 'warning' }}">
+                        {{ allergy.severity }}
+                    </span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted">None documented</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column: Alert Details and Actions -->
+    <div class="alert-detail-main">
+        <!-- Dosing Issue -->
+        <div class="detail-card detail-card-primary">
+            <h3>Dosing Issue</h3>
+            {{ detail_list([
+                {'label': 'Drug', 'value': alert.drug, 'bold': true},
+                {'label': 'Indication', 'value': alert.indication or 'Not specified'},
+                {'label': 'Issue Type', 'value': alert.flag_type | replace('_', ' ') | title}
+            ]) }}
+
+            <div class="dose-comparison">
+                <div class="dose-section dose-actual">
+                    <strong>Current Order:</strong>
+                    <div class="dose-value">{{ alert.actual_dose }}</div>
+                </div>
+                <div class="dose-arrow">→</div>
+                <div class="dose-section dose-expected">
+                    <strong>Expected for {{ alert.indication or 'Indication' }}:</strong>
+                    <div class="dose-value">{{ alert.expected_dose }}</div>
+                </div>
+            </div>
+
+            <div class="alert-message">
+                <strong>Clinical Note:</strong>
+                <p>{{ alert.message }}</p>
+            </div>
+
+            <div class="rule-source">
+                <small><strong>Rule Source:</strong> {{ alert.rule_source }}</small>
+            </div>
+        </div>
+
+        <!-- All Flags in Assessment -->
+        {% if assessment and assessment.flags %}
+        <div class="detail-section">
+            <h3>All Flags in Assessment</h3>
+            <ul class="flags-list">
+                {% for flag in assessment.flags %}
+                <li class="flag-item flag-{{ flag.severity }}">
+                    <span class="flag-icon">
+                        {% if flag.severity == 'critical' %}✗{% else %}⚠{% endif %}
+                    </span>
+                    <div class="flag-content">
+                        <strong>{{ flag.drug }}: {{ flag.message }}</strong>
+                        <br><small class="text-muted">{{ flag.severity | upper }}</small>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Action Section or Resolution Details -->
+        {% if alert.status != 'resolved' %}
+        <div class="action-section">
+            <h3>Resolve Alert</h3>
+            <form action="{{ url_for('dosing_verification.api_resolve', alert_id=alert.id) }}" method="post" class="resolve-form">
+                <div class="form-group">
+                    <label for="resolution">Resolution Action</label>
+                    <select name="resolution" id="resolution" class="form-select" required>
+                        <option value="">-- Select --</option>
+                        {% for value, display in resolution_options %}
+                        <option value="{{ value }}">{{ display }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="resolution_notes">Notes</label>
+                    <textarea name="resolution_notes" id="resolution_notes" rows="3" class="form-textarea" placeholder="Add clinical reasoning or details..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-success btn-block">Resolve Alert</button>
+            </form>
+
+            <div class="action-secondary">
+                <form action="{{ url_for('dosing_verification.api_acknowledge', alert_id=alert.id) }}" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-secondary">Acknowledge</button>
+                </form>
+                <form action="{{ url_for('dosing_verification.api_add_note', alert_id=alert.id) }}" method="post" class="inline-note-form">
+                    <textarea name="note" rows="2" class="form-textarea" placeholder="Add a note..." required></textarea>
+                    <button type="submit" class="btn btn-secondary btn-sm">Add Note</button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <!-- Resolution Details -->
+        <div class="detail-card detail-card-resolved">
+            <h3>Resolution Details</h3>
+            {{ detail_list([
+                {'label': 'Resolved By', 'value': alert.resolved_by or 'Unknown'},
+                {'label': 'Resolved At', 'value': alert.resolved_at},
+                {'label': 'Resolution', 'value': alert.resolution | replace('_', ' ') | title},
+                {'label': 'Notes', 'value': alert.resolution_notes or '-'}
+            ]) }}
+        </div>
+        {% endif %}
+
+        <!-- Audit Log -->
+        {% if audit_log %}
+        <div class="detail-section">
+            <h3>Audit Log</h3>
+            <table class="audit-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Action</th>
+                        <th>User</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in audit_log %}
+                    <tr>
+                        <td>{{ entry.performed_at }}</td>
+                        <td>{{ entry.action | title }}</td>
+                        <td>{{ entry.performed_by or 'System' }}</td>
+                        <td>{{ entry.details or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+/* Override layout for dosing verification - sidebar on left */
+.alert-detail-page {
+    grid-template-columns: 320px 1fr !important;
+}
+
+.dose-comparison {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.dose-section {
+    flex: 1;
+}
+
+.dose-actual {
+    border-left: 3px solid #dc3545;
+    padding-left: 0.75rem;
+}
+
+.dose-expected {
+    border-left: 3px solid #28a745;
+    padding-left: 0.75rem;
+}
+
+.dose-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-top: 0.25rem;
+}
+
+.dose-arrow {
+    font-size: 1.5rem;
+    color: #6c757d;
+}
+
+.alert-message {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    border-radius: 4px;
+}
+
+.rule-source {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+    color: #6c757d;
+}
+
+.flags-list {
+    list-style: none;
+    padding: 0;
+}
+
+.flag-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    border-left: 4px solid #dee2e6;
+}
+
+.flag-item.flag-critical {
+    background: #f8d7da;
+    border-left-color: #dc3545;
+}
+
+.flag-item.flag-high {
+    background: #fff3cd;
+    border-left-color: #ffc107;
+}
+
+.flag-item.flag-moderate {
+    background: #d1ecf1;
+    border-left-color: #17a2b8;
+}
+
+.flag-icon {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.action-secondary {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.inline-note-form {
+    margin-top: 0.5rem;
+}
+
+.medication-list, .allergy-list {
+    list-style: none;
+    padding: 0;
+}
+
+.medication-list li, .allergy-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.medication-list li:last-child, .allergy-list li:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% from "macros/components.html" import stats_grid, filter_form, empty_state %}
+
+{% block title %}Dosing History - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dosing Alert History</h1>
+    <p class="subtitle">Resolved Dosing Alerts</p>
+</div>
+
+<!-- Sub-navigation -->
+<div class="module-nav">
+    <a href="{{ url_for('dosing_verification.active') }}" class="module-nav-link">Dashboard</a>
+    <a href="{{ url_for('dosing_verification.active') }}" class="module-nav-link">Active</a>
+    <a href="{{ url_for('dosing_verification.history') }}" class="module-nav-link active">History</a>
+    <a href="{{ url_for('dosing_verification.reports') }}" class="module-nav-link">Reports</a>
+    <a href="{{ url_for('dosing_verification.help_page') }}" class="module-nav-link">Help</a>
+    <a href="{{ url_for('main.landing') }}" class="module-nav-link">Main</a>
+</div>
+
+<!-- Stats Cards -->
+{{ stats_grid([
+    {"value": stats.total_resolved or 0, "label": "Total Resolved", "sublabel": "Last " ~ days_back ~ " days"},
+    {"value": stats.dose_adjusted_count or 0, "label": "Dose Adjusted", "sublabel": "Action taken", "variant": "success"},
+    {"value": stats.clinical_justification_count or 0, "label": "Clinically Justified", "sublabel": "Intentional dosing"},
+    {"value": resolution_rate ~ "%" if resolution_rate is not none else "--", "label": "Action Rate", "sublabel": "Dose/route changed", "variant": "info"}
+]) }}
+
+<!-- Filters -->
+<div class="section">
+    <h2>Filter Resolved Alerts</h2>
+    {{ filter_form([
+        {"name": "days_back", "label": "Period", "options": [("7", "Last 7 days"), ("14", "Last 14 days"), ("30", "Last 30 days"), ("60", "Last 60 days"), ("90", "Last 90 days")], "current": days_back|string},
+        {"name": "resolution", "label": "Resolution", "options": [("", "All Resolutions")] + resolution_options, "current": current_resolution},
+        {"name": "severity", "label": "Severity", "options": [("", "All Severities")] + severity_options, "current": current_severity}
+    ]) }}
+</div>
+
+<!-- Export Actions -->
+<div class="section">
+    <a href="{{ url_for('dosing_verification.export_history_csv') }}?days_back={{ days_back }}&resolution={{ current_resolution }}&severity={{ current_severity }}" class="btn btn-success">
+        Export to CSV
+    </a>
+</div>
+
+<!-- Resolved Alerts Table -->
+<div class="section">
+    {% if alerts %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Resolved</th>
+                <th>Patient</th>
+                <th>Drug</th>
+                <th>Issue</th>
+                <th>Severity</th>
+                <th>Resolution</th>
+                <th>Resolved By</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for alert in alerts %}
+            <tr class="clickable-row" data-href="{{ url_for('dosing_verification.alert_detail', alert_id=alert.id) }}">
+                <td data-timestamp="{{ alert.resolved_at }}">
+                    {{ alert.resolved_at[:16] | replace('T', ' ') if alert.resolved_at else '-' }}
+                </td>
+                <td>
+                    <strong>{{ alert.patient_mrn }}</strong>
+                    {% if alert.patient_name %}
+                    <br><small class="text-muted">{{ alert.patient_name }}</small>
+                    {% endif %}
+                </td>
+                <td><strong>{{ alert.drug }}</strong></td>
+                <td>{{ alert.flag_type | replace('_', ' ') | title }}</td>
+                <td>
+                    <span class="badge badge-{{ 'critical' if alert.severity == 'critical' else 'warning' if alert.severity == 'high' else 'info' }}">
+                        {{ alert.severity | upper }}
+                    </span>
+                </td>
+                <td>
+                    <span class="badge badge-{{ 'success' if alert.resolution in ['dose_adjusted', 'interval_adjusted', 'route_changed', 'therapy_changed'] else 'secondary' }}">
+                        {{ alert.resolution | replace('_', ' ') | title if alert.resolution else 'Unknown' }}
+                    </span>
+                </td>
+                <td>{{ alert.resolved_by or 'Unknown' }}</td>
+                <td class="text-center">
+                    <a href="{{ url_for('dosing_verification.alert_detail', alert_id=alert.id) }}" class="btn btn-sm btn-secondary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    {{ empty_state("No resolved dosing alerts found for the selected filters.", url_for('dosing_verification.active'), "View active alerts") }}
+    {% endif %}
+</div>
+
+<script>
+// Make table rows clickable
+document.querySelectorAll('.clickable-row').forEach(row => {
+    row.addEventListener('click', function(e) {
+        if (!e.target.closest('a, button')) {
+            window.location.href = this.dataset.href;
+        }
+    });
+});
+</script>
+{% endblock %}
