@@ -1,0 +1,12 @@
+# AEGIS Django - Production Requirements
+-r base.txt
+
+# Production web server
+gunicorn==21.2.0
+
+# Monitoring & logging
+sentry-sdk==1.40.0
+
+# Performance
+django-redis==5.4.0
+whitenoise==6.6.0

@@ -1,0 +1,33 @@
+# AEGIS Django - Base Requirements
+# Core dependencies for all environments
+
+# Django (latest stable)
+Django==5.1.5
+djangorestframework==3.15.2
+django-filter==24.3
+django-cors-headers==4.6.0
+
+# Database
+psycopg2-binary==2.9.10
+
+# Audit Logging
+django-auditlog==3.0.0
+
+# Background Tasks
+celery==5.4.0
+redis==5.2.1
+django-celery-beat==2.7.0  # Supports Django 5.x
+
+# API Documentation
+drf-spectacular==0.28.0
+
+# Utilities
+python-decouple==3.8
+python-dateutil==2.9.0
+pytz==2024.2
+
+# FHIR (from existing codebase)
+fhirclient==4.2.1
+
+# Notifications (from existing codebase)
+requests==2.32.3
