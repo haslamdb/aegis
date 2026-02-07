@@ -1,0 +1,57 @@
+{# ==============================================
+   Reusable Filter Components
+   Shared across all AEGIS dashboard list pages
+
+   These provide BEM-style filter bar and dropdown
+   macros. Complements the existing filter_select and
+   filter_form macros in macros/components.html with
+   an additional time-period shortcut and caller()-based
+   filter_bar layout.
+
+   Usage:
+   {% from "_components/filters.html" import filter_bar, filter_select, filter_days %}
+
+   {% call filter_bar() %}
+       <form method="get" class="filter-form">
+           {{ filter_select("severity", "Severity", [
+               ("critical", "Critical"),
+               ("warning", "Warning"),
+               ("info", "Info")
+           ], current_value=current_severity) }}
+           {{ filter_days(current_value=selected_days) }}
+       </form>
+   {% endcall %}
+   ============================================== #}
+
+{% macro filter_bar() %}
+<div class="filter-bar">
+    {{ caller() }}
+</div>
+{% endmacro %}
+
+{% macro filter_select(name, label, options, current_value="", all_label="All") %}
+<div class="filter-group">
+    <label for="filter-{{ name }}">{{ label }}:</label>
+    <select id="filter-{{ name }}" name="{{ name }}" onchange="this.form.submit()">
+        <option value="">{{ all_label }}</option>
+        {% for value, display in options %}
+        <option value="{{ value }}" {% if current_value == value %}selected{% endif %}>
+            {{ display }}
+        </option>
+        {% endfor %}
+    </select>
+</div>
+{% endmacro %}
+
+{% macro filter_days(name="days", current_value=30, options=[7, 14, 30, 60, 90]) %}
+<div class="filter-group">
+    <label for="filter-{{ name }}">Time Period:</label>
+    <select id="filter-{{ name }}" name="{{ name }}" onchange="this.form.submit()">
+        {% for d in options %}
+        <option value="{{ d }}" {% if current_value|int == d %}selected{% endif %}>
+            Last {{ d }} days
+        </option>
+        {% endfor %}
+    </select>
+</div>
+{% endmacro %}

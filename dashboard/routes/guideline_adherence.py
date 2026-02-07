@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from flask import Blueprint, render_template, current_app, request, redirect, url_for, flash, jsonify
 
+from dashboard.utils.api_response import api_success, api_error
+
 # Add paths for guideline adherence imports
 GUIDELINE_PATH = Path(__file__).parent.parent.parent / "guideline-adherence"
 if str(GUIDELINE_PATH) not in sys.path:
@@ -437,10 +439,10 @@ def api_submit_episode_review(episode_id):
     db = get_episode_db()
 
     if not db:
-        return jsonify({"error": "Database not available"}), 500
+        return api_error("Database not available", 500)
 
     if not EpisodeReview:
-        return jsonify({"error": "EpisodeReview not available"}), 500
+        return api_error("EpisodeReview not available", 500)
 
     try:
         data = request.json or {}
@@ -449,14 +451,14 @@ def api_submit_episode_review(episode_id):
         decision = data.get("decision")
 
         if not reviewer:
-            return jsonify({"error": "reviewer is required"}), 400
+            return api_error("reviewer is required", 400)
         if not decision:
-            return jsonify({"error": "decision is required"}), 400
+            return api_error("decision is required", 400)
 
         # Validate decision
         valid_decisions = ["guideline_appropriate", "guideline_deviation", "needs_more_info"]
         if decision not in valid_decisions:
-            return jsonify({"error": f"Invalid decision: {decision}"}), 400
+            return api_error(f"Invalid decision: {decision}", 400)
 
         # Get latest assessment to detect override
         assessments = db.get_assessments_for_episode(episode_id)
@@ -508,8 +510,7 @@ def api_submit_episode_review(episode_id):
             except Exception as e:
                 current_app.logger.warning(f"Failed to log training data: {e}")
 
-        return jsonify({
-            "success": True,
+        return api_success(data={
             "review_id": review_id,
             "is_override": is_override,
             "llm_decision": llm_decision,
@@ -519,7 +520,7 @@ def api_submit_episode_review(episode_id):
         current_app.logger.error(f"Error submitting review: {e}")
         import traceback
         traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 def _log_guideline_review_training(episode_id, review, assessment):

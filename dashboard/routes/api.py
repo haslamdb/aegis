@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request, redirect, url_for, current_app
 from common.alert_store import AlertStatus
 from common.channels.teams import TeamsWebhookChannel
 from dashboard.services.user import get_user_from_request
+from dashboard.utils.api_response import api_success, api_error
 
 api_bp = Blueprint("api", __name__)
 
@@ -54,7 +55,7 @@ def check_api_key(f):
         provided_key = request.args.get("key") or request.headers.get("X-API-Key")
 
         if provided_key != api_key:
-            return jsonify({"error": "Invalid or missing API key"}), 401
+            return api_error("Invalid or missing API key", 401)
 
         return f(*args, **kwargs)
 
@@ -98,16 +99,12 @@ def acknowledge_alert(alert_id):
     # API response
     if success:
         alert = store.get_alert(alert_id)
-        return jsonify({
-            "success": True,
+        return api_success(data={
             "alert_id": alert_id,
             "status": alert.status.value if alert else "unknown",
         })
 
-    return jsonify({
-        "success": False,
-        "error": "Failed to acknowledge alert",
-    }), 400
+    return api_error("Failed to acknowledge alert", 400)
 
 
 @api_bp.route("/snooze/<alert_id>", methods=["GET", "POST"])
@@ -156,17 +153,13 @@ def snooze_alert(alert_id):
     # API response
     if success:
         alert = store.get_alert(alert_id)
-        return jsonify({
-            "success": True,
+        return api_success(data={
             "alert_id": alert_id,
             "status": alert.status.value if alert else "unknown",
             "snoozed_until": alert.snoozed_until.isoformat() if alert and alert.snoozed_until else None,
         })
 
-    return jsonify({
-        "success": False,
-        "error": "Failed to snooze alert",
-    }), 400
+    return api_error("Failed to snooze alert", 400)
 
 
 @api_bp.route("/resolve/<alert_id>", methods=["GET", "POST"])
@@ -216,17 +209,13 @@ def resolve_alert(alert_id):
 
     # API response
     if success:
-        return jsonify({
-            "success": True,
+        return api_success(data={
             "alert_id": alert_id,
             "status": "resolved",
             "resolution_reason": resolution_reason,
         })
 
-    return jsonify({
-        "success": False,
-        "error": "Failed to resolve alert",
-    }), 400
+    return api_error("Failed to resolve alert", 400)
 
 
 @api_bp.route("/alerts", methods=["GET"])
@@ -262,7 +251,7 @@ def list_alerts():
 
     alerts = store.list_alerts(**filter_kwargs)
 
-    return jsonify({
+    return api_success(data={
         "alerts": [a.to_dict() for a in alerts],
         "count": len(alerts),
     })
@@ -276,9 +265,9 @@ def get_alert(alert_id):
 
     alert = store.get_alert(alert_id)
     if not alert:
-        return jsonify({"error": "Alert not found"}), 404
+        return api_error("Alert not found", 404)
 
-    return jsonify(alert.to_dict())
+    return api_success(data=alert.to_dict())
 
 
 @api_bp.route("/alerts/<alert_id>/status", methods=["POST"])
@@ -292,12 +281,12 @@ def update_status(alert_id):
     user = get_user_from_request(default="API User")
 
     if not new_status:
-        return jsonify({"error": "status field required"}), 400
+        return api_error("status field required", 400)
 
     try:
         status = AlertStatus(new_status)
     except ValueError:
-        return jsonify({"error": f"Invalid status: {new_status}"}), 400
+        return api_error(f"Invalid status: {new_status}", 400)
 
     # Route to appropriate method
     resolution_reason = None
@@ -316,19 +305,18 @@ def update_status(alert_id):
             notes=notes,
         )
     else:
-        return jsonify({"error": f"Cannot transition to status: {new_status}"}), 400
+        return api_error(f"Cannot transition to status: {new_status}", 400)
 
     if success:
         alert = store.get_alert(alert_id)
         # Send Teams status update
         if alert:
             send_teams_status_update(alert, new_status, user, resolution_reason)
-        return jsonify({
-            "success": True,
+        return api_success(data={
             "alert": alert.to_dict() if alert else None,
         })
 
-    return jsonify({"success": False, "error": "Status update failed"}), 400
+    return api_error("Status update failed", 400)
 
 
 @api_bp.route("/alerts/<alert_id>/notes", methods=["POST"])
@@ -349,7 +337,7 @@ def add_note(alert_id):
         # For form submissions, redirect back with error
         if request.content_type and "form" in request.content_type:
             return redirect(url_for("asp_alerts.alert_detail", alert_id=alert_id, msg="note_empty"))
-        return jsonify({"error": "note field required"}), 400
+        return api_error("note field required", 400)
 
     success = store.add_note(alert_id, note=note, added_by=user)
 
@@ -360,9 +348,9 @@ def add_note(alert_id):
         return redirect(url_for("asp_alerts.alert_detail", alert_id=alert_id, msg="note_failed"))
 
     if success:
-        return jsonify({"success": True})
+        return api_success()
 
-    return jsonify({"success": False, "error": "Failed to add note"}), 400
+    return api_error("Failed to add note", 400)
 
 
 @api_bp.route("/stats", methods=["GET"])
@@ -370,4 +358,4 @@ def add_note(alert_id):
 def get_stats():
     """Get alert statistics."""
     store = current_app.alert_store
-    return jsonify(store.get_stats())
+    return api_success(data=store.get_stats())

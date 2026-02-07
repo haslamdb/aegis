@@ -17,6 +17,7 @@ from hai_src.models import (
     ReviewQueueType, ReviewerDecision, HAICandidate
 )
 from dashboard.services.user import get_user_from_request
+from dashboard.utils.api_response import api_success, api_error
 
 hai_detection_bp = Blueprint("hai_detection", __name__, url_prefix="/hai-detection")
 
@@ -262,9 +263,9 @@ def api_stats():
     try:
         db = get_hai_db()
         stats = db.get_summary_stats()
-        return jsonify(stats)
+        return api_success(data=stats)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @hai_detection_bp.route("/api/candidates")
@@ -275,7 +276,7 @@ def api_candidates():
         limit = request.args.get("limit", 100, type=int)
         candidates = db.get_recent_candidates(limit=limit)
 
-        return jsonify([
+        return api_success(data=[
             {
                 "id": c.id,
                 "hai_type": c.hai_type.value,
@@ -291,7 +292,7 @@ def api_candidates():
             for c in candidates
         ])
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @hai_detection_bp.route("/api/reviews/<review_id>/complete", methods=["POST"])
@@ -306,18 +307,18 @@ def api_complete_review(review_id):
         notes = data.get("notes")
 
         if not decision:
-            return jsonify({"error": "decision is required"}), 400
+            return api_error("decision is required", 400)
 
         try:
             decision_enum = ReviewerDecision(decision)
         except ValueError:
-            return jsonify({"error": f"Invalid decision: {decision}"}), 400
+            return api_error(f"Invalid decision: {decision}", 400)
 
         db.complete_review(review_id, reviewer, decision_enum, notes)
 
-        return jsonify({"success": True})
+        return api_success()
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @hai_detection_bp.route("/api/candidates/<candidate_id>/review", methods=["POST"])
@@ -337,9 +338,9 @@ def api_submit_review(candidate_id):
         extraction_corrections = data.get("extraction_corrections")  # {field: {old, new}}
 
         if not reviewer:
-            return jsonify({"error": "reviewer is required"}), 400
+            return api_error("reviewer is required", 400)
         if not decision:
-            return jsonify({"error": "decision is required"}), 400
+            return api_error("decision is required", 400)
 
         # Map form decision to ReviewerDecision enum
         decision_map = {
@@ -355,14 +356,14 @@ def api_submit_review(candidate_id):
         }
 
         if decision not in decision_map:
-            return jsonify({"error": f"Invalid decision: {decision}"}), 400
+            return api_error(f"Invalid decision: {decision}", 400)
 
         decision_enum = decision_map[decision]
 
         # Get the candidate
         candidate = db.get_candidate(candidate_id)
         if not candidate:
-            return jsonify({"error": "Candidate not found"}), 404
+            return api_error("Candidate not found", 404)
 
         # Get the LLM classification to determine if this is an override
         classifications = db.get_classifications_for_candidate(candidate_id)
@@ -457,8 +458,7 @@ def api_submit_review(candidate_id):
         except Exception as e:
             current_app.logger.warning(f"Failed to send review notification: {e}")
 
-        return jsonify({
-            "success": True,
+        return api_success(data={
             "new_status": new_status.value,
             "is_override": is_override,
             "llm_decision": llm_decision,
@@ -466,7 +466,7 @@ def api_submit_review(candidate_id):
 
     except Exception as e:
         current_app.logger.error(f"Error submitting review: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @hai_detection_bp.route("/api/override-stats")
@@ -475,9 +475,9 @@ def api_override_stats():
     try:
         db = get_hai_db()
         stats = db.get_override_stats()
-        return jsonify(stats)
+        return api_success(data=stats)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @hai_detection_bp.route("/api/recent-overrides")
@@ -487,9 +487,9 @@ def api_recent_overrides():
         db = get_hai_db()
         limit = request.args.get("limit", 20, type=int)
         overrides = db.get_recent_overrides(limit=limit)
-        return jsonify(overrides)
+        return api_success(data=overrides)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 def _send_review_notification(candidate, decision, reviewer, notes):

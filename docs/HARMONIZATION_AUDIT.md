@@ -595,20 +595,20 @@ llm_acceptance_rate: float | None = None
 
 ### Medium Priority (Harmonize UX)
 
-- [ ] **M1.** Create shared template partials (`templates/_components/`) for stat cards, data tables, action buttons, empty states, status badges, audit trails
-- [ ] **M2.** Standardize sub-navigation across all modules to include at minimum: Dashboard, Active/Pending, History, Main, Help
+- [x] **M1.** Create shared template partials (`templates/_components/`) for stat cards, data tables, action buttons, empty states, status badges, audit trails
+- [x] **M2.** Standardize sub-navigation across all modules to include at minimum: Dashboard, Active/Pending, History, Main, Help
 - [ ] **M3.** Standardize detail page layouts to two-column format (patient context left, details + actions right)
-- [ ] **M4.** Create unified JSON response envelope for all API endpoints: `{"success": bool, "data": ..., "error": ...}`
+- [x] **M4.** Create unified JSON response envelope for all API endpoints: `{"success": bool, "data": ..., "error": ...}`
 - [x] **M5.** Add missing `ResolutionReason` values: `escalated_to_attending`, `deferred_to_next_shift`, `culture_pending`, `no_action_needed`
 - [x] **M6.** Add missing `AuditAction` values: `viewed`, `escalated`, `forwarded`, `deferred`, `commented`
 
 ### Lower Priority (LLM Tracking Enhancements)
 
-- [ ] **L1.** Create `common/llm_tracking/` with unified `LLMDecisionTracker` and `LLMDecisionRecord` schema
-- [ ] **L2.** Implement unified `LLMOverrideReason` taxonomy across ABX Indications, Guideline Adherence, and HAI Detection
-- [ ] **L3.** Add LLM accuracy trend fields to `DailySnapshot` (`llm_extractions_total`, `llm_acceptance_rate`, etc.)
+- [x] **L1.** Create `common/llm_tracking/` with unified `LLMDecisionTracker` and `LLMDecisionRecord` schema
+- [x] **L2.** Implement unified `LLMOverrideReason` taxonomy across ABX Indications, Guideline Adherence, and HAI Detection
+- [x] **L3.** Add LLM accuracy trend fields to `DailySnapshot` (`llm_extractions_total`, `llm_acceptance_rate`, etc.)
 - [ ] **L4.** Add cross-module LLM performance view to ASP Metrics dashboard
-- [ ] **L5.** Implement confidence calibration analysis (acceptance rate by confidence level)
+- [x] **L5.** Implement confidence calibration analysis (acceptance rate by confidence level)
 - [ ] **L6.** Add session-level tracking (alerts reviewed per session, session duration)
 - [ ] **L7.** Add notification delivery receipt tracking to `common/channels/`
 

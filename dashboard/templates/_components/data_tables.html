@@ -1,0 +1,51 @@
+{# ==============================================
+   Reusable Data Table Components
+   Shared across all AEGIS dashboard pages
+
+   These provide a BEM-style table wrapper with responsive
+   overflow handling. Use alongside or instead of the
+   data_table macro in macros/components.html when you
+   need caller()-based row rendering (more flexible for
+   complex row markup).
+
+   Usage:
+   {% from "_components/data_tables.html" import data_table, empty_table_row %}
+
+   {% call data_table(["Patient", "Type", "Status", "Actions"], id="cases-table") %}
+       {% for case in cases %}
+       <tr>
+           <td>{{ case.patient_name }}</td>
+           <td>{{ case.type }}</td>
+           <td>{{ case.status }}</td>
+           <td><a href="{{ url_for('module.detail', id=case.id) }}" class="btn btn-sm btn-primary">View</a></td>
+       </tr>
+       {% else %}
+       {{ empty_table_row(4, "No cases found") }}
+       {% endfor %}
+   {% endcall %}
+   ============================================== #}
+
+{% macro data_table(headers, id="", class="") %}
+<div class="table-responsive">
+    <table class="data-table {{ class }}" {% if id %}id="{{ id }}"{% endif %}>
+        <thead>
+            <tr>
+                {% for header in headers %}
+                <th>{{ header }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {{ caller() }}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+{% macro empty_table_row(colspan, message="No records found") %}
+<tr>
+    <td colspan="{{ colspan }}" class="empty-state">
+        <div class="empty-state__message">{{ message }}</div>
+    </td>
+</tr>
+{% endmacro %}

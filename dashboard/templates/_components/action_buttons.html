@@ -1,0 +1,42 @@
+{# ==============================================
+   Reusable Action Button Components
+   Shared across all AEGIS dashboard pages
+
+   These provide BEM-style button macros for common
+   actions. Complements the existing quick_links macro
+   in macros/components.html with more granular control
+   over individual buttons.
+
+   Usage:
+   {% from "_components/action_buttons.html" import action_button, action_group, back_button %}
+
+   {{ back_button(url_for('module.dashboard'), "Back to Dashboard") }}
+
+   {% call action_group() %}
+       {{ action_button("View Details", url=url_for('module.detail', id=item.id)) }}
+       {{ action_button("Acknowledge", type="secondary", onclick="acknowledge(this)") }}
+       {{ action_button("Delete", type="danger", onclick="confirmDelete(this)", size="sm") }}
+   {% endcall %}
+   ============================================== #}
+
+{% macro action_button(label, url="", type="primary", size="", onclick="", id="", disabled=false) %}
+<a {% if url %}href="{{ url }}"{% endif %}
+   class="btn btn--{{ type }} {% if size %}btn--{{ size }}{% endif %}"
+   {% if onclick %}onclick="{{ onclick }}"{% endif %}
+   {% if id %}id="{{ id }}"{% endif %}
+   {% if disabled %}disabled aria-disabled="true"{% endif %}>
+    {{ label }}
+</a>
+{% endmacro %}
+
+{% macro action_group() %}
+<div class="action-group">
+    {{ caller() }}
+</div>
+{% endmacro %}
+
+{% macro back_button(url, label="Back") %}
+<a href="{{ url }}" class="btn btn--secondary btn--sm">
+    &larr; {{ label }}
+</a>
+{% endmacro %}

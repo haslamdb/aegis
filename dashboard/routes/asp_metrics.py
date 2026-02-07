@@ -12,6 +12,8 @@ from pathlib import Path
 
 from flask import Blueprint, render_template, request, jsonify, Response
 
+from dashboard.utils.api_response import api_success, api_error
+
 logger = logging.getLogger(__name__)
 
 # Add common to path for metrics_store package
@@ -252,13 +254,13 @@ def update_target(target_id: int):
         )
 
         if success:
-            return jsonify({"success": True, "message": "Target updated"})
+            return api_success(message="Target updated")
         else:
-            return jsonify({"success": False, "error": "Target not found"}), 404
+            return api_error("Target not found", 404)
 
     except Exception as e:
         logger.error(f"Error updating target {target_id}: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/targets/identify", methods=["POST"])
@@ -278,15 +280,14 @@ def identify_targets():
 
         new_targets = aggregator.identify_intervention_targets(**thresholds)
 
-        return jsonify({
-            "success": True,
+        return api_success(data={
             "new_targets": len(new_targets),
             "targets": [t.to_dict() for t in new_targets],
         })
 
     except Exception as e:
         logger.error(f"Error identifying targets: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 # =============================================================================
@@ -349,11 +350,11 @@ def compare_periods():
             period2_end=period2_end,
         )
 
-        return jsonify({"success": True, "comparison": comparison})
+        return api_success(data={"comparison": comparison})
 
     except Exception as e:
         logger.error(f"Error comparing periods: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 # =============================================================================
@@ -420,10 +421,10 @@ def log_intervention():
         related_targets = data.get("related_targets", [])
 
         if not session_type:
-            return jsonify({"success": False, "error": "Session type required"}), 400
+            return api_error("Session type required", 400)
 
         if not session_date_str:
-            return jsonify({"success": False, "error": "Session date required"}), 400
+            return api_error("Session date required", 400)
 
         session_date = date.fromisoformat(session_date_str)
 
@@ -441,15 +442,11 @@ def log_intervention():
             conducted_by=conducted_by,
         )
 
-        return jsonify({
-            "success": True,
-            "session_id": session_id,
-            "message": "Intervention session logged",
-        })
+        return api_success(data={"session_id": session_id}, message="Intervention session logged")
 
     except Exception as e:
         logger.error(f"Error logging intervention: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/interventions/<int:session_id>")
@@ -494,10 +491,10 @@ def api_unified_metrics():
         aggregator = _get_aggregator()
         days = int(request.args.get("days", 30))
         metrics = aggregator.get_unified_metrics(days=days)
-        return jsonify(metrics)
+        return api_success(data=metrics)
     except Exception as e:
         logger.error(f"Error in unified metrics API: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/api/provider-workload")
@@ -509,10 +506,10 @@ def api_provider_workload():
         provider_id = request.args.get("provider_id")
 
         workload = store.get_provider_workload(days=days, provider_id=provider_id)
-        return jsonify(workload)
+        return api_success(data=workload)
     except Exception as e:
         logger.error(f"Error in provider workload API: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/api/intervention-targets")
@@ -529,10 +526,10 @@ def api_intervention_targets():
                 status=[TargetStatus.IDENTIFIED, TargetStatus.PLANNED, TargetStatus.IN_PROGRESS]
             )
 
-        return jsonify([t.to_dict() for t in targets])
+        return api_success(data=[t.to_dict() for t in targets])
     except Exception as e:
         logger.error(f"Error in intervention targets API: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/api/activity-summary")
@@ -542,10 +539,10 @@ def api_activity_summary():
         store = _get_metrics_store()
         days = int(request.args.get("days", 30))
         summary = store.get_activity_summary(days=days)
-        return jsonify(summary)
+        return api_success(data=summary)
     except Exception as e:
         logger.error(f"Error in activity summary API: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/api/snapshots")
@@ -562,10 +559,10 @@ def api_snapshots():
             start_date=start_date,
             end_date=end_date,
         )
-        return jsonify([s.to_dict() for s in snapshots])
+        return api_success(data=[s.to_dict() for s in snapshots])
     except Exception as e:
         logger.error(f"Error in snapshots API: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/api/create-snapshot", methods=["POST"])
@@ -582,13 +579,10 @@ def api_create_snapshot():
             snapshot_date = date.today() - timedelta(days=1)
 
         snapshot = aggregator.create_daily_snapshot(snapshot_date)
-        return jsonify({
-            "success": True,
-            "snapshot": snapshot.to_dict(),
-        })
+        return api_success(data={"snapshot": snapshot.to_dict()})
     except Exception as e:
         logger.error(f"Error creating snapshot: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 # =============================================================================
@@ -603,10 +597,10 @@ def api_weekly_summary():
         week_end_str = request.args.get("week_end")
         week_end = date.fromisoformat(week_end_str) if week_end_str else None
         summary = reporter.generate_weekly_summary(week_end_date=week_end)
-        return jsonify(summary)
+        return api_success(data=summary)
     except Exception as e:
         logger.error(f"Error generating weekly summary: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/export/activities.csv")
@@ -635,7 +629,7 @@ def export_activities_csv():
         )
     except Exception as e:
         logger.error(f"Error exporting activities: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/export/snapshots.csv")
@@ -662,7 +656,7 @@ def export_snapshots_csv():
         )
     except Exception as e:
         logger.error(f"Error exporting snapshots: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/export/targets.csv")
@@ -679,7 +673,7 @@ def export_targets_csv():
         )
     except Exception as e:
         logger.error(f"Error exporting targets: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @asp_metrics_bp.route("/export/sessions.csv")
@@ -706,4 +700,4 @@ def export_sessions_csv():
         )
     except Exception as e:
         logger.error(f"Error exporting sessions: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)

@@ -512,9 +512,11 @@ class MetricsStore:
                     mdro_cases_identified, mdro_cases_reviewed, mdro_confirmed,
                     outbreak_clusters_active, outbreak_alerts_triggered,
                     surgical_prophylaxis_cases, surgical_prophylaxis_compliant, surgical_prophylaxis_compliance_rate,
+                    llm_extractions_total, llm_accepted_count, llm_modified_count,
+                    llm_overridden_count, llm_acceptance_rate, llm_override_rate, llm_avg_confidence,
                     total_reviews, unique_reviewers, total_interventions,
                     by_location, by_service, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     snapshot.snapshot_date.isoformat(),
@@ -533,6 +535,10 @@ class MetricsStore:
                     snapshot.outbreak_clusters_active, snapshot.outbreak_alerts_triggered,
                     snapshot.surgical_prophylaxis_cases, snapshot.surgical_prophylaxis_compliant,
                     snapshot.surgical_prophylaxis_compliance_rate,
+                    snapshot.llm_extractions_total, snapshot.llm_accepted_count,
+                    snapshot.llm_modified_count, snapshot.llm_overridden_count,
+                    snapshot.llm_acceptance_rate, snapshot.llm_override_rate,
+                    snapshot.llm_avg_confidence,
                     snapshot.total_reviews, snapshot.unique_reviewers, snapshot.total_interventions,
                     by_location_json, by_service_json, now.isoformat()
                 )

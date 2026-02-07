@@ -3781,3 +3781,150 @@ table a.btn:hover {
     gap: 0.5rem;
     flex-wrap: wrap;
 }
+
+
+/* ==============================================
+   Shared Component Styles (BEM)
+   Supporting CSS for _components/ Jinja2 macros.
+   These use BEM naming (--modifier, __element) to
+   avoid conflicts with existing Bootstrap-style classes.
+   ============================================== */
+
+/* --- Stat Cards (BEM) --- */
+.stat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card.stat-card--red { border-left-color: var(--color-danger, #e74c3c); }
+.stat-card.stat-card--yellow { border-left-color: var(--color-warning, #f39c12); }
+.stat-card.stat-card--green { border-left-color: var(--color-success, #27ae60); }
+.stat-card.stat-card--blue { border-left-color: var(--color-info, #3498db); }
+.stat-card.stat-card--gray { border-left-color: var(--color-gray-400, #95a5a6); }
+.stat-card.stat-card--teal { border-left-color: var(--color-primary, #00d4aa); }
+
+.stat-card__icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card__value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-gray-800, #1E293B);
+    line-height: 1;
+}
+
+.stat-card__title {
+    font-size: 0.85rem;
+    color: var(--color-gray-500, #64748B);
+    margin-top: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-card__subtitle {
+    font-size: 0.8rem;
+    color: var(--color-gray-400, #94A3B8);
+    margin-top: 0.25rem;
+}
+
+/* --- Badges (BEM) --- */
+.badge.badge--red { background: var(--color-danger-light, #FEE2E2); color: var(--color-danger, #DC2626); }
+.badge.badge--yellow { background: var(--color-warning-light, #FEF3C7); color: var(--color-warning, #D97706); }
+.badge.badge--orange { background: rgba(230, 126, 34, 0.15); color: #e67e22; }
+.badge.badge--green { background: var(--color-success-light, #D1FAE5); color: var(--color-success, #059669); }
+.badge.badge--blue { background: var(--color-info-light, #CFFAFE); color: var(--color-info, #0891B2); }
+.badge.badge--teal { background: rgba(8, 145, 178, 0.15); color: var(--color-primary, #0891B2); }
+.badge.badge--gray { background: var(--color-gray-100, #F1F5F9); color: var(--color-gray-500, #64748B); }
+
+/* Severity-level aliases for badge--critical, badge--high, etc. */
+.badge.badge--critical { background: var(--color-danger-light, #FEE2E2); color: var(--color-danger, #DC2626); }
+.badge.badge--high { background: rgba(230, 126, 34, 0.15); color: #e67e22; }
+.badge.badge--medium { background: var(--color-warning-light, #FEF3C7); color: var(--color-warning, #D97706); }
+.badge.badge--low { background: var(--color-success-light, #D1FAE5); color: var(--color-success, #059669); }
+
+/* --- Empty States (BEM) --- */
+.empty-state-container {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: var(--color-gray-500, #64748B);
+    background: var(--color-gray-50, #F8FAFC);
+    border-radius: var(--radius-md, 10px);
+    margin-top: 1rem;
+}
+
+.empty-state-container .empty-state__icon {
+    font-size: 3rem;
+    color: var(--color-success, #059669);
+    margin-bottom: 1rem;
+}
+
+.empty-state-container .empty-state__title {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+    color: var(--color-gray-700, #334155);
+}
+
+.empty-state-container .empty-state__message {
+    font-size: 0.9rem;
+    color: var(--color-gray-400, #94A3B8);
+    margin-bottom: 1rem;
+}
+
+/* --- Filter Bar (BEM) --- */
+.filter-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    background: var(--color-gray-50, #F8FAFC);
+    padding: 1rem;
+    border-radius: var(--radius-md, 10px);
+}
+
+.filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filter-group label {
+    font-size: 0.85rem;
+    color: var(--color-gray-500, #64748B);
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.filter-group select {
+    background: var(--color-white, #fff);
+    color: var(--color-gray-800, #1E293B);
+    border: 1px solid var(--color-gray-300, #CBD5E1);
+    border-radius: var(--radius-sm, 6px);
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+    min-width: 150px;
+}
+
+/* --- Action Buttons (BEM) --- */
+.action-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.btn.btn--primary { background: var(--color-primary, #0891B2); color: var(--color-white, #fff); }
+.btn.btn--secondary { background: var(--color-gray-100, #F1F5F9); color: var(--color-gray-700, #334155); border: 1px solid var(--color-gray-300, #CBD5E1); }
+.btn.btn--danger { background: var(--color-danger, #DC2626); color: var(--color-white, #fff); }
+.btn.btn--sm { padding: 0.3rem 0.6rem; font-size: 0.8rem; }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
+
+/* --- Data Tables (BEM) --- */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}

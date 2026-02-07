@@ -1,0 +1,32 @@
+{# ==============================================
+   Empty State Components
+   Shared across all AEGIS dashboard pages
+
+   Displays a centered, styled empty state when there
+   is no data to show. Provides more visual weight than
+   the simple empty_state macro in macros/components.html.
+   Use this for full-page or full-section empty states;
+   use the simpler macro for inline empty messages.
+
+   Usage:
+   {% from "_components/empty_states.html" import empty_state %}
+
+   {{ empty_state(
+       title="No Active Outbreaks",
+       message="No outbreak clusters are currently under investigation.",
+       icon="&#x2714;",
+       action_url=url_for('outbreak_detection.clusters_list'),
+       action_label="View All Clusters"
+   ) }}
+   ============================================== #}
+
+{% macro empty_state(title="No Data Available", message="", icon="", action_url="", action_label="") %}
+<div class="empty-state-container">
+    {% if icon %}<div class="empty-state__icon">{{ icon }}</div>{% endif %}
+    <h3 class="empty-state__title">{{ title }}</h3>
+    {% if message %}<p class="empty-state__message">{{ message }}</p>{% endif %}
+    {% if action_url %}
+    <a href="{{ action_url }}" class="btn btn--primary">{{ action_label }}</a>
+    {% endif %}
+</div>
+{% endmacro %}

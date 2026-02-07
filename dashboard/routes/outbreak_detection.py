@@ -15,6 +15,7 @@ from outbreak_src.config import config as outbreak_config
 from outbreak_src.models import ClusterStatus, ClusterSeverity
 from outbreak_src.detector import OutbreakDetector
 from dashboard.services.user import get_user_from_request
+from dashboard.utils.api_response import api_success, api_error
 
 outbreak_detection_bp = Blueprint("outbreak_detection", __name__, url_prefix="/outbreak-detection")
 
@@ -166,7 +167,7 @@ def resolve_cluster(cluster_id: str):
 
         cluster = db.get_cluster(cluster_id)
         if not cluster:
-            return jsonify({"error": "Cluster not found"}), 404
+            return api_error("Cluster not found", 404)
 
         resolution_notes = request.form.get("notes")
         resolved_by = request.form.get("reviewer") or user.get("name", "Unknown")
@@ -187,12 +188,12 @@ def resolve_cluster(cluster_id: str):
                 provider_name=resolved_by,
                 details={"notes": resolution_notes[:200] if resolution_notes else None},
             )
-            return jsonify({"success": True})
+            return api_success()
         else:
-            return jsonify({"error": "Failed to resolve cluster"}), 500
+            return api_error("Failed to resolve cluster", 500)
     except Exception as e:
         current_app.logger.error(f"Error resolving cluster: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @outbreak_detection_bp.route("/clusters/<cluster_id>/status", methods=["POST"])
@@ -204,7 +205,7 @@ def update_cluster_status(cluster_id: str):
 
         cluster = db.get_cluster(cluster_id)
         if not cluster:
-            return jsonify({"error": "Cluster not found"}), 404
+            return api_error("Cluster not found", 404)
 
         new_status = request.form.get("status")
         notes = request.form.get("notes")
@@ -227,9 +228,9 @@ def update_cluster_status(cluster_id: str):
                     action_taken="resolved",
                     provider_name=reviewer,
                 )
-                return jsonify({"success": True})
+                return api_success()
             else:
-                return jsonify({"error": "Failed to resolve cluster"}), 500
+                return api_error("Failed to resolve cluster", 500)
 
         if new_status == "not_outbreak":
             # Mark as resolved with note that IP determined it's not an outbreak
@@ -253,15 +254,15 @@ def update_cluster_status(cluster_id: str):
                     provider_name=reviewer,
                     details={"override_reason": override_reason},
                 )
-                return jsonify({"success": True})
+                return api_success()
             else:
-                return jsonify({"error": "Failed to mark as not outbreak"}), 500
+                return api_error("Failed to mark as not outbreak", 500)
 
         # Handle status changes (active, investigating)
         try:
             status_enum = ClusterStatus(new_status)
         except ValueError:
-            return jsonify({"error": f"Invalid status: {new_status}"}), 400
+            return api_error(f"Invalid status: {new_status}", 400)
 
         db.update_cluster_status(
             cluster_id=cluster_id,
@@ -279,10 +280,10 @@ def update_cluster_status(cluster_id: str):
             details={"new_status": new_status, "notes": notes[:200] if notes else None},
         )
 
-        return jsonify({"success": True})
+        return api_success()
     except Exception as e:
         current_app.logger.error(f"Error updating cluster status: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @outbreak_detection_bp.route("/alerts")
@@ -339,10 +340,10 @@ def acknowledge_alert(alert_id: str):
             provider_name=acknowledged_by,
         )
 
-        return jsonify({"success": True})
+        return api_success()
     except Exception as e:
         current_app.logger.error(f"Error acknowledging alert: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @outbreak_detection_bp.route("/run", methods=["POST"])
@@ -355,13 +356,10 @@ def run_detection():
         days = int(request.form.get("days", "14"))
         result = detector.run_detection(days=days)
 
-        return jsonify({
-            "success": True,
-            "result": result,
-        })
+        return api_success(data={"result": result})
     except Exception as e:
         current_app.logger.error(f"Error running detection: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 # API endpoints
@@ -372,9 +370,9 @@ def api_stats():
     try:
         db = get_outbreak_db()
         stats = db.get_summary_stats()
-        return jsonify(stats)
+        return api_success(data=stats)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @outbreak_detection_bp.route("/api/active-clusters")
@@ -383,9 +381,9 @@ def api_active_clusters():
     try:
         db = get_outbreak_db()
         clusters = db.get_active_clusters()
-        return jsonify([c.to_dict() for c in clusters])
+        return api_success(data=[c.to_dict() for c in clusters])
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @outbreak_detection_bp.route("/help")

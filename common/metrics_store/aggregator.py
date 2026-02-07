@@ -172,6 +172,15 @@ class MetricsAggregator:
             logger.warning(f"Failed to get Surgical Prophylaxis database: {e}")
             return None
 
+    def _get_llm_tracker(self):
+        """Get LLM decision tracker instance."""
+        try:
+            from common.llm_tracking import LLMDecisionTracker
+            return LLMDecisionTracker()
+        except Exception as e:
+            logger.warning(f"Failed to get LLM tracker: {e}")
+            return None
+
     def create_daily_snapshot(self, snapshot_date: date | None = None) -> DailySnapshot:
         """Create a daily metrics snapshot from all modules.
 
@@ -195,6 +204,7 @@ class MetricsAggregator:
         self._aggregate_mdro_metrics(snapshot, snapshot_date)
         self._aggregate_outbreak_metrics(snapshot, snapshot_date)
         self._aggregate_surgical_metrics(snapshot, snapshot_date)
+        self._aggregate_llm_metrics(snapshot, snapshot_date)
         self._aggregate_activity_metrics(snapshot, snapshot_date)
 
         # Save the snapshot
@@ -541,6 +551,52 @@ class MetricsAggregator:
                     )
         except Exception as e:
             logger.error(f"Error aggregating surgical prophylaxis metrics: {e}")
+
+    def _aggregate_llm_metrics(self, snapshot: DailySnapshot, snapshot_date: date) -> None:
+        """Aggregate LLM extraction accuracy metrics."""
+        tracker = self._get_llm_tracker()
+        if not tracker:
+            return
+        try:
+            import sqlite3
+            with sqlite3.connect(tracker.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+                cursor = conn.cursor()
+                date_str = snapshot_date.isoformat()
+
+                # Total reviewed extractions on this date
+                cursor.execute(
+                    "SELECT COUNT(*) FROM llm_decisions WHERE outcome != 'pending' AND date(reviewed_at) = ?",
+                    (date_str,)
+                )
+                snapshot.llm_extractions_total = cursor.fetchone()[0]
+
+                if snapshot.llm_extractions_total == 0:
+                    return
+
+                # Breakdown by outcome
+                cursor.execute(
+                    """SELECT
+                        SUM(CASE WHEN outcome = 'accepted' THEN 1 ELSE 0 END) as accepted,
+                        SUM(CASE WHEN outcome = 'modified' THEN 1 ELSE 0 END) as modified,
+                        SUM(CASE WHEN outcome = 'overridden' THEN 1 ELSE 0 END) as overridden,
+                        AVG(CASE WHEN llm_confidence IS NOT NULL THEN llm_confidence END) as avg_conf
+                    FROM llm_decisions
+                    WHERE outcome != 'pending' AND date(reviewed_at) = ?""",
+                    (date_str,)
+                )
+                row = cursor.fetchone()
+                snapshot.llm_accepted_count = row["accepted"] or 0
+                snapshot.llm_modified_count = row["modified"] or 0
+                snapshot.llm_overridden_count = row["overridden"] or 0
+
+                total = snapshot.llm_extractions_total
+                accepted = snapshot.llm_accepted_count + snapshot.llm_modified_count
+                snapshot.llm_acceptance_rate = round(accepted / total * 100, 1)
+                snapshot.llm_override_rate = round(snapshot.llm_overridden_count / total * 100, 1)
+                snapshot.llm_avg_confidence = round(row["avg_conf"], 3) if row["avg_conf"] else None
+        except Exception as e:
+            logger.error(f"Error aggregating LLM metrics: {e}")
 
     def _aggregate_activity_metrics(self, snapshot: DailySnapshot, snapshot_date: date) -> None:
         """Aggregate human activity metrics from the unified metrics store."""

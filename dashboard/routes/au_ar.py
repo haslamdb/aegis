@@ -11,6 +11,7 @@ if str(_nhsn_path) not in sys.path:
 
 from flask import Blueprint, render_template, request, jsonify, current_app, Response
 
+from dashboard.utils.api_response import api_success, api_error
 from nhsn_src.db import NHSNDatabase
 from nhsn_src.config import Config as NHSNConfig
 from nhsn_src.data import AUDataExtractor, ARDataExtractor, DenominatorCalculator
@@ -492,9 +493,9 @@ def api_au_summary():
         locations = [location] if location else None
 
         summary = au_extractor.get_monthly_summary(locations, from_date, to_date)
-        return jsonify(summary)
+        return api_success(data=summary)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @nhsn_reporting_bp.route("/api/ar/summary")
@@ -510,9 +511,9 @@ def api_ar_summary():
         locations = [location] if location else None
 
         summary = ar_extractor.get_quarterly_summary(locations, year, quarter)
-        return jsonify(summary)
+        return api_success(data=summary)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @nhsn_reporting_bp.route("/api/denominators")
@@ -530,9 +531,9 @@ def api_denominators():
         locations = [location] if location else None
 
         summary = denom_calc.get_denominator_summary(locations, from_date, to_date)
-        return jsonify(summary)
+        return api_success(data=summary)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @nhsn_reporting_bp.route("/api/au/export")
@@ -555,7 +556,7 @@ def api_au_export():
         nhsn_df = au_extractor.export_for_nhsn(locations, from_date, to_date)
 
         if nhsn_df.empty:
-            return jsonify({"error": "No data to export"}), 404
+            return api_error("No data to export", 404)
 
         output = io.StringIO()
         nhsn_df.to_csv(output, index=False)
@@ -568,7 +569,7 @@ def api_au_export():
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @nhsn_reporting_bp.route("/api/ar/export")
@@ -589,7 +590,7 @@ def api_ar_export():
         export_data = ar_extractor.export_for_nhsn(locations, year, quarter)
 
         if export_data["isolates"].empty:
-            return jsonify({"error": "No data to export"}), 404
+            return api_error("No data to export", 404)
 
         # Create a zip-like response with both CSVs
         output = io.StringIO()
@@ -606,7 +607,7 @@ def api_ar_export():
             headers={"Content-Disposition": f"attachment; filename={filename}"},
         )
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @nhsn_reporting_bp.route("/help")
@@ -1015,13 +1016,16 @@ def hai_test_direct_connection():
         from nhsn_src.direct import DirectClient
 
         if not Config.is_direct_configured():
-            return jsonify({"success": False, "message": "DIRECT protocol not configured"})
+            return api_error("DIRECT protocol not configured", 400)
 
         direct_config = Config.get_direct_config()
         client = DirectClient(direct_config)
         success, message = client.test_connection()
 
-        return jsonify({"success": success, "message": message})
+        if success:
+            return api_success(message=message)
+        else:
+            return api_error(message, 500)
 
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)})
+        return api_error(str(e), 500)

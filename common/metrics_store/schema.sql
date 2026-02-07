@@ -122,6 +122,15 @@ CREATE TABLE IF NOT EXISTS metrics_daily_snapshot (
     surgical_prophylaxis_compliant INTEGER DEFAULT 0,
     surgical_prophylaxis_compliance_rate REAL,
 
+    -- LLM extraction accuracy metrics
+    llm_extractions_total INTEGER DEFAULT 0,
+    llm_accepted_count INTEGER DEFAULT 0,
+    llm_modified_count INTEGER DEFAULT 0,
+    llm_overridden_count INTEGER DEFAULT 0,
+    llm_acceptance_rate REAL,
+    llm_override_rate REAL,
+    llm_avg_confidence REAL,
+
     -- Human activity metrics
     total_reviews INTEGER DEFAULT 0,
     unique_reviewers INTEGER DEFAULT 0,

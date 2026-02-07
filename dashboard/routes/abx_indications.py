@@ -12,6 +12,7 @@ from flask import Blueprint, render_template, request, jsonify, current_app
 
 from dashboard.services.user import get_user_from_request
 from dashboard.services.fhir import FHIRService
+from dashboard.utils.api_response import api_success, api_error
 
 logger = logging.getLogger(__name__)
 
@@ -208,12 +209,12 @@ def submit_review(candidate_id: str):
         notes = data.get("notes", "").strip()
 
         if not reviewer:
-            return jsonify({"success": False, "error": "Reviewer name required"}), 400
+            return api_error("Reviewer name required", 400)
 
         # Get current candidate
         candidate = db.get_candidate(candidate_id)
         if not candidate:
-            return jsonify({"success": False, "error": "Candidate not found"}), 404
+            return api_error("Candidate not found", 404)
 
         # Check for new syndrome-based review (JC-compliant)
         syndrome_decision = (data.get("syndrome_decision") or "").strip()
@@ -273,19 +274,17 @@ def submit_review(candidate_id: str):
             except Exception as e:
                 logger.debug(f"Training collector not available: {e}")
 
-            return jsonify({
-                "success": True,
+            return api_success(data={
                 "review_id": review_id,
                 "is_override": is_override,
                 "syndrome_confirmed": confirmed_syndrome or candidate.clinical_syndrome,
                 "agent_decision": agent_decision,
-                "message": "Review submitted successfully",
-            })
+            }, message="Review submitted successfully")
 
         # Legacy A/S/N/P review workflow (backward compatibility)
         decision = data.get("decision", "").strip()
         if not decision:
-            return jsonify({"success": False, "error": "Decision required"}), 400
+            return api_error("Decision required", 400)
 
         decision_to_classification = {
             "confirm_appropriate": "A",
@@ -311,16 +310,14 @@ def submit_review(candidate_id: str):
             notes=notes,
         )
 
-        return jsonify({
-            "success": True,
+        return api_success(data={
             "review_id": review_id,
             "is_override": is_override,
-            "message": "Review submitted successfully",
-        })
+        }, message="Review submitted successfully")
 
     except Exception as e:
         logger.error(f"Error submitting review for {candidate_id}: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @abx_indications_bp.route("/analytics")
@@ -386,7 +383,7 @@ def acknowledge_candidate(candidate_id: str):
 
         candidate = db.get_candidate(candidate_id)
         if not candidate:
-            return jsonify({"success": False, "error": "Candidate not found"}), 404
+            return api_error("Candidate not found", 404)
 
         # Save as a simple acknowledgment (not an override)
         review_id = db.save_review(
@@ -397,15 +394,11 @@ def acknowledge_candidate(candidate_id: str):
             notes=notes,
         )
 
-        return jsonify({
-            "success": True,
-            "review_id": review_id,
-            "message": "Candidate acknowledged",
-        })
+        return api_success(data={"review_id": review_id}, message="Candidate acknowledged")
 
     except Exception as e:
         logger.error(f"Error acknowledging candidate {candidate_id}: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @abx_indications_bp.route("/acknowledge-all", methods=["POST"])
@@ -435,15 +428,14 @@ def acknowledge_all():
             )
             count += 1
 
-        return jsonify({
-            "success": True,
-            "acknowledged_count": count,
-            "message": f"Acknowledged {count} pending candidates",
-        })
+        return api_success(
+            data={"acknowledged_count": count},
+            message=f"Acknowledged {count} pending candidates",
+        )
 
     except Exception as e:
         logger.error(f"Error in bulk acknowledge: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @abx_indications_bp.route("/reviewed")
@@ -523,7 +515,7 @@ def delete_candidate(candidate_id: str):
         reason = data.get("reason", "").strip()
 
         if not deleted_by:
-            return jsonify({"success": False, "error": "deleted_by is required"}), 400
+            return api_error("deleted_by is required", 400)
 
         success = db.delete_candidate(
             candidate_id=candidate_id,
@@ -532,19 +524,16 @@ def delete_candidate(candidate_id: str):
         )
 
         if success:
-            return jsonify({
-                "success": True,
-                "message": f"Candidate {candidate_id} deleted successfully",
-            })
+            return api_success(message=f"Candidate {candidate_id} deleted successfully")
         else:
-            return jsonify({
-                "success": False,
-                "error": "Candidate not found or not reviewed (only reviewed candidates can be deleted)",
-            }), 400
+            return api_error(
+                "Candidate not found or not reviewed (only reviewed candidates can be deleted)",
+                400,
+            )
 
     except Exception as e:
         logger.error(f"Error deleting candidate {candidate_id}: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @abx_indications_bp.route("/reviewed/delete", methods=["POST"])
@@ -563,17 +552,14 @@ def delete_reviewed():
         reason = data.get("reason", "").strip()
 
         if not deleted_by:
-            return jsonify({"success": False, "error": "deleted_by is required"}), 400
+            return api_error("deleted_by is required", 400)
 
         # Convert older_than_days to int if provided
         if older_than_days is not None:
             try:
                 older_than_days = int(older_than_days)
             except (ValueError, TypeError):
-                return jsonify({
-                    "success": False,
-                    "error": "older_than_days must be an integer",
-                }), 400
+                return api_error("older_than_days must be an integer", 400)
 
         count = db.delete_reviewed_candidates(
             deleted_by=deleted_by,
@@ -581,15 +567,14 @@ def delete_reviewed():
             reason=reason or None,
         )
 
-        return jsonify({
-            "success": True,
-            "deleted_count": count,
-            "message": f"Deleted {count} reviewed candidates",
-        })
+        return api_success(
+            data={"deleted_count": count},
+            message=f"Deleted {count} reviewed candidates",
+        )
 
     except Exception as e:
         logger.error(f"Error deleting reviewed candidates: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @abx_indications_bp.route("/reviewed/count")
@@ -606,19 +591,15 @@ def reviewed_count():
             try:
                 older_than_days = int(older_than_days)
             except (ValueError, TypeError):
-                return jsonify({
-                    "success": False,
-                    "error": "older_than_days must be an integer",
-                }), 400
+                return api_error("older_than_days must be an integer", 400)
 
         count = db.get_reviewed_candidates_count(older_than_days=older_than_days)
 
-        return jsonify({
-            "success": True,
+        return api_success(data={
             "count": count,
             "older_than_days": older_than_days,
         })
 
     except Exception as e:
         logger.error(f"Error getting reviewed count: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
+        return api_error(str(e), 500)

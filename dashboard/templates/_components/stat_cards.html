@@ -1,0 +1,35 @@
+{# ==============================================
+   Reusable Stat Card Components
+   Shared across all AEGIS dashboard pages
+
+   These provide a BEM-style alternative to the existing
+   stat_card/stats_grid macros in macros/components.html.
+   Use these when you want explicit color control via
+   color names (red, yellow, green, blue, teal, gray)
+   rather than semantic variants (primary, success, warning).
+
+   Usage:
+   {% from "_components/stat_cards.html" import stat_card, stat_card_row %}
+
+   {% call stat_card_row() %}
+       {{ stat_card("Active Alerts", stats.active_count, color="red") }}
+       {{ stat_card("Pending Review", stats.pending_count, subtitle="Last 7 days", color="yellow") }}
+       {{ stat_card("Resolved", stats.resolved_count, color="green") }}
+       {{ stat_card("Total", stats.total_count, color="teal", icon="&#x1F4CA;") }}
+   {% endcall %}
+   ============================================== #}
+
+{% macro stat_card(title, value, subtitle="", color="teal", icon="") %}
+<div class="stat-card stat-card--{{ color }}">
+    {% if icon %}<div class="stat-card__icon">{{ icon }}</div>{% endif %}
+    <div class="stat-card__value">{{ value }}</div>
+    <div class="stat-card__title">{{ title }}</div>
+    {% if subtitle %}<div class="stat-card__subtitle">{{ subtitle }}</div>{% endif %}
+</div>
+{% endmacro %}
+
+{% macro stat_card_row() %}
+<div class="stat-cards">
+    {{ caller() }}
+</div>
+{% endmacro %}

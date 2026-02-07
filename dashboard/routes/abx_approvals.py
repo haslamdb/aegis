@@ -13,6 +13,7 @@ from common.abx_approvals import AbxApprovalStore, ApprovalDecision, ApprovalSta
 from common.allergy_recommendations import filter_recommendations_by_allergies
 from dashboard.services.fhir import FHIRService
 from dashboard.services.user import get_user_from_request
+from dashboard.utils.api_response import api_success, api_error
 
 logger = logging.getLogger(__name__)
 
@@ -289,10 +290,7 @@ def api_create_request():
     antibiotic_name = data.get("antibiotic_name", "").strip()
 
     if not patient_id or not antibiotic_name:
-        return jsonify({
-            "success": False,
-            "error": "patient_id and antibiotic_name are required"
-        }), 400
+        return api_error("patient_id and antibiotic_name are required", 400)
 
     # Get patient info from FHIR
     patient_mrn = data.get("patient_mrn", "Unknown")
@@ -332,17 +330,11 @@ def api_create_request():
             created_by=created_by,
         )
 
-        return jsonify({
-            "success": True,
-            "approval_id": approval.id,
-        })
+        return api_success(data={"approval_id": approval.id})
 
     except Exception as e:
         logger.error(f"Failed to create approval request: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return api_error(str(e), 500)
 
 
 @abx_approvals_bp.route("/api/<approval_id>/decide", methods=["POST"])
@@ -354,19 +346,13 @@ def api_decide(approval_id: str):
 
     decision = data.get("decision")
     if not decision:
-        return jsonify({
-            "success": False,
-            "error": "decision is required"
-        }), 400
+        return api_error("decision is required", 400)
 
     # Validate decision
     try:
         ApprovalDecision(decision)
     except ValueError:
-        return jsonify({
-            "success": False,
-            "error": f"Invalid decision: {decision}"
-        }), 400
+        return api_error(f"Invalid decision: {decision}", 400)
 
     decision_by = get_user_from_request(default="Unknown")
 
@@ -381,19 +367,16 @@ def api_decide(approval_id: str):
         )
 
         if success:
-            return jsonify({"success": True})
+            return api_success()
         else:
-            return jsonify({
-                "success": False,
-                "error": "Decision could not be recorded (request may already be completed)"
-            }), 400
+            return api_error(
+                "Decision could not be recorded (request may already be completed)",
+                400,
+            )
 
     except Exception as e:
         logger.error(f"Failed to record decision: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return api_error(str(e), 500)
 
 
 @abx_approvals_bp.route("/api/<approval_id>/note", methods=["POST"])
@@ -405,10 +388,7 @@ def api_add_note(approval_id: str):
     note = data.get("note", "").strip()
 
     if not note:
-        return jsonify({
-            "success": False,
-            "error": "note is required"
-        }), 400
+        return api_error("note is required", 400)
 
     added_by = get_user_from_request(default="Unknown")
 
@@ -420,16 +400,10 @@ def api_add_note(approval_id: str):
         )
 
         if success:
-            return jsonify({"success": True})
+            return api_success()
         else:
-            return jsonify({
-                "success": False,
-                "error": "Note could not be added"
-            }), 400
+            return api_error("Note could not be added", 400)
 
     except Exception as e:
         logger.error(f"Failed to add note: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        return api_error(str(e), 500)

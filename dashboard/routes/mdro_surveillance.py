@@ -15,6 +15,7 @@ from mdro_src.config import config as mdro_config
 from mdro_src.classifier import MDROType
 from mdro_src.models import TransmissionStatus
 from dashboard.services.user import get_user_from_request
+from dashboard.utils.api_response import api_success, api_error
 
 mdro_surveillance_bp = Blueprint("mdro_surveillance", __name__, url_prefix="/mdro-surveillance")
 
@@ -195,7 +196,7 @@ def review_case(case_id: str):
 
         case = db.get_case(case_id)
         if not case:
-            return jsonify({"error": "Case not found"}), 404
+            return api_error("Case not found", 404)
 
         decision = request.form.get("decision")
         notes = request.form.get("notes")
@@ -218,13 +219,10 @@ def review_case(case_id: str):
             details={"notes": notes[:200] if notes else None, "review_id": review_id},
         )
 
-        return jsonify({
-            "success": True,
-            "review_id": review_id,
-        })
+        return api_success(data={"review_id": review_id})
     except Exception as e:
         current_app.logger.error(f"Error saving review: {e}")
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @mdro_surveillance_bp.route("/analytics")
@@ -264,9 +262,9 @@ def api_stats():
         db = get_mdro_db()
         days = int(request.args.get("days", "30"))
         stats = db.get_summary_stats(days=days)
-        return jsonify(stats)
+        return api_success(data=stats)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @mdro_surveillance_bp.route("/api/export")
@@ -276,9 +274,9 @@ def api_export():
         db = get_mdro_db()
         days = int(request.args.get("days", "14"))
         cases = db.get_cases_for_export(days=days)
-        return jsonify(cases)
+        return api_success(data=cases)
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return api_error(str(e), 500)
 
 
 @mdro_surveillance_bp.route("/help")

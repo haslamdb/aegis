@@ -1,0 +1,51 @@
+{# ==============================================
+   Reusable Status and Severity Badge Components
+   Shared across all AEGIS dashboard pages
+
+   These provide BEM-style badge macros with explicit
+   color mapping for common AEGIS statuses and severity
+   levels. Complements the existing badge macros in
+   macros/components.html (status_badge, decision_badge,
+   hai_type_badge, etc.) with a more generic approach
+   suitable for any module.
+
+   Usage:
+   {% from "_components/status_badges.html" import severity_badge, status_badge, compliance_badge %}
+
+   {{ severity_badge("critical") }}
+   {{ status_badge("pending") }}
+   {{ status_badge("resolved") }}
+   {{ compliance_badge(patient.is_compliant) }}
+   ============================================== #}
+
+{% macro severity_badge(severity) %}
+<span class="badge badge--{{ severity|lower }}">{{ severity|capitalize }}</span>
+{% endmacro %}
+
+{% macro status_badge(status) %}
+{% set status_colors = {
+    'pending': 'yellow',
+    'sent': 'blue',
+    'acknowledged': 'teal',
+    'snoozed': 'gray',
+    'resolved': 'green',
+    'active': 'red',
+    'investigating': 'orange',
+    'confirmed': 'red',
+    'ruled_out': 'green',
+    'compliant': 'green',
+    'non_compliant': 'red',
+    'excluded': 'gray',
+} %}
+<span class="badge badge--{{ status_colors.get(status|lower, 'gray') }}">
+    {{ status|replace('_', ' ')|capitalize }}
+</span>
+{% endmacro %}
+
+{% macro compliance_badge(is_compliant) %}
+{% if is_compliant %}
+<span class="badge badge--green">Compliant</span>
+{% else %}
+<span class="badge badge--red">Non-Compliant</span>
+{% endif %}
+{% endmacro %}

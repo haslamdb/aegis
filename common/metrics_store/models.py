@@ -292,6 +292,15 @@ class DailySnapshot:
     surgical_prophylaxis_compliant: int = 0
     surgical_prophylaxis_compliance_rate: float | None = None
 
+    # LLM extraction accuracy metrics
+    llm_extractions_total: int = 0
+    llm_accepted_count: int = 0
+    llm_modified_count: int = 0
+    llm_overridden_count: int = 0
+    llm_acceptance_rate: float | None = None
+    llm_override_rate: float | None = None
+    llm_avg_confidence: float | None = None
+
     # Human activity metrics
     total_reviews: int = 0
     unique_reviewers: int = 0
@@ -335,6 +344,13 @@ class DailySnapshot:
             "surgical_prophylaxis_cases": self.surgical_prophylaxis_cases,
             "surgical_prophylaxis_compliant": self.surgical_prophylaxis_compliant,
             "surgical_prophylaxis_compliance_rate": self.surgical_prophylaxis_compliance_rate,
+            "llm_extractions_total": self.llm_extractions_total,
+            "llm_accepted_count": self.llm_accepted_count,
+            "llm_modified_count": self.llm_modified_count,
+            "llm_overridden_count": self.llm_overridden_count,
+            "llm_acceptance_rate": self.llm_acceptance_rate,
+            "llm_override_rate": self.llm_override_rate,
+            "llm_avg_confidence": self.llm_avg_confidence,
             "total_reviews": self.total_reviews,
             "unique_reviewers": self.unique_reviewers,
             "total_interventions": self.total_interventions,
@@ -406,6 +422,13 @@ class DailySnapshot:
             surgical_prophylaxis_cases=safe_get("surgical_prophylaxis_cases"),
             surgical_prophylaxis_compliant=safe_get("surgical_prophylaxis_compliant"),
             surgical_prophylaxis_compliance_rate=safe_get("surgical_prophylaxis_compliance_rate", None),
+            llm_extractions_total=safe_get("llm_extractions_total", 0),
+            llm_accepted_count=safe_get("llm_accepted_count", 0),
+            llm_modified_count=safe_get("llm_modified_count", 0),
+            llm_overridden_count=safe_get("llm_overridden_count", 0),
+            llm_acceptance_rate=safe_get("llm_acceptance_rate", None),
+            llm_override_rate=safe_get("llm_override_rate", None),
+            llm_avg_confidence=safe_get("llm_avg_confidence", None),
             total_reviews=row["total_reviews"] or 0,
             unique_reviewers=row["unique_reviewers"] or 0,
             total_interventions=row["total_interventions"] or 0,
