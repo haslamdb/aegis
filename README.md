@@ -32,7 +32,7 @@ The landing page provides access to the following modules:
 | **ABX Approvals** | [/abx-approvals/](https://aegis-asp.com/abx-approvals/) | Phone-based antibiotic approval workflow with duration tracking and auto re-approval |
 | **ASP Alerts** | [/asp-alerts/](https://aegis-asp.com/asp-alerts/) | Antimicrobial stewardship alerts (bacteremia, usage, indications) |
 | **Drug-Bug Mismatch** | [/drug-bug-mismatch/](https://aegis-asp.com/drug-bug-mismatch/) | Real-time therapy-organism mismatch detection |
-| **Antibiotic Indications** | [/abx-indications/](https://aegis-asp.com/abx-indications/) | ICD-10 based antibiotic appropriateness classification |
+| **Antibiotic Indications** | [/abx-indications/](https://aegis-asp.com/abx-indications/) | LLM-based indication extraction and appropriateness assessment |
 | **HAI Detection** | [/hai-detection/](https://aegis-asp.com/hai-detection/) | All 5 HAI types: CLABSI, SSI, CAUTI, VAE, CDI |
 | **MDRO Surveillance** | [/mdro-surveillance/](https://aegis-asp.com/mdro-surveillance/) | Multi-drug resistant organism tracking |
 | **Outbreak Detection** | [/outbreak-detection/](https://aegis-asp.com/outbreak-detection/) | Cluster detection and investigation |
@@ -108,7 +108,7 @@ Monitors antimicrobial usage patterns including broad-spectrum duration and anti
 
 **Features:**
 - Duration-based alerting for broad-spectrum antibiotics
-- Two-track indication classification: ICD-10 codes + LLM note extraction
+- LLM-based indication extraction from clinical notes
 - Configurable thresholds and monitored medications
 - Teams alerts with acknowledge/snooze buttons
 - Override tracking for pharmacist disagreements
@@ -238,7 +238,7 @@ Web-based dashboard providing a unified interface for all AEGIS modules. The lan
 - **ABX Approvals** (`/abx-approvals/`) - Approval workflow with duration tracking and auto re-approval
 - **ASP Alerts** (`/asp-alerts/`) - Antimicrobial stewardship alert management
 - **Drug-Bug Mismatch** (`/drug-bug-mismatch/`) - Therapy-organism mismatch detection
-- **Antibiotic Indications** (`/abx-indications/`) - ICD-10 appropriateness classification
+- **Antibiotic Indications** (`/abx-indications/`) - LLM-based indication extraction and appropriateness assessment
 - **HAI Detection** (`/hai-detection/`) - All 5 HAI types with IP review workflow
 - **MDRO Surveillance** (`/mdro-surveillance/`) - Multi-drug resistant organism tracking
 - **Outbreak Detection** (`/outbreak-detection/`) - Cluster detection and investigation
