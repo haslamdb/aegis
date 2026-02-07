@@ -20,6 +20,14 @@
 
         <div class="module-list">
             <div class="module-item">
+                <div class="module-icon" style="color: #F59E0B;">&#x1F4DE;</div>
+                <div class="module-details">
+                    <h3>ABX Approvals</h3>
+                    <p>Phone-based antibiotic approval workflow for pharmacists handling prospective review requests. Provides clinical context including MDR history, drug allergies, and renal function. Features approval duration tracking with automatic re-approval requests when patients remain on antibiotics past the approved period, and approval chain tracking across re-approvals.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
                 <div class="module-icon" style="color: var(--color-danger);">&#x26A0;</div>
                 <div class="module-details">
                     <h3>ASP Alerts</h3>
@@ -31,7 +39,7 @@
                 <div class="module-icon" style="color: var(--color-success);">&#x1F3E5;</div>
                 <div class="module-details">
                     <h3>HAI Detection</h3>
-                    <p>Automated surveillance for healthcare-associated infections using NHSN criteria. Detects potential CLABSI (Central Line-Associated Bloodstream Infections) and CAUTI (Catheter-Associated Urinary Tract Infections) candidates based on device days, culture results, and clinical context. Supports IP review and override workflows.</p>
+                    <p>Automated surveillance for all 5 healthcare-associated infection types using NHSN criteria: CLABSI, SSI, CAUTI, VAE, and CDI. Combines rule-based screening with LLM fact extraction and deterministic NHSN rules to identify candidates. Supports IP review and override workflows with FHIR-preferred data sourcing.</p>
                 </div>
             </div>
 
@@ -39,7 +47,7 @@
                 <div class="module-icon" style="color: #059669;">&#x1F48A;</div>
                 <div class="module-details">
                     <h3>Antibiotic Indications</h3>
-                    <p>ICD-10 based classification of antibiotic appropriateness for real-time order assessment. Automatically categorizes prescriptions as therapeutic, prophylactic, or requiring review based on documented diagnoses. Identifies febrile neutropenia patients and supports appropriateness reviews.</p>
+                    <p>LLM-based indication extraction and antibiotic appropriateness assessment. Extracts clinical syndromes from notes and evaluates whether prescribed antibiotics align with local guidelines. Identifies febrile neutropenia patients and supports appropriateness reviews.</p>
                 </div>
             </div>
 
@@ -68,7 +76,23 @@
             </div>
 
             <div class="module-item">
-                <div class="module-icon" style="color: #7C3AED;">&#x1F4CA;</div>
+                <div class="module-icon" style="color: #DC2626;">&#x1F9A0;</div>
+                <div class="module-details">
+                    <h3>MDRO Surveillance</h3>
+                    <p>Multi-drug resistant organism tracking based on culture susceptibility results. Monitors MRSA, VRE, CRE, ESBL, CRPA, and CRAB across the institution with unit-level dashboards and trend analysis for infection prevention teams.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: #BE185D;">&#x1F6A8;</div>
+                <div class="module-details">
+                    <h3>Outbreak Detection</h3>
+                    <p>Cluster detection and investigation across MDRO, HAI, and CDI cases. Uses spatiotemporal clustering algorithms to identify potential outbreaks and supports IP investigation workflows with timeline and contact tracing views.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: #E11D48;">&#x1F4CA;</div>
                 <div class="module-details">
                     <h3>NHSN Reporting</h3>
                     <p>Antimicrobial usage (AU) and antimicrobial resistance (AR) reporting for the CDC's National Healthcare Safety Network. Aggregates usage data by drug and location, tracks resistance patterns, calculates standardized metrics, and generates CDA files for electronic submission.</p>
@@ -76,10 +100,18 @@
             </div>
 
             <div class="module-item">
-                <div class="module-icon" style="color: var(--color-primary);">&#x1F4C8;</div>
+                <div class="module-icon" style="color: #0E7490;">&#x1F4CA;</div>
+                <div class="module-details">
+                    <h3>Action Analytics</h3>
+                    <p>Unified tracking and analysis of all ASP and Infection Prevention actions across modules. Provides recommendation breakdowns, approval workflow analytics, therapy change tracking, unit-level comparisons, and time/workload analysis with CSV exports for committee presentations.</p>
+                </div>
+            </div>
+
+            <div class="module-item">
+                <div class="module-icon" style="color: #059669;">&#x1F4C8;</div>
                 <div class="module-details">
                     <h3>Dashboards</h3>
-                    <p>Analytics dashboards providing cross-module insights for ASP/IP leadership. Includes unified metrics tracking, provider workload analysis, intervention targeting based on data patterns, trending comparisons, and outcome tracking for quality improvement initiatives.</p>
+                    <p>Analytics dashboards providing cross-module insights for ASP/IP leadership. Includes unified metrics tracking, provider workload analysis, trending comparisons, and LLM model training progress tracking for continuous improvement.</p>
                 </div>
             </div>
         </div>
@@ -87,7 +119,7 @@
 
     <section class="about-section">
         <h2>Technology</h2>
-        <p>AEGIS is built with Python and Flask, using SQLite databases for data persistence. The system is designed for institutional deployment and integrates with electronic health record systems through standard data interfaces.</p>
+        <p>AEGIS is built with Python and Flask, using SQLite databases for data persistence. Clinical data is sourced via FHIR R4 APIs (Epic-compatible) with Clarity fallback. AI-assisted clinical extraction uses local Ollama LLMs (llama3.3:70b) to keep all PHI on-premises. The system is designed for institutional deployment with no external AI service dependencies.</p>
     </section>
 </div>
 
