@@ -33,14 +33,14 @@
     {# Left Column: Patient Context #}
     {% call detail_sidebar() %}
         {% call detail_sidebar_section("Patient Information") %}
-            {{ detail_field("Patient Name", '<strong>' ~ (case.patient_name or 'Unknown') ~ '</strong>') }}
-            {{ detail_field("MRN", '<span class="patient-mrn">' ~ case.patient_mrn ~ '</span>') }}
+            {{ detail_field("Patient Name", case.patient_name or 'Unknown') }}
+            {{ detail_field("MRN", case.patient_mrn) }}
             {{ detail_field("Unit", case.unit or 'Unknown') }}
             {{ detail_field("Facility", case.location or 'Unknown') }}
         {% endcall %}
 
         {% call detail_sidebar_section("Culture Information") %}
-            {{ detail_field("Organism", '<strong>' ~ case.organism ~ '</strong>') }}
+            {{ detail_field("Organism", case.organism) }}
             {{ detail_field("Specimen Type", case.specimen_type or 'Unknown') }}
             {{ detail_field("Culture Date", case.culture_date.strftime('%m/%d/%Y %H:%M')) }}
             {{ detail_field("Culture ID", case.culture_id) }}
