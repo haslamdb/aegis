@@ -56,17 +56,17 @@
 
             <div class="alert-type-card">
                 <h3>No Renal Adjustment</h3>
-                <p>Patient has renal impairment but dose has not been reduced appropriately.</p>
+                <p><strong>(Phase 2)</strong> Patient has renal impairment but dose has not been reduced appropriately. Covers 15+ antimicrobials with GFR/CrCl-based dosing including dialysis patients (HD, CRRT, PD).</p>
             </div>
 
             <div class="alert-type-card">
                 <h3>Weight Dose Mismatch</h3>
-                <p>Dose is not weight-appropriate (obesity dosing, pediatric weight-based dosing).</p>
+                <p><strong>(Phase 2)</strong> Dose is not weight-appropriate. Includes pediatric weight-based calculations, obesity dosing adjustments (IBW/ABW), and max dose cap enforcement.</p>
             </div>
 
             <div class="alert-type-card">
                 <h3>Age Dose Mismatch</h3>
-                <p>Dose is not age-appropriate (neonatal, pediatric, adult variations).</p>
+                <p><strong>(Phase 2)</strong> Dose is not age-appropriate. Supports neonatal dosing by gestational/postnatal age, pediatric-specific dosing, and age-based contraindications.</p>
             </div>
 
             <div class="alert-type-card">
@@ -228,13 +228,14 @@
             </li>
             <li>Rules engine evaluates orders against:
                 <ul>
-                    <li>Indication-specific dosing tables (IDSA guidelines, local protocols)</li>
-                    <li>Renal adjustment requirements</li>
-                    <li>Weight-based dosing appropriateness</li>
-                    <li>Age-based dosing (neonatal, pediatric, adult)</li>
-                    <li>Drug-drug interactions</li>
-                    <li>Route verification (PO vancomycin for CDI, not IV)</li>
-                    <li>Duration appropriateness</li>
+                    <li><strong>Allergy checks:</strong> Direct contraindications and cross-reactivity (PCN→ceph R1 side chain matching)</li>
+                    <li><strong>Age-based rules (Phase 2):</strong> Neonatal contraindications (ceftriaxone + hyperbilirubinemia), pediatric dosing (gestational age for NICU), age-specific contraindications (fluoroquinolones in children)</li>
+                    <li><strong>Drug-drug interactions:</strong> Critical DDIs (linezolid + SSRI), significant interactions (voriconazole + calcineurin inhibitors)</li>
+                    <li><strong>Route verification:</strong> IV vancomycin for CDI (doesn't reach colon), nitrofurantoin for bacteremia (no serum levels), daptomycin for pneumonia (surfactant inactivation)</li>
+                    <li><strong>Indication-specific dosing:</strong> Meningitis (2x standard for CNS penetration), endocarditis (synergy dosing), candidemia (loading doses)</li>
+                    <li><strong>Renal adjustment (Phase 2):</strong> GFR/CrCl-based interval/dose adjustments for 15+ antimicrobials, dialysis-specific dosing (HD/CRRT/PD), neurotoxicity risk alerts (cefepime)</li>
+                    <li><strong>Weight-based dosing (Phase 2):</strong> Pediatric mg/kg calculations, obesity adjustments (IBW/ABW for aminoglycosides), max dose caps</li>
+                    <li><strong>Duration appropriateness (Phase 3):</strong> Guideline-based duration monitoring</li>
                 </ul>
             </li>
             <li>Flags are generated for any discrepancies</li>
@@ -266,8 +267,21 @@
             <li><strong>IDSA MRSA Guidelines</strong> - Bacteremia vs. skin/soft tissue dosing</li>
             <li><strong>IDSA Aspergillosis Guidelines 2016</strong> - Voriconazole TDM requirements</li>
             <li><strong>ATS/IDSA HAP/VAP Guidelines 2016</strong> - Extended infusion candidates</li>
+            <li><strong>Sanford Guide 2024</strong> - Renal dosing adjustments, dialysis-specific dosing</li>
+            <li><strong>AAP Red Book</strong> - Pediatric and neonatal dosing, age-based contraindications</li>
+            <li><strong>NeoFax 2024</strong> - Neonatal dosing by gestational/postnatal age</li>
+            <li><strong>Pichichero 2015 JACI</strong> - Penicillin-cephalosporin cross-reactivity by R1 side chain</li>
             <li><strong>FDA Black Box Warnings</strong> - Contraindications, serious DDIs</li>
             <li><strong>Local CCHMC Protocols</strong> - Institution-specific refinements</li>
+        </ul>
+
+        <h3>Phase 2 Implementation (Completed 2026-02-07)</h3>
+        <p>Phase 2 added comprehensive patient factor rules:</p>
+        <ul class="reference-list">
+            <li><strong>Renal Adjustment Rules:</strong> 15+ antimicrobials with GFR/CrCl-based adjustments, dialysis-specific dosing (HD, CRRT, PD), Cockcroft-Gault CrCl calculation</li>
+            <li><strong>Weight-Based Rules:</strong> Pediatric mg/kg calculations, obesity dosing (IBW/ABW), max dose caps, BSA calculations (Mosteller formula)</li>
+            <li><strong>Age-Based Rules:</strong> Neonatal dosing by gestational/postnatal age, pediatric vs adult differentiation, age-based contraindications (ceftriaxone in neonates, fluoroquinolones in children)</li>
+            <li><strong>FHIR Integration:</strong> Real-time patient data fetching (weight, height, SCr, eGFR, gestational age), integration with ABX Indications module</li>
         </ul>
     </section>
 

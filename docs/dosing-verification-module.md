@@ -2,7 +2,7 @@
 
 **GitHub Issue:** #19
 **Priority:** High
-**Status:** Planning
+**Status:** Phase 2 Complete (Phase 3 In Progress)
 
 ---
 
@@ -1591,33 +1591,54 @@ email.send(EmailMessage(
 
 ## Phased Implementation
 
-### Phase 1: Core Engine + Store + Dashboard (MVP)
+### Phase 1: Core Engine + Store + Dashboard (MVP) ✅ COMPLETE
 
 **Goal:** End-to-end dosing evaluation with dashboard review workflow.
 
-1. **Data model** — `common/dosing_verification/` (models.py, store.py, schema.sql)
-2. **Rules engine skeleton** — `dosing-verification/src/rules_engine.py` with `PatientContext` and `BaseRuleModule`
-3. **Indication rules** — Meningitis, endocarditis, CDI, candidemia (highest clinical impact)
-4. **Route rules** — IV vancomycin for CDI, nitrofurantoin for bacteremia, daptomycin for pneumonia
-5. **Allergy rules** — Direct allergy contraindications and cross-reactivity (penicillin→cephalosporin matrix, fluoroquinolone class, macrolide class)
-6. **DoseAlertStore** — CRUD, status transitions, audit log
-7. **Dashboard routes** — Active list, detail page with review workflow, history
-8. **Templates** — Using harmonized components (detail_layout, stat_cards, filters, data_tables, status_badges, action_buttons)
-9. **App integration** — Register blueprint, add nav, add landing card, add about entry
-10. **Demo data** — Script to generate sample dose alerts for testing
+1. ✅ **Data model** — `common/dosing_verification/` (models.py, store.py, schema.sql)
+2. ✅ **Rules engine skeleton** — `dosing-verification/src/rules_engine.py` with `PatientContext` and `BaseRuleModule`
+3. ✅ **Indication rules** — Meningitis, endocarditis, CDI, candidemia (highest clinical impact)
+4. ✅ **Route rules** — IV vancomycin for CDI, nitrofurantoin for bacteremia, daptomycin for pneumonia
+5. ✅ **Allergy rules** — Direct allergy contraindications and cross-reactivity (penicillin→cephalosporin matrix, fluoroquinolone class, macrolide class)
+6. ✅ **DoseAlertStore** — CRUD, status transitions, audit log
+7. ✅ **Dashboard routes** — Active list, detail page with review workflow, history
+8. ✅ **Templates** — Using harmonized components (detail_layout, stat_cards, filters, data_tables, status_badges, action_buttons)
+9. ✅ **App integration** — Register blueprint, add nav, add landing card, add about entry
+10. ✅ **Demo data** — Script to generate sample dose alerts for testing
 
-### Phase 2: Patient Factor Rules + FHIR Integration
+**Completed:** 2026-02-07
+
+### Phase 2: Patient Factor Rules + FHIR Integration ✅ COMPLETE
 
 **Goal:** Renal, weight, and age-based dosing checks with live FHIR data.
 
-1. **Renal adjustment rules** — Full table for 15+ antimicrobials
-2. **Weight-based rules** — Obesity dosing, pediatric weight calculations, max dose caps
-3. **Age-based rules** — Neonatal vs pediatric vs adult dosing tables
-4. **FHIR client** — DosingFHIRClient with weight, height, SCr, eGFR, dialysis status fetching
-5. **Monitor** — `DosingMonitor.run_once()` with FHIR data assembly
-6. **Runner CLI** — `--once`, `--continuous`, `--dry-run`, `--patient`
+1. ✅ **Renal adjustment rules** — Full table for 15+ antimicrobials (meropenem, cefepime, gentamicin, vancomycin, acyclovir, fluconazole, pip-tazo, ciprofloxacin, levofloxacin, tobramycin, amikacin, TMP-SMX, cefazolin, etc.)
+   - GFR/CrCl-based dosing tiers
+   - Dialysis-specific dosing (HD, CRRT, PD)
+   - Critical safety alerts (e.g., cefepime neurotoxicity risk)
+2. ✅ **Weight-based rules** — Obesity dosing adjustments, pediatric weight calculations, max dose caps
+   - IBW and ABW calculations (Devine formula, obesity adjustment)
+   - BMI-based obesity detection
+   - Weight-appropriate dosing for aminoglycosides, vancomycin, daptomycin
+3. ✅ **Age-based rules** — Neonatal vs pediatric vs adult dosing tables
+   - Neonatal dosing by gestational/postnatal age
+   - Age-based contraindications (ceftriaxone in neonates, fluoroquinolones in children)
+   - Pediatric vs adult differentiation
+4. ✅ **FHIR client** — DosingFHIRClient with complete patient context building
+   - Weight, height, SCr, eGFR fetching
+   - CrCl calculation (Cockcroft-Gault)
+   - BSA calculation (Mosteller)
+   - Dialysis status detection
+   - Gestational age for neonates
+   - Integration with ABX Indications module
+5. ✅ **Monitor** — `DosingMonitor.run_once()` with FHIR data assembly
+6. ✅ **Runner CLI** — `--once`, `--continuous`, `--dry-run`, `--patient`
+7. ✅ **Demo script enhancements** — 9 new Phase 2 test scenarios, additional FHIR observations
+8. ✅ **Test suite** — Comprehensive Phase 2 validation with all rules tested
 
-### Phase 3: DDI + Notifications + Analytics
+**Completed:** 2026-02-07
+
+### Phase 3: DDI + Notifications + Analytics (IN PROGRESS)
 
 **Goal:** Drug interaction detection, real-time alerting, and operational analytics.
 
