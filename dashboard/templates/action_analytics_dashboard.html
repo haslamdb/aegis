@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Action Analytics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Action Analytics Dashboard</h1>
+    <p class="page-description">Unified view of all ASP and Infection Prevention actions across the AEGIS platform.</p>
+</div>
+
+{% if error is defined and error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{# Filter bar #}
+<form method="get" class="aa-filter-bar">
+    <div class="aa-filter-group">
+        <label for="filter-days">Period:</label>
+        <select id="filter-days" name="days" onchange="this.form.submit()">
+            {% for d in [7, 14, 30, 60, 90] %}
+            <option value="{{ d }}" {% if days == d %}selected{% endif %}>Last {{ d }} days</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="aa-filter-group">
+        <a href="{{ url_for('action_analytics.export_actions_csv') }}" class="btn btn-secondary btn-sm">Export CSV</a>
+    </div>
+</form>
+
+{# Stat Cards #}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ summary.get('total_actions', 0) }}</div>
+        <div class="stat-label">Total Actions</div>
+        <div class="stat-sublabel">{{ days }}-day period</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ summary.get('unique_reviewers', 0) }}</div>
+        <div class="stat-label">Unique Reviewers</div>
+        <div class="stat-sublabel">Active providers</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ summary.get('avg_per_day', 0) }}</div>
+        <div class="stat-label">Avg Actions/Day</div>
+        <div class="stat-sublabel">{{ summary.get('active_days', 0) }} active days</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ summary.get('total_time_hours', 0) }}h</div>
+        <div class="stat-label">Total Time Spent</div>
+        <div class="stat-sublabel">{{ summary.get('total_time_minutes', 0) }} minutes</div>
+    </div>
+</div>
+
+{# Module Breakdown #}
+<div class="dashboard-card">
+    <h3>Actions by Module</h3>
+    {% if module_breakdown %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Module</th>
+                <th>Actions</th>
+                <th>% of Total</th>
+                <th>Distribution</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mod in module_breakdown %}
+            <tr>
+                <td><strong>{{ mod.display_name }}</strong></td>
+                <td>{{ mod.count }}</td>
+                <td>{{ mod.percentage }}%</td>
+                <td>
+                    <div class="breakdown-bar-container">
+                        <div class="breakdown-bar breakdown-bar--module" style="width: {{ mod.percentage }}%"></div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No module activity data available</p>
+    {% endif %}
+</div>
+
+{# Activity Type Breakdown #}
+<div class="dashboard-card">
+    <h3>Actions by Type</h3>
+    {% if activity_types %}
+    <div class="aa-type-grid">
+        {% for at in activity_types %}
+        <div class="aa-type-item">
+            <span class="aa-type-count">{{ at.count }}</span>
+            <span class="aa-type-label">{{ at.display_name }}</span>
+            <span class="aa-type-pct">{{ at.percentage }}%</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-state">No activity type data available</p>
+    {% endif %}
+</div>
+
+{# Daily Trend #}
+{% if daily_trends %}
+<div class="dashboard-card">
+    <h3>Daily Action Trend ({{ days }} days)</h3>
+    <div class="aa-trend-chart">
+        {% set max_val = daily_trends | map(attribute='total_actions') | max %}
+        {% for day in daily_trends %}
+        <div class="aa-trend-bar-group" title="{{ day.date }}: {{ day.total_actions }} actions">
+            <div class="aa-trend-bar" style="height: {{ (day.total_actions / (max_val if max_val > 0 else 1) * 100) | round }}%">
+            </div>
+            {% if daily_trends | length <= 31 %}
+            <div class="aa-trend-label">{{ day.date[5:] }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{# Recent Actions #}
+<div class="dashboard-card">
+    <h3>Recent Actions</h3>
+    {% if recent_actions %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>Provider</th>
+                <th>Module</th>
+                <th>Type</th>
+                <th>Action</th>
+                <th>Location</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for action in recent_actions %}
+            <tr>
+                <td>
+                    {% if action.performed_at %}
+                    <span class="relative-time" data-timestamp="{{ action.performed_at }}">{{ action.performed_at[:16] }}</span>
+                    {% else %}--{% endif %}
+                </td>
+                <td>{{ action.provider_name }}</td>
+                <td>{{ action.module_display }}</td>
+                <td>
+                    <span class="activity-badge activity-{{ action.activity_type }}">{{ action.activity_display }}</span>
+                </td>
+                <td>{{ action.action_taken or '--' }}</td>
+                <td>{{ action.location_code or '--' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No recent actions recorded</p>
+    {% endif %}
+</div>
+
+{# Empty state #}
+{% if not summary.get('total_actions') and not error %}
+<div class="dashboard-card">
+    <div class="empty-state">
+        <h3>No Action Data Yet</h3>
+        <p>Actions will appear here once modules begin logging to the unified activity tracking system.</p>
+    </div>
+</div>
+{% endif %}
+
+<style>
+.aa-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.aa-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.aa-filter-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.aa-filter-group select {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    background: white;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+}
+
+.page-description {
+    color: #6b7280;
+    font-size: 0.9rem;
+    margin-top: -0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* Module bar chart */
+.breakdown-bar-container {
+    height: 20px;
+    background: #f3f4f6;
+    border-radius: 4px;
+    overflow: hidden;
+    min-width: 150px;
+}
+
+.breakdown-bar {
+    height: 100%;
+    border-radius: 4px;
+}
+
+.breakdown-bar--module {
+    background: linear-gradient(90deg, #0891B2 0%, #06b6d4 100%);
+}
+
+/* Activity type grid */
+.aa-type-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.aa-type-item {
+    text-align: center;
+    flex: 1;
+    min-width: 120px;
+    padding: 1rem;
+    border-radius: 8px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+}
+
+.aa-type-count {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #0E7490;
+}
+
+.aa-type-label {
+    display: block;
+    font-size: 0.8125rem;
+    color: #374151;
+    margin-top: 0.25rem;
+}
+
+.aa-type-pct {
+    display: block;
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+/* Trend chart */
+.aa-trend-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 120px;
+    padding: 0.5rem 0;
+}
+
+.aa-trend-bar-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+}
+
+.aa-trend-bar {
+    width: 100%;
+    min-height: 2px;
+    background: linear-gradient(180deg, #0891B2 0%, #06b6d4 100%);
+    border-radius: 2px 2px 0 0;
+}
+
+.aa-trend-label {
+    font-size: 0.625rem;
+    color: #9ca3af;
+    margin-top: 2px;
+    white-space: nowrap;
+}
+
+/* Activity badges */
+.activity-badge {
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.activity-review { background: #dbeafe; color: #1d4ed8; }
+.activity-acknowledgment { background: #fef3c7; color: #92400e; }
+.activity-resolution { background: #d1fae5; color: #065f46; }
+.activity-intervention { background: #fce7f3; color: #9d174d; }
+.activity-education { background: #e0e7ff; color: #3730a3; }
+.activity-override { background: #fee2e2; color: #991b1b; }
+
+.empty-state {
+    text-align: center;
+    color: #6b7280;
+    padding: 2rem;
+}
+</style>
+{% endblock %}

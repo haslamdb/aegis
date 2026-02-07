@@ -130,6 +130,17 @@
         </div>
     </a>
 
+    <a href="{{ url_for('action_analytics.dashboard') }}" class="section-card section-action-analytics">
+        <div class="section-icon">&#x1F4CA;</div>
+        <h2>Action Analytics</h2>
+        <p>Unified tracking and analysis of all ASP and Infection Prevention actions across modules.</p>
+        <div class="section-features">
+            <span>Action Tracking</span>
+            <span>Therapy Changes</span>
+            <span>Workload Analysis</span>
+        </div>
+    </a>
+
     <a href="{{ url_for('dashboards.model_training') }}" class="section-card section-training">
         <div class="section-icon">&#x1F9E0;</div>
         <h2>Model Training</h2>
@@ -343,6 +354,17 @@
 }
 .section-outbreak .section-icon {
     color: #BE185D;
+}
+
+.section-action-analytics {
+    border-left-color: #0E7490;
+}
+.section-action-analytics:hover {
+    border-left-color: #0E7490;
+    background: linear-gradient(135deg, var(--color-white) 0%, rgba(14, 116, 144, 0.1) 100%);
+}
+.section-action-analytics .section-icon {
+    color: #0E7490;
 }
 
 .section-training {

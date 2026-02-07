@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}Recommendations - Action Analytics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Recommendation Analysis</h1>
+    <p class="page-description">Breakdown of ASP recommendation types and acceptance rates across modules.</p>
+</div>
+
+{% if error is defined and error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{# Filter bar #}
+<form method="get" class="aa-filter-bar">
+    <div class="aa-filter-group">
+        <label for="filter-days">Period:</label>
+        <select id="filter-days" name="days" onchange="this.form.submit()">
+            {% for d in [7, 14, 30, 60, 90] %}
+            <option value="{{ d }}" {% if days == d %}selected{% endif %}>Last {{ d }} days</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="aa-filter-group">
+        <a href="{{ url_for('action_analytics.dashboard') }}" class="btn btn-secondary btn-sm">Back to Dashboard</a>
+        <a href="{{ url_for('action_analytics.export_recommendations_csv', days=days) }}" class="btn btn-secondary btn-sm">Export CSV</a>
+    </div>
+</form>
+
+{# Summary Stats #}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ rec_data.get('total', 0) }}</div>
+        <div class="stat-label">Total Recommendations</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ rec_data.get('total_accepted', 0) }}</div>
+        <div class="stat-label">Accepted</div>
+    </div>
+    <div class="stat-card {% if rec_data.get('overall_acceptance_rate', 0) >= 50 %}stat-good{% endif %}">
+        <div class="stat-value">{{ rec_data.get('overall_acceptance_rate', 0) }}%</div>
+        <div class="stat-label">Acceptance Rate</div>
+    </div>
+</div>
+
+{# Recommendation Type Breakdown #}
+<div class="dashboard-card">
+    <h3>By Recommendation Type</h3>
+    {% if rec_data.get('by_type') %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Count</th>
+                <th>Accepted</th>
+                <th>Acceptance Rate</th>
+                <th>Distribution</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rec in rec_data.by_type %}
+            <tr>
+                <td><strong>{{ rec.display_name }}</strong></td>
+                <td>{{ rec.count }}</td>
+                <td>{{ rec.accepted }}</td>
+                <td>
+                    <span class="rate-badge {% if rec.acceptance_rate >= 60 %}rate-good{% elif rec.acceptance_rate >= 30 %}rate-ok{% else %}rate-low{% endif %}">
+                        {{ rec.acceptance_rate }}%
+                    </span>
+                </td>
+                <td>
+                    {% if rec_data.total > 0 %}
+                    <div class="breakdown-bar-container">
+                        <div class="breakdown-bar breakdown-bar--rec" style="width: {{ (rec.count / rec_data.total * 100) | round(1) }}%"></div>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>No Recommendation Data</h3>
+        <p>Recommendation type analysis requires actions with descriptive action_taken and outcome fields. Data will appear as more structured actions are logged.</p>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.aa-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+.aa-filter-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.aa-filter-group label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+.aa-filter-group select {
+    padding: 0.375rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    background: white;
+}
+.btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
+.page-description { color: #6b7280; font-size: 0.9rem; margin-top: -0.5rem; margin-bottom: 1rem; }
+.breakdown-bar-container { height: 20px; background: #f3f4f6; border-radius: 4px; overflow: hidden; min-width: 150px; }
+.breakdown-bar { height: 100%; border-radius: 4px; }
+.breakdown-bar--rec { background: linear-gradient(90deg, #7c3aed 0%, #a78bfa 100%); }
+.rate-badge { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+.rate-good { background: #f0fdf4; color: #16a34a; }
+.rate-ok { background: #fffbeb; color: #d97706; }
+.rate-low { background: #fef2f2; color: #dc2626; }
+.stat-good { border-left: 4px solid #16a34a; }
+.empty-state { text-align: center; color: #6b7280; padding: 2rem; }
+</style>
+{% endblock %}

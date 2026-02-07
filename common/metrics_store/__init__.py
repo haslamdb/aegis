@@ -20,6 +20,7 @@ from .models import (
 )
 from .store import MetricsStore
 from .aggregator import MetricsAggregator, LocationScore, ServiceScore, ResolutionPatterns
+from .action_analyzer import ActionAnalyzer
 from .reports import MetricsReporter
 
 __all__ = [
@@ -41,4 +42,5 @@ __all__ = [
     "ServiceScore",
     "ResolutionPatterns",
     "MetricsReporter",
+    "ActionAnalyzer",
 ]

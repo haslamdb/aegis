@@ -21,6 +21,7 @@
         {% set is_abx_approvals = request.endpoint and request.endpoint.startswith('abx_approvals.') %}
         {% set is_mdro_surveillance = request.endpoint and request.endpoint.startswith('mdro_surveillance.') %}
         {% set is_outbreak_detection = request.endpoint and request.endpoint.startswith('outbreak_detection.') %}
+        {% set is_action_analytics = request.endpoint and request.endpoint.startswith('action_analytics.') %}
         {% set is_landing = request.endpoint == 'main.landing' %}
         <div class="nav-brand">
             <svg class="nav-shield" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
@@ -51,6 +52,8 @@
             <a href="{{ url_for('mdro_surveillance.dashboard') }}">MDRO Surveillance</a>
             {% elif is_outbreak_detection %}
             <a href="{{ url_for('outbreak_detection.dashboard') }}">Outbreak Detection</a>
+            {% elif is_action_analytics %}
+            <a href="{{ url_for('action_analytics.dashboard') }}">Action Analytics</a>
             {% else %}
             <a href="{{ url_for('main.landing') }}">AEGIS</a>
             {% endif %}
@@ -146,6 +149,15 @@
             <a href="{{ url_for('outbreak_detection.alerts_list') }}" {% if request.endpoint == 'outbreak_detection.alerts_list' %}class="active"{% endif %}>Alerts</a>
             <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
             <a href="{{ url_for('outbreak_detection.help_page') }}" {% if request.endpoint == 'outbreak_detection.help_page' %}class="active"{% endif %}>Help</a>
+            {% elif is_action_analytics %}
+            <!-- Action Analytics Navigation -->
+            <a href="{{ url_for('action_analytics.dashboard') }}" {% if request.endpoint == 'action_analytics.dashboard' %}class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('action_analytics.recommendations') }}" {% if request.endpoint == 'action_analytics.recommendations' %}class="active"{% endif %}>Recommendations</a>
+            <a href="{{ url_for('action_analytics.approvals') }}" {% if request.endpoint == 'action_analytics.approvals' %}class="active"{% endif %}>Approvals</a>
+            <a href="{{ url_for('action_analytics.therapy_changes') }}" {% if request.endpoint == 'action_analytics.therapy_changes' %}class="active"{% endif %}>Therapy Changes</a>
+            <a href="{{ url_for('action_analytics.by_unit') }}" {% if request.endpoint == 'action_analytics.by_unit' %}class="active"{% endif %}>By Unit</a>
+            <a href="{{ url_for('action_analytics.time_spent') }}" {% if request.endpoint == 'action_analytics.time_spent' %}class="active"{% endif %}>Time Spent</a>
+            <a href="{{ url_for('main.landing') }}" class="nav-home">Main</a>
             {% endif %}
         </div>
     </nav>

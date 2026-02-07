@@ -49,6 +49,7 @@ def create_app(config=None):
     from .routes.abx_approvals import abx_approvals_bp
     from .routes.mdro_surveillance import mdro_surveillance_bp
     from .routes.outbreak_detection import outbreak_detection_bp
+    from .routes.action_analytics import action_analytics_bp
 
     app.register_blueprint(main_bp)  # Landing page at /
     app.register_blueprint(asp_alerts_bp)  # ASP Alerts at /asp-alerts
@@ -64,6 +65,7 @@ def create_app(config=None):
     app.register_blueprint(abx_approvals_bp)  # ABX Approvals at /abx-approvals
     app.register_blueprint(mdro_surveillance_bp)  # MDRO Surveillance at /mdro-surveillance
     app.register_blueprint(outbreak_detection_bp)  # Outbreak Detection at /outbreak-detection
+    app.register_blueprint(action_analytics_bp)  # Action Analytics at /action-analytics
 
     # Context processor for templates
     @app.context_processor

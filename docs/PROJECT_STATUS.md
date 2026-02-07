@@ -2,7 +2,7 @@
 
 **Project:** AEGIS (Antimicrobial Stewardship & Infection Prevention Platform)
 **Type:** Clinical Decision Support Software
-**Last Updated:** 2026-02-05
+**Last Updated:** 2026-02-06
 
 ---
 
@@ -12,6 +12,15 @@
 **Priority:** High - Primary clinical informatics project
 
 ### Recent Work (2026-02-06)
+- **ASP/IP Action Analytics Dashboard** (NEW MODULE - Issue #15)
+  - Created ActionAnalyzer query aggregation layer (11 methods, no new tables)
+  - 6 dashboard pages: Overview, Recommendations, Approvals, Therapy Changes, By Unit, Time Spent
+  - 6 JSON API endpoints for each analytics view
+  - 5 CSV export endpoints for committee presentations
+  - Integrated into navigation, landing page, and app registration
+  - Queries existing provider_activity, provider_sessions, metrics_daily_snapshot tables
+  - Pulls approval analytics from AbxApprovalStore
+  - All pages verified working with real data (79 actions found in MetricsStore)
 - **ABX Approvals: Duration Tracking & Auto Re-approval** (MAJOR FEATURE)
   - Added approval duration tracking with predefined and custom durations
   - Implemented automatic recheck scheduler (runs 3x daily via cron)
@@ -68,6 +77,7 @@
 | **ABX Approvals** | Production | Duration tracking, auto re-approval, chain tracking |
 | **NHSN Reporting (AU/AR)** | Functional | CSV export working |
 | **Outbreak Detection** | Demo Ready | Clustering algorithm working |
+| **Action Analytics** | Complete | Cross-module action tracking, 6 pages + API + CSV export |
 | **Dashboard** | Production | Running at aegis-asp.com |
 
 ---
@@ -89,7 +99,7 @@
 - [ ] HL7 ADT feed integration for surgical prophylaxis
 - [ ] Docker containerization
 - [ ] Allergy delabeling opportunity tracker (#14)
-- [ ] ASP/IP Action Analytics Dashboard (#15)
+- [x] ASP/IP Action Analytics Dashboard (#15) - DONE 2026-02-06
 - [ ] Epic Communicator integration for secure messaging (#16)
 
 ---
@@ -120,7 +130,7 @@
 
 | Date | Work Completed |
 |------|----------------|
-| 2026-02-06 | **ABX Approvals Duration Tracking & Auto Re-approval:** Added approval duration tracking, automatic recheck scheduler (cron 3x/day), re-approval request creation, approval chain tracking, weekend handling, enhanced analytics, email notifications, 7 decision types, dashboard separation of re-approvals, comprehensive testing docs |
+| 2026-02-06 | **ASP/IP Action Analytics Dashboard (#15):** New module with ActionAnalyzer class, 6 dashboard pages (overview, recommendations, approvals, therapy changes, by-unit, time-spent), 6 API endpoints, 5 CSV exports, nav + landing integration. **ABX Approvals Duration Tracking & Auto Re-approval:** Added approval duration tracking, automatic recheck scheduler (cron 3x/day), re-approval request creation, approval chain tracking, weekend handling, enhanced analytics, email notifications, 7 decision types, dashboard separation of re-approvals, comprehensive testing docs |
 | 2026-02-05 | Verified CDI module complete (all 31 tests pass), updated status to reflect all 5 HAI types now complete |
 | 2026-02-04 | LLM extraction validation framework, gold standard templates for all HAI types + indication, validation runner, prioritized roadmap |
 | 2026-02-03 | FHIR conversion for HAI module, IS integration requirements doc, multi-site analytics roadmap, GitHub Project Tracker setup, planned module issues created |

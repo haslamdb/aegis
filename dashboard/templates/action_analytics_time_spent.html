@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Time Spent - Action Analytics - {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Time &amp; Workload Analysis</h1>
+    <p class="page-description">Time allocation by module, activity type, and provider efficiency metrics.</p>
+</div>
+
+{% if error is defined and error %}
+<div class="alert alert-error">
+    <strong>Error:</strong> {{ error }}
+</div>
+{% endif %}
+
+{# Filter bar #}
+<form method="get" class="aa-filter-bar">
+    <div class="aa-filter-group">
+        <label for="filter-days">Period:</label>
+        <select id="filter-days" name="days" onchange="this.form.submit()">
+            {% for d in [7, 14, 30, 60, 90] %}
+            <option value="{{ d }}" {% if days == d %}selected{% endif %}>Last {{ d }} days</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="aa-filter-group">
+        <a href="{{ url_for('action_analytics.dashboard') }}" class="btn btn-secondary btn-sm">Back to Dashboard</a>
+        <a href="{{ url_for('action_analytics.export_time_csv', days=days) }}" class="btn btn-secondary btn-sm">Export CSV</a>
+    </div>
+</form>
+
+{# Summary Stats #}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ time_data.get('total_hours', 0) }}h</div>
+        <div class="stat-label">Total Time Tracked</div>
+        <div class="stat-sublabel">{{ time_data.get('total_minutes', 0) }} minutes</div>
+    </div>
+    {% if time_data.get('session_stats') %}
+    <div class="stat-card">
+        <div class="stat-value">{{ time_data.session_stats.get('total_sessions', 0) }}</div>
+        <div class="stat-label">Total Sessions</div>
+        <div class="stat-sublabel">{{ time_data.session_stats.get('completed_sessions', 0) }} completed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{% if time_data.session_stats.get('avg_duration_minutes') is not none %}{{ time_data.session_stats.avg_duration_minutes }}m{% else %}--{% endif %}</div>
+        <div class="stat-label">Avg Session Duration</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{% if time_data.session_stats.get('avg_actions_per_session') is not none %}{{ time_data.session_stats.avg_actions_per_session }}{% else %}--{% endif %}</div>
+        <div class="stat-label">Avg Actions/Session</div>
+    </div>
+    {% endif %}
+</div>
+
+{# Time by Module #}
+<div class="dashboard-card">
+    <h3>Time by Module</h3>
+    {% if time_data.get('by_module') %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Module</th>
+                <th>Total Hours</th>
+                <th>Actions</th>
+                <th>Avg Min/Action</th>
+                <th>Distribution</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set total_hrs = time_data.total_hours if time_data.total_hours > 0 else 1 %}
+            {% for mod in time_data.by_module %}
+            <tr>
+                <td><strong>{{ mod.display_name }}</strong></td>
+                <td>{{ mod.total_hours }}</td>
+                <td>{{ mod.action_count }}</td>
+                <td>{{ mod.avg_minutes }}</td>
+                <td>
+                    <div class="breakdown-bar-container">
+                        <div class="breakdown-bar breakdown-bar--time" style="width: {{ (mod.total_hours / total_hrs * 100) | round }}%"></div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No time tracking data by module</p>
+    {% endif %}
+</div>
+
+{# Time by Activity Type #}
+<div class="dashboard-card">
+    <h3>Time by Activity Type</h3>
+    {% if time_data.get('by_activity_type') %}
+    <div class="aa-time-type-grid">
+        {% for at in time_data.by_activity_type %}
+        <div class="aa-time-type-item">
+            <span class="aa-time-type-hours">{{ at.total_hours }}h</span>
+            <span class="aa-time-type-label">{{ at.display_name }}</span>
+            <span class="aa-time-type-detail">{{ at.action_count }} actions, {{ at.avg_minutes }} min avg</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="empty-state">No time tracking data by activity type</p>
+    {% endif %}
+</div>
+
+{# Provider Workload #}
+<div class="dashboard-card">
+    <h3>Provider Workload</h3>
+    {% if provider_workload %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Provider</th>
+                <th>Role</th>
+                <th>Total Actions</th>
+                <th>Active Days</th>
+                <th>Avg/Day</th>
+                <th>Reviews</th>
+                <th>Interventions</th>
+                <th>Time (min)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in provider_workload %}
+            <tr>
+                <td><strong>{{ p.provider_name or p.provider_id or 'Unknown' }}</strong></td>
+                <td>{{ p.provider_role or '--' }}</td>
+                <td>{{ p.total_activities }}</td>
+                <td>{{ p.active_days }}</td>
+                <td>{{ p.avg_per_day }}</td>
+                <td>{{ p.reviews }}</td>
+                <td>{{ p.interventions }}</td>
+                <td>{{ p.total_minutes }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No provider workload data available</p>
+    {% endif %}
+</div>
+
+<style>
+.aa-filter-bar { display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1.5rem; padding: 1rem; background: #f9fafb; border-radius: 8px; border: 1px solid #e5e7eb; }
+.aa-filter-group { display: flex; align-items: center; gap: 0.5rem; }
+.aa-filter-group label { font-size: 0.875rem; font-weight: 500; color: #374151; }
+.aa-filter-group select { padding: 0.375rem 0.75rem; border: 1px solid #d1d5db; border-radius: 4px; font-size: 0.875rem; background: white; }
+.btn-sm { padding: 0.375rem 0.75rem; font-size: 0.8125rem; }
+.page-description { color: #6b7280; font-size: 0.9rem; margin-top: -0.5rem; margin-bottom: 1rem; }
+.breakdown-bar-container { height: 20px; background: #f3f4f6; border-radius: 4px; overflow: hidden; min-width: 150px; }
+.breakdown-bar { height: 100%; border-radius: 4px; }
+.breakdown-bar--time { background: linear-gradient(90deg, #0891B2 0%, #06b6d4 100%); }
+.aa-time-type-grid { display: flex; flex-wrap: wrap; gap: 1rem; margin: 1rem 0; }
+.aa-time-type-item { text-align: center; flex: 1; min-width: 140px; padding: 1rem; border-radius: 8px; background: #f9fafb; border: 1px solid #e5e7eb; }
+.aa-time-type-hours { display: block; font-size: 1.5rem; font-weight: bold; color: #0E7490; }
+.aa-time-type-label { display: block; font-size: 0.8125rem; color: #374151; margin-top: 0.25rem; }
+.aa-time-type-detail { display: block; font-size: 0.75rem; color: #9ca3af; margin-top: 0.125rem; }
+.empty-state { text-align: center; color: #6b7280; padding: 2rem; }
+</style>
+{% endblock %}
