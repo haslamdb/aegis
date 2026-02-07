@@ -12,7 +12,7 @@
 </div>
 
 {% call detail_page() %}
-    {# Left Column: Patient Context #}
+    {# Left Column: Patient & Procedure Context #}
     {% call detail_sidebar() %}
         {% call detail_sidebar_section("Patient Information") %}
             {{ detail_field("Patient MRN", case.patient_mrn) }}
@@ -20,6 +20,14 @@
             {{ detail_field("Encounter", case.encounter_id or '-') }}
             {{ detail_field("Weight", case.patient_weight_kg ~ ' kg') }}
             {{ detail_field("Age", case.patient_age_years|round(1) ~ ' years') }}
+        {% endcall %}
+
+        {% call detail_sidebar_section("Procedure Details") %}
+            {{ detail_field("Procedure", case.procedure_description or '-') }}
+            {{ detail_field("Category", case.procedure_category|replace('_', ' ')|title if case.procedure_category else '-') }}
+            {{ detail_field("CPT Codes", case.cpt_codes|join(', ') if case.cpt_codes else '-') }}
+            {{ detail_field("Surgeon", case.surgeon_name or '-') }}
+            {{ detail_field("Location", case.location or '-') }}
         {% endcall %}
 
         {% call detail_sidebar_section("Patient Factors") %}
@@ -35,16 +43,8 @@
         {% endcall %}
     {% endcall %}
 
-    {# Right Column: Procedure Details + Evaluation #}
+    {# Right Column: Compliance Evaluation #}
     {% call detail_main() %}
-        {% call detail_main_section("Procedure Details") %}
-            {{ detail_field("Procedure", case.procedure_description or '-') }}
-            {{ detail_field("Category", case.procedure_category|replace('_', ' ')|title if case.procedure_category else '-') }}
-            {{ detail_field("CPT Codes", case.cpt_codes|join(', ') if case.cpt_codes else '-') }}
-            {{ detail_field("Surgeon", case.surgeon_name or '-') }}
-            {{ detail_field("Location", case.location or '-') }}
-        {% endcall %}
-
         {# Compliance Evaluation #}
         {% if evaluation %}
         {% call detail_main_section("Compliance Evaluation") %}
