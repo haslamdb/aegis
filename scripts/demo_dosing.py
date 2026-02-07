@@ -2,14 +2,17 @@
 """Generate demo patients with dosing issues for alert testing.
 
 Creates patients with:
-- Antimicrobials with inappropriate dosing, intervals, or routes
-- Documented allergies with cross-reactive drugs
-- Drug-drug interactions
-- Renal impairment without dose adjustments
+- Antimicrobials with inappropriate dosing, intervals, or routes (Phase 1)
+- Documented allergies with cross-reactive drugs (Phase 1)
+- Drug-drug interactions (Phase 1)
+- Renal impairment without dose adjustments (Phase 2)
+- Weight-based dosing issues (Phase 2)
+- Age-based contraindications and dosing (Phase 2)
 
 This triggers dosing verification alerts when the monitor runs.
 
 Usage:
+    # === PHASE 1 SCENARIOS ===
     # IV vancomycin for C. difficile (CRITICAL - wrong route)
     python demo_dosing.py --scenario cdi-iv-vanc
 
@@ -22,14 +25,32 @@ Usage:
     # Linezolid + SSRI (CRITICAL - DDI serotonin syndrome risk)
     python demo_dosing.py --scenario linezolid-ssri
 
-    # Interactive mode
-    python demo_dosing.py --interactive
+    # === PHASE 2 SCENARIOS ===
+    # Renal impairment - meropenem not adjusted (HIGH)
+    python demo_dosing.py --scenario renal-meropenem-no-adjustment
+
+    # Pediatric vancomycin underdosed (MODERATE)
+    python demo_dosing.py --scenario weight-pediatric-vanc-low
+
+    # Neonate on ceftriaxone (CRITICAL - contraindicated)
+    python demo_dosing.py --scenario age-neonate-ceftriaxone
+
+    # === BULK TESTING ===
+    # Run all Phase 2 scenarios (renal, weight, age)
+    python demo_dosing.py --phase2
 
     # Run all critical scenarios
     python demo_dosing.py --all-critical
 
     # List all scenarios
     python demo_dosing.py --list
+
+    # === TESTING WITH MONITOR ===
+    # After uploading scenarios, run the monitor:
+    cd dosing-verification && python -m src.runner --once
+
+    # Or check a specific patient:
+    cd dosing-verification && python -m src.runner --patient DOSE12345
 """
 
 import argparse
@@ -239,6 +260,179 @@ SCENARIOS = {
         "expected_alert": True,
     },
 
+    # === PHASE 2: RENAL ADJUSTMENT SCENARIOS ===
+    "renal-meropenem-no-adjustment": {
+        "name": "Renal Impairment - Meropenem Not Adjusted",
+        "description": "GFR 35, meropenem q8h - HIGH (should be q12h for renal impairment)",
+        "indication": "pneumonia",
+        "diagnosis_code": "J18.9",
+        "diagnosis_display": "Pneumonia, unspecified organism",
+        "antibiotic": "meropenem",
+        "dose": "1000",
+        "dose_unit": "mg",
+        "route": "IV",
+        "interval": "q8h",  # Should be q12h with GFR 35
+        "patient_age_years": 65,
+        "patient_weight_kg": 70,
+        "scr": 1.8,
+        "gfr": 35,
+        "expected_flag": "NO_RENAL_ADJUSTMENT",
+        "expected_severity": "high",
+        "expected_alert": True,
+    },
+
+    "renal-cefepime-no-adjustment": {
+        "name": "Renal Impairment - Cefepime Not Adjusted",
+        "description": "GFR 25, cefepime q8h - CRITICAL (neurotoxicity risk, should be q12h)",
+        "indication": "pneumonia",
+        "diagnosis_code": "J18.9",
+        "diagnosis_display": "Pneumonia, unspecified organism",
+        "antibiotic": "cefepime",
+        "dose": "2000",
+        "dose_unit": "mg",
+        "route": "IV",
+        "interval": "q8h",  # Should be q12h with GFR 25
+        "patient_age_years": 72,
+        "patient_weight_kg": 65,
+        "scr": 2.3,
+        "gfr": 25,
+        "expected_flag": "NO_RENAL_ADJUSTMENT",
+        "expected_severity": "critical",
+        "expected_alert": True,
+    },
+
+    "renal-vancomycin-normal-gfr": {
+        "name": "Normal Renal Function - Vancomycin (CORRECT)",
+        "description": "GFR 90, vancomycin standard dosing - No adjustment needed",
+        "indication": "bacteremia",
+        "diagnosis_code": "A41.9",
+        "diagnosis_display": "Sepsis, unspecified organism",
+        "antibiotic": "vancomycin",
+        "dose": "1000",
+        "dose_unit": "mg",
+        "route": "IV",
+        "interval": "q12h",
+        "patient_age_years": 45,
+        "patient_weight_kg": 70,
+        "scr": 0.9,
+        "gfr": 90,
+        "expected_alert": False,
+    },
+
+    # === PHASE 2: WEIGHT-BASED DOSING SCENARIOS ===
+    "weight-pediatric-vanc-low": {
+        "name": "Pediatric Vancomycin Underdosed",
+        "description": "20 kg child, vancomycin 25 mg/kg/day - MODERATE (should be 40-60 mg/kg/day)",
+        "indication": "bacteremia",
+        "diagnosis_code": "A41.9",
+        "diagnosis_display": "Sepsis, unspecified organism",
+        "antibiotic": "vancomycin",
+        "dose": "125",  # 125 mg q6h = 500 mg/day = 25 mg/kg/day
+        "dose_unit": "mg",
+        "route": "IV",
+        "interval": "q6h",
+        "patient_age_years": 5,
+        "patient_weight_kg": 20,
+        "patient_height_cm": 110,
+        "expected_flag": "WEIGHT_DOSE_MISMATCH",
+        "expected_severity": "moderate",
+        "expected_alert": True,
+    },
+
+    "weight-gentamicin-low": {
+        "name": "Gentamicin Underdosed",
+        "description": "85 kg adult, gentamicin 300 mg (3.5 mg/kg) - MODERATE (should be 7 mg/kg)",
+        "indication": "bacteremia",
+        "diagnosis_code": "A41.9",
+        "diagnosis_display": "Sepsis, unspecified organism",
+        "antibiotic": "gentamicin",
+        "dose": "300",  # Should be ~600 mg for 85 kg
+        "dose_unit": "mg",
+        "route": "IV",
+        "interval": "q24h",
+        "patient_age_years": 52,
+        "patient_weight_kg": 85,
+        "patient_height_cm": 175,
+        "scr": 1.0,
+        "gfr": 80,
+        "expected_flag": "WEIGHT_DOSE_MISMATCH",
+        "expected_severity": "moderate",
+        "expected_alert": True,
+    },
+
+    "weight-daptomycin-max-exceeded": {
+        "name": "Daptomycin Max Dose Exceeded",
+        "description": "Daptomycin 900 mg daily - HIGH (exceeds max 800 mg)",
+        "indication": "endocarditis",
+        "diagnosis_code": "I33.0",
+        "diagnosis_display": "Acute and subacute infective endocarditis",
+        "antibiotic": "daptomycin",
+        "dose": "900",
+        "dose_unit": "mg",
+        "route": "IV",
+        "interval": "q24h",
+        "patient_age_years": 55,
+        "patient_weight_kg": 95,
+        "expected_flag": "MAX_DOSE_EXCEEDED",
+        "expected_severity": "high",
+        "expected_alert": True,
+    },
+
+    # === PHASE 2: AGE-BASED DOSING SCENARIOS ===
+    "age-neonate-ceftriaxone": {
+        "name": "Neonate on Ceftriaxone",
+        "description": "18-day-old neonate on ceftriaxone - CRITICAL (contraindicated, bilirubin risk)",
+        "indication": "sepsis",
+        "diagnosis_code": "P36.9",
+        "diagnosis_display": "Bacterial sepsis of newborn, unspecified",
+        "antibiotic": "ceftriaxone",
+        "dose": "100",
+        "dose_unit": "mg",
+        "route": "IV",
+        "interval": "q24h",
+        "patient_age_years": 0.05,  # 18 days
+        "patient_weight_kg": 3.5,
+        "gestational_age_weeks": 38,
+        "expected_flag": "CONTRAINDICATED",
+        "expected_severity": "critical",
+        "expected_alert": True,
+    },
+
+    "age-child-fluoroquinolone": {
+        "name": "Child on Fluoroquinolone",
+        "description": "8-year-old on ciprofloxacin - HIGH (arthropathy risk, generally avoided)",
+        "indication": "uti",
+        "diagnosis_code": "N39.0",
+        "diagnosis_display": "Urinary tract infection, site not specified",
+        "antibiotic": "ciprofloxacin",
+        "dose": "200",
+        "dose_unit": "mg",
+        "route": "IV",
+        "interval": "q12h",
+        "patient_age_years": 8,
+        "patient_weight_kg": 28,
+        "expected_flag": "CONTRAINDICATED",
+        "expected_severity": "high",
+        "expected_alert": True,
+    },
+
+    "age-neonate-gentamicin-correct": {
+        "name": "Neonate Gentamicin Correct Dosing (CORRECT)",
+        "description": "Term neonate on gentamicin 4 mg/kg q24h - Appropriate neonatal dosing",
+        "indication": "sepsis",
+        "diagnosis_code": "P36.9",
+        "diagnosis_display": "Bacterial sepsis of newborn, unspecified",
+        "antibiotic": "gentamicin",
+        "dose": "14",  # 4 mg/kg for 3.5 kg
+        "dose_unit": "mg",
+        "route": "IV",
+        "interval": "q24h",
+        "patient_age_years": 0.03,  # 10 days
+        "patient_weight_kg": 3.5,
+        "gestational_age_weeks": 39,
+        "expected_alert": False,
+    },
+
     # === SAFE SCENARIOS (should NOT trigger alerts) ===
     "cdi-po-vanc": {
         "name": "C. difficile on PO Vancomycin (CORRECT)",
@@ -299,6 +493,10 @@ ANTIBIOTICS = {
     "linezolid": {"code": "190376", "display": "Linezolid"},
     "nitrofurantoin": {"code": "7220", "display": "Nitrofurantoin"},
     "aztreonam": {"code": "858", "display": "Aztreonam"},
+    "meropenem": {"code": "74780", "display": "Meropenem"},
+    "cefepime": {"code": "3006", "display": "Cefepime"},
+    "gentamicin": {"code": "4492", "display": "Gentamicin"},
+    "ciprofloxacin": {"code": "2551", "display": "Ciprofloxacin"},
 }
 
 # Patient name components
@@ -407,6 +605,126 @@ def create_weight_observation(patient_id: str, weight_kg: float) -> dict:
             "unit": "kg",
             "system": "http://unitsofmeasure.org",
             "code": "kg"
+        }
+    }
+
+
+def create_height_observation(patient_id: str, height_cm: float) -> dict:
+    """Create a height Observation."""
+    return {
+        "resourceType": "Observation",
+        "id": str(uuid.uuid4()),
+        "status": "final",
+        "category": [{
+            "coding": [{
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs"
+            }]
+        }],
+        "code": {
+            "coding": [{
+                "system": "http://loinc.org",
+                "code": "8302-2",
+                "display": "Body Height"
+            }]
+        },
+        "subject": {"reference": f"Patient/{patient_id}"},
+        "effectiveDateTime": datetime.now(timezone.utc).isoformat(),
+        "valueQuantity": {
+            "value": height_cm,
+            "unit": "cm",
+            "system": "http://unitsofmeasure.org",
+            "code": "cm"
+        }
+    }
+
+
+def create_scr_observation(patient_id: str, scr: float) -> dict:
+    """Create a serum creatinine Observation."""
+    return {
+        "resourceType": "Observation",
+        "id": str(uuid.uuid4()),
+        "status": "final",
+        "category": [{
+            "coding": [{
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+            }]
+        }],
+        "code": {
+            "coding": [{
+                "system": "http://loinc.org",
+                "code": "2160-0",
+                "display": "Creatinine [Mass/volume] in Serum or Plasma"
+            }]
+        },
+        "subject": {"reference": f"Patient/{patient_id}"},
+        "effectiveDateTime": datetime.now(timezone.utc).isoformat(),
+        "valueQuantity": {
+            "value": scr,
+            "unit": "mg/dL",
+            "system": "http://unitsofmeasure.org",
+            "code": "mg/dL"
+        }
+    }
+
+
+def create_gfr_observation(patient_id: str, gfr: float) -> dict:
+    """Create an eGFR Observation."""
+    return {
+        "resourceType": "Observation",
+        "id": str(uuid.uuid4()),
+        "status": "final",
+        "category": [{
+            "coding": [{
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "laboratory"
+            }]
+        }],
+        "code": {
+            "coding": [{
+                "system": "http://loinc.org",
+                "code": "33914-3",
+                "display": "Glomerular filtration rate/1.73 sq M.predicted [Volume Rate/Area] in Serum or Plasma by Creatinine-based formula (MDRD)"
+            }]
+        },
+        "subject": {"reference": f"Patient/{patient_id}"},
+        "effectiveDateTime": datetime.now(timezone.utc).isoformat(),
+        "valueQuantity": {
+            "value": gfr,
+            "unit": "mL/min/{1.73_m2}",
+            "system": "http://unitsofmeasure.org",
+            "code": "mL/min/{1.73_m2}"
+        }
+    }
+
+
+def create_gestational_age_observation(patient_id: str, ga_weeks: int) -> dict:
+    """Create a gestational age Observation."""
+    return {
+        "resourceType": "Observation",
+        "id": str(uuid.uuid4()),
+        "status": "final",
+        "category": [{
+            "coding": [{
+                "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+                "code": "vital-signs"
+            }]
+        }],
+        "code": {
+            "coding": [{
+                "system": "http://loinc.org",
+                "code": "11884-4",
+                "display": "Gestational age Estimated"
+            }]
+        },
+        "subject": {"reference": f"Patient/{patient_id}"},
+        "effectiveDateTime": datetime.now(timezone.utc).isoformat(),
+        "valueQuantity": {
+            "value": ga_weeks,
+            "unit": "weeks",
+            "system": "http://unitsofmeasure.org",
+            "code": "wk"
         }
     }
 
@@ -547,7 +865,23 @@ def run_scenario(scenario_key: str, fhir_url: str, dry_run: bool = False) -> dic
 
     encounter = create_encounter(patient_id)
     condition = create_condition(patient_id, scenario["diagnosis_code"], scenario["diagnosis_display"])
-    weight_obs = create_weight_observation(patient_id, weight)
+
+    # Observations
+    observations = [create_weight_observation(patient_id, weight)]
+
+    # Height (for Phase 2 weight rules)
+    if scenario.get("patient_height_cm"):
+        observations.append(create_height_observation(patient_id, scenario["patient_height_cm"]))
+
+    # Renal function (for Phase 2 renal rules)
+    if scenario.get("scr"):
+        observations.append(create_scr_observation(patient_id, scenario["scr"]))
+    if scenario.get("gfr"):
+        observations.append(create_gfr_observation(patient_id, scenario["gfr"]))
+
+    # Gestational age (for Phase 2 age rules - neonates)
+    if scenario.get("gestational_age_weeks"):
+        observations.append(create_gestational_age_observation(patient_id, scenario["gestational_age_weeks"]))
 
     medication = create_medication_request(
         patient_id,
@@ -588,7 +922,25 @@ def run_scenario(scenario_key: str, fhir_url: str, dry_run: bool = False) -> dic
     print(f"Scenario: {scenario['name']}")
     print(f"{'─'*70}")
     print(f"  Patient:      {patient_name} (MRN: {mrn})")
-    print(f"  Age/Weight:   {age:.1f} years, {weight:.1f} kg")
+    print(f"  Age/Weight:   {age:.1f} years, {weight:.1f} kg", end="")
+    if scenario.get("patient_height_cm"):
+        print(f", {scenario['patient_height_cm']} cm")
+    else:
+        print()
+
+    # Phase 2: Show renal function if present
+    if scenario.get("scr") or scenario.get("gfr"):
+        print(f"  Renal:        ", end="")
+        if scenario.get("scr"):
+            print(f"SCr {scenario['scr']} mg/dL", end="")
+        if scenario.get("gfr"):
+            print(f", GFR {scenario['gfr']} mL/min", end="")
+        print()
+
+    # Phase 2: Show gestational age for neonates
+    if scenario.get("gestational_age_weeks"):
+        print(f"  Gestational:  {scenario['gestational_age_weeks']} weeks")
+
     print(f"  Diagnosis:    {scenario['diagnosis_display']}")
     print(f"  Antibiotic:   {scenario['antibiotic']} {scenario['dose']} {scenario['dose_unit']} {scenario['interval']} {scenario['route']}")
     if scenario.get("allergies"):
@@ -607,7 +959,7 @@ def run_scenario(scenario_key: str, fhir_url: str, dry_run: bool = False) -> dic
     print(f"\n  Uploading to {fhir_url}...")
 
     # Upload resources
-    resources = [patient, encounter, condition, weight_obs, medication] + allergies + co_meds
+    resources = [patient, encounter, condition] + observations + [medication] + allergies + co_meds
     for resource in resources:
         if upload_resource(resource, fhir_url):
             print(f"    ✓ {resource['resourceType']}")
@@ -628,6 +980,7 @@ def main():
     parser.add_argument("--scenario", "-s", choices=list(SCENARIOS.keys()), help="Specific scenario to run")
     parser.add_argument("--all-critical", action="store_true", help="Run all critical alert scenarios")
     parser.add_argument("--all", action="store_true", help="Run ALL scenarios (including safe ones)")
+    parser.add_argument("--phase2", action="store_true", help="Run all Phase 2 scenarios (renal, weight, age)")
     parser.add_argument("--interactive", "-i", action="store_true", help="Interactive mode")
     parser.add_argument("--fhir-url", default="http://localhost:8081/fhir", help="FHIR server URL")
     parser.add_argument("--dry-run", action="store_true", help="Print without uploading")
@@ -665,6 +1018,13 @@ def main():
         for key, scenario in SCENARIOS.items():
             if scenario["expected_alert"] and scenario.get("expected_severity") == "critical":
                 results.append(run_scenario(key, args.fhir_url, args.dry_run))
+    elif args.phase2:
+        print("\n" + "=" * 70)
+        print("RUNNING ALL PHASE 2 SCENARIOS (Renal, Weight, Age)")
+        print("=" * 70)
+        phase2_keys = [k for k in SCENARIOS.keys() if k.startswith(("renal-", "weight-", "age-"))]
+        for key in phase2_keys:
+            results.append(run_scenario(key, args.fhir_url, args.dry_run))
     elif args.all:
         print("\n" + "=" * 70)
         print("RUNNING ALL SCENARIOS")
@@ -672,7 +1032,7 @@ def main():
         for key in SCENARIOS:
             results.append(run_scenario(key, args.fhir_url, args.dry_run))
     else:
-        parser.error("Specify --scenario, --all-critical, --all, or --interactive")
+        parser.error("Specify --scenario, --all-critical, --phase2, --all, or --interactive")
 
     # Summary
     if results:

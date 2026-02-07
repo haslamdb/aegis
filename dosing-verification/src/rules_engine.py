@@ -52,18 +52,22 @@ class DosingRulesEngine:
         from .rules.indication_rules import IndicationRules
         from .rules.allergy_rules import AllergyRules
         from .rules.interaction_rules import DrugInteractionRules
+        from .rules.renal_rules import RenalAdjustmentRules
+        from .rules.weight_rules import WeightBasedRules
+        from .rules.age_rules import AgeBasedRules
 
         # Register in priority order (most critical first)
         self.rules = [
             AllergyRules(),           # Check allergies first (critical safety)
+            AgeBasedRules(),          # Age-based contraindications (e.g., ceftriaxone in neonates)
             DrugInteractionRules(),   # Drug-drug interactions (critical safety)
             RouteRules(),             # Wrong route (e.g., IV vanc for CDI)
             IndicationRules(),        # Indication-specific dosing
-            # Additional rules will be added in subsequent tasks:
-            # RenalAdjustmentRules(),   # Renal dose adjustments
-            # WeightBasedRules(),       # Weight-appropriate dosing
-            # AgeBasedRules(),          # Age-appropriate dosing (neonatal/peds)
+            RenalAdjustmentRules(),   # Renal dose adjustments
+            WeightBasedRules(),       # Weight-appropriate dosing
+            # Additional rules for Phase 3:
             # DurationRules(),          # Duration appropriateness
+            # ExtendedInfusionRules(),  # Extended infusion candidates
         ]
 
     def evaluate(self, context: PatientContext) -> DoseAssessment:

@@ -49,6 +49,51 @@ def is_antimicrobial(drug_name: str) -> bool:
     return any(keyword in drug_lower for keyword in ANTIMICROBIAL_KEYWORDS)
 
 
+def calculate_crcl(scr: float, age_years: float, weight_kg: float, sex: str = "male") -> float | None:
+    """Calculate creatinine clearance using Cockcroft-Gault formula.
+
+    Formula (male): CrCl = (140 - age) × weight / (72 × SCr)
+    Formula (female): CrCl = (140 - age) × weight / (72 × SCr) × 0.85
+
+    Args:
+        scr: Serum creatinine in mg/dL
+        age_years: Age in years
+        weight_kg: Weight in kg
+        sex: "male" or "female"
+
+    Returns:
+        CrCl in mL/min or None if calculation not possible
+    """
+    if scr is None or scr <= 0 or age_years is None or weight_kg is None:
+        return None
+
+    crcl = ((140 - age_years) * weight_kg) / (72 * scr)
+
+    if sex.lower() == "female":
+        crcl *= 0.85
+
+    return crcl
+
+
+def calculate_bsa(height_cm: float, weight_kg: float) -> float | None:
+    """Calculate body surface area using Mosteller formula.
+
+    Formula: BSA (m²) = √[(height_cm × weight_kg) / 3600]
+
+    Args:
+        height_cm: Height in cm
+        weight_kg: Weight in kg
+
+    Returns:
+        BSA in m² or None if calculation not possible
+    """
+    if height_cm is None or weight_kg is None:
+        return None
+
+    import math
+    return math.sqrt((height_cm * weight_kg) / 3600)
+
+
 class DosingFHIRClient:
     """FHIR client for dosing verification data."""
 
@@ -81,10 +126,45 @@ class DosingFHIRClient:
         Returns:
             List of patient MRNs
         """
-        # TODO: Implement FHIR query for active antimicrobial MedicationRequests
-        # For now, return empty list - will be implemented in Phase 2
-        logger.warning("get_patients_with_active_antimicrobials not yet implemented")
-        return []
+        try:
+            # Query for active MedicationRequests in the lookback window
+            lookback_date = datetime.now() - timedelta(hours=lookback_hours)
+
+            result = self._get("MedicationRequest", {
+                "status": "active",
+                "authored": f"ge{lookback_date.isoformat()}",
+                "_count": "1000"  # Adjust as needed
+            })
+
+            patient_mrns = set()
+            if result.get("total", 0) > 0:
+                for entry in result.get("entry", []):
+                    med_req = entry["resource"]
+
+                    # Check if antimicrobial
+                    med_concept = med_req.get("medicationCodeableConcept", {})
+                    drug_name = med_concept.get("text", "")
+
+                    if is_antimicrobial(drug_name):
+                        # Get patient reference
+                        patient_ref = med_req.get("subject", {}).get("reference", "")
+                        if patient_ref:
+                            # Extract patient ID and fetch MRN
+                            patient_id = patient_ref.split("/")[-1]
+                            try:
+                                patient_result = self._get(f"Patient/{patient_id}", {})
+                                identifiers = patient_result.get("identifier", [])
+                                for identifier in identifiers:
+                                    if identifier.get("type", {}).get("text") == "MRN":
+                                        patient_mrns.add(identifier.get("value"))
+                            except Exception:
+                                pass
+
+            return list(patient_mrns)
+
+        except Exception as e:
+            logger.error(f"Failed to get patients with active antimicrobials: {e}")
+            return []
 
     def get_patient_weight(self, patient_id: str) -> float | None:
         """Get most recent patient weight in kg."""
@@ -212,6 +292,10 @@ class DosingFHIRClient:
             order_id = med_req.get("id", "")
             start_date = med_req.get("authoredOn", "")
 
+            # Calculate daily dose
+            doses_per_day = 24 / frequency_hours if frequency_hours > 0 else 1
+            daily_dose = float(dose_value) * doses_per_day
+
             return MedicationOrder(
                 drug_name=drug_name,
                 dose_value=float(dose_value),
@@ -219,8 +303,8 @@ class DosingFHIRClient:
                 interval=interval,
                 route=route,
                 frequency_hours=frequency_hours,
-                daily_dose=0,  # Will be calculated
-                daily_dose_per_kg=None,  # Will be calculated if weight available
+                daily_dose=daily_dose,
+                daily_dose_per_kg=None,  # Will be calculated in build_patient_context
                 start_date=start_date,
                 order_id=order_id,
                 infusion_duration_minutes=None,
@@ -232,9 +316,42 @@ class DosingFHIRClient:
             return None
 
     def get_dialysis_status(self, patient_id: str) -> dict | None:
-        """Get dialysis status for a patient."""
-        # TODO: Query for dialysis procedures
-        return None
+        """Get dialysis status for a patient.
+
+        Returns:
+            Dict with {is_on_dialysis: bool, dialysis_type: str} or None
+        """
+        try:
+            # Check for recent dialysis procedures (within last 7 days)
+            lookback_date = datetime.now() - timedelta(days=7)
+
+            result = self._get("Procedure", {
+                "patient": patient_id,
+                "date": f"ge{lookback_date.isoformat()}",
+                "status": "completed,in-progress"
+            })
+
+            if result.get("total", 0) > 0:
+                for entry in result.get("entry", []):
+                    procedure = entry["resource"]
+                    code = procedure.get("code", {})
+                    code_text = code.get("text", "").lower()
+
+                    # Check for dialysis keywords
+                    if "hemodialysis" in code_text or "hd" in code_text:
+                        return {"is_on_dialysis": True, "dialysis_type": "HD"}
+                    elif "crrt" in code_text or "continuous renal replacement" in code_text:
+                        return {"is_on_dialysis": True, "dialysis_type": "CRRT"}
+                    elif "peritoneal dialysis" in code_text or "pd" in code_text:
+                        return {"is_on_dialysis": True, "dialysis_type": "PD"}
+                    elif "dialysis" in code_text:
+                        return {"is_on_dialysis": True, "dialysis_type": "Unknown"}
+
+            return {"is_on_dialysis": False, "dialysis_type": None}
+
+        except Exception as e:
+            logger.debug(f"Failed to get dialysis status for {patient_id}: {e}")
+            return {"is_on_dialysis": False, "dialysis_type": None}
 
     def get_allergies(self, patient_id: str) -> list[dict]:
         """Get patient allergies.
@@ -315,6 +432,22 @@ class DosingFHIRClient:
             scr = self.get_serum_creatinine(patient_id)
             gfr = self.get_egfr(patient_id)
 
+            # Calculate CrCl if we have the necessary data
+            crcl = None
+            if scr and age_years and weight_kg:
+                # TODO: Get patient sex from FHIR
+                crcl = calculate_crcl(scr, age_years, weight_kg, sex="male")
+
+            # Calculate BSA if we have height and weight
+            bsa = None
+            if height_cm and weight_kg:
+                bsa = calculate_bsa(height_cm, weight_kg)
+
+            # Check dialysis status
+            dialysis_status = self.get_dialysis_status(patient_id)
+            is_on_dialysis = dialysis_status.get("is_on_dialysis", False) if dialysis_status else False
+            dialysis_type = dialysis_status.get("dialysis_type") if dialysis_status else None
+
             # Get medications
             all_meds = self.get_all_active_medications(patient_id)
 
@@ -322,30 +455,61 @@ class DosingFHIRClient:
             antimicrobials = [med for med in all_meds if is_antimicrobial(med.drug_name)]
             co_medications = [med for med in all_meds if not is_antimicrobial(med.drug_name)]
 
+            # Calculate daily_dose_per_kg for all medications if weight available
+            if weight_kg:
+                for med in antimicrobials + co_medications:
+                    if med.daily_dose > 0:
+                        med.daily_dose_per_kg = med.daily_dose / weight_kg
+
             # Get allergies
             allergies = self.get_allergies(patient_id)
 
             # Get indication (from ABX Indications module if not provided)
             if indication is None:
-                # TODO: Query ABX Indications database
-                indication = None
+                try:
+                    from au_alerts_src.indication_db import IndicationDatabase
+                    ind_db = IndicationDatabase()
+                    candidates = ind_db.get_candidates_by_mrn(patient_mrn, status="accepted", limit=1)
+                    if candidates:
+                        indication = candidates[0].primary_indication
+                        logger.debug(f"Found indication for {patient_mrn}: {indication}")
+                except Exception as e:
+                    logger.debug(f"Failed to get indication for {patient_mrn}: {e}")
+                    indication = None
+
+            # Get gestational age for neonates
+            gestational_age_weeks = None
+            if age_years is not None and age_years < (90 / 365.25):  # < 90 days
+                # Try to get gestational age from observations
+                try:
+                    result = self._get("Observation", {
+                        "patient": patient_id,
+                        "code": "11884-4",  # LOINC for gestational age
+                        "_sort": "-date",
+                        "_count": "1"
+                    })
+                    if result.get("total", 0) > 0:
+                        obs = result["entry"][0]["resource"]
+                        gestational_age_weeks = int(obs.get("valueQuantity", {}).get("value", 0))
+                except Exception:
+                    pass
 
             # Build context
             context = PatientContext(
                 patient_id=patient_id,
                 patient_mrn=patient_mrn,
                 patient_name=patient_name,
-                encounter_id=None,  # TODO: Get active encounter
+                encounter_id=None,  # Active encounter not critical for MVP
                 age_years=age_years,
                 weight_kg=weight_kg,
                 height_cm=height_cm,
-                gestational_age_weeks=None,  # TODO: Get for neonates
-                bsa=None,  # TODO: Calculate BSA
+                gestational_age_weeks=gestational_age_weeks,
+                bsa=bsa,
                 scr=scr,
                 gfr=gfr,
-                crcl=None,  # TODO: Calculate CrCl
-                is_on_dialysis=False,  # TODO: Check dialysis status
-                dialysis_type=None,
+                crcl=crcl,
+                is_on_dialysis=is_on_dialysis,
+                dialysis_type=dialysis_type,
                 antimicrobials=antimicrobials,
                 indication=indication,
                 indication_confidence=None,
