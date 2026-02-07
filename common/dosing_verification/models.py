@@ -63,6 +63,7 @@ class DoseAlertSeverity(str, Enum):
     CRITICAL = "critical"
     HIGH = "high"
     MODERATE = "moderate"
+    LOW = "low"
 
     @classmethod
     def all_options(cls):
@@ -71,6 +72,7 @@ class DoseAlertSeverity(str, Enum):
             (cls.CRITICAL.value, "Critical"),
             (cls.HIGH.value, "High"),
             (cls.MODERATE.value, "Moderate"),
+            (cls.LOW.value, "Low"),
         ]
 
 

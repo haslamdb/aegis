@@ -55,6 +55,8 @@ class DosingRulesEngine:
         from .rules.renal_rules import RenalAdjustmentRules
         from .rules.weight_rules import WeightBasedRules
         from .rules.age_rules import AgeBasedRules
+        from .rules.duration_rules import DurationRules
+        from .rules.extended_infusion_rules import ExtendedInfusionRules
 
         # Register in priority order (most critical first)
         self.rules = [
@@ -65,9 +67,8 @@ class DosingRulesEngine:
             IndicationRules(),        # Indication-specific dosing
             RenalAdjustmentRules(),   # Renal dose adjustments
             WeightBasedRules(),       # Weight-appropriate dosing
-            # Additional rules for Phase 3:
-            # DurationRules(),          # Duration appropriateness
-            # ExtendedInfusionRules(),  # Extended infusion candidates
+            DurationRules(),          # Duration appropriateness (Phase 3)
+            ExtendedInfusionRules(),  # Extended infusion candidates (Phase 3)
         ]
 
     def evaluate(self, context: PatientContext) -> DoseAssessment:
@@ -179,9 +180,10 @@ class DosingRulesEngine:
     def _severity_rank(self, severity: DoseAlertSeverity) -> int:
         """Get numeric rank for severity (higher = more severe)."""
         ranks = {
-            DoseAlertSeverity.CRITICAL: 3,
-            DoseAlertSeverity.HIGH: 2,
-            DoseAlertSeverity.MODERATE: 1,
+            DoseAlertSeverity.CRITICAL: 4,
+            DoseAlertSeverity.HIGH: 3,
+            DoseAlertSeverity.MODERATE: 2,
+            DoseAlertSeverity.LOW: 1,
         }
         return ranks.get(severity, 0)
 

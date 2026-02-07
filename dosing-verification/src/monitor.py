@@ -417,3 +417,107 @@ class DosingVerificationMonitor:
             Number of alerts auto-accepted.
         """
         return self.dose_store.auto_accept_old(hours=hours)
+
+    def generate_csv_report(
+        self,
+        output_file: str,
+        days: int = 7,
+        severity: str | None = None,
+    ) -> int:
+        """Generate CSV report of recent dosing alerts.
+
+        Args:
+            output_file: Path to output CSV file
+            days: Number of days to include in report (default 7)
+            severity: Optional severity filter (critical, high, moderate, low)
+
+        Returns:
+            Number of alerts in report
+        """
+        import csv
+
+        logger.info(f"Generating CSV report for last {days} days to {output_file}")
+
+        # Get alerts from last N days
+        cutoff_date = (datetime.now() - timedelta(days=days)).isoformat()
+
+        # Get all active alerts
+        all_alerts = self.dose_store.list_active(severity=severity)
+
+        # Also get resolved alerts from the period
+        resolved_alerts = self.dose_store.list_resolved(days_back=days)
+
+        # Combine and filter by date
+        all_alerts_combined = all_alerts + resolved_alerts
+        alerts_in_range = [
+            alert for alert in all_alerts_combined
+            if alert.created_at >= cutoff_date
+        ]
+
+        logger.info(f"Found {len(alerts_in_range)} alerts in date range")
+
+        # Write CSV
+        with open(output_file, "w", newline="") as f:
+            writer = csv.writer(f)
+
+            # Header row
+            writer.writerow([
+                "Alert ID",
+                "Created At",
+                "Patient MRN",
+                "Patient Name",
+                "Drug",
+                "Indication",
+                "Flag Type",
+                "Severity",
+                "Message",
+                "Expected Dose",
+                "Actual Dose",
+                "Status",
+                "Rule Source",
+                "Acknowledged By",
+                "Acknowledged At",
+                "Resolved By",
+                "Resolved At",
+                "Resolution",
+                "Resolution Notes",
+            ])
+
+            # Data rows
+            for alert in alerts_in_range:
+                writer.writerow([
+                    alert.id,
+                    alert.created_at,
+                    alert.patient_mrn,
+                    alert.patient_name,
+                    alert.drug,
+                    alert.indication or "",
+                    alert.flag_type,
+                    alert.severity,
+                    alert.message,
+                    alert.expected_dose,
+                    alert.actual_dose,
+                    alert.status,
+                    alert.rule_source,
+                    alert.acknowledged_by or "",
+                    alert.acknowledged_at or "",
+                    alert.resolved_by or "",
+                    alert.resolved_at or "",
+                    alert.resolution or "",
+                    alert.resolution_notes or "",
+                ])
+
+        logger.info(f"CSV report written to {output_file}")
+        return len(alerts_in_range)
+
+    def get_analytics(self, days: int = 30) -> dict:
+        """Get analytics data for dosing verification alerts.
+
+        Args:
+            days: Number of days to include in analytics (default 30)
+
+        Returns:
+            Dict with analytics data including counts by severity, flag type, drug, etc.
+        """
+        logger.info(f"Generating analytics for last {days} days")
+        return self.dose_store.get_analytics(days=days)
