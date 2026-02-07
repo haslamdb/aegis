@@ -26,6 +26,9 @@ class ModuleSource(Enum):
     DRUG_BUG = "drug_bug"                # Drug-bug mismatch module
     SURGICAL_PROPHYLAXIS = "surgical_prophylaxis"  # Surgical prophylaxis module
     ABX_APPROVALS = "abx_approvals"      # Antibiotic approvals module
+    MDRO_SURVEILLANCE = "mdro_surveillance"  # MDRO surveillance module
+    OUTBREAK_DETECTION = "outbreak_detection"  # Outbreak detection module
+    NHSN_REPORTING = "nhsn_reporting"    # NHSN reporting module
 
 
 class InterventionType(Enum):
@@ -270,6 +273,25 @@ class DailySnapshot:
     inappropriate_count: int = 0
     inappropriate_rate: float | None = None
 
+    # Drug-Bug mismatch metrics
+    drug_bug_alerts_created: int = 0
+    drug_bug_alerts_resolved: int = 0
+    drug_bug_therapy_changed_count: int = 0
+
+    # MDRO surveillance metrics
+    mdro_cases_identified: int = 0
+    mdro_cases_reviewed: int = 0
+    mdro_confirmed: int = 0
+
+    # Outbreak detection metrics
+    outbreak_clusters_active: int = 0
+    outbreak_alerts_triggered: int = 0
+
+    # Surgical prophylaxis metrics
+    surgical_prophylaxis_cases: int = 0
+    surgical_prophylaxis_compliant: int = 0
+    surgical_prophylaxis_compliance_rate: float | None = None
+
     # Human activity metrics
     total_reviews: int = 0
     unique_reviewers: int = 0
@@ -302,6 +324,17 @@ class DailySnapshot:
             "appropriate_count": self.appropriate_count,
             "inappropriate_count": self.inappropriate_count,
             "inappropriate_rate": self.inappropriate_rate,
+            "drug_bug_alerts_created": self.drug_bug_alerts_created,
+            "drug_bug_alerts_resolved": self.drug_bug_alerts_resolved,
+            "drug_bug_therapy_changed_count": self.drug_bug_therapy_changed_count,
+            "mdro_cases_identified": self.mdro_cases_identified,
+            "mdro_cases_reviewed": self.mdro_cases_reviewed,
+            "mdro_confirmed": self.mdro_confirmed,
+            "outbreak_clusters_active": self.outbreak_clusters_active,
+            "outbreak_alerts_triggered": self.outbreak_alerts_triggered,
+            "surgical_prophylaxis_cases": self.surgical_prophylaxis_cases,
+            "surgical_prophylaxis_compliant": self.surgical_prophylaxis_compliant,
+            "surgical_prophylaxis_compliance_rate": self.surgical_prophylaxis_compliance_rate,
             "total_reviews": self.total_reviews,
             "unique_reviewers": self.unique_reviewers,
             "total_interventions": self.total_interventions,
@@ -335,6 +368,14 @@ class DailySnapshot:
         if isinstance(created_at, str):
             created_at = datetime.fromisoformat(created_at)
 
+        def safe_get(key, default=0):
+            """Safely get a column value, returning default if column doesn't exist."""
+            try:
+                val = row[key]
+                return val if val is not None else default
+            except (IndexError, KeyError):
+                return default
+
         return cls(
             id=row["id"],
             snapshot_date=snapshot_date,
@@ -354,6 +395,17 @@ class DailySnapshot:
             appropriate_count=row["appropriate_count"] or 0,
             inappropriate_count=row["inappropriate_count"] or 0,
             inappropriate_rate=row["inappropriate_rate"],
+            drug_bug_alerts_created=safe_get("drug_bug_alerts_created"),
+            drug_bug_alerts_resolved=safe_get("drug_bug_alerts_resolved"),
+            drug_bug_therapy_changed_count=safe_get("drug_bug_therapy_changed_count"),
+            mdro_cases_identified=safe_get("mdro_cases_identified"),
+            mdro_cases_reviewed=safe_get("mdro_cases_reviewed"),
+            mdro_confirmed=safe_get("mdro_confirmed"),
+            outbreak_clusters_active=safe_get("outbreak_clusters_active"),
+            outbreak_alerts_triggered=safe_get("outbreak_alerts_triggered"),
+            surgical_prophylaxis_cases=safe_get("surgical_prophylaxis_cases"),
+            surgical_prophylaxis_compliant=safe_get("surgical_prophylaxis_compliant"),
+            surgical_prophylaxis_compliance_rate=safe_get("surgical_prophylaxis_compliance_rate", None),
             total_reviews=row["total_reviews"] or 0,
             unique_reviewers=row["unique_reviewers"] or 0,
             total_interventions=row["total_interventions"] or 0,

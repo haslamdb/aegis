@@ -508,9 +508,13 @@ class MetricsStore:
                     hai_candidates_created, hai_candidates_reviewed, hai_confirmed, hai_override_count,
                     bundle_episodes_active, bundle_alerts_created, bundle_adherence_rate,
                     indication_reviews, appropriate_count, inappropriate_count, inappropriate_rate,
+                    drug_bug_alerts_created, drug_bug_alerts_resolved, drug_bug_therapy_changed_count,
+                    mdro_cases_identified, mdro_cases_reviewed, mdro_confirmed,
+                    outbreak_clusters_active, outbreak_alerts_triggered,
+                    surgical_prophylaxis_cases, surgical_prophylaxis_compliant, surgical_prophylaxis_compliance_rate,
                     total_reviews, unique_reviewers, total_interventions,
                     by_location, by_service, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     snapshot.snapshot_date.isoformat(),
@@ -522,6 +526,13 @@ class MetricsStore:
                     snapshot.bundle_adherence_rate,
                     snapshot.indication_reviews, snapshot.appropriate_count,
                     snapshot.inappropriate_count, snapshot.inappropriate_rate,
+                    snapshot.drug_bug_alerts_created, snapshot.drug_bug_alerts_resolved,
+                    snapshot.drug_bug_therapy_changed_count,
+                    snapshot.mdro_cases_identified, snapshot.mdro_cases_reviewed,
+                    snapshot.mdro_confirmed,
+                    snapshot.outbreak_clusters_active, snapshot.outbreak_alerts_triggered,
+                    snapshot.surgical_prophylaxis_cases, snapshot.surgical_prophylaxis_compliant,
+                    snapshot.surgical_prophylaxis_compliance_rate,
                     snapshot.total_reviews, snapshot.unique_reviewers, snapshot.total_interventions,
                     by_location_json, by_service_json, now.isoformat()
                 )

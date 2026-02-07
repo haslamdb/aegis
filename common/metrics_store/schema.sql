@@ -103,6 +103,25 @@ CREATE TABLE IF NOT EXISTS metrics_daily_snapshot (
     inappropriate_count INTEGER DEFAULT 0,
     inappropriate_rate REAL,
 
+    -- Drug-Bug mismatch metrics
+    drug_bug_alerts_created INTEGER DEFAULT 0,
+    drug_bug_alerts_resolved INTEGER DEFAULT 0,
+    drug_bug_therapy_changed_count INTEGER DEFAULT 0,
+
+    -- MDRO surveillance metrics
+    mdro_cases_identified INTEGER DEFAULT 0,
+    mdro_cases_reviewed INTEGER DEFAULT 0,
+    mdro_confirmed INTEGER DEFAULT 0,
+
+    -- Outbreak detection metrics
+    outbreak_clusters_active INTEGER DEFAULT 0,
+    outbreak_alerts_triggered INTEGER DEFAULT 0,
+
+    -- Surgical prophylaxis metrics
+    surgical_prophylaxis_cases INTEGER DEFAULT 0,
+    surgical_prophylaxis_compliant INTEGER DEFAULT 0,
+    surgical_prophylaxis_compliance_rate REAL,
+
     -- Human activity metrics
     total_reviews INTEGER DEFAULT 0,
     unique_reviewers INTEGER DEFAULT 0,

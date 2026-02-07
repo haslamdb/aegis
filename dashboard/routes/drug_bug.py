@@ -9,6 +9,42 @@ from common.alert_store import AlertStatus, AlertType, ResolutionReason
 drug_bug_bp = Blueprint("drug_bug", __name__, url_prefix="/drug-bug-mismatch")
 
 
+def _log_drug_bug_activity(
+    activity_type: str,
+    entity_id: str,
+    entity_type: str,
+    action_taken: str,
+    provider_id: str | None = None,
+    provider_name: str | None = None,
+    patient_mrn: str | None = None,
+    location_code: str | None = None,
+    service: str | None = None,
+    outcome: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Log activity to the unified metrics store. Fire-and-forget."""
+    try:
+        from common.metrics_store import MetricsStore, ActivityType, ModuleSource
+
+        store = MetricsStore()
+        store.log_activity(
+            activity_type=activity_type,
+            module=ModuleSource.DRUG_BUG,
+            provider_id=provider_id,
+            provider_name=provider_name,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            action_taken=action_taken,
+            outcome=outcome,
+            patient_mrn=patient_mrn,
+            location_code=location_code,
+            service=service,
+            details=details,
+        )
+    except Exception:
+        pass
+
+
 @drug_bug_bp.route("/")
 def dashboard():
     """Drug-Bug Mismatch dashboard with active alerts and statistics."""
@@ -76,6 +112,17 @@ def dashboard():
             if mt in mismatch_counts:
                 mismatch_counts[mt] += 1
 
+    _log_drug_bug_activity(
+        activity_type="view",
+        entity_id="drug_bug_dashboard",
+        entity_type="dashboard",
+        action_taken="viewed_drug_bug_dashboard",
+        details={
+            "active_count": stats["active_count"],
+            "critical_count": stats["critical_count"],
+        },
+    )
+
     return render_template(
         "drug_bug_dashboard.html",
         alerts=active_alerts,
@@ -114,6 +161,13 @@ def history():
 
     # Get resolution reason options for dropdown
     resolution_reasons = ResolutionReason.all_options()
+
+    _log_drug_bug_activity(
+        activity_type="view",
+        entity_id="drug_bug_history",
+        entity_type="history",
+        action_taken="viewed_drug_bug_history",
+    )
 
     return render_template(
         "drug_bug_history.html",

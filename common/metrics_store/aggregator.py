@@ -132,6 +132,46 @@ class MetricsAggregator:
             logger.warning(f"Failed to get indication database: {e}")
             return None
 
+    def _get_drug_bug_db_path(self):
+        """Get drug-bug alert data from the shared alert store."""
+        # Drug-bug uses the same AlertStore, so we reuse _get_alert_store()
+        return self._get_alert_store()
+
+    def _get_mdro_db(self):
+        """Get MDRO database instance."""
+        try:
+            from mdro_src.db import MDRODatabase
+            from mdro_src.config import config as mdro_config
+            db_path = os.path.expanduser(
+                os.environ.get("MDRO_DB_PATH", mdro_config.DB_PATH)
+            )
+            return MDRODatabase(db_path)
+        except Exception as e:
+            logger.warning(f"Failed to get MDRO database: {e}")
+            return None
+
+    def _get_outbreak_db(self):
+        """Get Outbreak database instance."""
+        try:
+            from outbreak_src.db import OutbreakDatabase
+            from outbreak_src.config import config as outbreak_config
+            db_path = os.path.expanduser(
+                os.environ.get("OUTBREAK_DB_PATH", outbreak_config.DB_PATH)
+            )
+            return OutbreakDatabase(db_path)
+        except Exception as e:
+            logger.warning(f"Failed to get Outbreak database: {e}")
+            return None
+
+    def _get_surgical_db(self):
+        """Get Surgical Prophylaxis database instance."""
+        try:
+            from src.database import ProphylaxisDatabase
+            return ProphylaxisDatabase()
+        except Exception as e:
+            logger.warning(f"Failed to get Surgical Prophylaxis database: {e}")
+            return None
+
     def create_daily_snapshot(self, snapshot_date: date | None = None) -> DailySnapshot:
         """Create a daily metrics snapshot from all modules.
 
@@ -151,6 +191,10 @@ class MetricsAggregator:
         self._aggregate_hai_metrics(snapshot, snapshot_date)
         self._aggregate_adherence_metrics(snapshot, snapshot_date)
         self._aggregate_indication_metrics(snapshot, snapshot_date)
+        self._aggregate_drug_bug_metrics(snapshot, snapshot_date)
+        self._aggregate_mdro_metrics(snapshot, snapshot_date)
+        self._aggregate_outbreak_metrics(snapshot, snapshot_date)
+        self._aggregate_surgical_metrics(snapshot, snapshot_date)
         self._aggregate_activity_metrics(snapshot, snapshot_date)
 
         # Save the snapshot
@@ -364,6 +408,139 @@ class MetricsAggregator:
 
         except Exception as e:
             logger.error(f"Error aggregating indication metrics: {e}")
+
+    def _aggregate_drug_bug_metrics(self, snapshot: DailySnapshot, snapshot_date: date) -> None:
+        """Aggregate drug-bug mismatch metrics from the alert store."""
+        alert_store = self._get_alert_store()
+        if not alert_store:
+            return
+        try:
+            import sqlite3
+            with sqlite3.connect(alert_store.db_path) as conn:
+                cursor = conn.cursor()
+                date_str = snapshot_date.isoformat()
+
+                # Drug-bug alerts created on this date
+                cursor.execute(
+                    "SELECT COUNT(*) FROM alerts WHERE alert_type = 'drug_bug_mismatch' AND date(created_at) = ?",
+                    (date_str,)
+                )
+                snapshot.drug_bug_alerts_created = cursor.fetchone()[0]
+
+                # Drug-bug alerts resolved on this date
+                cursor.execute(
+                    "SELECT COUNT(*) FROM alerts WHERE alert_type = 'drug_bug_mismatch' AND date(resolved_at) = ?",
+                    (date_str,)
+                )
+                snapshot.drug_bug_alerts_resolved = cursor.fetchone()[0]
+
+                # Drug-bug alerts resolved with therapy_changed reason
+                cursor.execute(
+                    """SELECT COUNT(*) FROM alerts
+                    WHERE alert_type = 'drug_bug_mismatch'
+                    AND date(resolved_at) = ?
+                    AND resolution_reason IN ('therapy_changed', 'therapy_stopped')""",
+                    (date_str,)
+                )
+                snapshot.drug_bug_therapy_changed_count = cursor.fetchone()[0]
+        except Exception as e:
+            logger.error(f"Error aggregating drug-bug metrics: {e}")
+
+    def _aggregate_mdro_metrics(self, snapshot: DailySnapshot, snapshot_date: date) -> None:
+        """Aggregate MDRO surveillance metrics."""
+        mdro_db = self._get_mdro_db()
+        if not mdro_db:
+            return
+        try:
+            import sqlite3
+            with sqlite3.connect(mdro_db.db_path) as conn:
+                cursor = conn.cursor()
+                date_str = snapshot_date.isoformat()
+
+                # MDRO cases identified on this date
+                cursor.execute(
+                    "SELECT COUNT(*) FROM mdro_cases WHERE date(identified_at) = ?",
+                    (date_str,)
+                )
+                snapshot.mdro_cases_identified = cursor.fetchone()[0]
+
+                # Cases reviewed on this date
+                cursor.execute(
+                    "SELECT COUNT(*) FROM mdro_reviews WHERE date(reviewed_at) = ?",
+                    (date_str,)
+                )
+                snapshot.mdro_cases_reviewed = cursor.fetchone()[0]
+
+                # Confirmed cases
+                cursor.execute(
+                    "SELECT COUNT(*) FROM mdro_cases WHERE status = 'confirmed' AND date(identified_at) = ?",
+                    (date_str,)
+                )
+                snapshot.mdro_confirmed = cursor.fetchone()[0]
+        except Exception as e:
+            logger.error(f"Error aggregating MDRO metrics: {e}")
+
+    def _aggregate_outbreak_metrics(self, snapshot: DailySnapshot, snapshot_date: date) -> None:
+        """Aggregate outbreak detection metrics."""
+        outbreak_db = self._get_outbreak_db()
+        if not outbreak_db:
+            return
+        try:
+            import sqlite3
+            with sqlite3.connect(outbreak_db.db_path) as conn:
+                cursor = conn.cursor()
+                date_str = snapshot_date.isoformat()
+
+                # Active clusters as of this date
+                cursor.execute(
+                    "SELECT COUNT(*) FROM outbreak_clusters WHERE status IN ('active', 'investigating')"
+                )
+                snapshot.outbreak_clusters_active = cursor.fetchone()[0]
+
+                # Alerts triggered on this date
+                cursor.execute(
+                    "SELECT COUNT(*) FROM outbreak_alerts WHERE date(created_at) = ?",
+                    (date_str,)
+                )
+                snapshot.outbreak_alerts_triggered = cursor.fetchone()[0]
+        except Exception as e:
+            logger.error(f"Error aggregating outbreak metrics: {e}")
+
+    def _aggregate_surgical_metrics(self, snapshot: DailySnapshot, snapshot_date: date) -> None:
+        """Aggregate surgical prophylaxis metrics."""
+        surgical_db = self._get_surgical_db()
+        if not surgical_db:
+            return
+        try:
+            import sqlite3
+            with sqlite3.connect(surgical_db.db_path) as conn:
+                cursor = conn.cursor()
+                date_str = snapshot_date.isoformat()
+
+                # Cases evaluated on this date
+                cursor.execute(
+                    "SELECT COUNT(*) FROM surgical_cases WHERE date(scheduled_or_time) = ?",
+                    (date_str,)
+                )
+                snapshot.surgical_prophylaxis_cases = cursor.fetchone()[0]
+
+                # Compliant cases
+                cursor.execute(
+                    """SELECT COUNT(*) FROM compliance_evaluations ce
+                    JOIN surgical_cases sc ON ce.case_id = sc.case_id
+                    WHERE ce.bundle_compliant = 1
+                    AND date(sc.scheduled_or_time) = ?""",
+                    (date_str,)
+                )
+                snapshot.surgical_prophylaxis_compliant = cursor.fetchone()[0]
+
+                # Calculate compliance rate
+                if snapshot.surgical_prophylaxis_cases > 0:
+                    snapshot.surgical_prophylaxis_compliance_rate = round(
+                        snapshot.surgical_prophylaxis_compliant / snapshot.surgical_prophylaxis_cases * 100, 1
+                    )
+        except Exception as e:
+            logger.error(f"Error aggregating surgical prophylaxis metrics: {e}")
 
     def _aggregate_activity_metrics(self, snapshot: DailySnapshot, snapshot_date: date) -> None:
         """Aggregate human activity metrics from the unified metrics store."""

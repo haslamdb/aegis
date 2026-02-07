@@ -588,10 +588,10 @@ llm_acceptance_rate: float | None = None
 
 ### High Priority (Improve Data Quality Now)
 
-- [ ] **H1.** Add `MetricsStore.log_activity()` calls to Drug-Bug, MDRO, Outbreak, and Surgical Prophylaxis route handlers so all user interactions are tracked in the unified store
-- [ ] **H2.** Add missing `ModuleSource` enum values: `MDRO_SURVEILLANCE`, `OUTBREAK_DETECTION`, `NHSN_REPORTING`
-- [ ] **H3.** Add `VIEWED` audit action to track page-view engagement across all module detail pages
-- [ ] **H4.** Expand `DailySnapshot` to include metrics for Drug-Bug, MDRO, Outbreak, and Surgical Prophylaxis modules
+- [x] **H1.** Add `MetricsStore.log_activity()` calls to Drug-Bug, MDRO, Outbreak, and Surgical Prophylaxis route handlers so all user interactions are tracked in the unified store
+- [x] **H2.** Add missing `ModuleSource` enum values: `MDRO_SURVEILLANCE`, `OUTBREAK_DETECTION`, `NHSN_REPORTING`
+- [x] **H3.** Add `VIEWED` audit action to track page-view engagement across all module detail pages
+- [x] **H4.** Expand `DailySnapshot` to include metrics for Drug-Bug, MDRO, Outbreak, and Surgical Prophylaxis modules
 
 ### Medium Priority (Harmonize UX)
 
@@ -599,8 +599,8 @@ llm_acceptance_rate: float | None = None
 - [ ] **M2.** Standardize sub-navigation across all modules to include at minimum: Dashboard, Active/Pending, History, Main, Help
 - [ ] **M3.** Standardize detail page layouts to two-column format (patient context left, details + actions right)
 - [ ] **M4.** Create unified JSON response envelope for all API endpoints: `{"success": bool, "data": ..., "error": ...}`
-- [ ] **M5.** Add missing `ResolutionReason` values: `escalated_to_attending`, `deferred_to_next_shift`, `culture_pending`, `no_action_needed`
-- [ ] **M6.** Add missing `AuditAction` values: `viewed`, `escalated`, `forwarded`, `deferred`, `commented`
+- [x] **M5.** Add missing `ResolutionReason` values: `escalated_to_attending`, `deferred_to_next_shift`, `culture_pending`, `no_action_needed`
+- [x] **M6.** Add missing `AuditAction` values: `viewed`, `escalated`, `forwarded`, `deferred`, `commented`
 
 ### Lower Priority (LLM Tracking Enhancements)
 

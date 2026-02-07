@@ -42,6 +42,11 @@ class AuditAction(Enum):
     RESOLVED = "resolved"
     REOPENED = "reopened"
     NOTE_ADDED = "note_added"
+    VIEWED = "viewed"                # User opened the detail page
+    ESCALATED = "escalated"          # Escalated to attending/senior
+    FORWARDED = "forwarded"          # Forwarded to a colleague
+    DEFERRED = "deferred"            # Deferred to next shift
+    COMMENTED = "commented"          # Added a clinical comment
 
 
 class ResolutionReason(Enum):
@@ -55,6 +60,10 @@ class ResolutionReason(Enum):
     THERAPY_STOPPED = "therapy_stopped"     # Therapy was discontinued
     PATIENT_DISCHARGED = "patient_discharged"  # Patient discharged
     AUTO_ACCEPTED = "auto_accepted"         # Auto-accepted after timeout
+    ESCALATED_TO_ATTENDING = "escalated_to_attending"  # Escalated to attending physician
+    DEFERRED_TO_NEXT_SHIFT = "deferred_to_next_shift"  # Passed to next shift
+    CULTURE_PENDING = "culture_pending"   # Waiting for culture results
+    NO_ACTION_NEEDED = "no_action_needed"  # Reviewed, no action required
     OTHER = "other"                         # Other reason (see notes)
 
     @classmethod
@@ -74,6 +83,10 @@ class ResolutionReason(Enum):
             cls.THERAPY_STOPPED: "Therapy Stopped",
             cls.PATIENT_DISCHARGED: "Patient Discharged",
             cls.AUTO_ACCEPTED: "Auto Accepted",
+            cls.ESCALATED_TO_ATTENDING: "Escalated to Attending",
+            cls.DEFERRED_TO_NEXT_SHIFT: "Deferred to Next Shift",
+            cls.CULTURE_PENDING: "Culture Pending",
+            cls.NO_ACTION_NEEDED: "No Action Needed",
             cls.OTHER: "Other",
         }
         # If it's a string, try to convert to enum first

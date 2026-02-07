@@ -26,6 +26,42 @@ def get_outbreak_db():
     return current_app.outbreak_db
 
 
+def _log_outbreak_activity(
+    activity_type: str,
+    entity_id: str,
+    entity_type: str,
+    action_taken: str,
+    provider_id: str | None = None,
+    provider_name: str | None = None,
+    patient_mrn: str | None = None,
+    location_code: str | None = None,
+    service: str | None = None,
+    outcome: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Log activity to the unified metrics store. Fire-and-forget."""
+    try:
+        from common.metrics_store import MetricsStore, ActivityType, ModuleSource
+
+        store = MetricsStore()
+        store.log_activity(
+            activity_type=activity_type,
+            module=ModuleSource.OUTBREAK_DETECTION,
+            provider_id=provider_id,
+            provider_name=provider_name,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            action_taken=action_taken,
+            outcome=outcome,
+            patient_mrn=patient_mrn,
+            location_code=location_code,
+            service=service,
+            details=details,
+        )
+    except Exception:
+        pass
+
+
 @outbreak_detection_bp.route("/")
 def dashboard():
     """Outbreak detection dashboard overview."""
@@ -143,6 +179,14 @@ def resolve_cluster(cluster_id: str):
         )
 
         if success:
+            _log_outbreak_activity(
+                activity_type="resolution",
+                entity_id=cluster_id,
+                entity_type="outbreak_cluster",
+                action_taken="resolved",
+                provider_name=resolved_by,
+                details={"notes": resolution_notes[:200] if resolution_notes else None},
+            )
             return jsonify({"success": True})
         else:
             return jsonify({"error": "Failed to resolve cluster"}), 500
@@ -176,6 +220,13 @@ def update_cluster_status(cluster_id: str):
                 notes=notes,
             )
             if success:
+                _log_outbreak_activity(
+                    activity_type="resolution",
+                    entity_id=cluster_id,
+                    entity_type="outbreak_cluster",
+                    action_taken="resolved",
+                    provider_name=reviewer,
+                )
                 return jsonify({"success": True})
             else:
                 return jsonify({"error": "Failed to resolve cluster"}), 500
@@ -194,6 +245,14 @@ def update_cluster_status(cluster_id: str):
                 notes=full_notes,
             )
             if success:
+                _log_outbreak_activity(
+                    activity_type="review",
+                    entity_id=cluster_id,
+                    entity_type="outbreak_cluster",
+                    action_taken="marked_not_outbreak",
+                    provider_name=reviewer,
+                    details={"override_reason": override_reason},
+                )
                 return jsonify({"success": True})
             else:
                 return jsonify({"error": "Failed to mark as not outbreak"}), 500
@@ -209,6 +268,15 @@ def update_cluster_status(cluster_id: str):
             status=status_enum,
             notes=notes,
             updated_by=reviewer,
+        )
+
+        _log_outbreak_activity(
+            activity_type="review",
+            entity_id=cluster_id,
+            entity_type="outbreak_cluster",
+            action_taken=f"status_changed_to_{new_status}",
+            provider_name=reviewer,
+            details={"new_status": new_status, "notes": notes[:200] if notes else None},
         )
 
         return jsonify({"success": True})
@@ -262,6 +330,14 @@ def acknowledge_alert(alert_id: str):
 
         acknowledged_by = request.form.get("reviewer") or user.get("name", "Unknown")
         db.acknowledge_alert(alert_id, acknowledged_by)
+
+        _log_outbreak_activity(
+            activity_type="acknowledgment",
+            entity_id=alert_id,
+            entity_type="outbreak_alert",
+            action_taken="acknowledged",
+            provider_name=acknowledged_by,
+        )
 
         return jsonify({"success": True})
     except Exception as e:

@@ -34,6 +34,41 @@ def get_db():
     return ProphylaxisDatabase()
 
 
+def _log_surgical_activity(
+    activity_type: str,
+    entity_id: str,
+    entity_type: str,
+    action_taken: str,
+    provider_id: str | None = None,
+    provider_name: str | None = None,
+    patient_mrn: str | None = None,
+    location_code: str | None = None,
+    service: str | None = None,
+    outcome: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Log activity to the unified metrics store. Fire-and-forget."""
+    try:
+        from common.metrics_store import MetricsStore, ActivityType, ModuleSource
+        store = MetricsStore()
+        store.log_activity(
+            activity_type=activity_type,
+            module=ModuleSource.SURGICAL_PROPHYLAXIS,
+            provider_id=provider_id,
+            provider_name=provider_name,
+            entity_id=entity_id,
+            entity_type=entity_type,
+            action_taken=action_taken,
+            outcome=outcome,
+            patient_mrn=patient_mrn,
+            location_code=location_code,
+            service=service,
+            details=details,
+        )
+    except Exception:
+        pass
+
+
 @surgical_prophylaxis_bp.route("/")
 def dashboard():
     """Render the Surgical Prophylaxis dashboard with real data."""
@@ -110,6 +145,18 @@ def dashboard():
                         "total_cases": cat_summary.get("total_cases", 0),
                         "compliance_rate": round(cat_summary.get("bundle_compliance_rate", 0), 1),
                     })
+
+            _log_surgical_activity(
+                activity_type="view",
+                entity_id="surgical_prophylaxis",
+                entity_type="dashboard",
+                action_taken="viewed_surgical_dashboard",
+                details={
+                    "total_cases": metrics.get("total_cases", 0),
+                    "bundle_rate": metrics.get("bundle_rate", 0),
+                    "pending_alerts": metrics.get("pending_alerts", 0),
+                },
+            )
 
         except Exception as e:
             current_app.logger.error(f"Error loading surgical prophylaxis data: {e}")
@@ -240,6 +287,18 @@ def case_detail(case_id):
                         {"name": "Discontinuation", "status": eval_data.get("discontinuation_status"), "details": eval_data.get("discontinuation_details")},
                     ],
                 }
+
+            _log_surgical_activity(
+                activity_type="view",
+                entity_id=case_id,
+                entity_type="surgical_case",
+                action_taken="viewed_case",
+                patient_mrn=case.get("patient_mrn") if case else None,
+                details={
+                    "has_evaluation": evaluation is not None,
+                    "procedure_category": case.get("procedure_category") if case else None,
+                },
+            )
 
         except Exception as e:
             current_app.logger.error(f"Error loading case {case_id}: {e}")
