@@ -15,7 +15,7 @@
     {# Left Column: Patient Context #}
     {% call detail_sidebar() %}
         {% call detail_sidebar_section("Patient Information") %}
-            {{ detail_field("Patient MRN", '<span class="patient-mrn">' ~ case.patient_mrn ~ '</span>') }}
+            {{ detail_field("Patient MRN", case.patient_mrn) }}
             {{ detail_field("Case ID", case.case_id) }}
             {{ detail_field("Encounter", case.encounter_id or '-') }}
             {{ detail_field("Weight", case.patient_weight_kg ~ ' kg') }}
