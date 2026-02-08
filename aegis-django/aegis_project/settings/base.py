@@ -50,13 +50,13 @@ INSTALLED_APPS = [
     'apps.drug_bug',  # ✅ Phase 3 - Drug-Bug Mismatch
     'apps.dosing',  # ✅ Phase 3 - Dosing Verification
     'apps.hai_detection',  # ✅ Phase 3 - HAI Detection
+    'apps.outbreak_detection',  # ✅ Phase 3 - Outbreak Detection
     # TO BE MIGRATED:
     # 'apps.dosing_verification',
     # 'apps.abx_approvals',
     # 'apps.guideline_adherence',
     # 'apps.surgical_prophylaxis',
     # 'apps.nhsn_reporting',
-    # 'apps.outbreak_detection',
 
     # API
     # 'apps.api',
@@ -265,4 +265,11 @@ HAI_DETECTION = {
     'POLL_INTERVAL': 300,
     'AUTO_CLASSIFY_THRESHOLD': 0.85,
     'IP_REVIEW_THRESHOLD': 0.60,
+}
+
+# Outbreak Detection Configuration
+OUTBREAK_DETECTION = {
+    'CLUSTER_WINDOW_DAYS': 14,
+    'MIN_CLUSTER_SIZE': 2,
+    'POLL_INTERVAL_MINUTES': 30,
 }

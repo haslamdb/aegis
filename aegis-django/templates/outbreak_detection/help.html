@@ -1,0 +1,167 @@
+{% extends "outbreak_detection/base.html" %}
+
+{% block content %}
+<h2>Outbreak Detection - Help &amp; Documentation</h2>
+
+<div class="action-card">
+    <h3>Overview</h3>
+    <p>
+        The Outbreak Detection module assists Infection Preventionists in identifying potential
+        outbreaks by clustering infection cases based on infection type, hospital unit, and time window.
+        When multiple cases of the same infection type occur in the same unit within a configurable
+        time window, the system alerts IP staff for investigation.
+    </p>
+
+    <h3>How Detection Works</h3>
+    <ol>
+        <li><strong>Data Collection:</strong> The system pulls confirmed infection cases from two sources:
+            <ul>
+                <li><strong>MDRO Surveillance</strong> - MRSA, VRE, CRE, ESBL, and other multidrug-resistant organisms</li>
+                <li><strong>HAI Detection</strong> - Confirmed CLABSI, SSI, CAUTI, VAE, and CDI cases</li>
+            </ul>
+        </li>
+        <li><strong>Clustering:</strong> Cases are grouped by infection type + hospital unit. When 2+ cases
+            occur in the same unit within the detection window (default: 14 days), a cluster is formed.</li>
+        <li><strong>Alerting:</strong> Clusters generate alerts for IP review. Severity escalates as more
+            cases are added to a cluster.</li>
+        <li><strong>Investigation:</strong> IP staff review each cluster, investigate the cases, and make
+            a determination: Confirm Outbreak, Under Investigation, Not an Outbreak, or Resolve.</li>
+    </ol>
+
+    <h3>Severity Levels</h3>
+    <table style="box-shadow: none;">
+        <tr>
+            <th>Severity</th>
+            <th>Case Count</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><span class="badge low">Low</span></td>
+            <td>2 cases</td>
+            <td>Minimum cluster size met. Monitor for additional cases.</td>
+        </tr>
+        <tr>
+            <td><span class="badge medium">Medium</span></td>
+            <td>3 cases</td>
+            <td>Investigation recommended. Enhanced surveillance suggested.</td>
+        </tr>
+        <tr>
+            <td><span class="badge high">High</span></td>
+            <td>4 cases</td>
+            <td>Active investigation required. Consider environmental assessment.</td>
+        </tr>
+        <tr>
+            <td><span class="badge critical">Critical</span></td>
+            <td>5+ cases</td>
+            <td>Urgent response needed. Contact IP leadership and facility management.</td>
+        </tr>
+    </table>
+
+    <h3>Data Sources</h3>
+    <table style="box-shadow: none;">
+        <tr>
+            <th>Source</th>
+            <th>Module</th>
+            <th>Infection Types</th>
+            <th>Criteria</th>
+        </tr>
+        <tr>
+            <td><span class="badge mdro">MDRO</span></td>
+            <td>MDRO Surveillance</td>
+            <td>MRSA, VRE, CRE, ESBL, etc.</td>
+            <td>All MDRO cases with culture date within window</td>
+        </tr>
+        <tr>
+            <td><span class="badge hai">HAI</span></td>
+            <td>HAI Detection</td>
+            <td>CLABSI, SSI, CAUTI, VAE</td>
+            <td>Confirmed HAI candidates (excluding CDI)</td>
+        </tr>
+        <tr>
+            <td><span class="badge cdi">CDI</span></td>
+            <td>HAI Detection</td>
+            <td>C. difficile</td>
+            <td>Confirmed CDI cases (tracked separately)</td>
+        </tr>
+    </table>
+
+    <h3>Investigation Workflow</h3>
+    <ol>
+        <li><strong>Alert Received:</strong> System detects a new cluster or escalation and creates an alert</li>
+        <li><strong>Review Cluster:</strong> IP navigates to cluster detail to review cases, timeline, and organism data</li>
+        <li><strong>Investigation:</strong> IP investigates potential epidemiological links:
+            <ul>
+                <li>Are cases truly related (same strain/organism)?</li>
+                <li>Shared exposures (rooms, procedures, staff)?</li>
+                <li>Environmental assessment needed?</li>
+                <li>Contact tracing required?</li>
+            </ul>
+        </li>
+        <li><strong>Decision:</strong> IP records their determination:
+            <ul>
+                <li><strong style="color: #e74c3c;">Confirm Outbreak</strong> - Confirmed cluster requiring ongoing monitoring</li>
+                <li><strong style="color: #f39c12;">Under Investigation</strong> - Additional investigation needed</li>
+                <li><strong style="color: #95a5a6;">Not an Outbreak</strong> - Cases determined to be unrelated (override logged)</li>
+                <li><strong style="color: #27ae60;">Resolve</strong> - Investigation complete, no further action needed</li>
+            </ul>
+        </li>
+    </ol>
+
+    <h3>Cluster Lifecycle</h3>
+    <div style="background: #ecf0f1; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 14px;">
+        Detection &rarr; <span class="badge active">Active</span>
+        &rarr; <span class="badge investigating">Investigating</span>
+        &rarr; <span class="badge resolved">Resolved</span>
+    </div>
+    <p style="margin-top: 10px;">
+        Clusters can also be marked "Not an Outbreak" at any point, which resolves them with an
+        override reason logged for quality tracking.
+    </p>
+
+    <h3>Management Commands</h3>
+    <table style="box-shadow: none;">
+        <tr>
+            <th>Command</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><code>python manage.py detect_outbreaks --once</code></td>
+            <td>Run detection once and exit</td>
+        </tr>
+        <tr>
+            <td><code>python manage.py detect_outbreaks --once --days 30</code></td>
+            <td>Run with 30-day lookback window</td>
+        </tr>
+        <tr>
+            <td><code>python manage.py detect_outbreaks --continuous</code></td>
+            <td>Run continuous monitoring</td>
+        </tr>
+        <tr>
+            <td><code>python manage.py detect_outbreaks --stats</code></td>
+            <td>Show current statistics</td>
+        </tr>
+        <tr>
+            <td><code>python manage.py create_demo_outbreaks --clear</code></td>
+            <td>Create demo data with CCHMC hospital units</td>
+        </tr>
+    </table>
+
+    <h3>API Endpoints</h3>
+    <ul>
+        <li><code>GET /outbreak-detection/api/stats/</code> - Current detection statistics</li>
+        <li><code>GET /outbreak-detection/api/active-clusters/</code> - Active cluster data</li>
+    </ul>
+
+    <h3>Links</h3>
+    <ul>
+        <li><a href="{% url 'outbreak_detection:dashboard' %}">Dashboard</a> - Overview with active clusters and alerts</li>
+        <li><a href="{% url 'outbreak_detection:clusters_list' %}">Clusters</a> - All clusters with status filter</li>
+        <li><a href="{% url 'outbreak_detection:alerts_list' %}">Alerts</a> - Pending and acknowledged alerts</li>
+        <li><a href="{% url 'hai_detection:help' %}">HAI Detection Help</a> - HAI classification documentation</li>
+    </ul>
+
+    <h3>Support</h3>
+    <p>For technical support or feature requests, contact the AEGIS development team.</p>
+</div>
+
+{% endblock %}

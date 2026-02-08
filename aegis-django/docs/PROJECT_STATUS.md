@@ -6,7 +6,7 @@
 
 ## Current Status
 
-Django migration is in progress. Foundation (Phase 1) is complete and audited. Six modules have been migrated:
+Django migration is in progress. Foundation (Phase 1) is complete and audited. Seven modules have been migrated:
 
 1. **Action Analytics** - Read-only analytics dashboard (Phase 2, audited and fixed)
 2. **ASP Alerts** - Complete ASP bacteremia/stewardship alerts with clinical features (Phase 2)
@@ -14,6 +14,7 @@ Django migration is in progress. Foundation (Phase 1) is complete and audited. S
 4. **Drug-Bug Mismatch** - Susceptibility-based coverage mismatch detection (Phase 3)
 5. **Dosing Verification** - Antimicrobial dosing rules engine with 9 clinical rule modules (Phase 3)
 6. **HAI Detection** - Full HAI surveillance with 5 HAI types, LLM classification, IP review (Phase 3)
+7. **Outbreak Detection** - Cluster-based outbreak detection aggregating MDRO and HAI data (Phase 3)
 
 Foundation code audit is complete — 10 bugs identified and fixed across framework infrastructure, authentication, and Action Analytics. The codebase is now solid for building additional modules.
 
@@ -39,6 +40,7 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - [x] Drug-Bug Mismatch (`apps/drug_bug/`) - susceptibility coverage mismatch detection
 - [x] Dosing Verification (`apps/dosing/`) - 9-rule antimicrobial dosing engine
 - [x] HAI Detection (`apps/hai_detection/`) - 5 HAI types, LLM classification, IP review with override tracking
+- [x] Outbreak Detection (`apps/outbreak_detection/`) - Cluster-based outbreak detection aggregating MDRO/HAI data
 
 ### Code Audit & Bug Fixes (2026-02-07)
 
@@ -86,11 +88,10 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 ## Next Steps
 
 ### Immediate (next session)
-- [ ] Outbreak Detection module migration (quick win, aggregates MDRO/HAI data)
+- [ ] Antimicrobial Usage Alerts module migration
 - [ ] Unit tests for foundation code (models, views, decorators)
 
 ### Upcoming
-- [ ] Antimicrobial Usage Alerts module migration
 - [ ] Surgical Prophylaxis module migration
 - [ ] Guideline Adherence module migration
 - [ ] NHSN Reporting module migration
@@ -156,6 +157,13 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 | HAI Detection templates | `templates/hai_detection/` (6 files) |
 | HAI demo data | `apps/hai_detection/management/commands/create_demo_hai.py` |
 | HAI monitor command | `apps/hai_detection/management/commands/monitor_hai.py` |
+| Outbreak Detection app | `apps/outbreak_detection/` |
+| Outbreak models | `apps/outbreak_detection/models.py` |
+| Outbreak services | `apps/outbreak_detection/services.py` |
+| Outbreak views | `apps/outbreak_detection/views.py` |
+| Outbreak templates | `templates/outbreak_detection/` (6 files) |
+| Outbreak demo data | `apps/outbreak_detection/management/commands/create_demo_outbreaks.py` |
+| Outbreak monitor | `apps/outbreak_detection/management/commands/detect_outbreaks.py` |
 | Action Analytics | `apps/action_analytics/` |
 | Authentication | `apps/authentication/` |
 | Core models | `apps/core/models.py` |
@@ -204,3 +212,11 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - Management commands: monitor_hai (--once/--continuous/--stats/--classify/--dry-run), create_demo_hai (20+ scenarios across all 5 HAI types)
 - HAI_DETECTION settings dict in base.py (LLM backend, FHIR URL, thresholds)
 - Six modules now migrated total (Action Analytics, ASP Alerts, MDRO, Drug-Bug Mismatch, Dosing Verification, HAI Detection)
+- Migrated Outbreak Detection module from Flask to Django (15 new files, 6 templates)
+- 2 custom Django models: OutbreakCluster, ClusterCase (cluster-based detection)
+- Data sources replaced: SQLite queries → Django ORM queries against MDROCase + HAICandidate
+- Services layer: OutbreakDetectionService combines detector + data sources + alert creation
+- 5 page views + 3 API endpoints with purple/maroon IP theme
+- Management commands: detect_outbreaks (--once/--continuous/--stats), create_demo_outbreaks (6 CCHMC-unit scenarios)
+- Demo data: 6 clusters (MRSA/G3NE, VRE/A6N, CRE/G5NE, CDI/A4N, CLABSI/G6SE, ESBL/G1NE), 19 cases, 5 alerts
+- Seven modules now migrated total

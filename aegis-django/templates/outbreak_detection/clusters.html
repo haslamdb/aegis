@@ -1,0 +1,56 @@
+{% extends "outbreak_detection/base.html" %}
+
+{% block content %}
+<h2>Outbreak Clusters</h2>
+
+<div class="filters">
+    <label>Status:</label>
+    <select onchange="window.location.href='{% url 'outbreak_detection:clusters_list' %}?status=' + this.value">
+        <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
+        <option value="investigating" {% if current_status == 'investigating' %}selected{% endif %}>Investigating</option>
+        <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
+    </select>
+</div>
+
+<p><strong>{{ clusters|length }}</strong> cluster{{ clusters|length|pluralize }} ({{ current_status }})</p>
+
+<table>
+    <tr>
+        <th>Unit</th>
+        <th>Infection Type</th>
+        <th>Organism</th>
+        <th style="text-align: center;">Cases</th>
+        <th style="text-align: center;">Severity</th>
+        <th>Status</th>
+        <th>First Case</th>
+        <th>Last Case</th>
+        <th style="text-align: center;">Actions</th>
+    </tr>
+    {% for cluster in clusters %}
+    <tr>
+        <td><strong>{{ cluster.unit }}</strong></td>
+        <td><span class="badge" style="background: #4a1942;">{{ cluster.infection_type|upper }}</span></td>
+        <td>{{ cluster.organism|default:"-" }}</td>
+        <td style="text-align: center;"><strong>{{ cluster.case_count }}</strong></td>
+        <td style="text-align: center;">
+            <span class="badge {{ cluster.severity }}">{{ cluster.get_severity_display }}</span>
+        </td>
+        <td>
+            <span class="badge {{ cluster.status }}">{{ cluster.get_status_display }}</span>
+        </td>
+        <td>{{ cluster.first_case_date|date:"Y-m-d"|default:"-" }}</td>
+        <td>{{ cluster.last_case_date|date:"Y-m-d"|default:"-" }}</td>
+        <td style="text-align: center;">
+            <a href="{% url 'outbreak_detection:cluster_detail' cluster.id %}" class="btn btn-primary btn-sm">View</a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="9" style="text-align: center; padding: 30px;">
+            No clusters found with status "{{ current_status }}".
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

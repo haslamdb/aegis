@@ -1,0 +1,64 @@
+{% extends "outbreak_detection/base.html" %}
+
+{% block content %}
+<h2>Outbreak Alerts</h2>
+
+<!-- Pending Alerts -->
+<div class="section">
+    <h3>Pending Alerts ({{ pending_alerts|length }})</h3>
+    {% for alert in pending_alerts %}
+    <div class="alert-box {{ alert.severity }}">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <strong>{{ alert.title }}</strong>
+                <span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span>
+                <p style="margin: 5px 0;">{{ alert.summary }}</p>
+                <small class="text-muted">{{ alert.created_at|date:"Y-m-d H:i" }}</small>
+                {% if alert.details.cluster_id %}
+                | <a href="{% url 'outbreak_detection:cluster_detail' alert.details.cluster_id %}">View Cluster</a>
+                {% endif %}
+            </div>
+            <form method="POST" action="{% url 'outbreak_detection:acknowledge_alert' alert.id %}" style="margin-left: 15px;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline">Acknowledge</button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div class="action-card" style="text-align: center; padding: 30px;">
+        <p class="text-muted">No pending alerts. All alerts have been acknowledged.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Acknowledged Alerts -->
+{% if acknowledged_alerts %}
+<div class="section">
+    <h3>Recently Acknowledged</h3>
+    <table>
+        <tr>
+            <th>Title</th>
+            <th>Severity</th>
+            <th>Summary</th>
+            <th>Created</th>
+            <th>Status</th>
+        </tr>
+        {% for alert in acknowledged_alerts %}
+        <tr>
+            <td>
+                <strong>{{ alert.title }}</strong>
+                {% if alert.details.cluster_id %}
+                <br><a href="{% url 'outbreak_detection:cluster_detail' alert.details.cluster_id %}" style="font-size: 12px;">View Cluster</a>
+                {% endif %}
+            </td>
+            <td><span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span></td>
+            <td>{{ alert.summary }}</td>
+            <td>{{ alert.created_at|date:"Y-m-d H:i" }}</td>
+            <td><span class="badge acknowledged">Acknowledged</span></td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}

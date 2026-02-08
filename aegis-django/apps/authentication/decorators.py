@@ -199,6 +199,28 @@ def can_manage_hai_detection(view_func):
     return wrapped_view
 
 
+def can_manage_outbreak_detection(view_func):
+    """
+    Decorator to check if user can manage outbreak detection.
+
+    Usage:
+        @can_manage_outbreak_detection
+        def view(request):
+            ...
+    """
+    @wraps(view_func)
+    @login_required
+    def wrapped_view(request, *args, **kwargs):
+        if not request.user.can_manage_outbreak_detection():
+            messages.error(
+                request,
+                "Access denied. This page requires outbreak detection management permissions."
+            )
+            raise PermissionDenied("User cannot manage outbreak detection")
+        return view_func(request, *args, **kwargs)
+    return wrapped_view
+
+
 def can_edit_alerts(view_func):
     """
     Decorator to check if user can acknowledge/resolve alerts.
