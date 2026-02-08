@@ -46,13 +46,13 @@ INSTALLED_APPS = [
     # AEGIS apps (modules)
     'apps.action_analytics',  # ✅ Phase 2 - First migrated module!
     'apps.asp_alerts',  # ✅ Phase 2 - ASP Alerts Dashboard
+    'apps.mdro',  # ✅ Phase 3 - MDRO Surveillance
     # TO BE MIGRATED:
     # 'apps.hai_detection',
     # 'apps.dosing_verification',
     # 'apps.abx_approvals',
     # 'apps.guideline_adherence',
     # 'apps.drug_bug_mismatch',
-    # 'apps.mdro_surveillance',
     # 'apps.surgical_prophylaxis',
     # 'apps.nhsn_reporting',
     # 'apps.outbreak_detection',

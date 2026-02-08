@@ -26,4 +26,5 @@ urlpatterns = [
     # AEGIS modules
     path('action-analytics/', include('apps.action_analytics.urls')),
     path('asp-alerts/', include('apps.asp_alerts.urls')),
+    path('mdro-surveillance/', include('apps.mdro.urls')),
 ]

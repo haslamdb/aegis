@@ -1,0 +1,474 @@
+{% extends "mdro/base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 style="margin: 0;">MDRO Case Details</h2>
+    </div>
+    <a href="{% url 'mdro:cases' %}" class="btn btn-secondary">Back to Cases</a>
+</div>
+
+<!-- Status badges -->
+<div class="status-bar">
+    <span class="badge badge-mdro badge-{{ case.mdro_type }} badge-lg">
+        {{ case.mdro_type|upper }}
+    </span>
+    {% if case.transmission_status == 'healthcare' %}
+    <span class="badge badge-warning badge-lg">Healthcare Onset</span>
+    {% elif case.transmission_status == 'community' %}
+    <span class="badge badge-info badge-lg">Community Onset</span>
+    {% endif %}
+    {% if case.is_new %}
+    <span class="badge badge-danger badge-lg">New Isolation</span>
+    {% endif %}
+</div>
+
+<!-- Two-column layout -->
+<div class="detail-layout">
+    <!-- Left Column: Patient Context -->
+    <div class="detail-sidebar">
+        <div class="sidebar-card">
+            <h3>Patient Information</h3>
+            <div class="field-row"><span class="field-label">Patient Name</span><span class="field-value">{{ case.patient_name|default:"Unknown" }}</span></div>
+            <div class="field-row"><span class="field-label">MRN</span><span class="field-value">{{ case.patient_mrn }}</span></div>
+            <div class="field-row"><span class="field-label">Unit</span><span class="field-value">{{ case.unit|default:"Unknown" }}</span></div>
+            <div class="field-row"><span class="field-label">Facility</span><span class="field-value">{{ case.location|default:"Unknown" }}</span></div>
+        </div>
+
+        <div class="sidebar-card">
+            <h3>Culture Information</h3>
+            <div class="field-row"><span class="field-label">Organism</span><span class="field-value">{{ case.organism }}</span></div>
+            <div class="field-row"><span class="field-label">Specimen Type</span><span class="field-value">{{ case.specimen_type|default:"Unknown" }}</span></div>
+            <div class="field-row"><span class="field-label">Culture Date</span><span class="field-value">{{ case.culture_date|date:"m/d/Y H:i" }}</span></div>
+            <div class="field-row"><span class="field-label">Culture ID</span><span class="field-value" style="font-family: monospace; font-size: 0.85rem;">{{ case.culture_id }}</span></div>
+        </div>
+
+        <div class="sidebar-card">
+            <h3>Timing &amp; Classification</h3>
+            <div class="field-row"><span class="field-label">Admission Date</span><span class="field-value">{% if case.admission_date %}{{ case.admission_date|date:"m/d/Y" }}{% else %}Unknown{% endif %}</span></div>
+            <div class="field-row"><span class="field-label">Days Since Admission</span><span class="field-value">{% if case.days_since_admission != None %}{{ case.days_since_admission }}{% else %}Unknown{% endif %}</span></div>
+            <div class="field-row"><span class="field-label">Transmission</span><span class="field-value">{{ case.get_transmission_status_display }}</span></div>
+            <div class="field-row"><span class="field-label">New Isolation</span><span class="field-value">{% if case.is_new %}Yes{% else %}No (Previously known){% endif %}</span></div>
+        </div>
+
+        <div class="sidebar-card">
+            <h3>Case Status</h3>
+            <div class="field-row"><span class="field-label">Prior MDRO History</span><span class="field-value">{% if case.prior_history %}Yes{% else %}No{% endif %}</span></div>
+            <div class="field-row"><span class="field-label">Created</span><span class="field-value">{{ case.created_at|date:"m/d/Y H:i" }}</span></div>
+            <div class="field-row"><span class="field-label">Reviewed By</span><span class="field-value">{% if case.reviewed_by %}{{ case.reviewed_by.username }}{% else %}Not yet reviewed{% endif %}</span></div>
+            <div class="field-row"><span class="field-label">Reviewed At</span><span class="field-value">{% if case.reviewed_at %}{{ case.reviewed_at|date:"m/d/Y H:i" }}{% else %}---{% endif %}</span></div>
+        </div>
+    </div>
+
+    <!-- Right Column: Details + Actions -->
+    <div class="detail-main">
+        <!-- Resistance Profile -->
+        <div class="main-card">
+            <h3>Resistance Profile</h3>
+            <div class="classification-summary">
+                <span class="badge badge-mdro badge-{{ case.mdro_type }} badge-lg">
+                    {{ case.mdro_type|upper }}
+                </span>
+                <span class="classification-text">{{ case.classification_reason }}</span>
+            </div>
+
+            {% if case.susceptibilities %}
+            <div class="susceptibility-section">
+                <h4>Susceptibility Results</h4>
+                <table class="susceptibility-table">
+                    <thead>
+                        <tr>
+                            <th>Antibiotic</th>
+                            <th>Result</th>
+                            <th>MIC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for susc in case.susceptibilities %}
+                        <tr class="susc-row susc-{{ susc.result|lower }}">
+                            <td>{{ susc.antibiotic|capfirst }}</td>
+                            <td>
+                                <div class="susc-result">
+                                    <span class="susc-badge susc-{{ susc.result|lower }}">{{ susc.result }}</span>
+                                    <span class="susc-text">
+                                        {% if susc.result == 'R' %}Resistant
+                                        {% elif susc.result == 'I' %}Intermediate
+                                        {% elif susc.result == 'S' %}Susceptible
+                                        {% else %}{{ susc.result }}{% endif %}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="mic-value">{{ susc.mic|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% elif case.resistant_antibiotics %}
+            <div class="susceptibility-section">
+                <h4>Resistant Antibiotics</h4>
+                <table class="susceptibility-table">
+                    <thead>
+                        <tr><th>Antibiotic</th><th>Result</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for abx in case.resistant_antibiotics %}
+                        <tr class="susc-row susc-r">
+                            <td>{{ abx|capfirst }}</td>
+                            <td>
+                                <div class="susc-result">
+                                    <span class="susc-badge susc-r">R</span>
+                                    <span class="susc-text">Resistant</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Prior MDRO History -->
+        {% if prior_cases %}
+        <div class="main-card">
+            <h3>Patient's Prior MDRO History</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>MDRO Type</th>
+                        <th>Organism</th>
+                        <th>Specimen</th>
+                        <th>Unit</th>
+                        <th>Culture Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prior in prior_cases %}
+                    <tr>
+                        <td>
+                            <span class="badge badge-mdro badge-{{ prior.mdro_type }}">
+                                {{ prior.mdro_type|upper }}
+                            </span>
+                        </td>
+                        <td>{{ prior.organism }}</td>
+                        <td>{{ prior.specimen_type|default:"-" }}</td>
+                        <td>{{ prior.unit|default:"-" }}</td>
+                        <td>{{ prior.culture_date|date:"Y-m-d" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- IP Review Actions -->
+        {% if not case.reviewed_by %}
+        <div class="main-card">
+            <h3>Classification Decision</h3>
+            <div class="form-group">
+                <label for="reviewer">Reviewer Name</label>
+                <input type="text" id="reviewer" class="form-control" placeholder="Enter your name" value="{{ request.user.get_full_name|default:request.user.username }}">
+            </div>
+
+            <div class="classification-buttons-single">
+                <button type="button" class="btn btn-confirm btn-block" data-decision="confirmed">
+                    Confirm {{ case.mdro_type|upper }}
+                </button>
+            </div>
+
+            <div class="classification-divider"><span>Or:</span></div>
+
+            <div class="secondary-buttons">
+                <button type="button" class="btn btn-reject btn-block" data-decision="rejected">
+                    Not {{ case.mdro_type|upper }}
+                </button>
+                <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
+                    Needs More Info
+                </button>
+            </div>
+
+            <div class="form-group" style="margin-top: 1rem;">
+                <label for="notes">Notes (optional)</label>
+                <textarea name="notes" id="notes" rows="3" class="form-textarea" placeholder="Additional details..."></textarea>
+            </div>
+
+            <div id="review-result" class="hidden"></div>
+        </div>
+        {% else %}
+        <!-- Already reviewed -->
+        <div class="main-card">
+            <h3>Classification Complete</h3>
+            <div class="review-complete">
+                <span class="status-icon">&#x2713;</span>
+                <strong>Case Reviewed</strong>
+                <p>This case has been reviewed by {{ case.reviewed_by.username }}.</p>
+                <p class="reviewer-info">{{ case.reviewed_at|date:"Y-m-d H:i" }}</p>
+                {% if case.notes %}
+                <p class="review-notes-display">{{ case.notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="action-bar">
+            <a href="{% url 'mdro:cases' %}" class="btn btn-secondary">&larr; Back to Cases</a>
+            <a href="{% url 'mdro:dashboard' %}" class="btn btn-secondary">Dashboard</a>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    async function submitReview(decision) {
+        const reviewer = document.getElementById('reviewer').value;
+        const notes = document.getElementById('notes').value;
+        const resultDiv = document.getElementById('review-result');
+
+        if (!reviewer.trim()) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Please enter your name</div>';
+            resultDiv.classList.remove('hidden');
+            document.getElementById('reviewer').focus();
+            return;
+        }
+
+        const data = new URLSearchParams({
+            reviewer: reviewer,
+            decision: decision,
+            notes: notes,
+            csrfmiddlewaretoken: '{{ csrf_token }}'
+        });
+
+        try {
+            const response = await fetch('{% url "mdro:review_case" case.id %}', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: data
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                resultDiv.innerHTML = '<div class="alert alert-success">Classification submitted! Redirecting...</div>';
+                resultDiv.classList.remove('hidden');
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                resultDiv.innerHTML = '<div class="alert alert-danger">Error: ' + result.error + '</div>';
+                resultDiv.classList.remove('hidden');
+            }
+        } catch (err) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Failed to submit: ' + err.message + '</div>';
+            resultDiv.classList.remove('hidden');
+        }
+    }
+
+    document.querySelectorAll('.classification-buttons-single button, .secondary-buttons button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const decision = this.getAttribute('data-decision');
+            document.querySelectorAll('.classification-buttons-single button, .secondary-buttons button').forEach(b => {
+                b.classList.remove('selected');
+            });
+            this.classList.add('selected');
+            submitReview(decision);
+        });
+    });
+})();
+</script>
+
+<style>
+    .status-bar {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .badge-lg {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+    .detail-layout {
+        display: flex;
+        gap: 20px;
+    }
+    .detail-sidebar {
+        flex: 1;
+        min-width: 280px;
+    }
+    .detail-main {
+        flex: 2;
+    }
+    .sidebar-card, .main-card {
+        background: white;
+        padding: 1.25rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1rem;
+    }
+    .sidebar-card h3, .main-card h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 0.5rem;
+    }
+    .field-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.4rem 0;
+        font-size: 0.9rem;
+    }
+    .field-label {
+        color: #64748b;
+        font-weight: 500;
+    }
+    .field-value {
+        font-weight: 500;
+        text-align: right;
+    }
+    .classification-summary {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .classification-text {
+        font-weight: 500;
+        color: #475569;
+    }
+    .susceptibility-section { margin-top: 1rem; }
+    .susceptibility-section h4 {
+        font-size: 0.8rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+    }
+    .susceptibility-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+        box-shadow: none;
+    }
+    .susceptibility-table th, .susceptibility-table td {
+        padding: 0.5rem;
+        text-align: left;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .susceptibility-table th {
+        font-weight: 600;
+        color: #64748b;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        background: transparent;
+    }
+    .susc-row.susc-r { background: rgba(220, 53, 69, 0.05); }
+    .susc-row.susc-s { background: rgba(25, 135, 84, 0.05); }
+    .susc-row.susc-i { background: rgba(255, 193, 7, 0.1); }
+    .susc-result { display: flex; align-items: center; gap: 0.5rem; }
+    .susc-badge {
+        display: inline-block;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 1.5rem;
+        font-weight: 600;
+        font-size: 0.75rem;
+    }
+    .susc-badge.susc-r { background: #dc3545; color: white; }
+    .susc-badge.susc-s { background: #198754; color: white; }
+    .susc-badge.susc-i { background: #ffc107; color: black; }
+    .susc-text { color: #64748b; font-size: 0.8rem; }
+    .mic-value { color: #94a3b8; font-size: 0.8rem; font-family: monospace; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; color: #475569; }
+    .form-control, .form-textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        box-sizing: border-box;
+    }
+    .form-control:focus, .form-textarea:focus {
+        outline: none;
+        border-color: #8f4469;
+        box-shadow: 0 0 0 3px rgba(143, 68, 105, 0.1);
+    }
+    .form-textarea { resize: vertical; }
+    .classification-buttons-single { margin-top: 1rem; }
+    .classification-divider {
+        margin: 1rem 0;
+        text-align: center;
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+    .secondary-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+    .btn-confirm {
+        background: #dc2626;
+        color: white;
+        border: 2px solid #dc2626;
+        padding: 1rem;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    .btn-confirm:hover { background: #b91c1c; border-color: #b91c1c; }
+    .btn-reject {
+        background: #16a34a;
+        color: white;
+        border: 2px solid #16a34a;
+        padding: 1rem;
+        font-weight: 600;
+    }
+    .btn-reject:hover { background: #15803d; border-color: #15803d; }
+    .btn-info-needed {
+        background: #6b7280;
+        color: white;
+        border: 2px solid #6b7280;
+        padding: 1rem;
+        font-weight: 600;
+    }
+    .btn-info-needed:hover { background: #4b5563; border-color: #4b5563; }
+    .classification-buttons-single button.selected,
+    .secondary-buttons button.selected {
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
+    }
+    .review-complete {
+        padding: 1.5rem;
+        border-radius: 8px;
+        text-align: center;
+        background: #f0fdf4;
+        border: 1px solid #10b981;
+    }
+    .review-complete .status-icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; color: #10b981; }
+    .reviewer-info { font-size: 0.85rem; color: #6c757d; margin-top: 0.5rem; }
+    .review-notes-display {
+        margin-top: 1rem;
+        padding: 0.75rem;
+        background: rgba(255,255,255,0.5);
+        border-radius: 4px;
+        font-style: italic;
+        font-size: 0.875rem;
+        text-align: left;
+    }
+    .action-bar {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+    .alert { padding: 1rem; border-radius: 6px; margin-bottom: 1rem; }
+    .alert-danger { background: #fef2f2; border: 1px solid #ef4444; color: #991b1b; }
+    .alert-success { background: #f0fdf4; border: 1px solid #10b981; color: #065f46; }
+    .hidden { display: none !important; }
+    @media (max-width: 768px) {
+        .detail-layout { flex-direction: column; }
+    }
+</style>
+{% endblock %}

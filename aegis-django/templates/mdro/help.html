@@ -1,0 +1,229 @@
+{% extends "mdro/base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h2 style="margin: 0;">Help &amp; Documentation</h2>
+    </div>
+    <a href="{% url 'mdro:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+<div class="help-content">
+    <div class="help-card">
+        <h2>Overview</h2>
+        <p>The MDRO Surveillance module automatically detects and tracks Multi-Drug Resistant Organisms from
+           microbiology culture results. It provides real-time surveillance for Infection Prevention teams
+           and feeds case data to the Outbreak Detection module for cluster analysis.</p>
+
+        <h3>Key Features</h3>
+        <ul>
+            <li><strong>Automated Detection</strong> - Classifies organisms as MDRO based on susceptibility patterns</li>
+            <li><strong>Transmission Tracking</strong> - Categorizes cases as healthcare-onset or community-onset</li>
+            <li><strong>Case Management</strong> - IP review workflow for each case</li>
+            <li><strong>Analytics</strong> - Trend analysis by MDRO type, unit, and time period</li>
+            <li><strong>Integration</strong> - Exports cases to Outbreak Detection for cluster analysis</li>
+        </ul>
+    </div>
+
+    <div class="help-card">
+        <h2>MDRO Classification Criteria</h2>
+        <p>Classification follows CDC/NHSN definitions for consistency between real-time surveillance and quarterly NHSN AR reporting.</p>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>MDRO Type</th>
+                    <th>Full Name</th>
+                    <th>Organisms</th>
+                    <th>Resistance Criteria</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-mdro badge-mrsa">MRSA</span></td>
+                    <td>Methicillin-resistant Staphylococcus aureus</td>
+                    <td>S. aureus</td>
+                    <td>Oxacillin R, Methicillin R, Nafcillin R, or Cefoxitin R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-mdro badge-vre">VRE</span></td>
+                    <td>Vancomycin-resistant Enterococcus</td>
+                    <td>E. faecalis, E. faecium</td>
+                    <td>Vancomycin R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-mdro badge-cre">CRE</span></td>
+                    <td>Carbapenem-resistant Enterobacterales</td>
+                    <td>E. coli, Klebsiella, Enterobacter, Citrobacter, Serratia, Proteus, etc.</td>
+                    <td>Meropenem R, Imipenem R, Ertapenem R, or Doripenem R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-mdro badge-esbl">ESBL</span></td>
+                    <td>Extended-spectrum Beta-lactamase</td>
+                    <td>E. coli, Klebsiella spp, P. mirabilis</td>
+                    <td>Ceftriaxone R, Ceftazidime R, Cefotaxime R, or Aztreonam R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-mdro badge-crpa">CRPA</span></td>
+                    <td>Carbapenem-resistant Pseudomonas aeruginosa</td>
+                    <td>P. aeruginosa</td>
+                    <td>Meropenem R, Imipenem R, or Doripenem R</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-mdro badge-crab">CRAB</span></td>
+                    <td>Carbapenem-resistant Acinetobacter baumannii</td>
+                    <td>A. baumannii</td>
+                    <td>Meropenem R, Imipenem R, or Doripenem R</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="alert-box info">
+            <strong>Note:</strong> CRE classification takes precedence over ESBL. If an organism is resistant to carbapenems, it is classified as CRE rather than ESBL.
+        </div>
+    </div>
+
+    <div class="help-card">
+        <h2>Transmission Classification</h2>
+        <p>Cases are classified based on time from hospital admission to culture collection:</p>
+
+        <table class="help-table">
+            <thead>
+                <tr>
+                    <th>Classification</th>
+                    <th>Definition</th>
+                    <th>IP Implications</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-info">Community Onset</span></td>
+                    <td>Culture collected &le;48 hours after admission</td>
+                    <td>Patient arrived with MDRO; focus on screening and isolation protocols</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-warning">Healthcare Onset</span></td>
+                    <td>Culture collected &gt;48 hours after admission</td>
+                    <td>Possible hospital acquisition; investigate potential transmission and environmental factors</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>Django Management Commands</h2>
+
+        <h3>Create Demo Data</h3>
+        <pre><code># Create 10 demo MDRO cases
+python manage.py create_demo_mdro
+
+# Create with specific count
+python manage.py create_demo_mdro --count 20
+
+# Clear existing demo data first
+python manage.py create_demo_mdro --clear</code></pre>
+
+        <h3>Run MDRO Monitor</h3>
+        <pre><code># Run once (requires FHIR server)
+python manage.py monitor_mdro --once
+
+# Run with extended lookback
+python manage.py monitor_mdro --once --hours 72</code></pre>
+    </div>
+
+    <div class="help-card">
+        <h2>IP Case Review Workflow</h2>
+        <ol>
+            <li><strong>View Case Details</strong> - Patient info, organism, susceptibilities, unit, culture date</li>
+            <li><strong>Check Transmission Status</strong> - Verify community vs healthcare onset classification</li>
+            <li><strong>Review Prior Cases</strong> - See patient's previous MDRO history</li>
+            <li><strong>Add Review Notes</strong> - Document investigation findings and actions taken</li>
+            <li><strong>Mark Decision</strong> - Confirm case, request follow-up, or close as resolved</li>
+        </ol>
+    </div>
+
+    <div class="help-card">
+        <h2>Dashboard Pages</h2>
+        <table class="help-table">
+            <thead>
+                <tr><th>Page</th><th>URL</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Dashboard</strong></td>
+                    <td><a href="{% url 'mdro:dashboard' %}">/mdro-surveillance/</a></td>
+                    <td>Overview with stats, recent cases, and MDRO type breakdown</td>
+                </tr>
+                <tr>
+                    <td><strong>Cases</strong></td>
+                    <td><a href="{% url 'mdro:cases' %}">/mdro-surveillance/cases/</a></td>
+                    <td>All cases with filtering by type, unit, and time period</td>
+                </tr>
+                <tr>
+                    <td><strong>Analytics</strong></td>
+                    <td><a href="{% url 'mdro:analytics' %}">/mdro-surveillance/analytics/</a></td>
+                    <td>Trend analysis and reporting charts</td>
+                </tr>
+                <tr>
+                    <td><strong>Help</strong></td>
+                    <td><a href="{% url 'mdro:help' %}">/mdro-surveillance/help/</a></td>
+                    <td>This page</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="help-card">
+        <h2>API Endpoints</h2>
+        <table class="help-table">
+            <thead>
+                <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>/mdro-surveillance/api/stats/?days=30</code></td>
+                    <td>GET</td>
+                    <td>Surveillance statistics (total cases, by type, by unit)</td>
+                </tr>
+                <tr>
+                    <td><code>/mdro-surveillance/api/export/?days=14</code></td>
+                    <td>GET</td>
+                    <td>Export cases as JSON for downstream analysis</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .help-content { max-width: 900px; }
+    .help-card {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 1.5rem;
+    }
+    .help-card h2 { margin-top: 0; }
+    .help-card h3 { margin-top: 1.5rem; }
+    .help-table {
+        box-shadow: none;
+        margin: 1rem 0;
+    }
+    .help-table th {
+        background: #f1f5f9;
+        color: #334155;
+    }
+    pre {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 1rem;
+        border-radius: 6px;
+        overflow-x: auto;
+        font-size: 0.85rem;
+    }
+    code {
+        font-family: 'Courier New', monospace;
+    }
+</style>
+{% endblock %}

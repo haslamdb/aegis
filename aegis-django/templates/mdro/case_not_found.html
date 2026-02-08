@@ -1,0 +1,17 @@
+{% extends "mdro/base.html" %}
+
+{% block content %}
+<h2>Case Not Found</h2>
+
+<div class="alert-box warning">
+    <p>The requested MDRO case could not be found.</p>
+</div>
+
+<div class="section">
+    <p>The case may have been deleted or the ID may be incorrect.</p>
+    <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+        <a href="{% url 'mdro:cases' %}" class="btn btn-primary">View All Cases</a>
+        <a href="{% url 'mdro:dashboard' %}" class="btn btn-outline">Dashboard</a>
+    </div>
+</div>
+{% endblock %}

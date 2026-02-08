@@ -1,0 +1,211 @@
+{% extends "mdro/base.html" %}
+
+{% block content %}
+<style>
+    .mdro-filter-section {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+    .mdro-filter-section h3 {
+        margin: 0 0 1rem 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .mdro-filter-section h3::before {
+        content: '';
+        display: inline-block;
+        width: 4px;
+        height: 16px;
+        background: linear-gradient(180deg, #8f4469 0%, #b85c82 100%);
+        border-radius: 2px;
+    }
+    .mdro-filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.25rem;
+        align-items: flex-end;
+    }
+    .mdro-filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-width: 160px;
+    }
+    .mdro-filter-group label {
+        font-size: 0.8125rem;
+        font-weight: 500;
+        color: #475569;
+    }
+    .mdro-filter-group select {
+        padding: 0.625rem 2rem 0.625rem 0.875rem;
+        font-size: 0.9rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background-color: white;
+        appearance: none;
+        cursor: pointer;
+    }
+    .mdro-filter-group select:focus {
+        outline: none;
+        border-color: #8f4469;
+        box-shadow: 0 0 0 3px rgba(143, 68, 105, 0.15);
+    }
+    .mdro-filter-actions {
+        display: flex;
+        gap: 0.75rem;
+        padding-bottom: 2px;
+    }
+    .mdro-filter-actions .btn-primary {
+        background: linear-gradient(135deg, #8f4469 0%, #a04d75 100%);
+        border: none;
+        box-shadow: 0 2px 4px rgba(143, 68, 105, 0.2);
+    }
+    .mdro-filter-actions .btn-primary:hover {
+        background: linear-gradient(135deg, #7d3b5c 0%, #8f4469 100%);
+    }
+    @media (max-width: 768px) {
+        .mdro-filter-form { flex-direction: column; align-items: stretch; }
+        .mdro-filter-group { min-width: 100%; }
+    }
+</style>
+
+<p class="subtitle">All multi-drug resistant organism cases</p>
+
+<!-- Filters -->
+<div class="mdro-filter-section">
+    <h3>Filter Cases</h3>
+    <form method="GET" class="mdro-filter-form">
+        <div class="mdro-filter-group">
+            <label for="type">MDRO Type</label>
+            <select name="type" id="type">
+                <option value="">All Types</option>
+                {% for t in mdro_types %}
+                <option value="{{ t }}" {% if current_type == t %}selected{% endif %}>{{ t|upper }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mdro-filter-group">
+            <label for="unit">Unit</label>
+            <select name="unit" id="unit">
+                <option value="">All Units</option>
+                {% for u in units %}
+                <option value="{{ u }}" {% if current_unit == u %}selected{% endif %}>{{ u }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mdro-filter-group">
+            <label for="days">Time Period</label>
+            <select name="days" id="days">
+                <option value="7" {% if current_days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="30" {% if current_days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="90" {% if current_days == 90 %}selected{% endif %}>Last 90 days</option>
+                <option value="365" {% if current_days == 365 %}selected{% endif %}>Last year</option>
+            </select>
+        </div>
+        <div class="mdro-filter-actions">
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <a href="{% url 'mdro:cases' %}" class="btn btn-outline">Clear</a>
+        </div>
+    </form>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-row">
+    <div class="stat-box primary">
+        <div class="stat-value">{{ cases|length }}</div>
+        <div class="stat-label">Matching Cases</div>
+    </div>
+    <div class="stat-box warning">
+        <div class="stat-value">{{ stats.healthcare_onset }}</div>
+        <div class="stat-label">Healthcare Onset</div>
+    </div>
+    <div class="stat-box info">
+        <div class="stat-value">{{ stats.community_onset }}</div>
+        <div class="stat-label">Community Onset</div>
+    </div>
+</div>
+
+<!-- Cases Table -->
+<div class="section">
+    <h2>Cases</h2>
+    {% if cases %}
+    <table>
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>MDRO Type</th>
+                <th>Organism</th>
+                <th>Specimen</th>
+                <th>Unit</th>
+                <th>Onset</th>
+                <th>Culture Date</th>
+                <th class="text-center">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for case in cases %}
+            <tr>
+                <td>
+                    <strong>{{ case.patient_mrn }}</strong>
+                    {% if case.patient_name %}
+                    <br><small class="text-muted">{{ case.patient_name }}</small>
+                    {% endif %}
+                    {% if case.prior_history %}
+                    <br><span class="badge badge-secondary">Prior MDRO History</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge badge-mdro badge-{{ case.mdro_type }}">
+                        {{ case.mdro_type|upper }}
+                    </span>
+                </td>
+                <td>
+                    {{ case.organism }}
+                    {% if case.resistant_antibiotics %}
+                    <br><small class="text-muted">R: {{ case.resistant_antibiotics|join:", " }}</small>
+                    {% endif %}
+                </td>
+                <td>{{ case.specimen_type|default:"-" }}</td>
+                <td>{{ case.unit|default:"-" }}</td>
+                <td>
+                    {% if case.transmission_status == 'healthcare' %}
+                    <span class="badge badge-warning">Healthcare</span>
+                    {% if case.days_since_admission %}
+                    <br><small class="text-muted">Day {{ case.days_since_admission }}</small>
+                    {% endif %}
+                    {% elif case.transmission_status == 'community' %}
+                    <span class="badge badge-info">Community</span>
+                    {% else %}
+                    <span class="badge badge-secondary">{{ case.transmission_status }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ case.culture_date|date:"Y-m-d" }}</td>
+                <td class="text-center">
+                    <a href="{% url 'mdro:case_detail' case.id %}" class="btn btn-sm btn-secondary">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>No Cases Found</h3>
+        <p>No MDRO cases match your current filters.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="section">
+    <a href="{% url 'mdro:dashboard' %}" class="btn btn-outline">&larr; Back to Dashboard</a>
+</div>
+{% endblock %}
