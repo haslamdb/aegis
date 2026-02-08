@@ -13,7 +13,20 @@ from django.db.models import Q, Count
 from datetime import timedelta
 
 from apps.authentication.decorators import physician_or_higher_required
-from apps.alerts.models import Alert, AlertStatus, AlertSeverity, AlertType
+from apps.alerts.models import (
+    Alert, AlertAudit, AlertStatus, AlertSeverity, AlertType, ResolutionReason,
+)
+
+# All ASP-relevant alert types
+ASP_ALERT_TYPES = [
+    AlertType.BACTEREMIA,
+    AlertType.DRUG_BUG_MISMATCH,
+    AlertType.CULTURE_NO_THERAPY,
+    AlertType.BROAD_SPECTRUM_USAGE,
+    AlertType.GUIDELINE_ADHERENCE,
+    AlertType.SURGICAL_PROPHYLAXIS,
+    AlertType.OTHER,
+]
 
 
 # ============================================================================
@@ -34,18 +47,14 @@ def active_alerts(request):
 
     # Get base queryset - active alerts only
     alerts = Alert.objects.filter(
-        alert_type__in=[
-            AlertType.DRUG_BUG_MISMATCH,
-            AlertType.CULTURE_NO_THERAPY,
-            AlertType.BROAD_SPECTRUM_USAGE,
-        ],
+        alert_type__in=ASP_ALERT_TYPES,
         status__in=[
             AlertStatus.PENDING,
             AlertStatus.SENT,
             AlertStatus.ACKNOWLEDGED,
             AlertStatus.SNOOZED,
         ]
-    ).select_related('created_by', 'assigned_to')
+    )
 
     # Apply filters
     alert_type = request.GET.get('type')
@@ -60,6 +69,14 @@ def active_alerts(request):
     if severity:
         alerts = alerts.filter(severity=severity)
 
+    # Compute stats before pagination/slicing
+    stats = {
+        'critical': alerts.filter(severity=AlertSeverity.CRITICAL).count(),
+        'high': alerts.filter(severity=AlertSeverity.HIGH).count(),
+        'pending': alerts.filter(status=AlertStatus.PENDING).count(),
+        'acknowledged': alerts.filter(status=AlertStatus.ACKNOWLEDGED).count(),
+    }
+
     # Apply sorting (default: type priority, then severity)
     sort_by = request.GET.get('sort', 'priority')
     if sort_by == 'severity':
@@ -73,6 +90,7 @@ def active_alerts(request):
 
     context = {
         'alerts': alerts,
+        'stats': stats,
         'alert_types': AlertType.choices,
         'severities': AlertSeverity.choices,
         'current_filters': {
@@ -93,13 +111,9 @@ def alert_history(request):
 
     # Get resolved alerts
     alerts = Alert.objects.filter(
-        alert_type__in=[
-            AlertType.DRUG_BUG_MISMATCH,
-            AlertType.CULTURE_NO_THERAPY,
-            AlertType.BROAD_SPECTRUM_USAGE,
-        ],
+        alert_type__in=ASP_ALERT_TYPES,
         status=AlertStatus.RESOLVED
-    ).select_related('created_by', 'resolved_by')
+    ).select_related('resolved_by')
 
     # Apply filters
     alert_type = request.GET.get('type')
@@ -109,6 +123,10 @@ def alert_history(request):
     mrn = request.GET.get('mrn')
     if mrn:
         alerts = alerts.filter(patient_mrn__icontains=mrn)
+
+    resolution_reason = request.GET.get('resolution')
+    if resolution_reason:
+        alerts = alerts.filter(resolution_reason=resolution_reason)
 
     # Date range filter (default: last 30 days)
     days = int(request.GET.get('days', 30))
@@ -121,11 +139,13 @@ def alert_history(request):
     context = {
         'alerts': alerts,
         'alert_types': AlertType.choices,
+        'resolution_reasons': ResolutionReason.choices,
         'days': days,
         'current_filters': {
             'type': alert_type,
             'mrn': mrn,
             'days': days,
+            'resolution': resolution_reason,
         }
     }
 
@@ -138,16 +158,17 @@ def alert_detail(request, alert_id):
     """Show detailed alert view with clinical context, audit log, and actions"""
 
     alert = get_object_or_404(
-        Alert.objects.select_related('created_by', 'assigned_to', 'resolved_by'),
+        Alert.objects.select_related('resolved_by', 'acknowledged_by'),
         id=alert_id
     )
 
-    # Get audit entries
-    audit_entries = alert.audit_entries.order_by('-timestamp')
+    # Get audit entries using the correct related_name
+    audit_log = alert.audit_log.order_by('-performed_at')
 
     context = {
         'alert': alert,
-        'audit_entries': audit_entries,
+        'audit_log': audit_log,
+        'resolution_reasons': ResolutionReason.choices,
     }
 
     return render(request, 'asp_alerts/detail.html', context)
@@ -194,7 +215,7 @@ def reports(request):
 
     # Get alert statistics
     asp_alerts = Alert.objects.filter(
-        alert_type__in=[AlertType.DRUG_BUG_MISMATCH, AlertType.CULTURE_NO_THERAPY, AlertType.BROAD_SPECTRUM_USAGE],
+        alert_type__in=ASP_ALERT_TYPES,
         created_at__gte=start_date
     )
 
@@ -253,9 +274,10 @@ def api_acknowledge(request, alert_id):
     """Acknowledge an alert"""
 
     alert = get_object_or_404(Alert, id=alert_id)
+    ip_address = request.META.get('REMOTE_ADDR')
 
     try:
-        alert.acknowledge(request.user)
+        alert.acknowledge(request.user, ip_address=ip_address)
         return JsonResponse({
             'success': True,
             'message': 'Alert acknowledged',
@@ -276,13 +298,14 @@ def api_snooze(request, alert_id):
     """Snooze an alert for N hours"""
 
     alert = get_object_or_404(Alert, id=alert_id)
+    ip_address = request.META.get('REMOTE_ADDR')
 
     # Get snooze duration from request
     hours = int(request.POST.get('hours', 4))
     until = timezone.now() + timedelta(hours=hours)
 
     try:
-        alert.snooze(request.user, until)
+        alert.snooze(request.user, until, ip_address=ip_address)
         return JsonResponse({
             'success': True,
             'message': f'Alert snoozed for {hours} hours',
@@ -304,6 +327,7 @@ def api_resolve(request, alert_id):
     """Resolve an alert with documented reason"""
 
     alert = get_object_or_404(Alert, id=alert_id)
+    ip_address = request.META.get('REMOTE_ADDR')
 
     reason = request.POST.get('reason')
     notes = request.POST.get('notes', '')
@@ -315,7 +339,7 @@ def api_resolve(request, alert_id):
         }, status=400)
 
     try:
-        alert.resolve(request.user, reason, notes)
+        alert.resolve(request.user, reason, notes, ip_address=ip_address)
         return JsonResponse({
             'success': True,
             'message': 'Alert resolved',
@@ -338,7 +362,7 @@ def api_list_alerts(request):
 
     # Get base queryset
     alerts = Alert.objects.filter(
-        alert_type__in=[AlertType.DRUG_BUG_MISMATCH, AlertType.CULTURE_NO_THERAPY, AlertType.BROAD_SPECTRUM_USAGE]
+        alert_type__in=ASP_ALERT_TYPES,
     )
 
     # Apply filters
@@ -366,7 +390,8 @@ def api_list_alerts(request):
         'status': alert.status,
         'patient_mrn': alert.patient_mrn,
         'patient_name': alert.patient_name,
-        'message': alert.message,
+        'title': alert.title,
+        'summary': alert.summary,
         'created_at': alert.created_at.isoformat(),
         'resolved_at': alert.resolved_at.isoformat() if alert.resolved_at else None,
     } for alert in alerts]
@@ -394,7 +419,8 @@ def api_alert_detail(request, alert_id):
         'patient_mrn': alert.patient_mrn,
         'patient_name': alert.patient_name,
         'patient_location': alert.patient_location,
-        'message': alert.message,
+        'title': alert.title,
+        'summary': alert.summary,
         'details': alert.details,
         'recommendations': alert.recommendations,
         'created_at': alert.created_at.isoformat(),
@@ -402,8 +428,6 @@ def api_alert_detail(request, alert_id):
         'resolved_at': alert.resolved_at.isoformat() if alert.resolved_at else None,
         'resolution_reason': alert.resolution_reason,
         'resolution_notes': alert.resolution_notes,
-        'created_by': alert.created_by.username if alert.created_by else None,
-        'assigned_to': alert.assigned_to.username if alert.assigned_to else None,
         'resolved_by': alert.resolved_by.username if alert.resolved_by else None,
     }
 
@@ -420,6 +444,7 @@ def api_update_status(request, alert_id):
     """Update alert status (API endpoint)"""
 
     alert = get_object_or_404(Alert, id=alert_id)
+    ip_address = request.META.get('REMOTE_ADDR')
 
     new_status = request.POST.get('status')
     if not new_status:
@@ -429,8 +454,17 @@ def api_update_status(request, alert_id):
         }, status=400)
 
     try:
+        old_status = alert.status
         alert.status = new_status
         alert.save(update_fields=['status'])
+
+        alert.create_audit_entry(
+            action='status_changed',
+            user=request.user,
+            old_status=old_status,
+            new_status=new_status,
+            ip_address=ip_address,
+        )
 
         return JsonResponse({
             'success': True,
@@ -452,6 +486,7 @@ def api_add_note(request, alert_id):
     """Add a note to an alert (API endpoint)"""
 
     alert = get_object_or_404(Alert, id=alert_id)
+    ip_address = request.META.get('REMOTE_ADDR')
 
     note_text = request.POST.get('note')
     if not note_text:
@@ -476,6 +511,13 @@ def api_add_note(request, alert_id):
 
         alert.save(update_fields=['details'])
 
+        alert.create_audit_entry(
+            action='note_added',
+            user=request.user,
+            ip_address=ip_address,
+            extra_details={'note': note_text},
+        )
+
         return JsonResponse({
             'success': True,
             'message': 'Note added',
@@ -499,19 +541,19 @@ def api_stats(request):
     start_date = timezone.now() - timedelta(days=days)
 
     # Get alerts
-    asp_alerts = Alert.objects.filter(
-        alert_type__in=[AlertType.DRUG_BUG_MISMATCH, AlertType.CULTURE_NO_THERAPY, AlertType.BROAD_SPECTRUM_USAGE],
+    asp_alerts_qs = Alert.objects.filter(
+        alert_type__in=ASP_ALERT_TYPES,
         created_at__gte=start_date
     )
 
-    total_alerts = asp_alerts.count()
-    pending = asp_alerts.filter(status=AlertStatus.PENDING).count()
-    acknowledged = asp_alerts.filter(status=AlertStatus.ACKNOWLEDGED).count()
-    resolved = asp_alerts.filter(status=AlertStatus.RESOLVED).count()
+    total_alerts = asp_alerts_qs.count()
+    pending = asp_alerts_qs.filter(status=AlertStatus.PENDING).count()
+    acknowledged = asp_alerts_qs.filter(status=AlertStatus.ACKNOWLEDGED).count()
+    resolved = asp_alerts_qs.filter(status=AlertStatus.RESOLVED).count()
 
-    critical = asp_alerts.filter(severity=AlertSeverity.CRITICAL).count()
-    warning = asp_alerts.filter(severity=AlertSeverity.WARNING).count()
-    info = asp_alerts.filter(severity=AlertSeverity.INFO).count()
+    critical = asp_alerts_qs.filter(severity=AlertSeverity.CRITICAL).count()
+    high = asp_alerts_qs.filter(severity=AlertSeverity.HIGH).count()
+    info = asp_alerts_qs.filter(severity=AlertSeverity.INFO).count()
 
     data = {
         'days': days,
@@ -523,7 +565,7 @@ def api_stats(request):
         },
         'by_severity': {
             'critical': critical,
-            'warning': warning,
+            'high': high,
             'info': info,
         }
     }

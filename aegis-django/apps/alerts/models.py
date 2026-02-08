@@ -62,6 +62,9 @@ class AlertType(models.TextChoices):
     # Outbreak Detection
     OUTBREAK_CLUSTER = 'outbreak_cluster', 'Outbreak Cluster Detected'
 
+    # Bacteremia
+    BACTEREMIA = 'bacteremia', 'Bacteremia Alert'
+
     # General
     BROAD_SPECTRUM_USAGE = 'broad_spectrum_usage', 'Broad Spectrum Usage'
     DUPLICATE_THERAPY = 'duplicate_therapy', 'Duplicate Therapy'
@@ -98,6 +101,12 @@ class ResolutionReason(models.TextChoices):
     FALSE_POSITIVE = 'false_positive', 'False Positive'
     DUPLICATE = 'duplicate', 'Duplicate Alert'
     AUTO_RESOLVED = 'auto_resolved', 'Auto-Resolved'
+    MESSAGED_TEAM = 'messaged_team', 'Messaged Team'
+    DISCUSSED_WITH_TEAM = 'discussed_with_team', 'Discussed with Team'
+    THERAPY_CHANGED = 'therapy_changed', 'Therapy Changed'
+    THERAPY_STOPPED = 'therapy_stopped', 'Therapy Stopped'
+    SUGGESTED_ALTERNATIVE = 'suggested_alternative', 'Suggested Alternative'
+    CULTURE_PENDING = 'culture_pending', 'Culture Pending'
     OTHER = 'other', 'Other Reason'
 
 
@@ -362,6 +371,26 @@ class Alert(UUIDModel, TimeStampedModel, SoftDeletableModel):
     def __str__(self):
         return f"{self.get_alert_type_display()} - {self.patient_mrn or 'No MRN'} - {self.get_status_display()}"
 
+    @property
+    def recommendations(self):
+        """Get recommendations from details JSON."""
+        if self.details and isinstance(self.details, dict):
+            return self.details.get('recommendations')
+        return None
+
+    def create_audit_entry(self, action, user=None, old_status=None, new_status=None, ip_address=None, extra_details=None):
+        """Create an audit log entry for this alert."""
+        details = extra_details or {}
+        return AlertAudit.objects.create(
+            alert=self,
+            action=action,
+            performed_by=user,
+            old_status=old_status,
+            new_status=new_status,
+            ip_address=ip_address,
+            details=details,
+        )
+
     def is_snoozed(self):
         """Check if alert is currently snoozed."""
         if self.status != AlertStatus.SNOOZED:
@@ -384,15 +413,24 @@ class Alert(UUIDModel, TimeStampedModel, SoftDeletableModel):
             return False
         return timezone.now() >= self.expires_at
 
-    def acknowledge(self, user):
+    def acknowledge(self, user, ip_address=None):
         """Mark alert as acknowledged."""
+        old_status = self.status
         self.status = AlertStatus.ACKNOWLEDGED
         self.acknowledged_at = timezone.now()
         self.acknowledged_by = user
         self.save(update_fields=['status', 'acknowledged_at', 'acknowledged_by'])
+        self.create_audit_entry(
+            action='acknowledged',
+            user=user,
+            old_status=old_status,
+            new_status=self.status,
+            ip_address=ip_address,
+        )
 
-    def resolve(self, user, reason, notes=None):
+    def resolve(self, user, reason, notes=None, ip_address=None):
         """Mark alert as resolved."""
+        old_status = self.status
         self.status = AlertStatus.RESOLVED
         self.resolved_at = timezone.now()
         self.resolved_by = user
@@ -400,13 +438,30 @@ class Alert(UUIDModel, TimeStampedModel, SoftDeletableModel):
         if notes:
             self.resolution_notes = notes
         self.save(update_fields=['status', 'resolved_at', 'resolved_by', 'resolution_reason', 'resolution_notes'])
+        self.create_audit_entry(
+            action='resolved',
+            user=user,
+            old_status=old_status,
+            new_status=self.status,
+            ip_address=ip_address,
+            extra_details={'reason': reason, 'notes': notes},
+        )
 
-    def snooze(self, user, until):
+    def snooze(self, user, until, ip_address=None):
         """Snooze alert until specified time."""
+        old_status = self.status
         self.status = AlertStatus.SNOOZED
         self.snoozed_until = until
         self.snoozed_by = user
         self.save(update_fields=['status', 'snoozed_until', 'snoozed_by'])
+        self.create_audit_entry(
+            action='snoozed',
+            user=user,
+            old_status=old_status,
+            new_status=self.status,
+            ip_address=ip_address,
+            extra_details={'snoozed_until': until.isoformat()},
+        )
 
     def unsnooze(self):
         """Remove snooze status."""

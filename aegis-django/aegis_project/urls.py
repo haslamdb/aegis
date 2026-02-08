@@ -20,6 +20,9 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
 
+    # Authentication
+    path('auth/', include('apps.authentication.urls')),
+
     # AEGIS modules
     path('action-analytics/', include('apps.action_analytics.urls')),
     path('asp-alerts/', include('apps.asp_alerts.urls')),

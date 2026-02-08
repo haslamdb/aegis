@@ -71,14 +71,16 @@ class SoftDeletableModel(models.Model):
     class Meta:
         abstract = True
 
-    def delete(self, using=None, keep_parents=False, hard_delete=False):
+    def delete(self, using=None, keep_parents=False, hard_delete=False, deleted_by=None):
         """
         Soft delete by default. Set hard_delete=True to actually delete.
+        Pass deleted_by=user to record who performed the deletion.
         """
         if hard_delete:
             return super().delete(using=using, keep_parents=keep_parents)
         else:
             self.deleted_at = timezone.now()
+            self.deleted_by = deleted_by
             self.save(update_fields=['deleted_at', 'deleted_by'])
 
     def restore(self):

@@ -27,133 +27,73 @@
 
 ---
 
-## Phase 1: Infrastructure & Core Setup (Week 1-2)
+## Phase 1: Infrastructure & Core Setup ✅ COMPLETE
 
-### 1.1 Django Project Setup
-- [ ] Create new `aegis-django/` directory alongside existing Flask app
-- [ ] Initialize Django project: `django-admin startproject aegis_project`
-- [ ] Configure settings for development/staging/production
-- [ ] Set up PostgreSQL database (migrate from SQLite for production)
-- [ ] Configure environment variables (`.env` file)
-- [ ] Set up Django admin interface
+### 1.1 Django Project Setup ✅
+- [x] Create new `aegis-django/` directory alongside existing Flask app
+- [x] Initialize Django project: `django-admin startproject aegis_project`
+- [x] Configure settings for development/staging/production
+- [x] Set up SQLite database (development); PostgreSQL planned for production
+- [x] Configure environment variables (python-decouple)
+- [x] Set up Django admin interface
 
-### 1.2 Authentication & Authorization
-- [ ] Install `django-auth-ldap` for Cincinnati Children's LDAP/AD
-- [ ] Configure SAML SSO using `djangosaml2` or `python3-saml`
-- [ ] Set up User model (extend Django's AbstractUser if needed)
-- [ ] Define roles and permissions:
-  - `asp_pharmacist` - Full access to ASP modules
-  - `infection_preventionist` - HAI detection, outbreak surveillance
-  - `physician` - Read-only access, can add notes
-  - `admin` - Full system administration
-- [ ] Implement permission decorators for views
-- [ ] Configure session management (timeout, secure cookies)
+### 1.2 Authentication & Authorization ✅
+- [x] SAML SSO backend (`SAMLAuthBackend`)
+- [x] LDAP fallback backend (`LDAPAuthBackend`)
+- [x] Custom User model extending AbstractUser with 4-role RBAC
+- [x] Roles defined: asp_pharmacist, infection_preventionist, physician, admin
+- [x] Permission decorators: `physician_or_higher_required`, `role_required`, etc.
+- [x] Session management (15-min HIPAA timeout, secure cookies)
+- [x] Login/logout views and templates wired at `/auth/login/`, `/auth/logout/`
 
-### 1.3 Security Configuration
-- [ ] Enable HTTPS enforcement (`SECURE_SSL_REDIRECT = True`)
-- [ ] Configure HSTS headers
-- [ ] Set up CSRF protection (enabled by default)
-- [ ] Configure secure cookie settings:
-  ```python
-  SESSION_COOKIE_SECURE = True
-  CSRF_COOKIE_SECURE = True
-  SESSION_COOKIE_HTTPONLY = True
-  CSRF_COOKIE_HTTPONLY = True
-  ```
-- [ ] Set up Content Security Policy (CSP) headers
-- [ ] Configure X-Frame-Options, X-Content-Type-Options
-- [ ] Enable SQL injection protection (ORM handles this)
-- [ ] Set up rate limiting for API endpoints
+### 1.3 Security Configuration ✅
+- [x] HTTPS enforcement configured (production settings)
+- [x] CSRF protection enabled (default)
+- [x] Secure cookie settings configured
+- [x] CSP headers (note: still uses `unsafe-inline`, TODO: nonce-based)
+- [x] X-Frame-Options DENY, X-Content-Type-Options nosniff
+- [x] SQL injection protection via ORM
+- [ ] Rate limiting for API endpoints (deferred to Phase 5)
 
-### 1.4 Audit Logging
-- [ ] Install `django-auditlog` or custom audit middleware
-- [ ] Log all data access (who, what, when)
-- [ ] Log authentication events (login, logout, failed attempts)
-- [ ] Log all data modifications (create, update, delete)
-- [ ] Log administrative actions
-- [ ] Configure log retention policy (7 years for HIPAA)
-- [ ] Set up log export to SIEM if required
+### 1.4 Audit Logging ✅
+- [x] Custom AuditMiddleware logs all authenticated requests
+- [x] Authentication events logged (login, logout, failed attempts)
+- [x] Data modification logging functions available
+- [x] AlertAudit model for alert action tracking
+- [x] Log retention configured (500 MB x 50 files for HIPAA)
+- [ ] SIEM export (deferred to Phase 8)
 
-### 1.5 Database Setup
-- [ ] Install PostgreSQL (production-grade, HIPAA-compliant)
-- [ ] Configure connection pooling
-- [ ] Enable encryption at rest (PostgreSQL TDE or LUKS)
-- [ ] Set up automated backups
-- [ ] Configure replication for high availability
-- [ ] Create database users with minimal privileges
+### 1.5 Database Setup (partial)
+- [x] SQLite for development
+- [ ] PostgreSQL for production (deferred to Phase 7)
+- [ ] Connection pooling, encryption at rest, backups, replication
+
+### 1.6 Code Audit ✅ (2026-02-07)
+- [x] Full audit of foundation code — 10 bugs found and fixed
+- [x] Security: missing auth decorators on API endpoints
+- [x] Bugs: timezone-naive datetime, unsafe int parsing, thread-local leak
+- [x] HIPAA: SoftDeletableModel.delete() now tracks deleted_by
+- [x] Foundation certified solid for building additional modules
 
 ---
 
-## Phase 2: Core Shared Components (Week 3-4)
+## Phase 2: Core Shared Components ✅ COMPLETE
 
-### 2.1 Convert Common Models
-Priority order (most shared → least shared):
+### 2.1 Convert Common Models ✅
+1. **User & Authentication Models** ✅ — Custom User with RBAC, UserSession, Permission, RolePermission
+2. **Alert Store** ✅ — Unified Alert model with AlertType (25+ types), AlertStatus, AlertSeverity, AlertAudit
+3. **Metrics Store** ✅ — ProviderActivity, DailySnapshot
+4. **Notifications** ✅ — NotificationLog with multi-channel support (email, Teams, SMS)
+5. **Core Base Models** ✅ — TimeStampedModel, UUIDModel, SoftDeletableModel, PatientRelatedModel
 
-1. **User & Authentication Models**
-   - Migrate Flask-Login to Django auth
-   - User profiles with roles
-   - Session management
+### 2.2 Django Apps Structure ✅
+Apps created: `core`, `authentication`, `alerts`, `metrics`, `notifications`, `action_analytics`, `asp_alerts`
 
-2. **Alert Store** (`common/alert_store/`)
-   - Convert SQLite schema to Django models
-   - `Alert`, `AlertType`, `AlertStatus` models
-   - Preserve existing data migration script
-
-3. **Metrics Store** (`common/metrics_store/`)
-   - `ProviderActivity`, `ProviderSession`, `MetricsDailySnapshot` models
-   - Time-series data handling
-
-4. **Dosing Verification** (`common/dosing_verification/`)
-   - `DoseAlert`, `DoseFlag`, `DoseAssessment` models
-   - Enums → Django Choices
-
-5. **ABX Approvals** (`common/abx_approvals/`)
-   - `ApprovalRequest`, `ApprovalDecision` models
-
-6. **Channels** (`common/channels/`)
-   - Keep as-is (email, Teams, SMS) - Django-agnostic
-   - Or migrate to Django signals/tasks (Celery)
-
-### 2.2 Create Django Apps Structure
-```
-aegis_project/
-├── manage.py
-├── aegis_project/           # Project settings
-│   ├── settings/
-│   │   ├── base.py
-│   │   ├── development.py
-│   │   ├── staging.py
-│   │   └── production.py
-│   ├── urls.py
-│   └── wsgi.py
-├── apps/
-│   ├── authentication/      # SSO, LDAP, user management
-│   ├── core/               # Shared models, utilities
-│   ├── hai_detection/      # HAI module
-│   ├── drug_bug/           # Drug-bug mismatch
-│   ├── mdro/              # MDRO surveillance
-│   ├── guideline_adherence/
-│   ├── surgical_prophylaxis/
-│   ├── abx_usage/
-│   ├── abx_approvals/
-│   ├── nhsn_reporting/
-│   ├── outbreak/
-│   ├── dosing_verification/
-│   ├── action_analytics/
-│   └── api/               # DRF API endpoints
-├── templates/             # Django templates
-├── static/               # Static files (CSS, JS)
-└── requirements.txt
-```
-
-### 2.3 Set Up Django REST Framework (DRF)
-- [ ] Install `djangorestframework`
-- [ ] Configure API authentication (token-based, OAuth2)
-- [ ] Set up serializers for all models
-- [ ] Create ViewSets for CRUD operations
-- [ ] Configure API permissions
-- [ ] Set up API documentation (drf-spectacular/Swagger)
-- [ ] Rate limiting for API endpoints
+### 2.3 Django REST Framework ✅
+- [x] DRF installed and configured (SessionAuth + TokenAuth)
+- [x] API permissions configured (IsAuthenticated default)
+- [x] drf-spectacular configured for API docs
+- [ ] Serializers and ViewSets (will be created per-module as needed)
 
 ---
 
@@ -163,18 +103,22 @@ aegis_project/
 
 ### Migration Order (Lowest Risk → Highest Risk):
 
-#### 3.1 Action Analytics (Week 5)
-**Why first:** Read-only, no critical workflows, good test case
+#### 3.1 Action Analytics ✅ COMPLETE (audited & fixed)
+- [x] Created Django app: `apps/action_analytics/`
+- [x] ActionAnalyzer class with 6 analytics methods
+- [x] 4 dashboard views + 4 JSON API endpoints
+- [x] 4 HTML templates
+- [x] Audited: fixed timezone, auth, deprecated ORM, input validation
 
-- [ ] Create Django app: `apps/action_analytics/`
-- [ ] Convert models: `ActionAnalyzer` → Django models/queries
-- [ ] Convert views: Flask routes → Django class-based views (CBVs)
-- [ ] Convert templates: Jinja2 → Django templates (minimal changes)
-- [ ] Migrate CSV export endpoints
-- [ ] Test all 6 dashboard pages
-- [ ] Route `/action-analytics/` to Django, keep rest in Flask
+#### 3.1b ASP Alerts ✅ COMPLETE
+- [x] Created Django app: `apps/asp_alerts/`
+- [x] 7 ASP alert types, coverage rules ported from Flask
+- [x] Views: active alerts, detail, history, reports, 4 API actions
+- [x] Templates: stats cards, susceptibility panels, two-column detail layout
+- [x] Demo data command with 8 clinical scenarios
+- [x] Full audit logging on all alert actions
 
-#### 3.2 Dosing Verification (Week 6)
+#### 3.2 Dosing Verification — NEXT
 **Why second:** Newest module, cleanest code, API-first
 
 - [ ] Create Django app: `apps/dosing_verification/`
@@ -189,7 +133,7 @@ aegis_project/
 - [ ] Test all 12 rule modules
 - [ ] Route `/dosing-verification/` to Django
 
-#### 3.3 MDRO Surveillance (Week 7)
+#### 3.3 MDRO Surveillance — NEXT
 **Why third:** Simple FHIR-based module, no complex state
 
 - [ ] Create Django app: `apps/mdro/`

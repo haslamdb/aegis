@@ -66,14 +66,17 @@ class AuditMiddleware:
         else:
             _thread_locals.user = None
 
-        # Process request
-        response = self.get_response(request)
+        try:
+            # Process request
+            response = self.get_response(request)
 
-        # Log audit entry for authenticated requests
-        if hasattr(request, 'user') and request.user.is_authenticated:
-            self.log_request(request, response)
+            # Log audit entry for authenticated requests
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                self.log_request(request, response)
 
-        return response
+            return response
+        finally:
+            _thread_locals.user = None
 
     def log_request(self, request, response):
         """Log authenticated request to audit log."""
@@ -123,6 +126,10 @@ def create_user_session(sender, request, user, **kwargs):
             login_method = 'saml'
         elif request.session.get('ldap_authenticated'):
             login_method = 'ldap'
+
+    # Ensure session is saved so session_key is available
+    if not request.session.session_key:
+        request.session.save()
 
     # Create session record
     session = UserSession.objects.create(

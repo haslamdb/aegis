@@ -3,170 +3,275 @@
 {% block content %}
 <h2>Alert Detail</h2>
 
-<div class="alert-box {{ alert.severity|lower }}">
-    <div>
-        <span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span>
-        <span class="badge {{ alert.status|lower }}">{{ alert.get_status_display }}</span>
-        <span class="badge">{{ alert.get_alert_type_display }}</span>
-    </div>
+<div class="detail-layout">
+    <div class="detail-main">
+        <div class="alert-box {{ alert.severity|lower }}">
+            <div>
+                <span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span>
+                <span class="badge {{ alert.status|lower }}">{{ alert.get_status_display }}</span>
+                <span class="badge">{{ alert.get_alert_type_display }}</span>
+            </div>
 
-    <h3>{{ alert.message }}</h3>
+            <h3>{{ alert.title }}</h3>
 
-    <div class="patient-info">
-        <h4 style="margin-top: 0;">Patient Information</h4>
-        {% if alert.patient_name %}
-        <p><strong>Name:</strong> {{ alert.patient_name }}</p>
-        <p><strong>MRN:</strong> {{ alert.patient_mrn }}</p>
-        {% if alert.patient_location %}
-        <p><strong>Location:</strong> {{ alert.patient_location }}</p>
-        {% endif %}
-        {% else %}
-        <p>No patient information available</p>
-        {% endif %}
-    </div>
+            {% if alert.summary %}
+            <p style="margin: 10px 0; color: #555; font-size: 16px;">
+                {{ alert.summary }}
+            </p>
+            {% endif %}
 
-    {% if alert.details %}
-    <div class="alert-details">
-        <h4 style="margin-top: 0;">Alert Details</h4>
-        {% if alert.details.organism %}
-        <p><strong>Organism:</strong> {{ alert.details.organism }}</p>
-        {% endif %}
-        {% if alert.details.gram_stain %}
-        <p><strong>Gram Stain:</strong> {{ alert.details.gram_stain }}</p>
-        {% endif %}
-        {% if alert.details.culture_date %}
-        <p><strong>Culture Date:</strong> {{ alert.details.culture_date }}</p>
-        {% endif %}
-        {% if alert.details.current_antibiotics %}
-        <p><strong>Current Antibiotics:</strong></p>
-        <ul>
-            {% for abx in alert.details.current_antibiotics %}
-            <li>{{ abx }}</li>
+            <div class="patient-info">
+                <h4 style="margin-top: 0;">Patient Information</h4>
+                {% if alert.patient_name %}
+                <p><strong>Name:</strong> {{ alert.patient_name }}</p>
+                <p><strong>MRN:</strong> {{ alert.patient_mrn }}</p>
+                {% if alert.patient_location %}
+                <p><strong>Location:</strong> {{ alert.patient_location }}</p>
+                {% endif %}
+                {% else %}
+                <p>No patient information available</p>
+                {% endif %}
+            </div>
+
+            {% if alert.patient_mrn %}
+            <div class="clinical-links">
+                <a href="{% url 'asp_alerts:medications' alert.patient_mrn %}">View Medications</a>
+                {% if alert.details.culture_id %}
+                <a href="{% url 'asp_alerts:culture' alert.details.culture_id %}">View Culture Results</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if alert.details %}
+            <div class="alert-details">
+                <h4 style="margin-top: 0;">Clinical Details</h4>
+
+                {% if alert.details.organism %}
+                <p><strong>Organism:</strong> {{ alert.details.organism }}</p>
+                {% endif %}
+                {% if alert.details.gram_stain %}
+                <p><strong>Gram Stain:</strong> {{ alert.details.gram_stain }}</p>
+                {% endif %}
+                {% if alert.details.culture_date %}
+                <p><strong>Culture Date:</strong> {{ alert.details.culture_date }}</p>
+                {% endif %}
+                {% if alert.details.culture_source %}
+                <p><strong>Culture Source:</strong> {{ alert.details.culture_source }}</p>
+                {% endif %}
+                {% if alert.details.mismatch_type %}
+                <p><strong>Mismatch Type:</strong> {{ alert.details.mismatch_type }}</p>
+                {% endif %}
+                {% if alert.details.coverage_status %}
+                <p><strong>Coverage Status:</strong>
+                    <span style="{% if alert.details.coverage_status == 'inadequate' %}color: #e74c3c; font-weight: bold;{% else %}color: #27ae60;{% endif %}">
+                        {{ alert.details.coverage_status }}
+                    </span>
+                </p>
+                {% endif %}
+
+                {% if alert.details.current_antibiotics %}
+                <p><strong>Current Antibiotics:</strong></p>
+                <ul>
+                    {% for abx in alert.details.current_antibiotics %}
+                    <li>{{ abx }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+
+                {# Broad spectrum specific #}
+                {% if alert.details.medication %}
+                <p><strong>Medication:</strong> {{ alert.details.medication }}</p>
+                {% endif %}
+                {% if alert.details.duration_days %}
+                <p><strong>Duration:</strong> {{ alert.details.duration_days }} days</p>
+                {% endif %}
+                {% if alert.details.threshold_days %}
+                <p><strong>Threshold:</strong> {{ alert.details.threshold_days }} days</p>
+                {% endif %}
+
+                {# Guideline specific #}
+                {% if alert.details.bundle_name %}
+                <p><strong>Bundle:</strong> {{ alert.details.bundle_name }}</p>
+                {% endif %}
+                {% if alert.details.missed_elements %}
+                <p><strong>Missed Elements:</strong></p>
+                <ul>
+                    {% for element in alert.details.missed_elements %}
+                    <li>{{ element }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {# Susceptibility Panel #}
+            {% if alert.details.susceptibilities %}
+            <div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 5px solid #8e44ad;">
+                <h4 style="margin-top: 0;">Susceptibility Panel</h4>
+                <table class="susceptibility-table">
+                    <tr>
+                        <th>Antibiotic</th>
+                        <th>Result</th>
+                        <th>MIC</th>
+                    </tr>
+                    {% for susc in alert.details.susceptibilities %}
+                    <tr>
+                        <td>{{ susc.antibiotic }}</td>
+                        <td>
+                            <span class="susc-{{ susc.result|lower }}">
+                                {% if susc.result == "S" %}Susceptible
+                                {% elif susc.result == "I" %}Intermediate
+                                {% elif susc.result == "R" %}Resistant
+                                {% else %}{{ susc.result }}
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td>{{ susc.mic|default:"--" }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </div>
+            {% endif %}
+
+            {% if alert.recommendations %}
+            <div class="recommendations">
+                <h4 style="margin-top: 0;">Recommendations</h4>
+                {% if alert.recommendations|length == 1 %}
+                <p>{{ alert.recommendations.0 }}</p>
+                {% else %}
+                <ul>
+                    {% for rec in alert.recommendations %}
+                    <li>{{ rec }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <h4>Timeline</h4>
+            <p><strong>Created:</strong> {{ alert.created_at|date:"Y-m-d H:i:s" }}</p>
+
+            {% if alert.sent_at %}
+            <p><strong>Sent:</strong> {{ alert.sent_at|date:"Y-m-d H:i:s" }}</p>
+            {% endif %}
+
+            {% if alert.acknowledged_at %}
+            <p><strong>Acknowledged:</strong> {{ alert.acknowledged_at|date:"Y-m-d H:i:s" }}
+            {% if alert.acknowledged_by %}by {{ alert.acknowledged_by.username }}{% endif %}</p>
+            {% endif %}
+
+            {% if alert.snoozed_until %}
+            <p><strong>Snoozed until:</strong> {{ alert.snoozed_until|date:"Y-m-d H:i:s" }}</p>
+            {% endif %}
+
+            {% if alert.resolved_at %}
+            <p><strong>Resolved:</strong> {{ alert.resolved_at|date:"Y-m-d H:i:s" }}
+            {% if alert.resolved_by %}by {{ alert.resolved_by.username }}{% endif %}</p>
+            <p><strong>Resolution Reason:</strong> {{ alert.get_resolution_reason_display }}</p>
+            {% if alert.resolution_notes %}
+            <p><strong>Resolution Notes:</strong> {{ alert.resolution_notes }}</p>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        {# Audit Log #}
+        <h3>Audit Log</h3>
+        {% if audit_log %}
+        <div>
+            {% for entry in audit_log %}
+            <div class="audit-log">
+                <strong>{{ entry.performed_at|date:"Y-m-d H:i:s" }}</strong> -
+                <span class="badge" style="background: #34495e;">{{ entry.action }}</span>
+                {% if entry.performed_by %}by {{ entry.performed_by.username }}{% endif %}
+                {% if entry.old_status %}<br><small>{{ entry.old_status }} &rarr; {{ entry.new_status }}</small>{% endif %}
+                {% if entry.details.notes %}<br><small>{{ entry.details.notes }}</small>{% endif %}
+                {% if entry.details.note %}<br><small>Note: {{ entry.details.note }}</small>{% endif %}
+                {% if entry.details.reason %}<br><small>Reason: {{ entry.details.reason }}</small>{% endif %}
+            </div>
             {% endfor %}
-        </ul>
-        {% endif %}
-        {% if alert.details.coverage_status %}
-        <p><strong>Coverage Status:</strong> {{ alert.details.coverage_status }}</p>
-        {% endif %}
-    </div>
-    {% endif %}
-
-    {% if alert.recommendations %}
-    <div class="recommendations">
-        <h4 style="margin-top: 0;">Recommendations</h4>
-        {% if alert.recommendations is string %}
-        <p>{{ alert.recommendations }}</p>
+        </div>
         {% else %}
-        <ul>
-            {% for rec in alert.recommendations %}
-            <li>{{ rec }}</li>
-            {% endfor %}
-        </ul>
+        <p>No audit log entries</p>
         {% endif %}
     </div>
-    {% endif %}
 
-    <h4>Timeline</h4>
-    <p><strong>Created:</strong> {{ alert.created_at|date:"Y-m-d H:i:s" }}
-    {% if alert.created_by %}by {{ alert.created_by.username }}{% endif %}</p>
+    {# Sidebar - Actions #}
+    <div class="detail-sidebar">
+        {% if alert.status != 'resolved' %}
+        <div class="action-card">
+            <h4 style="margin-top: 0;">Actions</h4>
 
-    {% if alert.sent_at %}
-    <p><strong>Sent:</strong> {{ alert.sent_at|date:"Y-m-d H:i:s" }}</p>
-    {% endif %}
-
-    {% if alert.acknowledged_at %}
-    <p><strong>Acknowledged:</strong> {{ alert.acknowledged_at|date:"Y-m-d H:i:s" }}
-    {% if alert.acknowledged_by %}by {{ alert.acknowledged_by.username }}{% endif %}</p>
-    {% endif %}
-
-    {% if alert.snoozed_until %}
-    <p><strong>Snoozed until:</strong> {{ alert.snoozed_until|date:"Y-m-d H:i:s" }}</p>
-    {% endif %}
-
-    {% if alert.resolved_at %}
-    <p><strong>Resolved:</strong> {{ alert.resolved_at|date:"Y-m-d H:i:s" }}
-    {% if alert.resolved_by %}by {{ alert.resolved_by.username }}{% endif %}</p>
-    <p><strong>Resolution Reason:</strong> {{ alert.get_resolution_reason_display }}</p>
-    {% if alert.resolution_notes %}
-    <p><strong>Resolution Notes:</strong> {{ alert.resolution_notes }}</p>
-    {% endif %}
-    {% endif %}
-
-    {% if alert.status != 'resolved' %}
-    <div style="margin-top: 20px;">
-        <h4>Actions</h4>
-
-        {% if alert.status == 'pending' or alert.status == 'sent' %}
-        <form method="post" action="{% url 'asp_alerts:api_acknowledge' alert.id %}" style="display: inline;">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-success">Acknowledge</button>
-        </form>
-        {% endif %}
-
-        {% if alert.status != 'snoozed' %}
-        <form method="post" action="{% url 'asp_alerts:api_snooze' alert.id %}" style="display: inline;">
-            {% csrf_token %}
-            <input type="hidden" name="hours" value="4">
-            <button type="submit" class="btn btn-warning">Snooze 4 hours</button>
-        </form>
-        {% endif %}
-
-        <button onclick="showResolveForm()" class="btn btn-danger">Resolve</button>
-
-        <div id="resolve-form" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
-            <form method="post" action="{% url 'asp_alerts:api_resolve' alert.id %}">
+            {% if alert.status == 'pending' or alert.status == 'sent' %}
+            <form method="post" action="{% url 'asp_alerts:api_acknowledge' alert.id %}" style="margin-bottom: 10px;">
                 {% csrf_token %}
-                <label><strong>Resolution Reason:</strong></label><br>
-                <select name="reason" required style="margin: 10px 0; padding: 5px; width: 100%; max-width: 400px;">
-                    <option value="">Select reason...</option>
-                    <option value="acknowledged">Acknowledged</option>
-                    <option value="messaged_team">Messaged Team</option>
-                    <option value="discussed_with_team">Discussed with Team</option>
-                    <option value="approved">Approved</option>
-                    <option value="suggested_alternative">Suggested Alternative</option>
-                    <option value="therapy_changed">Therapy Changed</option>
-                    <option value="therapy_stopped">Therapy Stopped</option>
-                    <option value="patient_discharged">Patient Discharged</option>
-                    <option value="no_action_needed">No Action Needed</option>
-                    <option value="other">Other</option>
-                </select><br>
-                <label><strong>Notes (optional):</strong></label><br>
-                <textarea name="notes" rows="3" style="margin: 10px 0; padding: 5px; width: 100%; max-width: 400px;"></textarea><br>
-                <button type="submit" class="btn btn-danger">Confirm Resolution</button>
-                <button type="button" onclick="hideResolveForm()" class="btn" style="background: #95a5a6; color: white;">Cancel</button>
+                <button type="submit" class="btn btn-success" style="width: 100%;">Acknowledge</button>
+            </form>
+            {% endif %}
+
+            {% if alert.status != 'snoozed' %}
+            <form method="post" action="{% url 'asp_alerts:api_snooze' alert.id %}" style="margin-bottom: 10px;">
+                {% csrf_token %}
+                <select name="hours" style="width: 100%; padding: 5px; margin-bottom: 5px;">
+                    <option value="1">1 hour</option>
+                    <option value="4" selected>4 hours</option>
+                    <option value="8">8 hours</option>
+                    <option value="24">24 hours</option>
+                </select>
+                <button type="submit" class="btn btn-warning" style="width: 100%;">Snooze</button>
+            </form>
+            {% endif %}
+
+            <button onclick="document.getElementById('resolve-form').style.display='block'; this.style.display='none';"
+                    class="btn btn-danger" style="width: 100%; margin-bottom: 10px;">Resolve</button>
+
+            <div id="resolve-form" style="display: none;">
+                <form method="post" action="{% url 'asp_alerts:api_resolve' alert.id %}">
+                    {% csrf_token %}
+                    <label><strong>Resolution Reason:</strong></label>
+                    <select name="reason" required style="width: 100%; padding: 5px; margin: 5px 0;">
+                        <option value="">Select reason...</option>
+                        {% for value, label in resolution_reasons %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <label><strong>Notes:</strong></label>
+                    <textarea name="notes" rows="3" style="width: 100%; padding: 5px; margin: 5px 0;"></textarea>
+                    <button type="submit" class="btn btn-danger" style="width: 100%;">Confirm Resolution</button>
+                    <button type="button" onclick="document.getElementById('resolve-form').style.display='none';"
+                            class="btn" style="background: #95a5a6; color: white; width: 100%; margin-top: 5px;">Cancel</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {# Add Note #}
+        <div class="action-card">
+            <h4 style="margin-top: 0;">Add Note</h4>
+            <form method="post" action="{% url 'asp_alerts:api_notes' alert.id %}">
+                {% csrf_token %}
+                <textarea name="note" rows="3" placeholder="Add a clinical note..."
+                          style="width: 100%; padding: 5px; margin-bottom: 5px;"></textarea>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Add Note</button>
             </form>
         </div>
+
+        {# Existing Notes #}
+        {% if alert.details.notes %}
+        <div class="action-card">
+            <h4 style="margin-top: 0;">Notes</h4>
+            {% for note in alert.details.notes %}
+            <div style="padding: 8px; background: #f8f9fa; border-radius: 3px; margin-bottom: 8px; font-size: 13px;">
+                <strong>{{ note.user }}</strong> <span style="color: #7f8c8d;">{{ note.timestamp }}</span>
+                <p style="margin: 5px 0 0 0;">{{ note.text }}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 15px;">
+            <a href="{% url 'asp_alerts:active' %}" class="btn btn-primary" style="width: 100%; text-align: center;">&larr; Back to Active Alerts</a>
+        </div>
     </div>
-
-    <script>
-        function showResolveForm() {
-            document.getElementById('resolve-form').style.display = 'block';
-        }
-        function hideResolveForm() {
-            document.getElementById('resolve-form').style.display = 'none';
-        }
-    </script>
-    {% endif %}
-</div>
-
-<h3>Audit Log</h3>
-{% if audit_entries %}
-<div>
-    {% for entry in audit_entries %}
-    <div class="audit-log">
-        <strong>{{ entry.timestamp|date:"Y-m-d H:i:s" }}</strong> -
-        <span class="badge" style="background: #34495e;">{{ entry.action }}</span>
-        {% if entry.user %}by {{ entry.user.username }}{% endif %}
-        {% if entry.notes %}<br><small>{{ entry.notes }}</small>{% endif %}
-    </div>
-    {% endfor %}
-</div>
-{% else %}
-<p>No audit log entries</p>
-{% endif %}
-
-<div style="margin-top: 20px;">
-    <a href="{% url 'asp_alerts:active' %}" class="btn btn-primary">← Back to Active Alerts</a>
 </div>
 
 {% endblock %}

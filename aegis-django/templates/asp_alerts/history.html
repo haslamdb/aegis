@@ -15,6 +15,16 @@
             {% endfor %}
         </select>
 
+        <label>Resolution:</label>
+        <select name="resolution" onchange="this.form.submit()">
+            <option value="">All Reasons</option>
+            {% for reason_value, reason_label in resolution_reasons %}
+            <option value="{{ reason_value }}" {% if current_filters.resolution == reason_value %}selected{% endif %}>
+                {{ reason_label }}
+            </option>
+            {% endfor %}
+        </select>
+
         <label>MRN:</label>
         <input type="text" name="mrn" value="{{ current_filters.mrn|default:'' }}" placeholder="Search by MRN">
 
@@ -30,7 +40,7 @@
     </form>
 </div>
 
-<p><strong>{{ alerts.count }}</strong> resolved alert{{ alerts.count|pluralize }}</p>
+<p><strong>{{ alerts|length }}</strong> resolved alert{{ alerts|length|pluralize }}</p>
 
 <table>
     <tr>
@@ -56,7 +66,7 @@
                 Unknown
             {% endif %}
         </td>
-        <td>{{ alert.message|truncatewords:15 }}</td>
+        <td>{{ alert.title }}</td>
         <td>{{ alert.get_resolution_reason_display|default:"N/A" }}</td>
         <td>{{ alert.resolved_by.username|default:"System" }}</td>
         <td>

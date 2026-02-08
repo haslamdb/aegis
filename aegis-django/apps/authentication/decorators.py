@@ -239,6 +239,6 @@ def account_not_locked(view_func):
                 f"Your account is locked until {request.user.account_locked_until.strftime('%Y-%m-%d %H:%M')}. "
                 "Please contact an administrator."
             )
-            return redirect('login')
+            return redirect('authentication:login')
         return view_func(request, *args, **kwargs)
     return wrapped_view

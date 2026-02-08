@@ -3,6 +3,25 @@
 {% block content %}
 <h2>Active Alerts</h2>
 
+<div class="stats-row">
+    <div class="stat-box critical-stat">
+        <div class="stat-value">{{ stats.critical }}</div>
+        <div class="stat-label">Critical</div>
+    </div>
+    <div class="stat-box high-stat">
+        <div class="stat-value">{{ stats.high }}</div>
+        <div class="stat-label">High</div>
+    </div>
+    <div class="stat-box pending-stat">
+        <div class="stat-value">{{ stats.pending }}</div>
+        <div class="stat-label">Pending</div>
+    </div>
+    <div class="stat-box acknowledged-stat">
+        <div class="stat-value">{{ stats.acknowledged }}</div>
+        <div class="stat-label">Acknowledged</div>
+    </div>
+</div>
+
 <div class="filters">
     <form method="get">
         <label>Type:</label>
@@ -40,7 +59,7 @@
     </form>
 </div>
 
-<p><strong>{{ alerts.count }}</strong> active alert{{ alerts.count|pluralize }}</p>
+<p><strong>{{ alerts|length }}</strong> active alert{{ alerts|length|pluralize }}</p>
 
 {% for alert in alerts %}
 <div class="alert-box {{ alert.severity|lower }}">
@@ -52,9 +71,15 @@
 
     <h3 style="margin: 10px 0;">
         <a href="{% url 'asp_alerts:detail' alert.id %}" style="color: #2c3e50; text-decoration: none;">
-            {{ alert.message|truncatewords:20 }}
+            {{ alert.title }}
         </a>
     </h3>
+
+    {% if alert.summary %}
+    <p style="margin: 5px 0; color: #555;">
+        {{ alert.summary|truncatewords:30 }}
+    </p>
+    {% endif %}
 
     <p style="margin: 5px 0; color: #7f8c8d;">
         <strong>Patient:</strong>

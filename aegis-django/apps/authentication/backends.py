@@ -69,7 +69,7 @@ class SAMLAuthBackend(ModelBackend):
         )
 
         if not created:
-            # Update existing user attributes
+            # Update existing user attributes from IdP
             user.email = email
             user.first_name = first_name
             user.last_name = last_name
@@ -77,12 +77,12 @@ class SAMLAuthBackend(ModelBackend):
             user.job_title = job_title
             user.role = role
             user.ad_groups = ad_groups
-            user.save()
-
-        # Store SSO ID
-        if not user.sso_id:
-            user.sso_id = username
-            user.save(update_fields=['sso_id'])
+            if not user.sso_id:
+                user.sso_id = username
+            user.save(update_fields=[
+                'email', 'first_name', 'last_name', 'department',
+                'job_title', 'role', 'ad_groups', 'sso_id',
+            ])
 
         # Mark session as SAML authenticated
         if request and hasattr(request, 'session'):

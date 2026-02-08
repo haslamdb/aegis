@@ -61,12 +61,16 @@
             color: white;
         }
         .badge.critical { background: #e74c3c; }
+        .badge.high { background: #e67e22; }
+        .badge.medium { background: #f39c12; }
         .badge.warning { background: #f39c12; }
+        .badge.low { background: #3498db; }
         .badge.info { background: #3498db; }
         .badge.pending { background: #95a5a6; }
         .badge.acknowledged { background: #3498db; }
         .badge.resolved { background: #27ae60; }
         .badge.snoozed { background: #9b59b6; }
+        .badge.in_progress { background: #2ecc71; }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -177,6 +181,82 @@
             border-radius: 5px;
             margin: 15px 0;
             border-left: 5px solid #27ae60;
+        }
+        .stats-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stats-row .stat-box {
+            flex: 1;
+            min-width: 140px;
+            margin: 0;
+            text-align: center;
+        }
+        .stat-box.critical-stat { border-top: 4px solid #e74c3c; }
+        .stat-box.high-stat { border-top: 4px solid #e67e22; }
+        .stat-box.pending-stat { border-top: 4px solid #95a5a6; }
+        .stat-box.acknowledged-stat { border-top: 4px solid #3498db; }
+        .detail-layout {
+            display: flex;
+            gap: 20px;
+        }
+        .detail-main {
+            flex: 2;
+        }
+        .detail-sidebar {
+            flex: 1;
+            min-width: 280px;
+        }
+        .detail-sidebar .action-card {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        .susceptibility-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        .susceptibility-table th,
+        .susceptibility-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .susceptibility-table th {
+            background: #34495e;
+            color: white;
+        }
+        .susc-s { color: #27ae60; font-weight: bold; }
+        .susc-i { color: #f39c12; font-weight: bold; }
+        .susc-r { color: #e74c3c; font-weight: bold; }
+        .clinical-links {
+            margin: 15px 0;
+        }
+        .clinical-links a {
+            display: inline-block;
+            margin-right: 10px;
+            padding: 6px 12px;
+            background: #ecf0f1;
+            border-radius: 3px;
+            text-decoration: none;
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        .clinical-links a:hover {
+            background: #bdc3c7;
+        }
+        @media (max-width: 768px) {
+            .detail-layout {
+                flex-direction: column;
+            }
+            .stats-row {
+                flex-direction: column;
+            }
         }
     </style>
 </head>

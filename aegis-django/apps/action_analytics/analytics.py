@@ -1,6 +1,7 @@
 """Analytics aggregator for ASP/IP action tracking."""
 
 from django.db.models import Count, Sum, Avg, Q, F
+from django.db.models.functions import TruncDate
 from django.utils import timezone
 from datetime import timedelta
 
@@ -103,8 +104,8 @@ class ActionAnalyzer:
             created_at__date__lte=self.end_date
         )
         
-        daily = activities.extra(
-            select={'date': 'DATE(created_at)'}
+        daily = activities.annotate(
+            date=TruncDate('created_at')
         ).values('date').annotate(
             count=Count('id')
         ).order_by('date')
