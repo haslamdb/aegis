@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'apps.asp_alerts',  # ✅ Phase 2 - ASP Alerts Dashboard
     'apps.mdro',  # ✅ Phase 3 - MDRO Surveillance
     'apps.drug_bug',  # ✅ Phase 3 - Drug-Bug Mismatch
+    'apps.dosing',  # ✅ Phase 3 - Dosing Verification
     # TO BE MIGRATED:
     # 'apps.hai_detection',
     # 'apps.dosing_verification',

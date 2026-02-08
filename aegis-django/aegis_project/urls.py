@@ -28,4 +28,5 @@ urlpatterns = [
     path('asp-alerts/', include('apps.asp_alerts.urls')),
     path('mdro-surveillance/', include('apps.mdro.urls')),
     path('drug-bug/', include('apps.drug_bug.urls')),
+    path('dosing/', include('apps.dosing.urls')),
 ]

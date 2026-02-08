@@ -6,12 +6,13 @@
 
 ## Current Status
 
-Django migration is in progress. Foundation (Phase 1) is complete and audited. Four modules have been migrated:
+Django migration is in progress. Foundation (Phase 1) is complete and audited. Five modules have been migrated:
 
 1. **Action Analytics** - Read-only analytics dashboard (Phase 2, audited and fixed)
 2. **ASP Alerts** - Complete ASP bacteremia/stewardship alerts with clinical features (Phase 2)
 3. **MDRO Surveillance** - MDRO detection and case management (Phase 3)
 4. **Drug-Bug Mismatch** - Susceptibility-based coverage mismatch detection (Phase 3)
+5. **Dosing Verification** - Antimicrobial dosing rules engine with 9 clinical rule modules (Phase 3)
 
 Foundation code audit is complete — 10 bugs identified and fixed across framework infrastructure, authentication, and Action Analytics. The codebase is now solid for building additional modules.
 
@@ -35,6 +36,7 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 ### Phase 3 - Module Migration (continued)
 - [x] MDRO Surveillance (`apps/mdro/`) - MDRO detection, case tracking, analytics
 - [x] Drug-Bug Mismatch (`apps/drug_bug/`) - susceptibility coverage mismatch detection
+- [x] Dosing Verification (`apps/dosing/`) - 9-rule antimicrobial dosing engine
 
 ### Code Audit & Bug Fixes (2026-02-07)
 
@@ -82,21 +84,43 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 ## Next Steps
 
 ### Immediate (next session)
-- [ ] Dosing Verification module migration
+- [ ] HAI Detection module migration (complex, 5 HAI types — IP selling point)
 - [ ] Unit tests for foundation code (models, views, decorators)
 
 ### Upcoming
-- [ ] HAI Detection module migration (complex, 5 HAI types)
-- [ ] ABX Approvals module migration (critical workflow)
-- [ ] Guideline Adherence module migration
+- [ ] Outbreak Detection module migration (quick win, aggregates MDRO/HAI data)
+- [ ] Antimicrobial Usage Alerts module migration
 - [ ] Surgical Prophylaxis module migration
+- [ ] Guideline Adherence module migration
+- [ ] NHSN Reporting module migration
+- [ ] Abx Indications module migration
 - [ ] Epic FHIR API integration layer
-- [ ] CSV export endpoints
 - [ ] Celery background tasks (alert scanning, auto-recheck)
 
 ### Lower Priority
 - [ ] CSP `unsafe-inline` removal (nonce-based CSP) in production settings
 - [ ] Remove dead `MultiAuthBackend` class from backends.py
+
+### Dosing Verification Module (2026-02-08)
+- [x] App scaffolding: `apps/dosing/` with AppConfig (no custom models — uses Alert model)
+- [x] 9 clinical rule modules ported from Flask (pure Python, import path updates only):
+  - Allergy (drug classes + cross-reactivity), Age (neonatal/pediatric/geriatric), Renal (GFR-tiered, 15 drugs)
+  - Weight (IBW/ABW/obesity), Route (vancomycin CDI, daptomycin pneumonia), Indication (9 syndromes)
+  - Interaction (17 drug pairs + class mappings), Duration (12 infection types), Extended Infusion (10 beta-lactams)
+- [x] Rules engine orchestrator: `DosingRulesEngine` evaluates all 9 modules in priority order
+- [x] FHIR client adapted for Django settings: `fhir_client.py`
+- [x] Data models: `MedicationOrder`, `PatientContext` dataclasses; `DoseFlagType` (16 types), `DoseAlertSeverity`, `DoseAssessment`
+- [x] Views: dashboard (active alerts + stats + filters), detail (2-column: patient factors sidebar + dose comparison), history, reports (clinical impact metrics), help (9 rule categories documented)
+- [x] API endpoints: stats (GET), acknowledge (POST), resolve (POST), add_note (POST)
+- [x] CSV exports: active alerts, history (StreamingHttpResponse)
+- [x] Templates: 6 files with blue theme (base, dashboard, detail, history, reports, help)
+- [x] Management commands: `create_demo_dosing` (10 scenarios across all 9 rule categories), `monitor_dosing` (--once/--continuous FHIR polling)
+- [x] 6 new ResolutionReason values: DOSE_ADJUSTED, INTERVAL_ADJUSTED, ROUTE_CHANGED, CLINICAL_JUSTIFICATION, ESCALATED_TO_ATTENDING, NO_ACTION_NEEDED
+- [x] DoseFlagType → AlertType mapping: 16 flag types → 9 DOSING_* alert types
+- [x] Severity mapping: Flask MODERATE → Django MEDIUM, all others direct
+- [x] URL routing at `/dosing/` with `app_name='dosing'`
+- [x] Migration 0003_alter_alert_resolution_reason applied
+- [x] All 5 page templates verified rendering, all 9 rule modules import successfully
 
 ## Key Files
 
@@ -115,6 +139,13 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 | Drug-Bug Mismatch templates | `templates/drug_bug/` |
 | Drug-Bug demo data | `apps/drug_bug/management/commands/create_demo_mismatches.py` |
 | Drug-Bug FHIR monitor | `apps/drug_bug/management/commands/monitor_drug_bug.py` |
+| Dosing Verification views | `apps/dosing/views.py` |
+| Dosing rules engine | `apps/dosing/rules_engine.py` |
+| Dosing 9 rule modules | `apps/dosing/rules/*.py` |
+| Dosing alert models | `apps/dosing/alert_models.py` |
+| Dosing templates | `templates/dosing/` |
+| Dosing demo data | `apps/dosing/management/commands/create_demo_dosing.py` |
+| Dosing FHIR monitor | `apps/dosing/management/commands/monitor_dosing.py` |
 | Action Analytics | `apps/action_analytics/` |
 | Authentication | `apps/authentication/` |
 | Core models | `apps/core/models.py` |
@@ -147,3 +178,10 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - 8 demo scenarios covering MRSA, E. coli, Pseudomonas, Klebsiella, VRE, MSSA, ESBL E. coli, Candida
 - 7 matcher unit tests all passing
 - Four modules now migrated total (Action Analytics, ASP Alerts, MDRO, Drug-Bug Mismatch)
+- Migrated Dosing Verification module from Flask to Django (24 new files, ~7,200 lines business logic)
+- 9 clinical rule modules copied as pure Python with import path updates only
+- DosingRulesEngine orchestrates allergy → age → interaction → route → indication → renal → weight → duration → extended infusion
+- No custom models — all data in Alert model with 9 DOSING_* alert types + details JSONField
+- 2-column detail view: patient factors sidebar (renal function, weight, allergies) + dose comparison panel
+- 10 demo scenarios covering all rule categories (3 CRITICAL, 4 HIGH, 1 MEDIUM, 2 resolved)
+- Five modules now migrated total (Action Analytics, ASP Alerts, MDRO, Drug-Bug Mismatch, Dosing Verification)

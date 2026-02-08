@@ -107,6 +107,12 @@ class ResolutionReason(models.TextChoices):
     THERAPY_STOPPED = 'therapy_stopped', 'Therapy Stopped'
     SUGGESTED_ALTERNATIVE = 'suggested_alternative', 'Suggested Alternative'
     CULTURE_PENDING = 'culture_pending', 'Culture Pending'
+    DOSE_ADJUSTED = 'dose_adjusted', 'Dose Adjusted'
+    INTERVAL_ADJUSTED = 'interval_adjusted', 'Interval Adjusted'
+    ROUTE_CHANGED = 'route_changed', 'Route Changed'
+    CLINICAL_JUSTIFICATION = 'clinical_justification', 'Clinical Justification'
+    ESCALATED_TO_ATTENDING = 'escalated_to_attending', 'Escalated to Attending'
+    NO_ACTION_NEEDED = 'no_action_needed', 'No Action Needed'
     OTHER = 'other', 'Other Reason'
 
 

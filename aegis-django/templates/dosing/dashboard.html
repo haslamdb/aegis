@@ -1,0 +1,126 @@
+{% extends "dosing/base.html" %}
+
+{% block content %}
+<h2>Active Dosing Alerts</h2>
+
+<div class="stats-row">
+    <div class="stat-box active-stat">
+        <div class="stat-value">{{ stats.active_count }}</div>
+        <div class="stat-label">Active Alerts</div>
+    </div>
+    <div class="stat-box critical-stat">
+        <div class="stat-value">{{ stats.critical_count }}</div>
+        <div class="stat-label">Critical</div>
+    </div>
+    <div class="stat-box high-stat">
+        <div class="stat-value">{{ stats.high_count }}</div>
+        <div class="stat-label">High</div>
+    </div>
+    <div class="stat-box resolved-stat">
+        <div class="stat-value">{{ stats.resolved_today }}</div>
+        <div class="stat-label">Resolved Today</div>
+    </div>
+</div>
+
+<div class="filters">
+    <form method="get">
+        <label>Severity:</label>
+        <select name="severity" onchange="this.form.submit()">
+            <option value="">All</option>
+            <option value="critical" {% if current_filters.severity == 'critical' %}selected{% endif %}>Critical</option>
+            <option value="high" {% if current_filters.severity == 'high' %}selected{% endif %}>High</option>
+            <option value="medium" {% if current_filters.severity == 'medium' %}selected{% endif %}>Medium</option>
+            <option value="low" {% if current_filters.severity == 'low' %}selected{% endif %}>Low</option>
+        </select>
+
+        <label>Alert Type:</label>
+        <select name="type" onchange="this.form.submit()">
+            <option value="">All Types</option>
+            {% for type_value, type_label in dosing_alert_types %}
+            <option value="{{ type_value }}" {% if current_filters.type == type_value %}selected{% endif %}>
+                {{ type_label }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label>Flag Type:</label>
+        <select name="flag_type" onchange="this.form.submit()">
+            <option value="">All Flags</option>
+            {% for flag_value, flag_label in flag_type_options %}
+            <option value="{{ flag_value }}" {% if current_filters.flag_type == flag_value %}selected{% endif %}>
+                {{ flag_label }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label>Drug:</label>
+        <select name="drug" onchange="this.form.submit()">
+            <option value="">All Drugs</option>
+            {% for d in drug_list %}
+            <option value="{{ d }}" {% if current_filters.drug == d %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit" class="btn btn-primary">Apply</button>
+        {% if current_filters.severity or current_filters.type or current_filters.flag_type or current_filters.drug %}
+        <a href="{% url 'dosing:dashboard' %}" class="btn" style="background: #95a5a6; color: white;">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <p><strong>{{ alerts|length }}</strong> active alert{{ alerts|length|pluralize }}</p>
+    <a href="{% url 'dosing:export_active' %}" class="btn btn-primary" style="font-size: 12px;">Export CSV</a>
+</div>
+
+<table>
+    <tr>
+        <th>Severity</th>
+        <th>Patient</th>
+        <th>Drug</th>
+        <th>Issue</th>
+        <th>Expected vs Actual</th>
+        <th>Created</th>
+        <th>Actions</th>
+    </tr>
+    {% for alert in alerts %}
+    <tr>
+        <td><span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span></td>
+        <td>
+            {% if alert.patient_name %}
+                {{ alert.patient_name }}<br>
+                <small style="color: #7f8c8d;">MRN: {{ alert.patient_mrn }}{% if alert.patient_location %} | {{ alert.patient_location }}{% endif %}</small>
+            {% else %}
+                Unknown
+            {% endif %}
+        </td>
+        <td><strong>{{ alert.details.drug|default:"--" }}</strong></td>
+        <td>
+            <span class="badge" style="background: #8e44ad;">{{ alert.get_alert_type_display }}</span>
+            <br><small>{{ alert.summary|truncatewords:15 }}</small>
+        </td>
+        <td>
+            {% if alert.details.expected_dose %}
+            <small style="color: #27ae60;">Expected: {{ alert.details.expected_dose|truncatewords:8 }}</small><br>
+            <small style="color: #e74c3c;">Actual: {{ alert.details.actual_dose|truncatewords:8 }}</small>
+            {% else %}
+            <small style="color: #7f8c8d;">--</small>
+            {% endif %}
+        </td>
+        <td><small>{{ alert.created_at|date:"Y-m-d H:i" }}</small></td>
+        <td>
+            <a href="{% url 'dosing:detail' alert.id %}" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">
+                Review
+            </a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="7" style="text-align: center; padding: 30px;">
+            No active dosing alerts found.
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

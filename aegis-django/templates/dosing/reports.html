@@ -1,0 +1,134 @@
+{% extends "dosing/base.html" %}
+
+{% block content %}
+<h2>Dosing Verification Analytics (Last {{ days }} days)</h2>
+
+<div class="filters">
+    <form method="get">
+        <label>Time Period:</label>
+        <select name="days" onchange="this.form.submit()">
+            <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
+            <option value="14" {% if days == 14 %}selected{% endif %}>14 days</option>
+            <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
+            <option value="60" {% if days == 60 %}selected{% endif %}>60 days</option>
+            <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
+        </select>
+    </form>
+</div>
+
+<div class="stats-row">
+    <div class="stat-box active-stat">
+        <div class="stat-value">{{ total_alerts }}</div>
+        <div class="stat-label">Total Alerts</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #2980b9;">
+        <div class="stat-value">{{ active_count }}</div>
+        <div class="stat-label">Active</div>
+    </div>
+    <div class="stat-box resolved-stat">
+        <div class="stat-value">{{ resolved_count }}</div>
+        <div class="stat-label">Resolved</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #8e44ad;">
+        <div class="stat-value">{{ action_rate }}%</div>
+        <div class="stat-label">Action Rate</div>
+    </div>
+</div>
+
+<h3>Alerts by Severity</h3>
+<table>
+    <tr>
+        <th>Severity</th>
+        <th>Count</th>
+        <th>Percentage</th>
+    </tr>
+    {% for item in by_severity %}
+    <tr>
+        <td><span class="badge {{ item.severity|lower }}">{{ item.severity|upper }}</span></td>
+        <td>{{ item.count }}</td>
+        <td>{% if total_alerts > 0 %}{% widthratio item.count total_alerts 100 %}%{% else %}0%{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="3" style="text-align: center;">No data available</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Alerts by Type</h3>
+<table>
+    <tr>
+        <th>Alert Type</th>
+        <th>Count</th>
+        <th>Percentage</th>
+    </tr>
+    {% for item in by_type %}
+    <tr>
+        <td>{{ item.alert_type }}</td>
+        <td>{{ item.count }}</td>
+        <td>{% if total_alerts > 0 %}{% widthratio item.count total_alerts 100 %}%{% else %}0%{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="3" style="text-align: center;">No data available</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if top_drugs %}
+<h3>Top Flagged Drugs</h3>
+<table>
+    <tr>
+        <th>Drug</th>
+        <th>Alerts</th>
+        <th>Percentage</th>
+    </tr>
+    {% for drug_name, drug_count in top_drugs %}
+    <tr>
+        <td><strong>{{ drug_name }}</strong></td>
+        <td>{{ drug_count }}</td>
+        <td>{% if total_alerts > 0 %}{% widthratio drug_count total_alerts 100 %}%{% else %}0%{% endif %}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% if by_resolution %}
+<h3>Resolution Reasons ({{ resolved_count }} resolved)</h3>
+<table>
+    <tr>
+        <th>Resolution Reason</th>
+        <th>Count</th>
+        <th>Percentage</th>
+    </tr>
+    {% for item in by_resolution %}
+    <tr>
+        <td>{{ item.resolution_reason|default:"Not Specified" }}</td>
+        <td>{{ item.count }}</td>
+        <td>{% if resolved_count > 0 %}{% widthratio item.count resolved_count 100 %}%{% else %}0%{% endif %}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+<h3>Clinical Impact</h3>
+<div class="stats-row">
+    <div class="stat-box" style="border-top: 4px solid #27ae60;">
+        <div class="stat-value">{{ dose_adjusted }}</div>
+        <div class="stat-label">Doses Adjusted</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #2980b9;">
+        <div class="stat-value">{{ interval_adjusted }}</div>
+        <div class="stat-label">Intervals Adjusted</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #8e44ad;">
+        <div class="stat-value">{{ route_changed }}</div>
+        <div class="stat-label">Routes Changed</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #e67e22;">
+        <div class="stat-value">{{ therapy_changed }}</div>
+        <div class="stat-label">Therapies Changed</div>
+    </div>
+</div>
+
+{% endblock %}
