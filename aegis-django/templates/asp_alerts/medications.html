@@ -1,0 +1,39 @@
+{% extends "asp_alerts/base.html" %}
+
+{% block content %}
+<h2>Patient Medications</h2>
+
+<div style="background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h3>Patient ID: {{ patient_id }}</h3>
+
+    {% if error %}
+    <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 5px solid #f39c12; margin: 20px 0;">
+        <p><strong>Note:</strong> {{ error }}</p>
+        <p>
+            This feature requires FHIR integration to retrieve MedicationRequest resources from the EHR.
+            Current antibiotic medications will be displayed here once FHIR connectivity is established.
+        </p>
+    </div>
+    {% else %}
+    <h4>Current Antibiotic Orders</h4>
+    <table>
+        <tr>
+            <th>Medication</th>
+            <th>Dose</th>
+            <th>Route</th>
+            <th>Frequency</th>
+            <th>Status</th>
+            <th>Started</th>
+        </tr>
+        <tr>
+            <td colspan="6" style="text-align: center;">Medication data will be displayed here</td>
+        </tr>
+    </table>
+    {% endif %}
+
+    <div style="margin-top: 20px;">
+        <a href="javascript:history.back()" class="btn btn-primary">← Back</a>
+    </div>
+</div>
+
+{% endblock %}

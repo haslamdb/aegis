@@ -37,13 +37,16 @@ INSTALLED_APPS = [
 
     # AEGIS apps (shared)
     'apps.core',
-    # 'apps.authentication',  # TO BE CREATED
-    # 'apps.alerts',  # TO BE CREATED
-    # 'apps.metrics',  # TO BE CREATED
-    # 'apps.notifications',  # TO BE CREATED
-    # 'apps.llm_tracking',  # TO BE CREATED
+    'apps.authentication',  # ✅ Phase 1.3 - Authentication & SSO
+    'apps.alerts',  # ✅ Phase 1.4 - Unified alert system
+    'apps.metrics',  # ✅ Phase 1.4 - Activity tracking
+    'apps.notifications',  # ✅ Phase 1.4 - Multi-channel notifications
+    # 'apps.llm_tracking',  # TO BE CREATED - Future
 
-    # AEGIS apps (modules) - TO BE MIGRATED
+    # AEGIS apps (modules)
+    'apps.action_analytics',  # ✅ Phase 2 - First migrated module!
+    'apps.asp_alerts',  # ✅ Phase 2 - ASP Alerts Dashboard
+    # TO BE MIGRATED:
     # 'apps.hai_detection',
     # 'apps.dosing_verification',
     # 'apps.abx_approvals',
@@ -53,7 +56,6 @@ INSTALLED_APPS = [
     # 'apps.surgical_prophylaxis',
     # 'apps.nhsn_reporting',
     # 'apps.outbreak_detection',
-    # 'apps.action_analytics',
 
     # API
     # 'apps.api',
@@ -66,7 +68,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # 'apps.authentication.middleware.AuditMiddleware',  # HIPAA audit logging - TO BE CREATED
+    'apps.authentication.middleware.AuditMiddleware',  # ✅ HIPAA audit logging
+    'apps.authentication.middleware.SessionTrackingMiddleware',  # ✅ User session tracking
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'auditlog.middleware.AuditlogMiddleware',  # django-auditlog
@@ -110,12 +113,17 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Authentication
-# AUTH_USER_MODEL = 'authentication.User'  # TO BE ENABLED AFTER CREATING AUTH APP
+AUTH_USER_MODEL = 'authentication.User'  # ✅ Custom User model with RBAC
 AUTHENTICATION_BACKENDS = [
-    # 'apps.authentication.backends.LDAPAuthBackend',  # TO BE CREATED
-    # 'apps.authentication.backends.SAMLAuthBackend',  # TO BE CREATED
-    'django.contrib.auth.backends.ModelBackend',  # Default
+    'apps.authentication.backends.SAMLAuthBackend',  # ✅ SAML SSO (primary)
+    'apps.authentication.backends.LDAPAuthBackend',  # ✅ LDAP (fallback)
+    'django.contrib.auth.backends.ModelBackend',  # Local password (fallback)
 ]
+
+# Login/Logout URLs
+LOGIN_URL = '/auth/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/auth/login/'
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
@@ -235,7 +243,7 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': False,
         },
-        'audit': {
+        'apps.authentication.audit': {
             'handlers': ['audit_file'],
             'level': 'INFO',
             'propagate': False,

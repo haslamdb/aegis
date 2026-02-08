@@ -1,0 +1,24 @@
+{% extends "action_analytics/base.html" %}
+{% block content %}
+<h2>Time Spent Analysis (Last {{ days }} days)</h2>
+
+<div class="stat-box">
+    <div class="stat-value">{{ data.total_time_seconds|floatformat:0 }}s</div>
+    <div class="stat-label">Total Time Spent</div>
+</div>
+
+<h3>Time by Module</h3>
+<table>
+    <tr><th>Module</th><th>Total Time</th><th>Avg Time</th><th>Actions</th></tr>
+    {% for item in data.by_module %}
+    <tr>
+        <td>{{ item.module }}</td>
+        <td>{{ item.total_seconds|floatformat:0 }}s</td>
+        <td>{{ item.avg_seconds|floatformat:1 }}s</td>
+        <td>{{ item.count }}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No data available</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}

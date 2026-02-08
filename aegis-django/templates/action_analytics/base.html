@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Action Analytics - AEGIS</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        .nav { margin-bottom: 20px; }
+        .nav a { margin-right: 15px; text-decoration: none; color: #007bff; }
+        .nav a:hover { text-decoration: underline; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #007bff; color: white; }
+        tr:nth-child(even) { background-color: #f2f2f2; }
+        .stat-box { display: inline-block; padding: 20px; margin: 10px; background: #f8f9fa; border-radius: 5px; min-width: 150px; }
+        .stat-value { font-size: 2em; font-weight: bold; color: #007bff; }
+        .stat-label { color: #666; }
+    </style>
+</head>
+<body>
+    <h1>AEGIS Action Analytics</h1>
+    <div class="nav">
+        <a href="{% url 'action_analytics:overview' %}">Overview</a>
+        <a href="{% url 'action_analytics:by_module' %}">By Module</a>
+        <a href="{% url 'action_analytics:time_spent' %}">Time Spent</a>
+        <a href="{% url 'action_analytics:productivity' %}">Productivity</a>
+        <a href="/admin/">Admin</a>
+    </div>
+    {% block content %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,111 @@
+{% extends "asp_alerts/base.html" %}
+
+{% block content %}
+<h2>Alert Analytics & Reports (Last {{ days }} days)</h2>
+
+<div class="filters">
+    <form method="get">
+        <label>Time Period:</label>
+        <select name="days" onchange="this.form.submit()">
+            <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
+            <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
+            <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
+            <option value="365" {% if days == 365 %}selected{% endif %}>1 year</option>
+        </select>
+    </form>
+</div>
+
+<div>
+    <div class="stat-box">
+        <div class="stat-value">{{ total_alerts }}</div>
+        <div class="stat-label">Total Alerts</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value">{{ active_count }}</div>
+        <div class="stat-label">Active Alerts</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value">{{ resolved_count }}</div>
+        <div class="stat-label">Resolved Alerts</div>
+    </div>
+</div>
+
+<h3>Alerts by Severity</h3>
+<table>
+    <tr>
+        <th>Severity</th>
+        <th>Count</th>
+        <th>Percentage</th>
+    </tr>
+    {% for item in by_severity %}
+    <tr>
+        <td><span class="badge {{ item.severity|lower }}">{{ item.severity|upper }}</span></td>
+        <td>{{ item.count }}</td>
+        <td>{% if total_alerts > 0 %}{% widthratio item.count total_alerts 100 %}%{% else %}0%{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="3" style="text-align: center;">No data available</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Alerts by Status</h3>
+<table>
+    <tr>
+        <th>Status</th>
+        <th>Count</th>
+        <th>Percentage</th>
+    </tr>
+    {% for item in by_status %}
+    <tr>
+        <td><span class="badge {{ item.status|lower }}">{{ item.status|upper }}</span></td>
+        <td>{{ item.count }}</td>
+        <td>{% if total_alerts > 0 %}{% widthratio item.count total_alerts 100 %}%{% else %}0%{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="3" style="text-align: center;">No data available</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h3>Alerts by Type</h3>
+<table>
+    <tr>
+        <th>Alert Type</th>
+        <th>Count</th>
+        <th>Percentage</th>
+    </tr>
+    {% for item in by_type %}
+    <tr>
+        <td>{{ item.alert_type|upper }}</td>
+        <td>{{ item.count }}</td>
+        <td>{% if total_alerts > 0 %}{% widthratio item.count total_alerts 100 %}%{% else %}0%{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="3" style="text-align: center;">No data available</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% if by_resolution %}
+<h3>Resolution Reasons ({{ resolved_count }} resolved alerts)</h3>
+<table>
+    <tr>
+        <th>Resolution Reason</th>
+        <th>Count</th>
+        <th>Percentage</th>
+    </tr>
+    {% for item in by_resolution %}
+    <tr>
+        <td>{{ item.resolution_reason|upper|default:"Not Specified" }}</td>
+        <td>{{ item.count }}</td>
+        <td>{% if resolved_count > 0 %}{% widthratio item.count resolved_count 100 %}%{% else %}0%{% endif %}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% endblock %}

@@ -5,6 +5,7 @@ These models provide common functionality that all AEGIS apps can inherit.
 """
 
 from django.db import models
+from django.conf import settings
 from django.utils import timezone
 import uuid
 
@@ -59,7 +60,7 @@ class SoftDeletableModel(models.Model):
         help_text="When this record was soft-deleted"
     )
     deleted_by = models.ForeignKey(
-        'auth.User',
+        settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,

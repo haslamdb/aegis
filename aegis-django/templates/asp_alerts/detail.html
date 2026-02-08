@@ -1,0 +1,172 @@
+{% extends "asp_alerts/base.html" %}
+
+{% block content %}
+<h2>Alert Detail</h2>
+
+<div class="alert-box {{ alert.severity|lower }}">
+    <div>
+        <span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span>
+        <span class="badge {{ alert.status|lower }}">{{ alert.get_status_display }}</span>
+        <span class="badge">{{ alert.get_alert_type_display }}</span>
+    </div>
+
+    <h3>{{ alert.message }}</h3>
+
+    <div class="patient-info">
+        <h4 style="margin-top: 0;">Patient Information</h4>
+        {% if alert.patient_name %}
+        <p><strong>Name:</strong> {{ alert.patient_name }}</p>
+        <p><strong>MRN:</strong> {{ alert.patient_mrn }}</p>
+        {% if alert.patient_location %}
+        <p><strong>Location:</strong> {{ alert.patient_location }}</p>
+        {% endif %}
+        {% else %}
+        <p>No patient information available</p>
+        {% endif %}
+    </div>
+
+    {% if alert.details %}
+    <div class="alert-details">
+        <h4 style="margin-top: 0;">Alert Details</h4>
+        {% if alert.details.organism %}
+        <p><strong>Organism:</strong> {{ alert.details.organism }}</p>
+        {% endif %}
+        {% if alert.details.gram_stain %}
+        <p><strong>Gram Stain:</strong> {{ alert.details.gram_stain }}</p>
+        {% endif %}
+        {% if alert.details.culture_date %}
+        <p><strong>Culture Date:</strong> {{ alert.details.culture_date }}</p>
+        {% endif %}
+        {% if alert.details.current_antibiotics %}
+        <p><strong>Current Antibiotics:</strong></p>
+        <ul>
+            {% for abx in alert.details.current_antibiotics %}
+            <li>{{ abx }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% if alert.details.coverage_status %}
+        <p><strong>Coverage Status:</strong> {{ alert.details.coverage_status }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if alert.recommendations %}
+    <div class="recommendations">
+        <h4 style="margin-top: 0;">Recommendations</h4>
+        {% if alert.recommendations is string %}
+        <p>{{ alert.recommendations }}</p>
+        {% else %}
+        <ul>
+            {% for rec in alert.recommendations %}
+            <li>{{ rec }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <h4>Timeline</h4>
+    <p><strong>Created:</strong> {{ alert.created_at|date:"Y-m-d H:i:s" }}
+    {% if alert.created_by %}by {{ alert.created_by.username }}{% endif %}</p>
+
+    {% if alert.sent_at %}
+    <p><strong>Sent:</strong> {{ alert.sent_at|date:"Y-m-d H:i:s" }}</p>
+    {% endif %}
+
+    {% if alert.acknowledged_at %}
+    <p><strong>Acknowledged:</strong> {{ alert.acknowledged_at|date:"Y-m-d H:i:s" }}
+    {% if alert.acknowledged_by %}by {{ alert.acknowledged_by.username }}{% endif %}</p>
+    {% endif %}
+
+    {% if alert.snoozed_until %}
+    <p><strong>Snoozed until:</strong> {{ alert.snoozed_until|date:"Y-m-d H:i:s" }}</p>
+    {% endif %}
+
+    {% if alert.resolved_at %}
+    <p><strong>Resolved:</strong> {{ alert.resolved_at|date:"Y-m-d H:i:s" }}
+    {% if alert.resolved_by %}by {{ alert.resolved_by.username }}{% endif %}</p>
+    <p><strong>Resolution Reason:</strong> {{ alert.get_resolution_reason_display }}</p>
+    {% if alert.resolution_notes %}
+    <p><strong>Resolution Notes:</strong> {{ alert.resolution_notes }}</p>
+    {% endif %}
+    {% endif %}
+
+    {% if alert.status != 'resolved' %}
+    <div style="margin-top: 20px;">
+        <h4>Actions</h4>
+
+        {% if alert.status == 'pending' or alert.status == 'sent' %}
+        <form method="post" action="{% url 'asp_alerts:api_acknowledge' alert.id %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-success">Acknowledge</button>
+        </form>
+        {% endif %}
+
+        {% if alert.status != 'snoozed' %}
+        <form method="post" action="{% url 'asp_alerts:api_snooze' alert.id %}" style="display: inline;">
+            {% csrf_token %}
+            <input type="hidden" name="hours" value="4">
+            <button type="submit" class="btn btn-warning">Snooze 4 hours</button>
+        </form>
+        {% endif %}
+
+        <button onclick="showResolveForm()" class="btn btn-danger">Resolve</button>
+
+        <div id="resolve-form" style="display: none; margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+            <form method="post" action="{% url 'asp_alerts:api_resolve' alert.id %}">
+                {% csrf_token %}
+                <label><strong>Resolution Reason:</strong></label><br>
+                <select name="reason" required style="margin: 10px 0; padding: 5px; width: 100%; max-width: 400px;">
+                    <option value="">Select reason...</option>
+                    <option value="acknowledged">Acknowledged</option>
+                    <option value="messaged_team">Messaged Team</option>
+                    <option value="discussed_with_team">Discussed with Team</option>
+                    <option value="approved">Approved</option>
+                    <option value="suggested_alternative">Suggested Alternative</option>
+                    <option value="therapy_changed">Therapy Changed</option>
+                    <option value="therapy_stopped">Therapy Stopped</option>
+                    <option value="patient_discharged">Patient Discharged</option>
+                    <option value="no_action_needed">No Action Needed</option>
+                    <option value="other">Other</option>
+                </select><br>
+                <label><strong>Notes (optional):</strong></label><br>
+                <textarea name="notes" rows="3" style="margin: 10px 0; padding: 5px; width: 100%; max-width: 400px;"></textarea><br>
+                <button type="submit" class="btn btn-danger">Confirm Resolution</button>
+                <button type="button" onclick="hideResolveForm()" class="btn" style="background: #95a5a6; color: white;">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function showResolveForm() {
+            document.getElementById('resolve-form').style.display = 'block';
+        }
+        function hideResolveForm() {
+            document.getElementById('resolve-form').style.display = 'none';
+        }
+    </script>
+    {% endif %}
+</div>
+
+<h3>Audit Log</h3>
+{% if audit_entries %}
+<div>
+    {% for entry in audit_entries %}
+    <div class="audit-log">
+        <strong>{{ entry.timestamp|date:"Y-m-d H:i:s" }}</strong> -
+        <span class="badge" style="background: #34495e;">{{ entry.action }}</span>
+        {% if entry.user %}by {{ entry.user.username }}{% endif %}
+        {% if entry.notes %}<br><small>{{ entry.notes }}</small>{% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p>No audit log entries</p>
+{% endif %}
+
+<div style="margin-top: 20px;">
+    <a href="{% url 'asp_alerts:active' %}" class="btn btn-primary">← Back to Active Alerts</a>
+</div>
+
+{% endblock %}

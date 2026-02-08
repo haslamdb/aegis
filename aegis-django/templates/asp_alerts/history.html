@@ -1,0 +1,75 @@
+{% extends "asp_alerts/base.html" %}
+
+{% block content %}
+<h2>Alert History (Last {{ days }} days)</h2>
+
+<div class="filters">
+    <form method="get">
+        <label>Type:</label>
+        <select name="type" onchange="this.form.submit()">
+            <option value="">All</option>
+            {% for type_value, type_label in alert_types %}
+            <option value="{{ type_value }}" {% if current_filters.type == type_value %}selected{% endif %}>
+                {{ type_label }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label>MRN:</label>
+        <input type="text" name="mrn" value="{{ current_filters.mrn|default:'' }}" placeholder="Search by MRN">
+
+        <label>Days:</label>
+        <select name="days" onchange="this.form.submit()">
+            <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
+            <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
+            <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
+            <option value="365" {% if days == 365 %}selected{% endif %}>1 year</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Apply</button>
+    </form>
+</div>
+
+<p><strong>{{ alerts.count }}</strong> resolved alert{{ alerts.count|pluralize }}</p>
+
+<table>
+    <tr>
+        <th>Resolved</th>
+        <th>Type</th>
+        <th>Severity</th>
+        <th>Patient</th>
+        <th>Message</th>
+        <th>Resolution Reason</th>
+        <th>Resolved By</th>
+        <th>Actions</th>
+    </tr>
+    {% for alert in alerts %}
+    <tr>
+        <td>{{ alert.resolved_at|date:"Y-m-d H:i" }}</td>
+        <td><span class="badge">{{ alert.get_alert_type_display }}</span></td>
+        <td><span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span></td>
+        <td>
+            {% if alert.patient_name %}
+                {{ alert.patient_name }}<br>
+                <small style="color: #7f8c8d;">MRN: {{ alert.patient_mrn }}</small>
+            {% else %}
+                Unknown
+            {% endif %}
+        </td>
+        <td>{{ alert.message|truncatewords:15 }}</td>
+        <td>{{ alert.get_resolution_reason_display|default:"N/A" }}</td>
+        <td>{{ alert.resolved_by.username|default:"System" }}</td>
+        <td>
+            <a href="{% url 'asp_alerts:detail' alert.id %}" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">
+                View
+            </a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="8" style="text-align: center;">No resolved alerts found.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

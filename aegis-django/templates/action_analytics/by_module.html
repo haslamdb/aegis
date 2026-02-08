@@ -1,0 +1,18 @@
+{% extends "action_analytics/base.html" %}
+{% block content %}
+<h2>Actions by Module (Last {{ days }} days)</h2>
+
+<table>
+    <tr><th>Module</th><th>Actions</th><th>Unique Patients</th><th>Total Duration</th></tr>
+    {% for item in data %}
+    <tr>
+        <td>{{ item.module }}</td>
+        <td>{{ item.count }}</td>
+        <td>{{ item.unique_patients }}</td>
+        <td>{{ item.total_duration|default:0 }}s</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="4">No data available</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}

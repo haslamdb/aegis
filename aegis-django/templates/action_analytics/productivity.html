@@ -1,0 +1,20 @@
+{% extends "action_analytics/base.html" %}
+{% block content %}
+<h2>User Productivity (Last {{ days }} days)</h2>
+
+<table>
+    <tr><th>User</th><th>Role</th><th>Actions</th><th>Patients</th><th>Total Time</th><th>Avg Time</th></tr>
+    {% for item in data %}
+    <tr>
+        <td>{{ item.user__username }}</td>
+        <td>{{ item.user__role }}</td>
+        <td>{{ item.total_actions }}</td>
+        <td>{{ item.unique_patients }}</td>
+        <td>{{ item.total_time|default:0|floatformat:0 }}s</td>
+        <td>{{ item.avg_time|default:0|floatformat:1 }}s</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">No data available</td></tr>
+    {% endfor %}
+</table>
+{% endblock %}

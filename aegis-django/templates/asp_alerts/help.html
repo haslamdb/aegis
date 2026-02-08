@@ -1,0 +1,109 @@
+{% extends "asp_alerts/base.html" %}
+
+{% block content %}
+<h2>ASP Alerts Dashboard - Help & Documentation</h2>
+
+<div style="background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h3>Overview</h3>
+    <p>
+        The ASP Alerts Dashboard provides real-time monitoring and management of antimicrobial stewardship alerts,
+        with a focus on bacteremia detection and drug-bug mismatches.
+    </p>
+
+    <h3>Features</h3>
+
+    <h4>1. Active Alerts Page</h4>
+    <p>
+        View and manage all active (non-resolved) alerts. Features include:
+    </p>
+    <ul>
+        <li><strong>Filtering:</strong> Filter by alert type, severity, or patient MRN</li>
+        <li><strong>Sorting:</strong> Sort by priority, severity, patient name, or creation date</li>
+        <li><strong>Quick Actions:</strong> View alert details directly from the list</li>
+    </ul>
+
+    <h4>2. Alert Detail Page</h4>
+    <p>
+        View comprehensive details about each alert including:
+    </p>
+    <ul>
+        <li><strong>Patient Information:</strong> Demographics and location</li>
+        <li><strong>Clinical Context:</strong> Organism, culture results, current medications</li>
+        <li><strong>Recommendations:</strong> Suggested actions based on clinical guidelines</li>
+        <li><strong>Audit Log:</strong> Complete history of alert lifecycle</li>
+        <li><strong>Actions:</strong> Acknowledge, snooze, or resolve alerts with documented reasons</li>
+    </ul>
+
+    <h4>3. Alert History</h4>
+    <p>
+        Review resolved alerts with filtering by:
+    </p>
+    <ul>
+        <li>Time period (7, 30, 90 days, or 1 year)</li>
+        <li>Alert type</li>
+        <li>Patient MRN</li>
+    </ul>
+
+    <h4>4. Reports & Analytics</h4>
+    <p>
+        View aggregate statistics and trends including:
+    </p>
+    <ul>
+        <li>Total alerts by severity and status</li>
+        <li>Alert type distribution</li>
+        <li>Resolution reason analysis</li>
+        <li>Customizable time windows</li>
+    </ul>
+
+    <h3>Alert Workflow</h3>
+
+    <h4>Alert Statuses:</h4>
+    <ul>
+        <li><strong>Pending:</strong> Alert created but not yet sent to recipients</li>
+        <li><strong>Sent:</strong> Alert delivered to ASP team</li>
+        <li><strong>Acknowledged:</strong> ASP pharmacist has reviewed the alert</li>
+        <li><strong>Snoozed:</strong> Temporarily hidden (default: 4 hours)</li>
+        <li><strong>Resolved:</strong> Alert closed with documented reason</li>
+    </ul>
+
+    <h4>Alert Severities:</h4>
+    <ul>
+        <li><strong style="color: #e74c3c;">CRITICAL:</strong> Requires immediate action (e.g., MRSA, VRE, Candida)</li>
+        <li><strong style="color: #f39c12;">WARNING:</strong> Important but less urgent</li>
+        <li><strong style="color: #3498db;">INFO:</strong> Informational alerts</li>
+    </ul>
+
+    <h4>Resolution Reasons:</h4>
+    <ul>
+        <li><strong>Acknowledged:</strong> Alert reviewed, no action needed</li>
+        <li><strong>Messaged Team:</strong> Sent message to clinical team</li>
+        <li><strong>Discussed with Team:</strong> Direct communication with providers</li>
+        <li><strong>Approved:</strong> Current therapy approved</li>
+        <li><strong>Suggested Alternative:</strong> Alternative therapy recommended</li>
+        <li><strong>Therapy Changed:</strong> Antibiotic regimen modified</li>
+        <li><strong>Therapy Stopped:</strong> Antibiotics discontinued</li>
+        <li><strong>Patient Discharged:</strong> Patient no longer in facility</li>
+        <li><strong>No Action Needed:</strong> Clinical context does not require intervention</li>
+        <li><strong>Other:</strong> Use notes field to specify</li>
+    </ul>
+
+    <h3>API Endpoints</h3>
+    <p>
+        Programmatic access available at:
+    </p>
+    <ul>
+        <li><code>GET /asp-alerts/api/alerts/</code> - List alerts with filters</li>
+        <li><code>GET /asp-alerts/api/alerts/{id}/</code> - Get alert details</li>
+        <li><code>POST /asp-alerts/api/acknowledge/{id}/</code> - Acknowledge alert</li>
+        <li><code>POST /asp-alerts/api/snooze/{id}/</code> - Snooze alert</li>
+        <li><code>POST /asp-alerts/api/resolve/{id}/</code> - Resolve alert</li>
+        <li><code>GET /asp-alerts/api/stats/</code> - Get statistics</li>
+    </ul>
+
+    <h3>Support</h3>
+    <p>
+        For technical support or feature requests, contact the AEGIS development team.
+    </p>
+</div>
+
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "asp_alerts/base.html" %}
+
+{% block content %}
+<h2>Active Alerts</h2>
+
+<div class="filters">
+    <form method="get">
+        <label>Type:</label>
+        <select name="type" onchange="this.form.submit()">
+            <option value="">All</option>
+            {% for type_value, type_label in alert_types %}
+            <option value="{{ type_value }}" {% if current_filters.type == type_value %}selected{% endif %}>
+                {{ type_label }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label>Severity:</label>
+        <select name="severity" onchange="this.form.submit()">
+            <option value="">All</option>
+            {% for severity_value, severity_label in severities %}
+            <option value="{{ severity_value }}" {% if current_filters.severity == severity_value %}selected{% endif %}>
+                {{ severity_label }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label>MRN:</label>
+        <input type="text" name="mrn" value="{{ current_filters.mrn|default:'' }}" placeholder="Search by MRN">
+
+        <label>Sort:</label>
+        <select name="sort" onchange="this.form.submit()">
+            <option value="priority" {% if current_filters.sort == 'priority' %}selected{% endif %}>Priority</option>
+            <option value="severity" {% if current_filters.sort == 'severity' %}selected{% endif %}>Severity</option>
+            <option value="patient" {% if current_filters.sort == 'patient' %}selected{% endif %}>Patient</option>
+            <option value="created" {% if current_filters.sort == 'created' %}selected{% endif %}>Created Date</option>
+        </select>
+
+        <button type="submit" class="btn btn-primary">Apply</button>
+    </form>
+</div>
+
+<p><strong>{{ alerts.count }}</strong> active alert{{ alerts.count|pluralize }}</p>
+
+{% for alert in alerts %}
+<div class="alert-box {{ alert.severity|lower }}">
+    <div>
+        <span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span>
+        <span class="badge {{ alert.status|lower }}">{{ alert.get_status_display }}</span>
+        <span class="badge">{{ alert.get_alert_type_display }}</span>
+    </div>
+
+    <h3 style="margin: 10px 0;">
+        <a href="{% url 'asp_alerts:detail' alert.id %}" style="color: #2c3e50; text-decoration: none;">
+            {{ alert.message|truncatewords:20 }}
+        </a>
+    </h3>
+
+    <p style="margin: 5px 0; color: #7f8c8d;">
+        <strong>Patient:</strong>
+        {% if alert.patient_name %}
+            {{ alert.patient_name }} (MRN: {{ alert.patient_mrn }})
+            {% if alert.patient_location %}
+                - Location: {{ alert.patient_location }}
+            {% endif %}
+        {% else %}
+            Unknown
+        {% endif %}
+    </p>
+
+    <p style="margin: 5px 0; color: #7f8c8d; font-size: 13px;">
+        Created: {{ alert.created_at|date:"Y-m-d H:i" }}
+        {% if alert.acknowledged_at %}
+            | Acknowledged: {{ alert.acknowledged_at|date:"Y-m-d H:i" }} by {{ alert.acknowledged_by.username }}
+        {% endif %}
+        {% if alert.snoozed_until %}
+            | Snoozed until: {{ alert.snoozed_until|date:"Y-m-d H:i" }}
+        {% endif %}
+    </p>
+
+    <div style="margin-top: 10px;">
+        <a href="{% url 'asp_alerts:detail' alert.id %}" class="btn btn-primary">View Details</a>
+    </div>
+</div>
+{% empty %}
+<div class="alert-box">
+    <p>No active alerts found.</p>
+</div>
+{% endfor %}
+
+{% endblock %}
