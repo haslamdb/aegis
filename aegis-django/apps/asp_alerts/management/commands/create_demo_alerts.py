@@ -20,14 +20,14 @@ from apps.alerts.models import (
 
 
 DEMO_PATIENTS = [
-    {'name': 'Johnson, Michael', 'mrn': 'MRN-100234', 'location': 'MICU Bed 4', 'id': 'P-100234'},
-    {'name': 'Williams, Sarah', 'mrn': 'MRN-100567', 'location': 'SICU Bed 12', 'id': 'P-100567'},
-    {'name': 'Davis, Robert', 'mrn': 'MRN-100891', 'location': '7 North Bed 3', 'id': 'P-100891'},
-    {'name': 'Martinez, Elena', 'mrn': 'MRN-101123', 'location': 'MICU Bed 7', 'id': 'P-101123'},
-    {'name': 'Brown, James', 'mrn': 'MRN-101456', 'location': 'Oncology 5A Bed 2', 'id': 'P-101456'},
-    {'name': 'Thompson, Linda', 'mrn': 'MRN-101789', 'location': 'SICU Bed 8', 'id': 'P-101789'},
-    {'name': 'Garcia, Carlos', 'mrn': 'MRN-102012', 'location': '6 South Bed 11', 'id': 'P-102012'},
-    {'name': 'Anderson, Patricia', 'mrn': 'MRN-102345', 'location': 'MICU Bed 1', 'id': 'P-102345'},
+    {'name': 'Johnson, Aiden', 'mrn': 'MRN-100234', 'location': 'G3NE Bed 4', 'id': 'P-100234'},
+    {'name': 'Williams, Sophia', 'mrn': 'MRN-100567', 'location': 'G6SE Bed 12', 'id': 'P-100567'},
+    {'name': 'Davis, Liam', 'mrn': 'MRN-100891', 'location': 'A7C Bed 3', 'id': 'P-100891'},
+    {'name': 'Martinez, Isabella', 'mrn': 'MRN-101123', 'location': 'G3NW Bed 7', 'id': 'P-101123'},
+    {'name': 'Brown, Ethan', 'mrn': 'MRN-101456', 'location': 'G5NE Bed 2', 'id': 'P-101456'},
+    {'name': 'Thompson, Olivia', 'mrn': 'MRN-101789', 'location': 'G6NW Bed 8', 'id': 'P-101789'},
+    {'name': 'Garcia, Noah', 'mrn': 'MRN-102012', 'location': 'A6S Bed 11', 'id': 'P-102012'},
+    {'name': 'Anderson, Emma', 'mrn': 'MRN-102345', 'location': 'G3SE Bed 1', 'id': 'P-102345'},
 ]
 
 DEMO_SCENARIOS = [

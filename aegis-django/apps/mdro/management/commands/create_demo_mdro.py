@@ -22,21 +22,26 @@ from apps.mdro.models import (
 
 
 DEMO_PATIENTS = [
-    {'name': 'Johnson, Michael', 'mrn': 'MRN-100234', 'id': 'P-100234'},
-    {'name': 'Williams, Sarah', 'mrn': 'MRN-100567', 'id': 'P-100567'},
-    {'name': 'Davis, Robert', 'mrn': 'MRN-100891', 'id': 'P-100891'},
-    {'name': 'Martinez, Elena', 'mrn': 'MRN-101123', 'id': 'P-101123'},
-    {'name': 'Brown, James', 'mrn': 'MRN-101456', 'id': 'P-101456'},
-    {'name': 'Thompson, Linda', 'mrn': 'MRN-101789', 'id': 'P-101789'},
-    {'name': 'Garcia, Carlos', 'mrn': 'MRN-102012', 'id': 'P-102012'},
-    {'name': 'Anderson, Patricia', 'mrn': 'MRN-102345', 'id': 'P-102345'},
-    {'name': 'Wilson, James', 'mrn': 'MRN-102678', 'id': 'P-102678'},
-    {'name': 'Lee, Jennifer', 'mrn': 'MRN-102901', 'id': 'P-102901'},
+    {'name': 'Johnson, Aiden', 'mrn': 'MRN-100234', 'id': 'P-100234'},
+    {'name': 'Williams, Sophia', 'mrn': 'MRN-100567', 'id': 'P-100567'},
+    {'name': 'Davis, Liam', 'mrn': 'MRN-100891', 'id': 'P-100891'},
+    {'name': 'Martinez, Isabella', 'mrn': 'MRN-101123', 'id': 'P-101123'},
+    {'name': 'Brown, Ethan', 'mrn': 'MRN-101456', 'id': 'P-101456'},
+    {'name': 'Thompson, Olivia', 'mrn': 'MRN-101789', 'id': 'P-101789'},
+    {'name': 'Garcia, Noah', 'mrn': 'MRN-102012', 'id': 'P-102012'},
+    {'name': 'Anderson, Emma', 'mrn': 'MRN-102345', 'id': 'P-102345'},
+    {'name': 'Wilson, Mason', 'mrn': 'MRN-102678', 'id': 'P-102678'},
+    {'name': 'Lee, Mia', 'mrn': 'MRN-102901', 'id': 'P-102901'},
 ]
 
 DEMO_UNITS = [
-    'MICU', 'SICU', 'NICU', '7 North', '6 South', 'Oncology 5A',
-    'BMT Unit', 'Step-Down', 'ED', 'Med-Surg 4B',
+    'G3NE', 'G3NW', 'G1NE', 'G1SW', 'G4NW',  # PICU, NICU
+    'G6SE', 'G6NW',  # CICU
+    'G5NE', 'G5SW',  # BMT
+    'A6N', 'A6S',  # Hospital Medicine
+    'A4N', 'A5N1',  # GI / Hematology
+    'A3N', 'A7C',  # Ortho, Neuro
+    'ED Inpatient',
 ]
 
 DEMO_SCENARIOS = [

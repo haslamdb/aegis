@@ -18,21 +18,26 @@ from apps.alerts.models import Alert, AlertAudit, AlertType, AlertStatus, AlertS
 
 
 DEMO_PATIENTS = [
-    {'name': 'Chen, Wei', 'mrn': 'MRN-200100', 'id': 'P-200100'},
-    {'name': 'Okafor, Adaeze', 'mrn': 'MRN-200201', 'id': 'P-200201'},
-    {'name': 'Petrov, Yuri', 'mrn': 'MRN-200302', 'id': 'P-200302'},
-    {'name': 'Rodriguez, Maria', 'mrn': 'MRN-200403', 'id': 'P-200403'},
-    {'name': 'Nguyen, Thanh', 'mrn': 'MRN-200504', 'id': 'P-200504'},
-    {'name': 'Smith, Jamal', 'mrn': 'MRN-200605', 'id': 'P-200605'},
-    {'name': 'Johansson, Erik', 'mrn': 'MRN-200706', 'id': 'P-200706'},
-    {'name': 'Patel, Priya', 'mrn': 'MRN-200807', 'id': 'P-200807'},
-    {'name': 'Kim, Soo-Jin', 'mrn': 'MRN-200908', 'id': 'P-200908'},
-    {'name': 'Weber, Hans', 'mrn': 'MRN-201009', 'id': 'P-201009'},
+    {'name': 'Chen, Lily', 'mrn': 'MRN-200100', 'id': 'P-200100'},
+    {'name': 'Okafor, Amara', 'mrn': 'MRN-200201', 'id': 'P-200201'},
+    {'name': 'Petrov, Alexei', 'mrn': 'MRN-200302', 'id': 'P-200302'},
+    {'name': 'Rodriguez, Sofia', 'mrn': 'MRN-200403', 'id': 'P-200403'},
+    {'name': 'Nguyen, Minh', 'mrn': 'MRN-200504', 'id': 'P-200504'},
+    {'name': 'Smith, Jayden', 'mrn': 'MRN-200605', 'id': 'P-200605'},
+    {'name': 'Johansson, Elsa', 'mrn': 'MRN-200706', 'id': 'P-200706'},
+    {'name': 'Patel, Arjun', 'mrn': 'MRN-200807', 'id': 'P-200807'},
+    {'name': 'Kim, Jisoo', 'mrn': 'MRN-200908', 'id': 'P-200908'},
+    {'name': 'Weber, Lukas', 'mrn': 'MRN-201009', 'id': 'P-201009'},
 ]
 
 DEMO_UNITS = [
-    'MICU', 'SICU', 'NICU', '7 North', '6 South',
-    'Oncology 5A', 'Step-Down', 'Med-Surg 4B', 'CCU', 'PICU',
+    'G3NE', 'G3NW', 'G3SE',  # PICU
+    'G1NE', 'G1SW', 'G4NW', 'G4SE',  # NICU
+    'G6SE', 'G6NW',  # CICU
+    'G5NE', 'G5SW',  # BMT
+    'A6N', 'A6S',  # Hospital Medicine
+    'A4N', 'A5N1',  # GI / Hematology
+    'A3N', 'A7C',  # Ortho, Neuro
 ]
 
 DEMO_SCENARIOS = [

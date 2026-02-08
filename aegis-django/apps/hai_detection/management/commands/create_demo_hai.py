@@ -31,21 +31,21 @@ from apps.hai_detection.models import (
 CLABSI_SCENARIOS = [
     {
         'organism': 'MRSA', 'device_days': 8, 'device_type': 'PICC',
-        'location': 'MICU', 'decision': 'hai_confirmed', 'confidence': 0.92,
+        'location': 'G3NE', 'decision': 'hai_confirmed', 'confidence': 0.92,
     },
     {
         'organism': 'Coagulase-negative Staphylococcus', 'device_days': 3,
-        'device_type': 'Triple-lumen CVC', 'location': 'SICU',
+        'device_type': 'Triple-lumen CVC', 'location': 'G6SE',
         'decision': 'not_hai', 'confidence': 0.78,
     },
     {
         'organism': 'Escherichia coli', 'device_days': 12,
-        'device_type': 'Triple-lumen CVC', 'location': 'MICU',
+        'device_type': 'Triple-lumen CVC', 'location': 'G3NW',
         'decision': 'hai_confirmed', 'confidence': 0.88,
     },
     {
         'organism': 'Enterococcus faecalis', 'device_days': 5,
-        'device_type': 'Tunneled catheter', 'location': 'Oncology',
+        'device_type': 'Tunneled catheter', 'location': 'G5NE',
         'decision': 'pending_review', 'confidence': 0.65,
     },
 ]
@@ -53,33 +53,33 @@ CLABSI_SCENARIOS = [
 SSI_SCENARIOS = [
     {
         'organism': 'Escherichia coli', 'procedure': 'COLO',
-        'procedure_name': 'Colon Surgery', 'days_post_op': 7,
-        'ssi_type': 'deep', 'location': 'Surgery',
+        'procedure_name': 'Colostomy Revision', 'days_post_op': 7,
+        'ssi_type': 'deep', 'location': 'A6N',
         'decision': 'hai_confirmed', 'confidence': 0.91,
     },
     {
-        'organism': 'MSSA', 'procedure': 'HPRO',
-        'procedure_name': 'Hip Prosthesis', 'days_post_op': 14,
-        'ssi_type': 'superficial', 'location': 'Ortho',
+        'organism': 'MSSA', 'procedure': 'SB',
+        'procedure_name': 'Spinal Fusion', 'days_post_op': 14,
+        'ssi_type': 'superficial', 'location': 'A3N',
         'decision': 'hai_confirmed', 'confidence': 0.85,
     },
     {
-        'organism': 'Staphylococcus epidermidis', 'procedure': 'CABG',
-        'procedure_name': 'CABG', 'days_post_op': 5,
-        'ssi_type': None, 'location': 'CVICU',
+        'organism': 'Staphylococcus epidermidis', 'procedure': 'CARD',
+        'procedure_name': 'Cardiac Surgery', 'days_post_op': 5,
+        'ssi_type': None, 'location': 'G6NW',
         'decision': 'not_hai', 'confidence': 0.72,
     },
 ]
 
 VAE_SCENARIOS = [
     {
-        'organism': '', 'device_days': 6, 'location': 'MICU',
+        'organism': '', 'device_days': 6, 'location': 'G3SE',
         'fio2_increase': 25.0, 'peep_increase': 4.0,
         'decision': 'hai_confirmed', 'confidence': 0.87,
     },
     {
         'organism': 'Pseudomonas aeruginosa', 'device_days': 10,
-        'location': 'SICU', 'fio2_increase': 22.0, 'peep_increase': 3.5,
+        'location': 'G6NE', 'fio2_increase': 22.0, 'peep_increase': 3.5,
         'decision': 'pending_review', 'confidence': 0.68,
     },
 ]
@@ -87,17 +87,17 @@ VAE_SCENARIOS = [
 CAUTI_SCENARIOS = [
     {
         'organism': 'Escherichia coli', 'catheter_days': 5,
-        'catheter_type': 'Indwelling Foley', 'location': 'Med-Surg',
+        'catheter_type': 'Indwelling Foley', 'location': 'A6S',
         'decision': 'hai_confirmed', 'confidence': 0.90,
     },
     {
         'organism': 'Candida albicans', 'catheter_days': 7,
-        'catheter_type': 'Suprapubic', 'location': 'MICU',
+        'catheter_type': 'Suprapubic', 'location': 'G3NE',
         'decision': 'not_hai', 'confidence': 0.75,
     },
     {
         'organism': 'Klebsiella pneumoniae', 'catheter_days': 4,
-        'catheter_type': 'Indwelling Foley', 'location': 'SICU',
+        'catheter_type': 'Indwelling Foley', 'location': 'A7C',
         'decision': 'pending_review', 'confidence': 0.62,
     },
 ]
@@ -105,31 +105,31 @@ CAUTI_SCENARIOS = [
 CDI_SCENARIOS = [
     {
         'organism': 'Clostridioides difficile', 'onset_type': 'ho',
-        'specimen_day': 5, 'test_type': 'NAAT/PCR', 'location': 'MICU',
+        'specimen_day': 5, 'test_type': 'NAAT/PCR', 'location': 'A4N',
         'decision': 'hai_confirmed', 'confidence': 0.95,
     },
     {
         'organism': 'Clostridioides difficile', 'onset_type': 'co_hcfa',
-        'specimen_day': 2, 'test_type': 'Toxin A/B', 'location': 'Med-Surg',
+        'specimen_day': 2, 'test_type': 'Toxin A/B', 'location': 'A6N',
         'decision': 'hai_confirmed', 'confidence': 0.82,
     },
     {
         'organism': 'Clostridioides difficile', 'onset_type': 'ho',
-        'specimen_day': 8, 'test_type': 'NAAT/PCR', 'location': 'Oncology',
+        'specimen_day': 8, 'test_type': 'NAAT/PCR', 'location': 'G5SW',
         'decision': 'not_hai', 'confidence': 0.71,
         'is_duplicate': True,
     },
 ]
 
 PATIENT_NAMES = [
-    'Johnson, Robert', 'Williams, Maria', 'Brown, James',
-    'Davis, Linda', 'Miller, Michael', 'Wilson, Sarah',
-    'Moore, David', 'Taylor, Jennifer', 'Anderson, Thomas',
-    'Thomas, Patricia', 'Jackson, Charles', 'White, Elizabeth',
-    'Harris, Daniel', 'Martin, Jessica', 'Thompson, Matthew',
-    'Garcia, Ashley', 'Martinez, Christopher', 'Robinson, Amanda',
-    'Clark, Joshua', 'Rodriguez, Stephanie', 'Lewis, Andrew',
-    'Lee, Nicole', 'Walker, Ryan', 'Hall, Megan',
+    'Johnson, Aiden', 'Williams, Sophia', 'Brown, Ethan',
+    'Davis, Olivia', 'Miller, Liam', 'Wilson, Mia',
+    'Moore, Noah', 'Taylor, Ava', 'Anderson, Mason',
+    'Thomas, Charlotte', 'Jackson, Lucas', 'White, Amelia',
+    'Harris, Logan', 'Martin, Harper', 'Thompson, James',
+    'Garcia, Ella', 'Martinez, Benjamin', 'Robinson, Luna',
+    'Clark, Henry', 'Rodriguez, Camila', 'Lewis, Owen',
+    'Lee, Lily', 'Walker, Jack', 'Hall, Zoe',
 ]
 
 REVIEWERS = [
