@@ -1,15 +1,17 @@
 # AEGIS Django Migration - Project Status
 
-**Last Updated:** 2026-02-07
-**Phase:** 2 - Module Migration
+**Last Updated:** 2026-02-08
+**Phase:** 3 - Module Migration (continued)
 **Priority:** Active Development
 
 ## Current Status
 
-Django migration is in progress. Foundation (Phase 1) is complete and audited. Two modules have been migrated:
+Django migration is in progress. Foundation (Phase 1) is complete and audited. Four modules have been migrated:
 
-1. **Action Analytics** - Read-only analytics dashboard (first module migrated, audited and fixed)
-2. **ASP Alerts** - Complete ASP bacteremia/stewardship alerts with clinical features
+1. **Action Analytics** - Read-only analytics dashboard (Phase 2, audited and fixed)
+2. **ASP Alerts** - Complete ASP bacteremia/stewardship alerts with clinical features (Phase 2)
+3. **MDRO Surveillance** - MDRO detection and case management (Phase 3)
+4. **Drug-Bug Mismatch** - Susceptibility-based coverage mismatch detection (Phase 3)
 
 Foundation code audit is complete — 10 bugs identified and fixed across framework infrastructure, authentication, and Action Analytics. The codebase is now solid for building additional modules.
 
@@ -29,6 +31,10 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 ### Phase 2 - Module Migration
 - [x] Action Analytics (`apps/action_analytics/`) - read-only dashboard
 - [x] ASP Alerts (`apps/asp_alerts/`) - full clinical alert management
+
+### Phase 3 - Module Migration (continued)
+- [x] MDRO Surveillance (`apps/mdro/`) - MDRO detection, case tracking, analytics
+- [x] Drug-Bug Mismatch (`apps/drug_bug/`) - susceptibility coverage mismatch detection
 
 ### Code Audit & Bug Fixes (2026-02-07)
 
@@ -61,17 +67,27 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - [x] Migration 0002_add_bacteremia_type applied
 - [x] All API actions create AlertAudit entries with IP address
 
+### Drug-Bug Mismatch Module (2026-02-08)
+- [x] App scaffolding: `apps/drug_bug/` with AppConfig (no custom models — uses Alert model)
+- [x] Business logic ported from Flask: `data_models.py`, `matcher.py`, `antibiotic_map.py` (35+ RxNorm mappings)
+- [x] FHIR client adapted for Django settings: `fhir_client.py` (HAPI + Epic OAuth)
+- [x] Views: dashboard (active mismatches + stats), history (resolved), help, api_stats, api_export
+- [x] Templates: base (orange theme), dashboard (stats cards, filters, mismatch table), history, help
+- [x] Management commands: `create_demo_mismatches` (8 scenarios: MRSA, VRE, ESBL, Pseudomonas, Candida, etc.), `monitor_drug_bug` (--once/--continuous FHIR polling)
+- [x] 7 matcher unit tests passing (resistant, intermediate, susceptible, no_coverage, no_data, effective_coverage, full_assessment)
+- [x] Severity mapping: Flask `critical` → Django `HIGH`, Flask `warning` → Django `MEDIUM`
+- [x] Detail view links to existing `asp_alerts:detail` (no duplicate detail page needed)
+- [x] URL routing at `/drug-bug/` with `app_name='drug_bug'`
+
 ## Next Steps
 
 ### Immediate (next session)
-- [ ] MDRO Surveillance module migration
 - [ ] Dosing Verification module migration
 - [ ] Unit tests for foundation code (models, views, decorators)
 
 ### Upcoming
-- [ ] HAI Detection module migration
-- [ ] Drug-Bug Mismatch module migration
-- [ ] ABX Approvals module migration
+- [ ] HAI Detection module migration (complex, 5 HAI types)
+- [ ] ABX Approvals module migration (critical workflow)
 - [ ] Guideline Adherence module migration
 - [ ] Surgical Prophylaxis module migration
 - [ ] Epic FHIR API integration layer
@@ -93,6 +109,12 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 | ASP Alerts templates | `templates/asp_alerts/` |
 | Coverage rules | `apps/asp_alerts/coverage_rules.py` |
 | Demo data command | `apps/asp_alerts/management/commands/create_demo_alerts.py` |
+| MDRO Surveillance | `apps/mdro/` |
+| Drug-Bug Mismatch views | `apps/drug_bug/views.py` |
+| Drug-Bug Mismatch matcher | `apps/drug_bug/matcher.py` |
+| Drug-Bug Mismatch templates | `templates/drug_bug/` |
+| Drug-Bug demo data | `apps/drug_bug/management/commands/create_demo_mismatches.py` |
+| Drug-Bug FHIR monitor | `apps/drug_bug/management/commands/monitor_drug_bug.py` |
 | Action Analytics | `apps/action_analytics/` |
 | Authentication | `apps/authentication/` |
 | Core models | `apps/core/models.py` |
@@ -117,3 +139,11 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - Fixed 10 bugs across action_analytics, core, authentication, and settings
 - Created auth views/URLs/templates (login/logout)
 - Foundation is audited and solid — ready for next module migrations
+
+**2026-02-08:**
+- Migrated Drug-Bug Mismatch module from Flask to Django (16 new files, 2,567 lines)
+- Pure Python business logic copied with minimal changes (import paths, Django settings)
+- No custom models needed — all data in Alert model with alert_type=DRUG_BUG_MISMATCH
+- 8 demo scenarios covering MRSA, E. coli, Pseudomonas, Klebsiella, VRE, MSSA, ESBL E. coli, Candida
+- 7 matcher unit tests all passing
+- Four modules now migrated total (Action Analytics, ASP Alerts, MDRO, Drug-Bug Mismatch)
