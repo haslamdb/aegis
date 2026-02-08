@@ -118,36 +118,29 @@ Apps created: `core`, `authentication`, `alerts`, `metrics`, `notifications`, `a
 - [x] Demo data command with 8 clinical scenarios
 - [x] Full audit logging on all alert actions
 
-#### 3.2 Dosing Verification — NEXT
-**Why second:** Newest module, cleanest code, API-first
+#### 3.2 Dosing Verification ✅ COMPLETE
+- [x] Created Django app: `apps/dosing/`
+- [x] 9 clinical rule modules ported (allergy, age, renal, weight, route, indication, interaction, duration, extended infusion)
+- [x] DosingRulesEngine orchestrator
+- [x] FHIR client adapted for Django settings
+- [x] Views: dashboard, detail, history, reports, help + 4 API endpoints
+- [x] Templates: 6 files with blue theme
+- [x] Management commands: create_demo_dosing, monitor_dosing
+- [x] Route `/dosing/` to Django
 
-- [ ] Create Django app: `apps/dosing_verification/`
-- [ ] Convert models:
-  - `DoseAlert`, `DoseFlag`, `DoseAssessment`
-  - Enums → Django `TextChoices`
-- [ ] Convert rules engine (keep Python logic, wrap in Django)
-- [ ] Convert FHIR client (Django-agnostic, minimal changes)
-- [ ] Convert views: API endpoints → DRF ViewSets
-- [ ] Convert templates: 5 dashboard pages
-- [ ] Migrate notifications (Django signals or Celery tasks)
-- [ ] Test all 12 rule modules
-- [ ] Route `/dosing-verification/` to Django
+#### 3.3 MDRO Surveillance ✅ COMPLETE
+- [x] Created Django app: `apps/mdro/`
+- [x] MDRO detection and case management
+- [x] Dashboard views and templates
+- [x] Route `/mdro-surveillance/` to Django
 
-#### 3.3 MDRO Surveillance — NEXT
-**Why third:** Simple FHIR-based module, no complex state
-
-- [ ] Create Django app: `apps/mdro/`
-- [ ] Convert models: `MDROCase`, `MDRODetection`
-- [ ] Convert FHIR detection logic
-- [ ] Convert dashboard views
-- [ ] Route `/mdro/` to Django
-
-#### 3.4 Drug-Bug Mismatch (Week 8)
-- [ ] Create Django app: `apps/drug_bug/`
-- [ ] Convert models: `DrugBugAlert`
-- [ ] Convert FHIR client + matching logic
-- [ ] Convert dashboard
-- [ ] Route `/drug-bug-mismatch/` to Django
+#### 3.4 Drug-Bug Mismatch ✅ COMPLETE
+- [x] Created Django app: `apps/drug_bug/`
+- [x] Business logic ported: matcher, antibiotic_map, data_models
+- [x] FHIR client adapted for Django settings
+- [x] Views: dashboard, history, help + API endpoints
+- [x] Management commands: create_demo_mismatches, monitor_drug_bug
+- [x] Route `/drug-bug/` to Django
 
 #### 3.5 Guideline Adherence (Week 9)
 - [ ] Create Django app: `apps/guideline_adherence/`
@@ -163,19 +156,24 @@ Apps created: `core`, `authentication`, `alerts`, `metrics`, `notifications`, `a
 - [ ] Convert dashboard
 - [ ] Route `/surgical-prophylaxis/` to Django
 
-#### 3.7 HAI Detection (Week 11) - **CRITICAL**
-**Why later:** Most complex, critical infection control workflows
-
-- [ ] Create Django app: `apps/hai_detection/`
-- [ ] Convert models for all 5 HAI types:
-  - CLABSI, SSI, CAUTI, VAE, CDI
-- [ ] Convert detection algorithms (5 detectors)
-- [ ] Convert FHIR clients (device tracking, cultures, ventilators)
-- [ ] Convert LLM extraction (keep as-is, wrap in Django)
-- [ ] Convert dashboards (5 HAI type dashboards)
-- [ ] Migrate validation framework
-- [ ] Test extensively (most critical module)
-- [ ] Route `/hai-detection/` to Django
+#### 3.7 HAI Detection ✅ COMPLETE
+- [x] Created Django app: `apps/hai_detection/` (76 Python files)
+- [x] 4 custom Django models: HAICandidate, HAIClassification, HAIReview, LLMAuditLog
+- [x] 61 business logic files copied to `logic/` with import path fixes:
+  - 5 candidate detectors (CLABSI, SSI, VAE, CAUTI, CDI)
+  - 5 classifiers + schemas (LLM extraction + rules architecture)
+  - 5 NHSN rules engines + schemas
+  - 6 LLM extractors + triage extractor + training collector
+  - Note retriever, chunker, deduplicator
+  - LLM backends (Ollama, vLLM) + factory
+  - Data sources (FHIR, Clarity, mock) + factory
+- [x] 6 prompt templates for LLM extraction
+- [x] Services layer: HAIDetectionService (Django ORM adapter for monitor.py)
+- [x] Views: dashboard, candidate detail, history, reports, help + 5 API endpoints
+- [x] 6 templates with red/maroon IP theme
+- [x] Management commands: monitor_hai (detection pipeline), create_demo_hai (20+ scenarios)
+- [x] HAI_DETECTION settings dict in base.py
+- [x] Route `/hai-detection/` to Django
 
 #### 3.8 ABX Approvals (Week 12) - **CRITICAL**
 **Why last:** Active clinical workflow, can't break

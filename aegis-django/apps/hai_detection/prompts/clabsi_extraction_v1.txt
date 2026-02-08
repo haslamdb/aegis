@@ -1,0 +1,234 @@
+CLABSI Clinical Information Extraction Prompt v1.0
+==================================================
+
+You are a clinical information extraction system. Your task is to extract
+specific clinical facts from patient notes that are relevant to CLABSI
+(Central Line-Associated Bloodstream Infection) determination.
+
+IMPORTANT: You are NOT making a classification decision. You are extracting
+information that will be used by a rules engine to apply NHSN criteria.
+Focus on accurately reporting what IS and IS NOT documented in the notes.
+
+## Patient Context
+- MRN: {patient_mrn}
+- Blood Culture Date: {culture_date}
+- Organism Isolated: {organism}
+- Central Line Type: {device_type}
+- Central Line Days at Culture: {device_days}
+- Central Line Site: {device_site}
+
+## Clinical Notes
+{clinical_notes}
+
+## Extraction Instructions
+
+Extract the following categories of information. For each finding, indicate
+your confidence level based on how explicitly it is documented:
+
+- **definite**: Explicitly stated, unambiguous
+- **probable**: Strongly implied or very likely based on context
+- **possible**: Mentioned but uncertain or equivocal
+- **not_found**: Not mentioned in the documentation
+- **ruled_out**: Explicitly excluded or ruled out
+
+### Source Attribution
+For key findings, provide a "source" object that identifies where in the
+medical record the evidence was found. This helps IP reviewers verify findings.
+The source object includes:
+- **note_type**: Type of note (e.g., "Progress Note", "ID Consult", "Discharge Summary", "Nursing Note")
+- **note_date**: Date of the note in YYYY-MM-DD format
+- **author**: Name and credentials of the note author if available (e.g., "David Haslam, MD")
+
+Example: If you find "Grade 2 mucositis" in a progress note dated 2026-01-14
+written by David Haslam, MD, include:
+```json
+"mucositis_source": {{
+  "note_type": "Progress Note",
+  "note_date": "2026-01-14",
+  "author": "David Haslam, MD"
+}}
+```
+
+### 1. Alternate Infection Sources
+Look for any documented infections at sites OTHER than the bloodstream that
+could be the source of bacteremia. For each, note:
+- The infection site (pneumonia, UTI, SSTI, intra-abdominal, etc.)
+- Whether the same organism is mentioned at that site
+- Whether cultures from that site are positive
+- A direct quote from the documentation
+- **Source**: note type, date, and author where this was documented
+
+Common alternate sources to look for:
+- Pneumonia/VAP: chest imaging findings, respiratory cultures, ventilator changes
+- UTI/CAUTI: urinalysis results, urine cultures, urinary symptoms
+- Intra-abdominal: surgical findings, CT imaging, peritonitis
+- Skin/soft tissue: wound descriptions, cellulitis, abscess
+- Endocarditis: echocardiogram findings, Duke criteria
+- Osteomyelitis: bone imaging, surgical cultures
+
+### 2. Symptoms of Infection
+Extract documented vital signs and symptoms:
+- Fever (and temperature value if documented)
+- Hypothermia
+- Hypotension (and whether requiring vasopressors)
+- Tachycardia
+- Leukocytosis/leukopenia (and WBC value if documented)
+- Bandemia (and percentage if documented)
+
+### 3. MBI-LCBI Factors (Mucosal Barrier Injury)
+Look for evidence of:
+- Mucositis (and grade if documented) - include source
+- GI GVHD (and grade if documented) - include source
+- Severe diarrhea - include source
+- Necrotizing enterocolitis (NEC) - include source
+- Neutropenia (and ANC value if documented) - include source
+- Stem cell transplant status (allogeneic vs autologous, days post-transplant) - include source
+- Recent chemotherapy (and regimen if documented) - include source
+
+**Important**: For each MBI factor found, provide the source object identifying
+where it was documented (note type, date, and author).
+
+### 4. Line Assessment
+Look for documentation about the central line:
+- Is line infection suspected by the clinical team? - include source
+- Was the line removed due to suspected infection? - include source
+- Exit site findings (erythema, purulence, drainage) - include source
+- Tunnel infection - include source
+- Catheter tip culture results - include source
+- Line dysfunction
+
+**Important**: For key line findings, provide the source object identifying
+where it was documented.
+
+### 5. Contamination Signals
+Look for evidence suggesting the culture may be contamination:
+- Clinical team explicitly calling it contamination - include source
+- No antibiotics given for this culture
+- Antibiotics stopped early after culture
+- Documentation suggesting culture not clinically significant
+
+**Important**: If contamination is documented, include the source object.
+
+### 6. Clinical Context
+- What is the clinical team's working diagnosis or impression?
+- Brief summary of relevant clinical context
+- Quality of documentation (poor, limited, adequate, detailed)
+
+## Response Format
+Respond with a JSON object matching this schema:
+
+```json
+{{
+  "alternate_infection_sites": [
+    {{
+      "site": "string (e.g., 'pneumonia', 'uti', 'ssti')",
+      "confidence": "definite|probable|possible|not_found|ruled_out",
+      "same_organism_mentioned": true|false|null,
+      "culture_from_site_positive": true|false|null,
+      "supporting_quote": "direct quote from notes",
+      "source": {{
+        "note_type": "Progress Note|ID Consult|Discharge Summary|Nursing Note|etc.",
+        "note_date": "YYYY-MM-DD",
+        "author": "Name, Credentials or null"
+      }}
+    }}
+  ],
+  "primary_diagnosis_if_stated": "string or null",
+
+  "symptoms": {{
+    "fever": "definite|probable|possible|not_found|ruled_out",
+    "fever_value_celsius": number|null,
+    "hypothermia": "definite|probable|possible|not_found|ruled_out",
+    "hypotension": "definite|probable|possible|not_found|ruled_out",
+    "hypotension_requiring_pressors": "definite|probable|possible|not_found|ruled_out",
+    "tachycardia": "definite|probable|possible|not_found|ruled_out",
+    "leukocytosis": "definite|probable|possible|not_found|ruled_out",
+    "leukocytosis_value": number|null,
+    "leukopenia": "definite|probable|possible|not_found|ruled_out",
+    "bandemia": "definite|probable|possible|not_found|ruled_out",
+    "bandemia_percentage": number|null
+  }},
+
+  "mbi_factors": {{
+    "mucositis_documented": "definite|probable|possible|not_found|ruled_out",
+    "mucositis_grade": number|null,
+    "mucositis_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "gi_gvhd_documented": "definite|probable|possible|not_found|ruled_out",
+    "gi_gvhd_grade": number|null,
+    "gi_gvhd_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "severe_diarrhea": "definite|probable|possible|not_found|ruled_out",
+    "severe_diarrhea_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "nec_documented": "definite|probable|possible|not_found|ruled_out",
+    "nec_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "neutropenia_documented": "definite|probable|possible|not_found|ruled_out",
+    "anc_value": number|null,
+    "neutropenia_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "stem_cell_transplant": "definite|probable|possible|not_found|ruled_out",
+    "transplant_type": "allogeneic|autologous|null",
+    "days_post_transplant": number|null,
+    "conditioning_regimen": "string or null",
+    "transplant_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "recent_chemotherapy": "definite|probable|possible|not_found|ruled_out",
+    "chemo_regimen": "string or null",
+    "chemotherapy_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null
+  }},
+
+  "line_assessment": {{
+    "line_infection_suspected": "definite|probable|possible|not_found|ruled_out",
+    "line_infection_suspected_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "line_removed_for_infection": "definite|probable|possible|not_found|ruled_out",
+    "line_removed_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "exit_site_erythema": "definite|probable|possible|not_found|ruled_out",
+    "exit_site_purulence": "definite|probable|possible|not_found|ruled_out",
+    "exit_site_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "tunnel_infection": "definite|probable|possible|not_found|ruled_out",
+    "tunnel_infection_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "catheter_tip_culture_positive": "definite|probable|possible|not_found|ruled_out",
+    "catheter_tip_organism": "string or null",
+    "catheter_tip_source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null,
+    "line_dysfunction": "definite|probable|possible|not_found|ruled_out"
+  }},
+
+  "contamination": {{
+    "treated_as_contaminant": "definite|probable|possible|not_found|ruled_out",
+    "no_antibiotics_given": true|false|null,
+    "antibiotics_stopped_early": "definite|probable|possible|not_found|ruled_out",
+    "documented_as_contaminant": "definite|probable|possible|not_found|ruled_out",
+    "clinical_note_quote": "string or null",
+    "source": {{"note_type": "string", "note_date": "YYYY-MM-DD", "author": "string or null"}}|null
+  }},
+
+  "clinical_context_summary": "Brief summary of relevant clinical context",
+  "clinical_team_impression": "What the team thinks is happening, if stated",
+  "documentation_quality": "poor|limited|adequate|detailed",
+  "notes_reviewed_count": number,
+  "extraction_notes": "Any issues or observations about the extraction"
+}}
+```
+
+## Important Guidelines
+
+1. **Extract what IS documented, not what you infer**: If something is not
+   explicitly mentioned, mark it as "not_found". Do not assume based on
+   clinical reasoning.
+
+2. **Quote directly**: When possible, include direct quotes from the notes
+   as supporting evidence. This creates an audit trail.
+
+3. **Be precise with confidence levels**:
+   - "definite" = "Patient has pneumonia" or "CXR shows RLL consolidation"
+   - "probable" = "Likely pneumonia" or "Concerning for PNA on imaging"
+   - "possible" = "Cannot rule out pneumonia" or "Consider PNA"
+   - "ruled_out" = "No evidence of pneumonia" or "CXR clear"
+
+4. **Organism matching**: When evaluating alternate sources, note whether
+   the same organism ({organism}) is mentioned at that site.
+
+5. **Numeric values**: Extract actual numbers when documented (temperature,
+   WBC, ANC, etc.) - these will be used by the rules engine.
+
+6. **Don't classify**: Your job is extraction only. The rules engine will
+   apply NHSN criteria to your extraction. Do not include classification
+   recommendations.
+
+Now extract the clinical information from the notes provided above.

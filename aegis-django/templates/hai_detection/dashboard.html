@@ -1,0 +1,107 @@
+{% extends "hai_detection/base.html" %}
+
+{% block content %}
+<h2>Active Candidates</h2>
+
+<div class="stats-row">
+    <div class="stat-box hai-stat">
+        <div class="stat-value">{{ stats.active_candidates }}</div>
+        <div class="stat-label">Active Candidates</div>
+    </div>
+    <div class="stat-box pending-stat">
+        <div class="stat-value">{{ stats.pending_review }}</div>
+        <div class="stat-label">Pending Review</div>
+    </div>
+    <div class="stat-box confirmed-stat">
+        <div class="stat-value">{{ stats.confirmed_this_month }}</div>
+        <div class="stat-label">Confirmed This Month</div>
+    </div>
+    <div class="stat-box accuracy-stat">
+        <div class="stat-value">{{ stats.llm_accuracy }}%</div>
+        <div class="stat-label">LLM Accuracy</div>
+    </div>
+</div>
+
+<div class="hai-type-tabs">
+    <a href="{% url 'hai_detection:dashboard' %}"
+       class="{% if not hai_type_filter %}active-all{% endif %}">All</a>
+    {% for type_value, type_label in hai_types %}
+    <a href="{% url 'hai_detection:dashboard' %}?type={{ type_value }}"
+       class="{% if hai_type_filter == type_value %}active-{{ type_value|lower }}{% endif %}">
+        {{ type_label }}
+    </a>
+    {% endfor %}
+</div>
+
+<p><strong>{{ candidates|length }}</strong> candidate{{ candidates|length|pluralize }}</p>
+
+<table>
+    <tr>
+        <th>Status</th>
+        <th>HAI Type</th>
+        <th>Patient</th>
+        <th>Organism</th>
+        <th>Culture Date</th>
+        <th>Device/Catheter Days</th>
+        <th>LLM Decision</th>
+        <th>Confidence</th>
+        <th>Actions</th>
+    </tr>
+    {% for candidate in candidates %}
+    <tr>
+        <td>
+            <span class="badge {{ candidate.status|lower }}">{{ candidate.get_status_display }}</span>
+        </td>
+        <td>
+            <span class="badge {{ candidate.hai_type|lower }}">{{ candidate.get_hai_type_display }}</span>
+        </td>
+        <td>
+            {% if candidate.patient_name %}
+                {{ candidate.patient_name }}<br>
+                <small style="color: #7f8c8d;">MRN: {{ candidate.patient_mrn }}</small>
+            {% else %}
+                <strong>{{ candidate.patient_mrn }}</strong>
+            {% endif %}
+        </td>
+        <td>{{ candidate.organism|default:"Unknown" }}</td>
+        <td>{{ candidate.culture_date|date:"Y-m-d H:i" }}</td>
+        <td style="text-align: center;">{{ candidate.device_days|default:"-" }}</td>
+        <td>
+            {% if candidate.llm_decision %}
+            <span class="badge {{ candidate.llm_decision|lower }}">
+                {% if candidate.llm_decision == 'hai_confirmed' %}HAI
+                {% elif candidate.llm_decision == 'not_hai' %}Not HAI
+                {% else %}{{ candidate.llm_decision }}
+                {% endif %}
+            </span>
+            {% else %}
+            <span style="color: #95a5a6;">Pending</span>
+            {% endif %}
+        </td>
+        <td>
+            {% if candidate.llm_confidence is not None %}
+                {{ candidate.llm_confidence }}%
+                <span class="confidence-bar">
+                    <span class="fill {% if candidate.llm_confidence >= 80 %}confidence-high{% elif candidate.llm_confidence >= 50 %}confidence-medium{% else %}confidence-low{% endif %}"
+                          style="width: {{ candidate.llm_confidence }}%;"></span>
+                </span>
+            {% else %}
+                -
+            {% endif %}
+        </td>
+        <td>
+            <a href="{% url 'hai_detection:candidate_detail' candidate.id %}" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">
+                Review
+            </a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="9" style="text-align: center;">
+            No active candidates found. All cases have been reviewed.
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

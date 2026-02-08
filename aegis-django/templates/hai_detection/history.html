@@ -1,0 +1,103 @@
+{% extends "hai_detection/base.html" %}
+
+{% block content %}
+<h2>HAI Detection History</h2>
+
+<div class="filters">
+    <form method="get">
+        <label>HAI Type:</label>
+        <select name="type" onchange="this.form.submit()">
+            <option value="">All Types</option>
+            {% for type_value, type_label in hai_types %}
+            <option value="{{ type_value }}" {% if hai_type_filter == type_value %}selected{% endif %}>
+                {{ type_label }}
+            </option>
+            {% endfor %}
+        </select>
+
+        <label>Status:</label>
+        <select name="status" onchange="this.form.submit()">
+            <option value="">All Resolved</option>
+            <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed HAI</option>
+            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Not HAI</option>
+        </select>
+
+        <label>From:</label>
+        <input type="date" name="date_from" value="{{ date_from|default:'' }}" onchange="this.form.submit()">
+
+        <label>To:</label>
+        <input type="date" name="date_to" value="{{ date_to|default:'' }}" onchange="this.form.submit()">
+
+        <button type="submit" class="btn btn-primary">Apply</button>
+    </form>
+</div>
+
+<p><strong>{{ candidates|length }}</strong> resolved candidate{{ candidates|length|pluralize }}</p>
+
+<table>
+    <tr>
+        <th>HAI Type</th>
+        <th>Patient</th>
+        <th>Organism</th>
+        <th>LLM Decision</th>
+        <th>IP Decision</th>
+        <th>Override</th>
+        <th>Reviewed Date</th>
+        <th>Actions</th>
+    </tr>
+    {% for candidate in candidates %}
+    <tr style="{% if candidate.status == 'confirmed' %}background: #f0fdf4;{% endif %}">
+        <td>
+            <span class="badge {{ candidate.hai_type|lower }}">{{ candidate.get_hai_type_display }}</span>
+        </td>
+        <td>
+            {% if candidate.patient_name %}
+                {{ candidate.patient_name }}<br>
+                <small style="color: #7f8c8d;">MRN: {{ candidate.patient_mrn }}</small>
+            {% else %}
+                <strong>{{ candidate.patient_mrn }}</strong>
+            {% endif %}
+        </td>
+        <td>{{ candidate.organism|default:"Unknown" }}</td>
+        <td>
+            {% if candidate.llm_decision %}
+            <span class="badge {{ candidate.llm_decision|lower }}">
+                {% if candidate.llm_decision == 'hai_confirmed' %}HAI
+                {% elif candidate.llm_decision == 'not_hai' %}Not HAI
+                {% else %}{{ candidate.llm_decision }}
+                {% endif %}
+            </span>
+            {% else %}
+                <span style="color: #95a5a6;">N/A</span>
+            {% endif %}
+        </td>
+        <td>
+            <span class="badge {{ candidate.status|lower }}">
+                {% if candidate.status == 'confirmed' %}Confirmed HAI
+                {% elif candidate.status == 'rejected' %}Not HAI
+                {% else %}{{ candidate.get_status_display }}
+                {% endif %}
+            </span>
+        </td>
+        <td style="text-align: center;">
+            {% if candidate.is_override %}
+                <span class="badge" style="background: #f39c12;">Override</span>
+            {% else %}
+                -
+            {% endif %}
+        </td>
+        <td>{{ candidate.reviewed_at|date:"Y-m-d H:i" }}</td>
+        <td>
+            <a href="{% url 'hai_detection:candidate_detail' candidate.id %}" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">
+                View
+            </a>
+        </td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="8" style="text-align: center;">No resolved candidates found.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

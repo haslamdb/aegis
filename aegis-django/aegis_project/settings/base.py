@@ -49,8 +49,8 @@ INSTALLED_APPS = [
     'apps.mdro',  # ✅ Phase 3 - MDRO Surveillance
     'apps.drug_bug',  # ✅ Phase 3 - Drug-Bug Mismatch
     'apps.dosing',  # ✅ Phase 3 - Dosing Verification
+    'apps.hai_detection',  # ✅ Phase 3 - HAI Detection
     # TO BE MIGRATED:
-    # 'apps.hai_detection',
     # 'apps.dosing_verification',
     # 'apps.abx_approvals',
     # 'apps.guideline_adherence',
@@ -250,4 +250,19 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+# HAI Detection Configuration
+HAI_DETECTION = {
+    'LLM_BACKEND': 'ollama',
+    'OLLAMA_BASE_URL': config('HAI_OLLAMA_URL', default='http://localhost:11434'),
+    'OLLAMA_MODEL': config('HAI_OLLAMA_MODEL', default='llama3.3:70b'),
+    'TRIAGE_MODEL': config('HAI_TRIAGE_MODEL', default='llama3.2:8b'),
+    'VLLM_BASE_URL': config('HAI_VLLM_URL', default='http://localhost:8000'),
+    'VLLM_MODEL': config('HAI_VLLM_MODEL', default='meta-llama/Llama-3.3-70B-Instruct'),
+    'FHIR_BASE_URL': config('HAI_FHIR_URL', default='http://localhost:8081/fhir'),
+    'LOOKBACK_HOURS': 24,
+    'POLL_INTERVAL': 300,
+    'AUTO_CLASSIFY_THRESHOLD': 0.85,
+    'IP_REVIEW_THRESHOLD': 0.60,
 }

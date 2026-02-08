@@ -6,13 +6,14 @@
 
 ## Current Status
 
-Django migration is in progress. Foundation (Phase 1) is complete and audited. Five modules have been migrated:
+Django migration is in progress. Foundation (Phase 1) is complete and audited. Six modules have been migrated:
 
 1. **Action Analytics** - Read-only analytics dashboard (Phase 2, audited and fixed)
 2. **ASP Alerts** - Complete ASP bacteremia/stewardship alerts with clinical features (Phase 2)
 3. **MDRO Surveillance** - MDRO detection and case management (Phase 3)
 4. **Drug-Bug Mismatch** - Susceptibility-based coverage mismatch detection (Phase 3)
 5. **Dosing Verification** - Antimicrobial dosing rules engine with 9 clinical rule modules (Phase 3)
+6. **HAI Detection** - Full HAI surveillance with 5 HAI types, LLM classification, IP review (Phase 3)
 
 Foundation code audit is complete — 10 bugs identified and fixed across framework infrastructure, authentication, and Action Analytics. The codebase is now solid for building additional modules.
 
@@ -37,6 +38,7 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - [x] MDRO Surveillance (`apps/mdro/`) - MDRO detection, case tracking, analytics
 - [x] Drug-Bug Mismatch (`apps/drug_bug/`) - susceptibility coverage mismatch detection
 - [x] Dosing Verification (`apps/dosing/`) - 9-rule antimicrobial dosing engine
+- [x] HAI Detection (`apps/hai_detection/`) - 5 HAI types, LLM classification, IP review with override tracking
 
 ### Code Audit & Bug Fixes (2026-02-07)
 
@@ -84,11 +86,10 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 ## Next Steps
 
 ### Immediate (next session)
-- [ ] HAI Detection module migration (complex, 5 HAI types — IP selling point)
+- [ ] Outbreak Detection module migration (quick win, aggregates MDRO/HAI data)
 - [ ] Unit tests for foundation code (models, views, decorators)
 
 ### Upcoming
-- [ ] Outbreak Detection module migration (quick win, aggregates MDRO/HAI data)
 - [ ] Antimicrobial Usage Alerts module migration
 - [ ] Surgical Prophylaxis module migration
 - [ ] Guideline Adherence module migration
@@ -146,6 +147,15 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 | Dosing templates | `templates/dosing/` |
 | Dosing demo data | `apps/dosing/management/commands/create_demo_dosing.py` |
 | Dosing FHIR monitor | `apps/dosing/management/commands/monitor_dosing.py` |
+| HAI Detection app | `apps/hai_detection/` |
+| HAI Detection models | `apps/hai_detection/models.py` |
+| HAI Detection views | `apps/hai_detection/views.py` |
+| HAI Detection services | `apps/hai_detection/services.py` |
+| HAI business logic | `apps/hai_detection/logic/` (61 files) |
+| HAI prompt templates | `apps/hai_detection/prompts/` (6 files) |
+| HAI Detection templates | `templates/hai_detection/` (6 files) |
+| HAI demo data | `apps/hai_detection/management/commands/create_demo_hai.py` |
+| HAI monitor command | `apps/hai_detection/management/commands/monitor_hai.py` |
 | Action Analytics | `apps/action_analytics/` |
 | Authentication | `apps/authentication/` |
 | Core models | `apps/core/models.py` |
@@ -185,3 +195,12 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - 2-column detail view: patient factors sidebar (renal function, weight, allergies) + dose comparison panel
 - 10 demo scenarios covering all rule categories (3 CRITICAL, 4 HIGH, 1 MEDIUM, 2 resolved)
 - Five modules now migrated total (Action Analytics, ASP Alerts, MDRO, Drug-Bug Mismatch, Dosing Verification)
+- Migrated HAI Detection module from Flask to Django (76 Python files, 6 templates, 6 prompt templates)
+- 4 custom Django models: HAICandidate, HAIClassification, HAIReview, LLMAuditLog (first module needing custom models)
+- 61 business logic files copied to logic/ subdirectory with import path fixes (candidates, classifiers, rules, extraction, notes, LLM, data)
+- Multi-stage pipeline preserved: Rule-based detection → LLM extraction → NHSN rules engine → IP review with override tracking
+- Views: dashboard (stats + HAI type filter tabs), candidate detail (multi-section with LLM classification + review form), history, reports (override analytics), help
+- 5 API endpoints: stats, candidates list, submit review (with override detection), override stats, recent overrides
+- Management commands: monitor_hai (--once/--continuous/--stats/--classify/--dry-run), create_demo_hai (20+ scenarios across all 5 HAI types)
+- HAI_DETECTION settings dict in base.py (LLM backend, FHIR URL, thresholds)
+- Six modules now migrated total (Action Analytics, ASP Alerts, MDRO, Drug-Bug Mismatch, Dosing Verification, HAI Detection)

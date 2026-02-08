@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>HAI Detection - AEGIS</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        nav {
+            background: #2c3e50;
+            padding: 15px;
+            margin: -20px -20px 20px -20px;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-right: 20px;
+            padding: 8px 15px;
+            border-radius: 4px;
+        }
+        nav a:hover {
+            background: #34495e;
+        }
+        nav a.active {
+            background: #c0392b;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        h1 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #c0392b;
+        }
+        .alert-box {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 5px solid #95a5a6;
+        }
+        .alert-box.critical {
+            border-left-color: #e74c3c;
+        }
+        .alert-box.warning {
+            border-left-color: #f39c12;
+        }
+        .alert-box.info {
+            border-left-color: #3498db;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+        .badge.critical { background: #e74c3c; }
+        .badge.high { background: #e67e22; }
+        .badge.medium { background: #f39c12; }
+        .badge.warning { background: #f39c12; }
+        .badge.low { background: #3498db; }
+        .badge.info { background: #3498db; }
+        .badge.pending { background: #95a5a6; }
+        .badge.pending_review { background: #95a5a6; }
+        .badge.classified { background: #3498db; }
+        .badge.confirmed { background: #27ae60; }
+        .badge.rejected { background: #e74c3c; }
+        .badge.excluded { background: #7f8c8d; }
+        .badge.needs_more_info { background: #9b59b6; }
+        .badge.clabsi { background: #c0392b; }
+        .badge.ssi { background: #e67e22; }
+        .badge.vae { background: #2980b9; }
+        .badge.cauti { background: #8e44ad; }
+        .badge.cdi { background: #16a085; }
+        .badge.hai_confirmed { background: #27ae60; }
+        .badge.not_hai { background: #e74c3c; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #34495e;
+            color: white;
+            font-weight: bold;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .stat-box {
+            display: inline-block;
+            background: white;
+            padding: 20px;
+            margin: 10px 10px 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-width: 150px;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #c0392b;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .filters {
+            background: white;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .filters label {
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .filters select, .filters input {
+            margin-right: 20px;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: #c0392b;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #a93226;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #219a52;
+        }
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        .stats-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .stats-row .stat-box {
+            flex: 1;
+            min-width: 140px;
+            margin: 0;
+            text-align: center;
+        }
+        .stat-box.hai-stat { border-top: 4px solid #c0392b; }
+        .stat-box.pending-stat { border-top: 4px solid #95a5a6; }
+        .stat-box.confirmed-stat { border-top: 4px solid #27ae60; }
+        .stat-box.accuracy-stat { border-top: 4px solid #3498db; }
+        .detail-layout {
+            display: flex;
+            gap: 20px;
+        }
+        .detail-main {
+            flex: 2;
+        }
+        .detail-sidebar {
+            flex: 1;
+            min-width: 280px;
+        }
+        .detail-sidebar .action-card {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+        }
+        .patient-info {
+            background: #fdf2f2;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .audit-log {
+            background: #ecf0f1;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        .hai-type-tabs {
+            display: flex;
+            gap: 5px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        .hai-type-tabs a {
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #2c3e50;
+            background: #ecf0f1;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .hai-type-tabs a:hover {
+            background: #bdc3c7;
+        }
+        .hai-type-tabs a.active {
+            color: white;
+        }
+        .hai-type-tabs a.active-all { background: #c0392b; color: white; }
+        .hai-type-tabs a.active-clabsi { background: #c0392b; color: white; }
+        .hai-type-tabs a.active-ssi { background: #e67e22; color: white; }
+        .hai-type-tabs a.active-vae { background: #2980b9; color: white; }
+        .hai-type-tabs a.active-cauti { background: #8e44ad; color: white; }
+        .hai-type-tabs a.active-cdi { background: #16a085; color: white; }
+        .confidence-bar {
+            display: inline-block;
+            width: 60px;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            vertical-align: middle;
+            margin-left: 5px;
+        }
+        .confidence-bar .fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+        .confidence-high { background: #27ae60; }
+        .confidence-medium { background: #f39c12; }
+        .confidence-low { background: #e74c3c; }
+        @media (max-width: 768px) {
+            .detail-layout {
+                flex-direction: column;
+            }
+            .stats-row {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'hai_detection:dashboard' %}">Dashboard</a>
+        <a href="{% url 'hai_detection:history' %}">History</a>
+        <a href="{% url 'hai_detection:reports' %}">Reports</a>
+        <a href="{% url 'hai_detection:help' %}">Help</a>
+        <a href="{% url 'asp_alerts:active' %}">ASP Alerts</a>
+        <a href="/admin/">Admin</a>
+        <span style="float: right; color: white;">
+            User: {{ request.user.username }} ({{ request.user.get_role_display }})
+        </span>
+    </nav>
+
+    <h1>HAI Detection</h1>
+
+    {% block content %}
+    {% endblock %}
+</body>
+</html>

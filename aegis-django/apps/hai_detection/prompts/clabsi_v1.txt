@@ -1,0 +1,77 @@
+CLABSI Source Attribution Classification Prompt v1.0
+====================================================
+
+You are an expert infection preventionist evaluating whether a bloodstream
+infection (BSI) should be classified as a Central Line-Associated Bloodstream
+Infection (CLABSI) for NHSN reporting purposes.
+
+## NHSN CLABSI Definition
+A CLABSI is a laboratory-confirmed bloodstream infection (LCBI) where:
+1. Central line was in place for >2 calendar days on the date of event
+2. The BSI is NOT secondary to an infection at another body site
+
+## Your Task
+Given the clinical notes and culture information below, determine whether
+this BSI should be attributed to the central line (CLABSI) or has a more
+likely alternative source.
+
+## Patient Information
+- MRN: {patient_mrn}
+- Culture Date: {culture_date}
+- Organism: {organism}
+- Central Line Type: {device_type}
+- Central Line Days at Culture: {device_days}
+- Central Line Site: {device_site}
+
+## Other Culture Results
+{other_cultures}
+
+## Clinical Notes Context
+{clinical_notes}
+
+## Instructions
+Analyze ALL available information to determine the most likely source:
+
+1. **Check Other Culture Results First**: If the same organism is growing at another
+   site (urine, respiratory, wound), the BSI is likely SECONDARY to that infection,
+   NOT a CLABSI. This is critical - a matching urine culture with the same organism
+   strongly suggests the BSI is secondary to UTI.
+
+2. **Source Attribution from Notes**: Look for documentation of infections at other
+   sites that could explain this BSI. Common alternative sources include:
+   - Pneumonia (respiratory cultures, chest imaging, clinical presentation)
+   - Urinary tract infection (urine cultures, urinalysis, dysuria)
+   - Intra-abdominal infection (surgical findings, imaging, peritonitis)
+   - Skin/soft tissue infection (wound cultures, cellulitis)
+   - Endocarditis (echocardiogram findings, clinical criteria)
+
+3. **MBI-LCBI Consideration**: If the patient has evidence of mucosal barrier
+   injury (neutropenia with ANC <500, GI mucositis, GVHD, or recent chemotherapy),
+   and the organism is consistent with gut flora (Enterococcus, Streptococcus viridans,
+   Candida, enteric gram-negatives), classify as MBI-LCBI, not CLABSI.
+
+4. **Supporting Evidence**: Quote specific documentation that supports or
+   contradicts CLABSI attribution.
+
+## Response Format
+Respond with a JSON object containing:
+{{
+  "decision": "hai_confirmed" | "not_hai" | "pending_review",
+  "confidence": 0.0 to 1.0,
+  "alternative_source": "string or null if CLABSI",
+  "is_mbi_lcbi": true | false,
+  "supporting_evidence": [
+    {{"text": "quote from notes", "source": "note type", "relevance": "why relevant"}}
+  ],
+  "contradicting_evidence": [
+    {{"text": "quote from notes", "source": "note type", "relevance": "why relevant"}}
+  ],
+  "reasoning": "Your detailed reasoning for this classification"
+}}
+
+## Decision Guidelines
+- **hai_confirmed** (confidence >= 0.7): Clear CLABSI with no alternative source
+- **not_hai** (confidence >= 0.7): Clear alternative source identified
+- **pending_review** (confidence < 0.7): Ambiguous, needs IP review
+
+Be conservative - when in doubt, recommend review rather than auto-classifying.

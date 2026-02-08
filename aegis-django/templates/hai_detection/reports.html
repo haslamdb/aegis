@@ -1,0 +1,171 @@
+{% extends "hai_detection/base.html" %}
+
+{% block content %}
+<h2>HAI Reports &amp; Analytics</h2>
+
+<div class="filters">
+    <form method="get">
+        <label>Time Period:</label>
+        <select name="period" onchange="this.form.submit()">
+            <option value="7" {% if period == '7' %}selected{% endif %}>7 days</option>
+            <option value="30" {% if period == '30' %}selected{% endif %}>30 days</option>
+            <option value="90" {% if period == '90' %}selected{% endif %}>90 days</option>
+            <option value="365" {% if period == '365' %}selected{% endif %}>1 year</option>
+        </select>
+    </form>
+</div>
+
+{# Summary Stats #}
+<div class="stats-row">
+    <div class="stat-box confirmed-stat">
+        <div class="stat-value">{{ stats.total_confirmed }}</div>
+        <div class="stat-label">Confirmed HAI</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #e74c3c;">
+        <div class="stat-value" style="color: #e74c3c;">{{ stats.total_rejected }}</div>
+        <div class="stat-label">Not HAI</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #34495e;">
+        <div class="stat-value" style="color: #34495e;">{{ stats.total_reviewed }}</div>
+        <div class="stat-label">Total Reviewed</div>
+    </div>
+    <div class="stat-box accuracy-stat">
+        <div class="stat-value">{{ stats.confirmation_rate }}%</div>
+        <div class="stat-label">HAI Rate</div>
+    </div>
+</div>
+
+{# HAI Rates by Type #}
+<h3>HAI by Type</h3>
+{% if stats.by_type %}
+<table>
+    <tr>
+        <th>HAI Type</th>
+        <th>Confirmed</th>
+        <th>Total Reviewed</th>
+        <th>Rate</th>
+    </tr>
+    {% for item in stats.by_type %}
+    <tr>
+        <td><span class="badge {{ item.hai_type|lower }}">{{ item.hai_type|upper }}</span></td>
+        <td>{{ item.confirmed }}</td>
+        <td>{{ item.total }}</td>
+        <td>
+            {% if item.total > 0 %}
+                {% widthratio item.confirmed item.total 100 %}%
+            {% else %}
+                0%
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No HAI data available for this period.</p>
+{% endif %}
+
+{# LLM Accuracy Metrics #}
+<h3>LLM Classification Quality</h3>
+{% if override_stats and override_stats.completed_reviews > 0 %}
+<div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px;">
+    <div class="stat-box" style="border-top: 4px solid #27ae60;">
+        <div class="stat-value" style="color: #27ae60; font-size: 24px;">{{ override_stats.completed_reviews }}</div>
+        <div class="stat-label">Completed Reviews</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #3498db;">
+        <div class="stat-value" style="color: #3498db; font-size: 24px;">{{ override_stats.acceptance_rate_pct|default:"--" }}%</div>
+        <div class="stat-label">LLM Acceptance Rate</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #f39c12;">
+        <div class="stat-value" style="color: #f39c12; font-size: 24px;">{{ override_stats.total_overrides }}</div>
+        <div class="stat-label">IP Overrides</div>
+    </div>
+    <div class="stat-box" style="border-top: 4px solid #e74c3c;">
+        <div class="stat-value" style="color: #e74c3c; font-size: 24px;">{{ override_stats.override_rate_pct|default:"--" }}%</div>
+        <div class="stat-label">Override Rate</div>
+    </div>
+</div>
+
+{# Override Rate by LLM Decision #}
+{% if override_stats.by_llm_decision %}
+<h4>Override Rate by LLM Decision</h4>
+<table>
+    <tr>
+        <th>LLM Said</th>
+        <th>Total</th>
+        <th>Overrides</th>
+        <th>Rate</th>
+    </tr>
+    {% for decision, data in override_stats.by_llm_decision.items %}
+    <tr>
+        <td>
+            {% if decision == 'hai_confirmed' %}
+                <span class="badge" style="background: #27ae60;">HAI</span>
+            {% elif decision == 'not_hai' %}
+                <span class="badge" style="background: #95a5a6;">Not HAI</span>
+            {% elif decision == 'pending_review' %}
+                <span class="badge" style="background: #f39c12;">Uncertain</span>
+            {% else %}
+                <span class="badge">{{ decision }}</span>
+            {% endif %}
+        </td>
+        <td>{{ data.total }}</td>
+        <td>{{ data.overrides }}</td>
+        <td style="{% if data.override_rate_pct <= 20 %}color: #27ae60;{% elif data.override_rate_pct <= 40 %}color: #f39c12;{% else %}color: #e74c3c;{% endif %} font-weight: bold;">
+            {{ data.override_rate_pct }}%
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% else %}
+<p>No reviewed cases yet. LLM quality metrics will appear after IP reviews are submitted.</p>
+{% endif %}
+
+{# Recent Overrides #}
+{% if recent_overrides %}
+<h3>Recent IP Overrides</h3>
+<table>
+    <tr>
+        <th>Date</th>
+        <th>Patient</th>
+        <th>HAI Type</th>
+        <th>Organism</th>
+        <th>LLM Decision</th>
+        <th>IP Decision</th>
+        <th>Override Reason</th>
+    </tr>
+    {% for override in recent_overrides %}
+    <tr>
+        <td>{{ override.reviewed_at|date:"Y-m-d" }}</td>
+        <td>{{ override.patient_mrn }}</td>
+        <td>
+            <span class="badge {{ override.hai_type|lower }}">{{ override.hai_type|upper }}</span>
+        </td>
+        <td>{{ override.organism|default:"Unknown" }}</td>
+        <td>
+            {% if override.llm_decision == 'hai_confirmed' %}
+                <span class="badge" style="background: #27ae60;">HAI</span>
+            {% elif override.llm_decision == 'not_hai' %}
+                <span class="badge" style="background: #95a5a6;">Not HAI</span>
+            {% else %}
+                <span class="badge">{{ override.llm_decision }}</span>
+            {% endif %}
+        </td>
+        <td>
+            {% if override.reviewer_decision == 'confirmed' %}
+                <span class="badge" style="background: #27ae60;">Confirmed</span>
+            {% elif override.reviewer_decision == 'rejected' %}
+                <span class="badge" style="background: #e74c3c;">Rejected</span>
+            {% else %}
+                <span class="badge">{{ override.reviewer_decision }}</span>
+            {% endif %}
+        </td>
+        <td>{{ override.override_reason_category|default:"-" }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,363 @@
+{% extends "hai_detection/base.html" %}
+
+{% block content %}
+<h2>
+    <span class="badge {{ candidate.hai_type|lower }}">{{ candidate.get_hai_type_display }}</span>
+    Candidate Detail
+    <span class="badge {{ candidate.status|lower }}" style="font-size: 14px;">{{ candidate.get_status_display }}</span>
+</h2>
+
+<div class="detail-layout">
+    <div class="detail-main">
+        {# Patient Information #}
+        <div class="patient-info">
+            <h4 style="margin-top: 0;">Patient Information</h4>
+            {% if candidate.patient_name %}
+            <p><strong>Name:</strong> {{ candidate.patient_name }}</p>
+            {% endif %}
+            <p><strong>MRN:</strong> {{ candidate.patient_mrn }}</p>
+            {% if candidate.patient_location %}
+            <p><strong>Location:</strong> {{ candidate.patient_location }}</p>
+            {% endif %}
+        </div>
+
+        {# Culture / Device Section - varies by HAI type #}
+        <div class="alert-box">
+            <h4 style="margin-top: 0;">
+                {% if candidate.hai_type == 'SSI' %}Specimen
+                {% elif candidate.hai_type == 'CDI' %}Test
+                {% else %}Culture
+                {% endif %} &amp; Device Information
+            </h4>
+
+            {% if candidate.organism %}
+            <p><strong>Organism:</strong> {{ candidate.organism }}</p>
+            {% endif %}
+            {% if candidate.culture_date %}
+            <p><strong>Culture Date:</strong> {{ candidate.culture_date|date:"Y-m-d H:i" }}</p>
+            {% endif %}
+            {% if candidate.culture_source %}
+            <p><strong>Source:</strong> {{ candidate.culture_source }}</p>
+            {% endif %}
+
+            {# CLABSI-specific #}
+            {% if candidate.hai_type == 'CLABSI' %}
+                {% if candidate.details.line_type %}
+                <p><strong>Line Type:</strong> {{ candidate.details.line_type }}</p>
+                {% endif %}
+                {% if candidate.details.line_site %}
+                <p><strong>Line Site:</strong> {{ candidate.details.line_site }}</p>
+                {% endif %}
+            {% endif %}
+
+            {# CAUTI-specific #}
+            {% if candidate.hai_type == 'CAUTI' %}
+                {% if candidate.details.catheter_type %}
+                <p><strong>Catheter Type:</strong> {{ candidate.details.catheter_type }}</p>
+                {% endif %}
+            {% endif %}
+
+            {# SSI-specific #}
+            {% if candidate.hai_type == 'SSI' %}
+                {% if candidate.details.procedure_name %}
+                <p><strong>Procedure:</strong> {{ candidate.details.procedure_name }}</p>
+                {% endif %}
+                {% if candidate.details.procedure_date %}
+                <p><strong>Procedure Date:</strong> {{ candidate.details.procedure_date }}</p>
+                {% endif %}
+                {% if candidate.details.wound_class %}
+                <p><strong>Wound Class:</strong> {{ candidate.details.wound_class }}</p>
+                {% endif %}
+            {% endif %}
+
+            {# VAE-specific #}
+            {% if candidate.hai_type == 'VAE' %}
+                {% if candidate.details.ventilator_start %}
+                <p><strong>Ventilator Start:</strong> {{ candidate.details.ventilator_start }}</p>
+                {% endif %}
+            {% endif %}
+
+            {# CDI-specific #}
+            {% if candidate.hai_type == 'CDI' %}
+                {% if candidate.details.test_type %}
+                <p><strong>Test Type:</strong> {{ candidate.details.test_type }}</p>
+                {% endif %}
+                {% if candidate.details.onset_type %}
+                <p><strong>Onset Classification:</strong> {{ candidate.details.onset_type }}</p>
+                {% endif %}
+                {% if candidate.details.specimen_day %}
+                <p><strong>Specimen Day:</strong> {{ candidate.details.specimen_day }}</p>
+                {% endif %}
+            {% endif %}
+
+            {% if candidate.device_days is not None %}
+            <p><strong>Device Days:</strong> {{ candidate.device_days }}</p>
+            {% endif %}
+        </div>
+
+        {# LLM Classification Section #}
+        {% if classification %}
+        <div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 5px solid #c0392b; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <h4 style="margin-top: 0;">LLM Classification</h4>
+            <div style="margin-bottom: 10px;">
+                <span class="badge {{ classification.decision|lower }}" style="font-size: 14px; padding: 6px 12px;">
+                    {% if classification.decision == 'hai_confirmed' %}HAI Confirmed
+                    {% elif classification.decision == 'not_hai' %}Not HAI
+                    {% else %}{{ classification.decision }}
+                    {% endif %}
+                </span>
+                <span style="margin-left: 15px; font-size: 16px; font-weight: bold;">
+                    {{ classification.confidence }}% confidence
+                </span>
+            </div>
+
+            {# Confidence bar #}
+            <div style="width: 100%; height: 12px; background: #ecf0f1; border-radius: 6px; margin: 10px 0;">
+                <div style="width: {{ classification.confidence }}%; height: 100%; border-radius: 6px;"
+                     class="{% if classification.confidence >= 80 %}confidence-high{% elif classification.confidence >= 50 %}confidence-medium{% else %}confidence-low{% endif %}"></div>
+            </div>
+
+            {% if classification.reasoning %}
+            <p style="margin: 10px 0;"><strong>Reasoning:</strong> {{ classification.reasoning }}</p>
+            {% endif %}
+
+            {# Supporting Evidence #}
+            {% if classification.supporting_evidence %}
+            <div style="background: #d4edda; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                <strong>Supporting Evidence:</strong>
+                <ul style="margin: 5px 0;">
+                    {% for evidence in classification.supporting_evidence %}
+                    <li>{{ evidence }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {# Contradicting Evidence #}
+            {% if classification.contradicting_evidence %}
+            <div style="background: #f8d7da; padding: 10px; border-radius: 4px; margin: 10px 0;">
+                <strong>Contradicting Evidence:</strong>
+                <ul style="margin: 5px 0;">
+                    {% for evidence in classification.contradicting_evidence %}
+                    <li>{{ evidence }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {# Extraction Data (expandable) #}
+            {% if classification.extraction_data %}
+            <details style="margin-top: 10px;">
+                <summary style="cursor: pointer; color: #7f8c8d; font-size: 13px;">View extraction data (click to expand)</summary>
+                <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 13px;">
+                    {% if classification.extraction_data.symptoms %}
+                    <p><strong>Symptoms:</strong></p>
+                    <ul>
+                        {% for symptom in classification.extraction_data.symptoms %}
+                        <li>{{ symptom }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    {% if classification.extraction_data.line_assessment %}
+                    <p><strong>Line Assessment:</strong></p>
+                    <ul>
+                        {% if classification.extraction_data.line_assessment.line_present is not None %}
+                        <li>Line Present: {% if classification.extraction_data.line_assessment.line_present %}Yes{% else %}No{% endif %}</li>
+                        {% endif %}
+                        {% if classification.extraction_data.line_assessment.line_type %}
+                        <li>Line Type: {{ classification.extraction_data.line_assessment.line_type }}</li>
+                        {% endif %}
+                        {% if classification.extraction_data.line_assessment.days_in_place %}
+                        <li>Days In Place: {{ classification.extraction_data.line_assessment.days_in_place }}</li>
+                        {% endif %}
+                    </ul>
+                    {% endif %}
+                    {% if classification.extraction_data.mbi_factors %}
+                    <p><strong>MBI Factors:</strong></p>
+                    <ul>
+                        {% if classification.extraction_data.mbi_factors.mucositis_documented %}
+                        <li>Mucositis: {{ classification.extraction_data.mbi_factors.mucositis_grade|default:"documented" }}</li>
+                        {% endif %}
+                        {% if classification.extraction_data.mbi_factors.gvhd_documented %}
+                        <li>GVHD: documented</li>
+                        {% endif %}
+                        {% if classification.extraction_data.mbi_factors.neutropenia_present %}
+                        <li>Neutropenia: ANC {{ classification.extraction_data.mbi_factors.anc_value }}</li>
+                        {% endif %}
+                    </ul>
+                    {% endif %}
+                    {% if classification.extraction_data.documented_infection_sites %}
+                    <p><strong>Documented Infection Sites:</strong></p>
+                    <ul>
+                        {% for site in classification.extraction_data.documented_infection_sites %}
+                        <li>{{ site.site_type }}: {{ site.confidence }} ({{ site.evidence_source }})</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+            </details>
+            {% endif %}
+
+            {% if classification.model_used %}
+            <p style="color: #7f8c8d; font-size: 12px; margin-top: 10px;">
+                Model: {{ classification.model_used }}
+                {% if classification.prompt_version %} | Prompt: v{{ classification.prompt_version }}{% endif %}
+                {% if classification.created_at %} | {{ classification.created_at|date:"Y-m-d H:i" }}{% endif %}
+            </p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {# Review History #}
+        <h3>Review History</h3>
+        {% if reviews %}
+        <div>
+            {% for entry in reviews %}
+            <div class="audit-log">
+                <strong>{{ entry.reviewed_at|date:"Y-m-d H:i:s" }}</strong> -
+                <span class="badge" style="background: {% if entry.decision == 'confirmed' %}#27ae60{% elif entry.decision == 'rejected' %}#e74c3c{% elif entry.decision == 'needs_more_info' %}#9b59b6{% else %}#34495e{% endif %};">
+                    {{ entry.decision }}
+                </span>
+                by {{ entry.reviewer }}
+                {% if entry.is_override %}
+                    <span class="badge" style="background: #f39c12;">OVERRIDE</span>
+                    {% if entry.override_reason_category %}
+                    <br><small>Override reason: {{ entry.override_reason_category }}</small>
+                    {% endif %}
+                {% endif %}
+                {% if entry.notes %}<br><small>Notes: {{ entry.notes }}</small>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>No reviews yet.</p>
+        {% endif %}
+    </div>
+
+    {# Sidebar - Review Form #}
+    <div class="detail-sidebar">
+        {% if candidate.status == 'pending_review' or candidate.status == 'classified' %}
+        <div class="action-card">
+            <h4 style="margin-top: 0;">IP Review Decision</h4>
+            <form method="post" action="{% url 'hai_detection:api_submit_review' candidate.id %}" id="review-form">
+                {% csrf_token %}
+
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; padding: 8px; background: #f0fdf4; border: 2px solid transparent; border-radius: 4px; cursor: pointer; margin-bottom: 5px;">
+                        <input type="radio" name="decision" value="confirmed" required>
+                        <strong style="color: #27ae60;">Confirm HAI</strong>
+                    </label>
+                    <label style="display: block; padding: 8px; background: #fef2f2; border: 2px solid transparent; border-radius: 4px; cursor: pointer; margin-bottom: 5px;">
+                        <input type="radio" name="decision" value="rejected">
+                        <strong style="color: #e74c3c;">Not HAI</strong>
+                    </label>
+                    <label style="display: block; padding: 8px; background: #f5f3ff; border: 2px solid transparent; border-radius: 4px; cursor: pointer; margin-bottom: 5px;">
+                        <input type="radio" name="decision" value="needs_more_info">
+                        <strong style="color: #9b59b6;">Needs More Info</strong>
+                    </label>
+                </div>
+
+                {# Override tracking - shown when disagreeing with LLM #}
+                <div id="override-section" style="display: none; background: #fff3cd; padding: 10px; border-radius: 4px; margin-bottom: 10px; border: 1px solid #f39c12;">
+                    <p style="margin: 0 0 8px 0; font-size: 13px; color: #856404;">
+                        <strong>You are overriding the LLM classification.</strong> Please indicate why:
+                    </p>
+                    <select name="override_reason_category" style="width: 100%; padding: 5px; margin-bottom: 8px;">
+                        <option value="">-- Select a reason --</option>
+                        <option value="extraction_error">Extraction Error - LLM misread the notes</option>
+                        <option value="rules_error">Rules Error - Classification logic was wrong</option>
+                        <option value="clinical_judgment">Clinical Judgment - Context not in notes</option>
+                        <option value="missing_documentation">Missing Documentation - Key info unavailable</option>
+                        <option value="nhsn_interpretation">NHSN Interpretation - Different criteria reading</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 10px;">
+                    <label><strong>Notes:</strong></label>
+                    <textarea name="notes" rows="3" placeholder="Additional details about your decision..."
+                              style="width: 100%; padding: 5px; margin-top: 5px;"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Review</button>
+            </form>
+        </div>
+        {% elif candidate.status == 'confirmed' %}
+        <div class="action-card" style="border-left: 4px solid #27ae60;">
+            <h4 style="margin-top: 0;">Classification Complete</h4>
+            <div style="text-align: center; padding: 15px; background: #f0fdf4; border-radius: 5px;">
+                <div style="font-size: 24px; color: #27ae60;">&#10003;</div>
+                <strong>Confirmed as {{ candidate.get_hai_type_display }}</strong>
+                <p style="color: #7f8c8d; font-size: 13px; margin-top: 5px;">
+                    This candidate has been confirmed and will be reported to NHSN.
+                </p>
+            </div>
+        </div>
+        {% elif candidate.status == 'rejected' %}
+        <div class="action-card" style="border-left: 4px solid #e74c3c;">
+            <h4 style="margin-top: 0;">Classification Complete</h4>
+            <div style="text-align: center; padding: 15px; background: #fef2f2; border-radius: 5px;">
+                <div style="font-size: 24px; color: #e74c3c;">&#10007;</div>
+                <strong>Rejected - Not {{ candidate.get_hai_type_display }}</strong>
+                <p style="color: #7f8c8d; font-size: 13px; margin-top: 5px;">
+                    This candidate was determined not to be a {{ candidate.get_hai_type_display }}.
+                </p>
+            </div>
+        </div>
+        {% elif candidate.status == 'excluded' %}
+        <div class="action-card" style="border-left: 4px solid #95a5a6;">
+            <h4 style="margin-top: 0;">Excluded</h4>
+            <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+                <div style="font-size: 24px; color: #95a5a6;">&mdash;</div>
+                <strong>Excluded</strong>
+                <p style="color: #7f8c8d; font-size: 13px; margin-top: 5px;">
+                    {{ candidate.exclusion_reason|default:"Did not meet initial criteria" }}
+                </p>
+            </div>
+        </div>
+        {% else %}
+        <div class="action-card">
+            <h4 style="margin-top: 0;">Awaiting Classification</h4>
+            <p style="background: #fefce8; padding: 15px; border-radius: 5px; text-align: center; color: #92400e;">
+                Awaiting LLM classification before IP review.
+            </p>
+        </div>
+        {% endif %}
+
+        <div style="margin-top: 15px;">
+            <a href="{% url 'hai_detection:dashboard' %}" class="btn btn-secondary" style="width: 100%; text-align: center;">
+                &larr; Back to Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    // LLM decision for this candidate
+    var llmDecision = '{{ classification.decision|default:"" }}';
+
+    // Detect override and show override reason section
+    var radios = document.querySelectorAll('input[name="decision"]');
+    var overrideSection = document.getElementById('override-section');
+
+    if (radios.length && overrideSection) {
+        radios.forEach(function(radio) {
+            radio.addEventListener('change', function() {
+                var decision = this.value;
+                var isOverride = false;
+
+                if (llmDecision === 'hai_confirmed' && (decision === 'rejected' || decision === 'needs_more_info')) {
+                    isOverride = true;
+                } else if (llmDecision === 'not_hai' && decision === 'confirmed') {
+                    isOverride = true;
+                }
+
+                overrideSection.style.display = isOverride ? 'block' : 'none';
+            });
+        });
+    }
+})();
+</script>
+
+{% endblock %}

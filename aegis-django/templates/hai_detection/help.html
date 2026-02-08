@@ -1,0 +1,128 @@
+{% extends "hai_detection/base.html" %}
+
+{% block content %}
+<h2>HAI Detection - Help &amp; Documentation</h2>
+
+<div style="background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h3>Overview</h3>
+    <p>
+        The HAI Detection module assists Infection Preventionists in identifying and classifying
+        Healthcare-Associated Infections (HAIs) for NHSN reporting. The system uses a four-stage workflow:
+    </p>
+    <ol>
+        <li><strong>Rule-based screening</strong> - Identifies candidates from clinical data</li>
+        <li><strong>LLM fact extraction</strong> - Extracts clinical facts from notes</li>
+        <li><strong>Rules engine</strong> - Applies deterministic NHSN criteria to extracted facts</li>
+        <li><strong>IP Review</strong> - ALL candidates go to IP for final decision</li>
+    </ol>
+
+    <h3>Supported HAI Types</h3>
+
+    <h4 style="color: #c0392b;">CLABSI - Central Line-Associated Bloodstream Infections</h4>
+    <p><strong>NHSN Criteria:</strong></p>
+    <ul>
+        <li>Patient has a central line at time of BSI or within 1 calendar day of line removal</li>
+        <li>Central line was in place for &gt;2 calendar days on the date of event</li>
+        <li>Patient has a laboratory-confirmed bloodstream infection (LCBI)</li>
+        <li>BSI is not secondary to an infection at another site</li>
+    </ul>
+    <p><strong>LCBI Criterion 1 (Pathogen):</strong> Recognized pathogen from blood culture not related to infection at another site</p>
+    <p><strong>LCBI Criterion 2 (Contaminant):</strong> Common skin contaminant from 2+ blood cultures drawn on separate occasions, PLUS fever (&gt;38.0&deg;C), chills, or hypotension</p>
+    <p><strong>Exclusions:</strong> Secondary BSI (same organism at another site), MBI-LCBI (mucosal barrier injury), contamination (single commensal culture)</p>
+
+    <h4 style="color: #e67e22;">SSI - Surgical Site Infections</h4>
+    <p><strong>Surveillance Window:</strong> 30 days standard, 90 days for procedures with implants</p>
+    <ul>
+        <li><strong>Superficial Incisional SSI:</strong> Purulent drainage from superficial incision, organisms from aseptically-obtained culture, or signs (pain, swelling, erythema, heat) with surgeon opening incision</li>
+        <li><strong>Deep Incisional SSI:</strong> Purulent drainage from deep incision, dehiscence or deliberate opening with fever/pain, or abscess found on exam/imaging</li>
+        <li><strong>Organ/Space SSI:</strong> Purulent drainage from organ/space drain, organisms from culture of fluid/tissue, or abscess found on exam/imaging</li>
+    </ul>
+    <p><strong>Wound Classification:</strong> Clean (I), Clean-Contaminated (II), Contaminated (III), Dirty-Infected (IV)</p>
+
+    <h4 style="color: #2980b9;">VAE - Ventilator-Associated Events</h4>
+    <p><strong>NHSN Tiered Classification:</strong></p>
+    <ul>
+        <li><strong>VAC (Tier 1):</strong> Baseline period (&ge;2 days stable ventilation) followed by sustained worsening (FiO2 increase &ge;20% or PEEP increase &ge;3 cmH2O for &ge;2 days)</li>
+        <li><strong>IVAC (Tier 2):</strong> VAC + temperature abnormality (&gt;38&deg;C or &lt;36&deg;C) + WBC abnormality (&ge;12,000 or &le;4,000) + new qualifying antimicrobial for &ge;4 days</li>
+        <li><strong>Possible VAP (Tier 3):</strong> IVAC + purulent secretions OR positive respiratory culture</li>
+        <li><strong>Probable VAP (Tier 3):</strong> IVAC + purulent secretions + quantitative culture meeting threshold (BAL &ge;10^4 CFU/mL, ETA &ge;10^6 CFU/mL)</li>
+    </ul>
+
+    <h4 style="color: #8e44ad;">CAUTI - Catheter-Associated Urinary Tract Infections</h4>
+    <p><strong>NHSN Criteria:</strong></p>
+    <ul>
+        <li>Indwelling urinary catheter in place for &gt;2 calendar days on date of event</li>
+        <li>Positive urine culture: &ge;10^5 CFU/mL with &le;2 organisms (excludes Candida, yeast)</li>
+        <li>At least one qualifying symptom: fever (&gt;38&deg;C), suprapubic tenderness, CVA pain, urgency, frequency, dysuria</li>
+    </ul>
+    <p><strong>Age-Based Fever Rule:</strong> Patients &gt;65 years with fever as sole symptom require catheter &gt;2 days</p>
+    <p><strong>Asymptomatic Bacteriuria:</strong> Positive culture without symptoms - not reported as CAUTI</p>
+
+    <h4 style="color: #16a085;">CDI - Clostridioides difficile Infections</h4>
+    <p><strong>LabID Event Definition:</strong> Positive C. difficile toxin A/B or toxin-producing culture/PCR on unformed stool specimen</p>
+    <p><strong>Onset Classification:</strong></p>
+    <ul>
+        <li><strong>HO-CDI:</strong> Specimen collected &gt;3 days after admission (Day 4+)</li>
+        <li><strong>CO-CDI:</strong> Specimen collected &le;3 days after admission (Days 1-3)</li>
+        <li><strong>CO-HCFA:</strong> CO-CDI with discharge from facility within prior 4 weeks</li>
+    </ul>
+    <p><strong>Recurrence:</strong> &le;14 days = duplicate (not reported), 15-56 days = recurrent, &gt;56 days = new incident</p>
+    <p><strong>Note:</strong> GDH antigen-only results do NOT qualify as a LabID event</p>
+
+    <h3>Detection Workflow</h3>
+    <ol>
+        <li><strong>Candidate Identification:</strong> Rule-based screening identifies potential HAI candidates from clinical data (cultures, device records, procedures)</li>
+        <li><strong>LLM Fact Extraction:</strong> A local LLM (Ollama) reads clinical notes and extracts structured facts - alternate infection sources, symptoms, MBI factors, line assessments</li>
+        <li><strong>Rules Engine:</strong> Deterministic NHSN criteria are applied to the extracted facts to produce a classification with confidence score</li>
+        <li><strong>IP Review Queue:</strong> ALL candidates are routed to IP review regardless of confidence. The LLM classification is displayed as decision support</li>
+        <li><strong>Final Decision:</strong> The Infection Preventionist makes the final determination. Override tracking logs when IP disagrees with LLM</li>
+    </ol>
+
+    <h3>Review Process</h3>
+    <p>When reviewing a candidate, the IP has three options:</p>
+    <ul>
+        <li><strong style="color: #27ae60;">Confirm HAI:</strong> Confirmed healthcare-associated infection. Will be counted and available for NHSN submission</li>
+        <li><strong style="color: #e74c3c;">Not HAI:</strong> Does not meet NHSN criteria. Case will be closed and not reported</li>
+        <li><strong style="color: #9b59b6;">Needs More Info:</strong> Additional information needed. Candidate stays in queue for follow-up</li>
+    </ul>
+    <p>
+        When the IP decision disagrees with the LLM classification, an override reason is captured to improve
+        system quality over time. Override categories include: extraction error, rules error, clinical judgment,
+        missing documentation, NHSN interpretation, and other.
+    </p>
+
+    <h3>LLM Classification</h3>
+    <p>
+        The system uses a two-stage approach: <strong>LLM extraction</strong> followed by <strong>rules engine</strong>.
+    </p>
+    <ul>
+        <li>The LLM extracts facts from clinical notes - it does NOT make classification decisions directly</li>
+        <li>A deterministic rules engine applies NHSN criteria to produce a classification</li>
+        <li>Every decision can be traced to specific criteria for transparency</li>
+        <li>All PHI stays on-premise. The LLM runs locally and no data is sent to external services</li>
+    </ul>
+
+    <h3>API Endpoints</h3>
+    <p>Programmatic access available at:</p>
+    <ul>
+        <li><code>GET /hai-detection/api/stats/</code> - Get dashboard statistics</li>
+        <li><code>GET /hai-detection/api/candidates/</code> - List candidates with filters</li>
+        <li><code>GET /hai-detection/api/candidates/{id}/</code> - Get candidate details</li>
+        <li><code>POST /hai-detection/api/candidates/{id}/review/</code> - Submit IP review</li>
+    </ul>
+
+    <h3>Links</h3>
+    <ul>
+        <li><a href="{% url 'hai_detection:dashboard' %}">Dashboard</a> - Active cases awaiting IP review</li>
+        <li><a href="{% url 'hai_detection:history' %}">History</a> - Completed reviews</li>
+        <li><a href="{% url 'hai_detection:reports' %}">Reports &amp; Analytics</a> - LLM quality metrics and override tracking</li>
+        <li><a href="{% url 'asp_alerts:help' %}">ASP Alerts Help</a> - Help for bacteremia and antimicrobial usage alerts</li>
+    </ul>
+
+    <h3>Support</h3>
+    <p>
+        For technical support or feature requests, contact the AEGIS development team.
+    </p>
+</div>
+
+{% endblock %}

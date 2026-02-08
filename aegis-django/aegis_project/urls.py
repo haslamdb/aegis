@@ -29,4 +29,5 @@ urlpatterns = [
     path('mdro-surveillance/', include('apps.mdro.urls')),
     path('drug-bug/', include('apps.drug_bug.urls')),
     path('dosing/', include('apps.dosing.urls')),
+    path('hai-detection/', include('apps.hai_detection.urls')),
 ]
