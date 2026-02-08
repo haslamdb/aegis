@@ -1,0 +1,61 @@
+# AEGIS Flask Application (Legacy)
+# Used during gradual migration to Django
+
+FROM python:3.11-slim AS base
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN useradd -m -u 1000 -s /bin/bash aegis
+
+# Set working directory
+WORKDIR /app
+
+# Copy common module requirements
+COPY common/ /app/common/
+
+# Copy dashboard requirements
+COPY dashboard/requirements.txt /app/dashboard/
+
+# Install dependencies
+RUN pip install --no-cache-dir \
+    -r dashboard/requirements.txt \
+    gunicorn \
+    psycopg2-binary
+
+# Copy application code
+COPY . /app/
+
+# Fix permissions
+RUN chown -R aegis:aegis /app && \
+    mkdir -p /app/data && \
+    chown -R aegis:aegis /app/data
+
+# Switch to non-root user
+USER aegis
+
+# Expose port
+EXPOSE 8082
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8082/health || exit 1
+
+# Run Flask with gunicorn
+CMD ["gunicorn", "dashboard.app:create_app()", \
+     "--bind", "0.0.0.0:8082", \
+     "--workers", "4", \
+     "--timeout", "60", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-", \
+     "--log-level", "info"]

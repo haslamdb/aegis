@@ -1,0 +1,256 @@
+version: '3.8'
+
+services:
+  # PostgreSQL - Shared database for Flask and Django
+  postgres:
+    image: postgres:15-alpine
+    container_name: aegis-postgres
+    environment:
+      POSTGRES_DB: aegis
+      POSTGRES_USER: aegis_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis_user -d aegis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aegis_network
+
+  # Redis - Celery broker and cache
+  redis:
+    image: redis:7-alpine
+    container_name: aegis-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aegis_network
+
+  # Flask - Legacy application (during migration)
+  flask:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.flask
+    container_name: aegis-flask
+    environment:
+      - FLASK_APP=dashboard.app
+      - FLASK_ENV=development
+      - DATABASE_URL=postgresql://aegis_user:${POSTGRES_PASSWORD}@postgres:5432/aegis
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - ALERT_DB_PATH=/app/data/alerts.db
+      - FHIR_BASE_URL=${FHIR_BASE_URL}
+      - DASHBOARD_BASE_URL=http://localhost:8080
+    volumes:
+      - .:/app
+      - flask_data:/app/data
+      - static_files:/app/dashboard/static
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - aegis_network
+
+  # Django - New application (gradual rollout)
+  django:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.django
+    container_name: aegis-django
+    environment:
+      - DJANGO_SETTINGS_MODULE=aegis_project.settings.development
+      - DATABASE_URL=postgresql://aegis_user:${POSTGRES_PASSWORD}@postgres:5432/aegis
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DEBUG=1
+      - ALLOWED_HOSTS=localhost,127.0.0.1,nginx
+      - FHIR_BASE_URL=${FHIR_BASE_URL}
+    volumes:
+      - ./aegis-django:/app
+      - django_static:/app/staticfiles
+      - django_media:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn aegis_project.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 60 --access-logfile - --error-logfile -"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - aegis_network
+
+  # Celery Worker - Background tasks
+  celery:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.django
+    container_name: aegis-celery
+    environment:
+      - DJANGO_SETTINGS_MODULE=aegis_project.settings.development
+      - DATABASE_URL=postgresql://aegis_user:${POSTGRES_PASSWORD}@postgres:5432/aegis
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - SECRET_KEY=${DJANGO_SECRET_KEY}
+    volumes:
+      - ./aegis-django:/app
+      - celery_logs:/var/log/celery
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      django:
+        condition: service_healthy
+    command: celery -A aegis_project worker --loglevel=info --concurrency=4 --max-tasks-per-child=100
+    restart: unless-stopped
+    networks:
+      - aegis_network
+
+  # Celery Beat - Periodic task scheduler
+  celery-beat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.django
+    container_name: aegis-celery-beat
+    environment:
+      - DJANGO_SETTINGS_MODULE=aegis_project.settings.development
+      - DATABASE_URL=postgresql://aegis_user:${POSTGRES_PASSWORD}@postgres:5432/aegis
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+      - SECRET_KEY=${DJANGO_SECRET_KEY}
+    volumes:
+      - ./aegis-django:/app
+      - celery_beat_schedule:/app/celerybeat-schedule
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      django:
+        condition: service_healthy
+    command: celery -A aegis_project beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    restart: unless-stopped
+    networks:
+      - aegis_network
+
+  # Flower - Celery monitoring UI
+  flower:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.django
+    container_name: aegis-flower
+    environment:
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/1
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery
+    command: celery -A aegis_project flower --port=5555 --basic_auth=${FLOWER_USER}:${FLOWER_PASSWORD}
+    restart: unless-stopped
+    networks:
+      - aegis_network
+
+  # Nginx - Reverse proxy with path-based routing
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: aegis-nginx
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - static_files:/usr/share/nginx/html/static/flask:ro
+      - django_static:/usr/share/nginx/html/static/django:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    ports:
+      - "8080:80"
+      - "8443:443"
+    depends_on:
+      - flask
+      - django
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - aegis_network
+
+  # HAPI FHIR Server (development only)
+  hapi-fhir:
+    image: hapiproject/hapi:latest
+    container_name: aegis-hapi-fhir
+    ports:
+      - "8081:8080"
+    environment:
+      - hapi.fhir.default_encoding=json
+      - hapi.fhir.fhir_version=R4
+      - hapi.fhir.allow_external_references=true
+      - spring.datasource.url=jdbc:postgresql://postgres:5432/fhir
+      - spring.datasource.username=aegis_user
+      - spring.datasource.password=${POSTGRES_PASSWORD}
+      - spring.jpa.hibernate.ddl-auto=update
+    volumes:
+      - hapi_data:/data/hapi
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/fhir/metadata"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - aegis_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  flask_data:
+  static_files:
+  django_static:
+  django_media:
+  celery_logs:
+  celery_beat_schedule:
+  hapi_data:
+
+networks:
+  aegis_network:
+    driver: bridge
