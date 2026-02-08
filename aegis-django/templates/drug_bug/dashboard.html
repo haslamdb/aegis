@@ -1,0 +1,124 @@
+{% extends "drug_bug/base.html" %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-row">
+    <div class="stat-box primary">
+        <div class="stat-value">{{ stats.active_count }}</div>
+        <div class="stat-label">Active Mismatches</div>
+    </div>
+    <div class="stat-box danger">
+        <div class="stat-value">{{ stats.critical_count }}</div>
+        <div class="stat-label">Critical (Resistant)</div>
+    </div>
+    <div class="stat-box warning">
+        <div class="stat-value">{{ stats.warning_count }}</div>
+        <div class="stat-label">Warning</div>
+    </div>
+    <div class="stat-box success">
+        <div class="stat-value">{{ stats.resolved_today }}</div>
+        <div class="stat-label">Resolved Today</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="severity">Severity</label>
+            <select name="severity" id="severity" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="high" {% if current_severity == 'high' %}selected{% endif %}>High</option>
+                <option value="medium" {% if current_severity == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="low" {% if current_severity == 'low' %}selected{% endif %}>Low</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="mismatch_type">Mismatch Type</label>
+            <select name="mismatch_type" id="mismatch_type" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="resistant" {% if current_mismatch_type == 'resistant' %}selected{% endif %}>Resistant ({{ mismatch_counts.resistant }})</option>
+                <option value="intermediate" {% if current_mismatch_type == 'intermediate' %}selected{% endif %}>Intermediate ({{ mismatch_counts.intermediate }})</option>
+                <option value="no_coverage" {% if current_mismatch_type == 'no_coverage' %}selected{% endif %}>No Coverage ({{ mismatch_counts.no_coverage }})</option>
+            </select>
+        </div>
+        {% if current_severity or current_mismatch_type %}
+        <a href="{% url 'drug_bug:dashboard' %}" class="btn btn-secondary btn-sm">Clear Filters</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Active Alerts Table -->
+{% if alerts %}
+<h2>Active Mismatches ({{ alerts|length }})</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Severity</th>
+            <th>Patient</th>
+            <th>Organism</th>
+            <th>Specimen</th>
+            <th>Antibiotic(s)</th>
+            <th>Mismatch</th>
+            <th>Created</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for alert in alerts %}
+        <tr>
+            <td>
+                <span class="badge badge-{{ alert.severity }}">{{ alert.get_severity_display|upper }}</span>
+            </td>
+            <td>
+                <div class="patient-info">
+                    <strong>{{ alert.patient_name|default:"Unknown" }}</strong>
+                    <span class="mrn">{{ alert.patient_mrn|default:"" }}</span>
+                </div>
+            </td>
+            <td>
+                <strong>{{ alert.details.organism|default:"Unknown" }}</strong>
+            </td>
+            <td>
+                {{ alert.details.specimen_type|default:"-" }}
+            </td>
+            <td>
+                {% if alert.details.current_antibiotics %}
+                    {% for abx in alert.details.current_antibiotics %}
+                    <div class="abx-item">
+                        {{ abx.name|default:"Unknown" }}
+                        {% if abx.susceptibility %}
+                        <span class="badge badge-sm {% if abx.susceptibility == 'R' %}badge-danger{% elif abx.susceptibility == 'I' %}badge-warning{% else %}badge-success{% endif %}">
+                            {{ abx.susceptibility }}
+                        </span>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+            </td>
+            <td>
+                {% with mt=alert.details.mismatch_type %}
+                <span class="badge {% if mt == 'resistant' %}badge-danger{% elif mt == 'intermediate' %}badge-warning{% elif mt == 'no_coverage' %}badge-info{% else %}badge-secondary{% endif %}">
+                    {% if mt == 'resistant' %}Resistant{% elif mt == 'intermediate' %}Intermediate{% elif mt == 'no_coverage' %}No Coverage{% else %}{{ mt|default:"Unknown" }}{% endif %}
+                </span>
+                {% endwith %}
+            </td>
+            <td>
+                {{ alert.created_at|date:"m/d H:i" }}
+            </td>
+            <td>
+                <a href="{% url 'asp_alerts:detail' alert_id=alert.id %}" class="btn btn-sm btn-primary">View</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h3>No Active Mismatches</h3>
+    <p>All patients have appropriate antibiotic coverage based on current culture results.</p>
+</div>
+{% endif %}
+{% endblock %}

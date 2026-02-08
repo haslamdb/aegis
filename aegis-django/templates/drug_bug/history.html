@@ -1,0 +1,102 @@
+{% extends "drug_bug/base.html" %}
+
+{% block content %}
+<!-- Filters -->
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label for="severity">Severity</label>
+            <select name="severity" id="severity" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="high" {% if current_severity == 'high' %}selected{% endif %}>High</option>
+                <option value="medium" {% if current_severity == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="low" {% if current_severity == 'low' %}selected{% endif %}>Low</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label for="resolution">Resolution</label>
+            <select name="resolution" id="resolution" onchange="this.form.submit()">
+                <option value="">All</option>
+                {% for value, display in resolution_reasons %}
+                <option value="{{ value }}" {% if current_resolution == value %}selected{% endif %}>{{ display }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if current_severity or current_resolution %}
+        <a href="{% url 'drug_bug:history' %}" class="btn btn-secondary btn-sm">Clear Filters</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Resolved Alerts Table -->
+{% if alerts %}
+<h2>Resolved Mismatches ({{ alerts|length }})</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Severity</th>
+            <th>Patient</th>
+            <th>Organism</th>
+            <th>Specimen</th>
+            <th>Antibiotic(s)</th>
+            <th>Resolution</th>
+            <th>Resolved</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for alert in alerts %}
+        <tr>
+            <td>
+                <span class="badge badge-{{ alert.severity }}">{{ alert.get_severity_display|upper }}</span>
+            </td>
+            <td>
+                <div class="patient-info">
+                    <strong>{{ alert.patient_name|default:"Unknown" }}</strong>
+                    <span class="mrn">{{ alert.patient_mrn|default:"" }}</span>
+                </div>
+            </td>
+            <td>
+                <strong>{{ alert.details.organism|default:"Unknown" }}</strong>
+            </td>
+            <td>
+                {{ alert.details.specimen_type|default:"-" }}
+            </td>
+            <td>
+                {% if alert.details.current_antibiotics %}
+                    {% for abx in alert.details.current_antibiotics %}
+                    <div class="abx-item">
+                        {{ abx.name|default:"Unknown" }}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <span class="text-muted">-</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if alert.resolution_reason %}
+                <span class="resolution-badge">{{ alert.get_resolution_reason_display }}</span>
+                {% else %}
+                <span class="text-muted">-</span>
+                {% endif %}
+            </td>
+            <td>
+                {{ alert.resolved_at|date:"m/d H:i" }}
+                {% if alert.resolved_by %}
+                <div class="resolved-by">by {{ alert.resolved_by.username }}</div>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'asp_alerts:detail' alert_id=alert.id %}" class="btn btn-sm btn-secondary">View</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h3>No Resolved Alerts</h3>
+    <p>No drug-bug mismatch alerts have been resolved yet.</p>
+</div>
+{% endif %}
+{% endblock %}
