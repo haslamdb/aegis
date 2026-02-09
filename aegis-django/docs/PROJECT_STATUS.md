@@ -1,7 +1,7 @@
 # AEGIS Django Migration - Project Status
 
 **Last Updated:** 2026-02-09
-**Phase:** 3 - Module Migration COMPLETE (all 12 modules)
+**Phase:** 4 - Background Tasks & Scheduling COMPLETE
 **Priority:** Active Development
 
 ## Current Status
@@ -101,13 +101,19 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 
 Phase 3 (module migration) is complete. The remaining phases focus on production hardening, integration, and deployment at CCHMC. See `docs/DJANGO_MIGRATION_PLAN.md` for full details.
 
-### Phase 4: Background Tasks & Scheduling
-- [ ] Install Celery 5.x + Redis (broker + result backend)
-- [ ] Create `tasks.py` in each module — convert 13 `--continuous` commands to periodic Celery tasks
-- [ ] Configure `django-celery-beat` for admin-editable scheduling
-- [ ] Task routing: `default` queue for most, `llm` queue for GPU-bound tasks (HAI, ABX Indications, Guidelines)
-- [ ] Keep HL7 ADT listener as systemd service (long-running TCP server, not Celery)
-- [ ] Flower dashboard for task monitoring
+### Phase 4: Background Tasks & Scheduling (COMPLETE)
+- [x] Celery app initialization (`aegis_project/celery.py` + `__init__.py` import)
+- [x] Task routing: 3 queues (`default` FHIR polling, `llm` GPU-bound, `batch` nightly Clarity)
+- [x] Beat schedule: 15 periodic tasks with code-managed defaults
+- [x] Worker tuning: `CELERY_TASK_ACKS_LATE`, `WORKER_PREFETCH_MULTIPLIER=1`
+- [x] Service extraction: `MDROMonitorService`, `DosingMonitorService`, `DrugBugMonitorService`
+- [x] Created `tasks.py` in 10 modules (15 Celery tasks total)
+- [x] Management commands updated to use service classes
+- [x] Flower monitoring dashboard (flower==2.0.1 in requirements)
+- [x] Celery logging configuration (celery + celery.task loggers)
+- [x] 22 unit tests passing (autodiscovery, routing, schedule, all 15 task functions)
+- [x] Operations guide: `docs/CELERY_OPERATIONS.md`
+- [x] HL7 ADT listener stays as systemd service (not converted to Celery)
 
 ### Phase 5: Unified API & Integration
 - [ ] Consolidate 12 module APIs under `/api/v1/` with DRF ViewSets + routers
@@ -383,6 +389,19 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - 104 unit tests passing
 - Twelve modules now migrated total — Phase 3 COMPLETE
 
+**2026-02-09 (cont.):**
+- Completed Phase 4: Background Tasks & Scheduling with Celery
+- Created `aegis_project/celery.py` (Celery app) and updated `__init__.py` (celery_app export)
+- Configured 3 task queues: `default` (4 workers, FHIR polling), `llm` (2 workers, GPU-bound), `batch` (1 worker, nightly Clarity)
+- Beat schedule with 15 periodic tasks: 6 FHIR polling (5-30 min), 7 LLM tasks (5 min - 1 hour), 2 nightly batch (2:00 AM / 3:00 AM)
+- Extracted 3 service classes from management commands: `MDROMonitorService`, `DosingMonitorService`, `DrugBugMonitorService`
+- Created `tasks.py` in 10 modules with consistent pattern: `@shared_task(bind=True, max_retries=3, autoretry_for=..., retry_backoff=True)`
+- Updated 3 management commands to use new service classes (MDRO, dosing, drug-bug)
+- Added Flower monitoring dashboard (flower==2.0.1) to dev and prod requirements
+- Added celery + celery.task loggers to LOGGING config
+- 22 unit tests passing: Celery app integration (autodiscovery, routing, schedule, worker settings) + 15 task function tests
+- Created `docs/CELERY_OPERATIONS.md` with worker startup, queue descriptions, systemd examples, troubleshooting
+
 ### Key Files (Guideline Adherence)
 
 | Component | Location |
@@ -417,3 +436,26 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 | Demo data | `apps/nhsn_reporting/management/commands/create_demo_nhsn.py` |
 | Batch extraction | `apps/nhsn_reporting/management/commands/nhsn_extract.py` |
 | Tests (104) | `apps/nhsn_reporting/tests.py` |
+
+### Key Files (Phase 4 — Celery)
+
+| Component | Location |
+|-----------|----------|
+| Celery app | `aegis_project/celery.py` |
+| Celery init | `aegis_project/__init__.py` |
+| Task routing + beat schedule | `aegis_project/settings/base.py` (CELERY_TASK_ROUTES, CELERY_BEAT_SCHEDULE) |
+| MDRO service | `apps/mdro/services.py` |
+| Dosing service | `apps/dosing/services.py` |
+| Drug-Bug service | `apps/drug_bug/services.py` |
+| HAI tasks | `apps/hai_detection/tasks.py` |
+| Outbreak tasks | `apps/outbreak_detection/tasks.py` |
+| MDRO tasks | `apps/mdro/tasks.py` |
+| Drug-Bug tasks | `apps/drug_bug/tasks.py` |
+| Dosing tasks | `apps/dosing/tasks.py` |
+| Usage tasks | `apps/antimicrobial_usage/tasks.py` |
+| ABX Indications tasks | `apps/abx_indications/tasks.py` |
+| Prophylaxis tasks | `apps/surgical_prophylaxis/tasks.py` |
+| Guideline tasks | `apps/guideline_adherence/tasks.py` |
+| NHSN tasks | `apps/nhsn_reporting/tasks.py` |
+| Celery tests (22) | `apps/core/tests.py` |
+| Operations guide | `docs/CELERY_OPERATIONS.md` |

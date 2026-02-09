@@ -189,6 +189,105 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
+# Worker settings
+CELERY_TASK_ACKS_LATE = True  # Acknowledge after task completes (crash recovery)
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Fair scheduling for long LLM tasks
+
+# Task routing — 3 queues
+CELERY_TASK_ROUTES = {
+    # FHIR polling tasks → default queue
+    'apps.mdro.tasks.*': {'queue': 'default'},
+    'apps.drug_bug.tasks.*': {'queue': 'default'},
+    'apps.dosing.tasks.*': {'queue': 'default'},
+    'apps.antimicrobial_usage.tasks.*': {'queue': 'default'},
+    'apps.surgical_prophylaxis.tasks.*': {'queue': 'default'},
+    'apps.outbreak_detection.tasks.*': {'queue': 'default'},
+    # GPU-bound LLM tasks → llm queue
+    'apps.hai_detection.tasks.*': {'queue': 'llm'},
+    'apps.abx_indications.tasks.*': {'queue': 'llm'},
+    'apps.guideline_adherence.tasks.*': {'queue': 'llm'},
+    # Nightly Clarity batch tasks → batch queue
+    'apps.nhsn_reporting.tasks.*': {'queue': 'batch'},
+}
+
+# Beat schedule — code-managed defaults
+# (django-celery-beat admin available for runtime overrides)
+CELERY_BEAT_SCHEDULE = {
+    # === FHIR polling (default queue) ===
+    'monitor-mdro-every-15m': {
+        'task': 'apps.mdro.tasks.monitor_mdro',
+        'schedule': 900.0,  # 15 minutes
+    },
+    'monitor-drug-bug-every-5m': {
+        'task': 'apps.drug_bug.tasks.monitor_drug_bug',
+        'schedule': 300.0,  # 5 minutes
+    },
+    'monitor-dosing-every-15m': {
+        'task': 'apps.dosing.tasks.monitor_dosing',
+        'schedule': 900.0,  # 15 minutes
+    },
+    'monitor-usage-every-5m': {
+        'task': 'apps.antimicrobial_usage.tasks.monitor_usage',
+        'schedule': 300.0,  # 5 minutes
+    },
+    'monitor-prophylaxis-every-5m': {
+        'task': 'apps.surgical_prophylaxis.tasks.monitor_prophylaxis',
+        'schedule': 300.0,  # 5 minutes
+    },
+    'detect-outbreaks-every-30m': {
+        'task': 'apps.outbreak_detection.tasks.detect_outbreaks',
+        'schedule': 1800.0,  # 30 minutes
+    },
+    # === LLM tasks (llm queue) ===
+    'detect-hai-candidates-every-5m': {
+        'task': 'apps.hai_detection.tasks.detect_hai_candidates',
+        'schedule': 300.0,
+    },
+    'classify-hai-candidates-every-5m': {
+        'task': 'apps.hai_detection.tasks.classify_hai_candidates',
+        'schedule': 300.0,
+    },
+    'check-abx-indications-every-5m': {
+        'task': 'apps.abx_indications.tasks.check_abx_indications',
+        'schedule': 300.0,
+    },
+    'auto-accept-old-indications-hourly': {
+        'task': 'apps.abx_indications.tasks.auto_accept_old_indications',
+        'schedule': 3600.0,  # 1 hour
+    },
+    'check-guideline-triggers-every-5m': {
+        'task': 'apps.guideline_adherence.tasks.check_guideline_triggers',
+        'schedule': 300.0,
+    },
+    'check-guideline-episodes-every-15m': {
+        'task': 'apps.guideline_adherence.tasks.check_guideline_episodes',
+        'schedule': 900.0,
+    },
+    'check-guideline-adherence-every-15m': {
+        'task': 'apps.guideline_adherence.tasks.check_guideline_adherence',
+        'schedule': 900.0,
+    },
+    # === Nightly batch (batch queue) ===
+    # Uses crontab — imported at module level
+    'nhsn-nightly-extract': {
+        'task': 'apps.nhsn_reporting.tasks.nhsn_nightly_extract',
+        'schedule': 'CRONTAB_NHSN_EXTRACT',  # replaced below
+    },
+    'nhsn-create-events': {
+        'task': 'apps.nhsn_reporting.tasks.nhsn_create_events',
+        'schedule': 'CRONTAB_NHSN_EVENTS',  # replaced below
+    },
+}
+
+# Replace crontab placeholders (can't use crontab() directly in dict literal
+# because celery.schedules import happens after celery app init)
+try:
+    from celery.schedules import crontab
+    CELERY_BEAT_SCHEDULE['nhsn-nightly-extract']['schedule'] = crontab(hour=2, minute=0)
+    CELERY_BEAT_SCHEDULE['nhsn-create-events']['schedule'] = crontab(hour=3, minute=0)
+except ImportError:
+    pass  # Celery not installed (e.g., during collectstatic)
+
 # CORS (for frontend development)
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
@@ -245,6 +344,16 @@ LOGGING = {
         },
         'apps.authentication.audit': {
             'handlers': ['audit_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'celery': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'celery.task': {
+            'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': False,
         },

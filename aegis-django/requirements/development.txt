@@ -12,6 +12,9 @@ pytest-django==4.7.0
 pytest-cov==4.1.0
 factory-boy==3.3.0
 
+# Celery monitoring
+flower==2.0.1
+
 # Code quality
 black==24.1.1
 flake8==7.0.0

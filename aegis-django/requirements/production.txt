@@ -7,6 +7,9 @@ gunicorn==21.2.0
 # Monitoring & logging
 sentry-sdk==1.40.0
 
+# Celery monitoring
+flower==2.0.1
+
 # Performance
 django-redis==5.4.0
 whitenoise==6.6.0
