@@ -1,0 +1,128 @@
+{% extends "abx_indications/base.html" %}
+
+{% block title %}Dashboard - ABX Indication Monitoring{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>ABX Indication Monitoring</h1>
+    <p>Antibiotic indication documentation and CCHMC guideline concordance</p>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-row">
+    <div class="stat-card amber">
+        <div class="stat-value">{{ stats.pending_count }}</div>
+        <div class="stat-label">Pending Review</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-value">{{ stats.red_flag_count }}</div>
+        <div class="stat-label">Red Flags</div>
+    </div>
+    <div class="stat-card orange">
+        <div class="stat-value">{{ stats.off_guideline_count }}</div>
+        <div class="stat-label">Off Guideline</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-value">{{ stats.reviewed_today }}</div>
+        <div class="stat-label">Reviewed Today</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card">
+    <div class="card-header">
+        Pending Queue
+        <a href="{% url 'abx_indications:api_export' %}?type=active" class="btn btn-outline btn-sm">Export CSV</a>
+    </div>
+    <div class="card-body">
+        <form method="get" class="filters">
+            <label>Category:</label>
+            <select name="category" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" {% if current_filters.category == cat %}selected{% endif %}>{{ cat|title }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Agent:</label>
+            <select name="agent_category" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="first_line" {% if current_filters.agent_category == 'first_line' %}selected{% endif %}>First Line</option>
+                <option value="alternative" {% if current_filters.agent_category == 'alternative' %}selected{% endif %}>Alternative</option>
+                <option value="off_guideline" {% if current_filters.agent_category == 'off_guideline' %}selected{% endif %}>Off Guideline</option>
+                <option value="not_assessed" {% if current_filters.agent_category == 'not_assessed' %}selected{% endif %}>Not Assessed</option>
+            </select>
+
+            <label>Medication:</label>
+            <select name="medication" onchange="this.form.submit()">
+                <option value="">All Medications</option>
+                {% for med in medications %}
+                <option value="{{ med }}" {% if current_filters.medication == med %}selected{% endif %}>{{ med }}</option>
+                {% endfor %}
+            </select>
+
+            {% if current_filters.category or current_filters.agent_category or current_filters.medication %}
+            <a href="{% url 'abx_indications:dashboard' %}" class="btn btn-sm btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if candidates %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Medication</th>
+                    <th>Syndrome</th>
+                    <th>Confidence</th>
+                    <th>Agent Category</th>
+                    <th>Location</th>
+                    <th>Flags</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in candidates %}
+                <tr>
+                    <td>
+                        <strong>{{ c.patient_name }}</strong><br>
+                        <small style="color: #888;">{{ c.patient_mrn }}</small>
+                    </td>
+                    <td>{{ c.medication_name }}</td>
+                    <td>{{ c.clinical_syndrome_display|default:"Unknown" }}</td>
+                    <td>
+                        <span class="badge {% if c.syndrome_confidence == 'definite' %}badge-first-line{% elif c.syndrome_confidence == 'probable' %}badge-alternative{% else %}badge-off-guideline{% endif %}">
+                            {{ c.syndrome_confidence }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if c.cchmc_agent_category %}
+                        <span class="badge badge-{{ c.cchmc_agent_category|default:'not-assessed' }}">
+                            {{ c.get_cchmc_agent_category_display|default:"—" }}
+                        </span>
+                        {% else %}
+                        <span class="badge badge-info">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ c.location|default:"—" }}</td>
+                    <td>
+                        {% if c.never_appropriate %}<span class="badge badge-red-flag">Never</span>{% endif %}
+                        {% if c.likely_viral %}<span class="badge badge-red-flag">Viral</span>{% endif %}
+                        {% if c.indication_not_documented %}<span class="badge badge-red-flag">No Ind</span>{% endif %}
+                        {% if c.asymptomatic_bacteriuria %}<span class="badge badge-red-flag">ASB</span>{% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'abx_indications:detail' c.id %}" class="btn btn-sm btn-primary">Review</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>No pending candidates</h3>
+            <p>All antibiotic indications have been reviewed.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

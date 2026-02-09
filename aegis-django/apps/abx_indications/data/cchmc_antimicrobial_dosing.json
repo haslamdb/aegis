@@ -1,0 +1,1039 @@
+{
+  "metadata": {
+    "source": "CCHMC Pocket Docs - Common Antimicrobial Dosing 2024",
+    "version": "2024.1",
+    "last_updated": "2024-01-01",
+    "description": "Pediatric antimicrobial dosing guidelines from Cincinnati Children's Hospital",
+    "notes": [
+      "AP = Antipseudomonal activity",
+      "IBW = Ideal Body Weight",
+      "All doses are standard pediatric doses unless otherwise specified"
+    ]
+  },
+  "drugs": [
+    {
+      "drug_id": "acyclovir_iv",
+      "generic_name": "acyclovir",
+      "brand_names": ["Zovirax"],
+      "drug_class": "Antiviral",
+      "route": "IV",
+      "indication_specific": true,
+      "dosing": [
+        {
+          "indication": "CNS infection",
+          "age_group": "0-3 months",
+          "dose_mg_kg": 20,
+          "frequency": "Q8H",
+          "max_single_dose_mg": null,
+          "max_daily_dose_mg": null,
+          "notes": "Use IBW"
+        },
+        {
+          "indication": "CNS infection",
+          "age_group": "3 months - <12 years",
+          "dose_mg_kg": "10-15",
+          "frequency": "Q8H",
+          "max_single_dose_mg": null,
+          "max_daily_dose_mg": null,
+          "notes": "Use IBW, 500 mg/m2 max"
+        },
+        {
+          "indication": "CNS infection",
+          "age_group": ">=12 years",
+          "dose_mg_kg": 10,
+          "frequency": "Q8H",
+          "max_single_dose_mg": null,
+          "max_daily_dose_mg": null,
+          "notes": "Use IBW, 500 mg/m2 max"
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "amikacin_iv",
+      "generic_name": "amikacin",
+      "brand_names": [],
+      "drug_class": "Aminoglycoside",
+      "route": "IV",
+      "antipseudomonal": true,
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": "5-7.5",
+          "frequency": "Q8H",
+          "max_single_dose_mg": null,
+          "max_daily_dose_mg": null,
+          "notes": "Use IBW. Monitor levels."
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false,
+      "therapeutic_monitoring": true
+    },
+    {
+      "drug_id": "amoxicillin_po",
+      "generic_name": "amoxicillin",
+      "brand_names": ["Amoxil"],
+      "drug_class": "Aminopenicillin",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "S. pneumoniae (AOM, pneumonia, sinusitis)",
+          "age_group": "all",
+          "dose_mg_kg_day": 90,
+          "frequency": "Q8-Q12 (divided)",
+          "max_single_dose_mg": 2000,
+          "notes": "High-dose for resistant pneumococcus"
+        },
+        {
+          "indication": "pharyngitis",
+          "age_group": "all",
+          "dose_mg_kg_day": 50,
+          "frequency": "Q12H or Q24H",
+          "max_single_dose_mg": 1000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "amoxicillin_clavulanate_po",
+      "generic_name": "amoxicillin/clavulanate",
+      "brand_names": ["Augmentin"],
+      "drug_class": "Aminopenicillin + beta-lactamase inhibitor",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "AOM, pneumonia, sinusitis",
+          "age_group": "all",
+          "dose_mg_kg_day": 90,
+          "frequency": "Q6-Q12 (divided)",
+          "max_single_dose_mg": 2000,
+          "formulation": "600/42.9 mg/5mL suspension or 1000/62.5 XR tablets",
+          "notes": "Amoxicillin component dosing"
+        },
+        {
+          "indication": "bites, dental, retropharyngeal abscess",
+          "age_group": "all",
+          "dose_mg_kg": 22.5,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 875,
+          "formulation": "400/57 mg/5mL or 875/125 tablets"
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "amphotericin_b_conventional_iv",
+      "generic_name": "amphotericin B (non-liposomal)",
+      "brand_names": [],
+      "drug_class": "Antifungal",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": "0.5-1",
+          "frequency": "Q24H",
+          "max_single_dose_mg": null,
+          "max_daily_dose_mg_kg": 1.5
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": false,
+      "nephrotoxic": true
+    },
+    {
+      "drug_id": "amphotericin_b_liposomal_iv",
+      "generic_name": "amphotericin B liposomal",
+      "brand_names": ["Ambisome"],
+      "drug_class": "Antifungal",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": "3-5",
+          "frequency": "Q24H",
+          "max_single_dose_mg_kg": 5
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "ampicillin_iv",
+      "generic_name": "ampicillin",
+      "brand_names": [],
+      "drug_class": "Aminopenicillin",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 50,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 3000
+        },
+        {
+          "indication": "meningitis",
+          "age_group": "all",
+          "dose_mg_kg": 100,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 3000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "ampicillin_sulbactam_iv",
+      "generic_name": "ampicillin/sulbactam",
+      "brand_names": ["Unasyn"],
+      "drug_class": "Aminopenicillin + beta-lactamase inhibitor",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 75,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 3000,
+          "notes": "Combined ampicillin + sulbactam dosing"
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "azithromycin_po_iv",
+      "generic_name": "azithromycin",
+      "brand_names": ["Zithromax"],
+      "drug_class": "Macrolide",
+      "route": "PO/IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 10,
+          "frequency": "Day 1, then 5 mg/kg Q24H x 4 days",
+          "max_single_dose_mg": 500,
+          "notes": "Day 1: 500 mg max, Days 2-5: 250 mg max"
+        },
+        {
+          "indication": "pertussis",
+          "age_group": "<6 months",
+          "dose_mg_kg_day": 10,
+          "frequency": "Q24H",
+          "duration_days": 5,
+          "max_single_dose_mg": 500
+        },
+        {
+          "indication": "pertussis",
+          "age_group": ">=6 months",
+          "dose_mg_kg": 10,
+          "frequency": "Day 1, then 5 mg/kg Q24H x 4 days",
+          "max_single_dose_mg": 500
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": true
+    },
+    {
+      "drug_id": "aztreonam_iv",
+      "generic_name": "aztreonam",
+      "brand_names": [],
+      "drug_class": "Monobactam",
+      "route": "IV",
+      "antipseudomonal": true,
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 30,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 2000
+        },
+        {
+          "indication": "CF/meningitis",
+          "age_group": "all",
+          "dose_mg_kg": 50,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 2000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "cefazolin_iv",
+      "generic_name": "cefazolin",
+      "brand_names": ["Ancef"],
+      "drug_class": "1st Gen Cephalosporin",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "non-osteomyelitis",
+          "age_group": "all",
+          "dose_mg_kg": 25,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 2000
+        },
+        {
+          "indication": "osteomyelitis",
+          "age_group": "all",
+          "dose_mg_kg": 33,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 2000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "cefdinir_po",
+      "generic_name": "cefdinir",
+      "brand_names": ["Omnicef"],
+      "drug_class": "3rd Gen Cephalosporin",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 7,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 300
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "cefepime_iv",
+      "generic_name": "cefepime",
+      "brand_names": ["Maxipime"],
+      "drug_class": "4th Gen Cephalosporin",
+      "route": "IV",
+      "antipseudomonal": true,
+      "dosing": [
+        {
+          "indication": "CF, febrile neutropenia, meningitis",
+          "age_group": "all",
+          "dose_mg_kg": 50,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 2000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "cefixime_po",
+      "generic_name": "cefixime",
+      "brand_names": ["Suprax"],
+      "drug_class": "3rd Gen Cephalosporin",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "UTI, pyelonephritis",
+          "age_group": "all",
+          "dose_mg_kg": 8,
+          "frequency": "Q24H",
+          "max_single_dose_mg": 400
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "cefoxitin_iv",
+      "generic_name": "cefoxitin",
+      "brand_names": [],
+      "drug_class": "2nd Gen Cephalosporin (Cephamycin)",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": "30-40",
+          "frequency": "Q6H",
+          "max_single_dose_mg": 2000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "ceftazidime_iv",
+      "generic_name": "ceftazidime",
+      "brand_names": [],
+      "drug_class": "3rd Gen Cephalosporin",
+      "route": "IV",
+      "antipseudomonal": true,
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 50,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 2000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "ceftriaxone_iv_im",
+      "generic_name": "ceftriaxone",
+      "brand_names": ["Rocephin"],
+      "drug_class": "3rd Gen Cephalosporin",
+      "route": "IV/IM",
+      "dosing": [
+        {
+          "indication": "bacteremia, pneumonia, UTI",
+          "age_group": "all",
+          "dose_mg_kg": 50,
+          "frequency": "Q24H",
+          "max_single_dose_mg": 2000
+        },
+        {
+          "indication": "meningitis, empyema",
+          "age_group": "all",
+          "dose_mg_kg": 50,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 2000
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": true,
+      "contraindications": ["neonates with hyperbilirubinemia", "concurrent calcium infusion"]
+    },
+    {
+      "drug_id": "cefuroxime_iv",
+      "generic_name": "cefuroxime",
+      "brand_names": [],
+      "drug_class": "2nd Gen Cephalosporin",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 50,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 2000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "cefuroxime_po",
+      "generic_name": "cefuroxime axetil",
+      "brand_names": ["Ceftin"],
+      "drug_class": "2nd Gen Cephalosporin",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 15,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 500,
+          "notes": "Suspension only dosing"
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "cephalexin_po",
+      "generic_name": "cephalexin",
+      "brand_names": ["Keflex"],
+      "drug_class": "1st Gen Cephalosporin",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 25,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 500
+        },
+        {
+          "indication": "osteomyelitis",
+          "age_group": "all",
+          "dose_mg_kg": 50,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 1500
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "ciprofloxacin_iv",
+      "generic_name": "ciprofloxacin",
+      "brand_names": ["Cipro"],
+      "drug_class": "Fluoroquinolone",
+      "route": "IV",
+      "antipseudomonal": true,
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 10,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 400
+        },
+        {
+          "indication": "CF",
+          "age_group": "all",
+          "dose_mg_kg": 10,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 400
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "ciprofloxacin_po",
+      "generic_name": "ciprofloxacin",
+      "brand_names": ["Cipro"],
+      "drug_class": "Fluoroquinolone",
+      "route": "PO",
+      "antipseudomonal": true,
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": "10-20",
+          "frequency": "Q12H",
+          "max_single_dose_mg": 750
+        },
+        {
+          "indication": "CF",
+          "age_group": "all",
+          "dose_mg_kg": 20,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 1000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "clarithromycin_po",
+      "generic_name": "clarithromycin",
+      "brand_names": ["Biaxin"],
+      "drug_class": "Macrolide",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 7.5,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 500
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "clindamycin_po",
+      "generic_name": "clindamycin",
+      "brand_names": ["Cleocin"],
+      "drug_class": "Lincosamide",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "non-osteomyelitis",
+          "age_group": "all",
+          "dose_mg_kg": 10,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 600,
+          "notes": "Alternative: 7.5 mg/kg Q6H, max 450 mg"
+        },
+        {
+          "indication": "osteomyelitis",
+          "age_group": "all",
+          "dose_mg_kg": 13,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 600
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": true
+    },
+    {
+      "drug_id": "clindamycin_iv",
+      "generic_name": "clindamycin",
+      "brand_names": ["Cleocin"],
+      "drug_class": "Lincosamide",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 10,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 900
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": true
+    },
+    {
+      "drug_id": "doxycycline_po_iv",
+      "generic_name": "doxycycline",
+      "brand_names": ["Vibramycin", "Doryx"],
+      "drug_class": "Tetracycline",
+      "route": "PO/IV",
+      "age_restriction": ">=8 years (except for life-threatening conditions)",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": ">=8 years",
+          "dose_mg_kg": 2,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 100
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": false,
+      "notes": "Can use in <8 years for RMSF, ehrlichiosis, Lyme (short course)"
+    },
+    {
+      "drug_id": "fluconazole_po_iv",
+      "generic_name": "fluconazole",
+      "brand_names": ["Diflucan"],
+      "drug_class": "Antifungal",
+      "route": "PO/IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": "6-12",
+          "frequency": "Q24H",
+          "max_single_dose_mg": 800
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "gentamicin_iv",
+      "generic_name": "gentamicin",
+      "brand_names": [],
+      "drug_class": "Aminoglycoside",
+      "route": "IV",
+      "antipseudomonal": true,
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "term <1 month",
+          "dose_mg_kg": 3,
+          "frequency": "Q24H",
+          "max_single_dose_mg": 160
+        },
+        {
+          "indication": "standard",
+          "age_group": "1-3 months",
+          "dose_mg_kg": 2.5,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 160
+        },
+        {
+          "indication": "standard",
+          "age_group": "3 months - 12 years",
+          "dose_mg_kg": 2.5,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 160
+        },
+        {
+          "indication": "standard",
+          "age_group": ">12 years",
+          "dose_mg_kg": 4.5,
+          "frequency": "Q24H",
+          "max_single_dose_mg": 160
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false,
+      "therapeutic_monitoring": true
+    },
+    {
+      "drug_id": "linezolid_po_iv",
+      "generic_name": "linezolid",
+      "brand_names": ["Zyvox"],
+      "drug_class": "Oxazolidinone",
+      "route": "PO/IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "<12 years",
+          "dose_mg_kg": 10,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 600
+        },
+        {
+          "indication": "standard",
+          "age_group": ">=12 years",
+          "dose_mg_kg": 10,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 600
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": false,
+      "max_duration_weeks": 4,
+      "notes": "Monitor CBC weekly. Avoid tyramine-rich foods."
+    },
+    {
+      "drug_id": "meropenem_iv",
+      "generic_name": "meropenem",
+      "brand_names": ["Merrem"],
+      "drug_class": "Carbapenem",
+      "route": "IV",
+      "antipseudomonal": true,
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 20,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 2000
+        },
+        {
+          "indication": "MDRO/meningitis/CF",
+          "age_group": "all",
+          "dose_mg_kg": 40,
+          "frequency": "Q8H",
+          "max_single_dose_mg": 2000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "metronidazole_po_iv",
+      "generic_name": "metronidazole",
+      "brand_names": ["Flagyl"],
+      "drug_class": "Nitroimidazole",
+      "route": "PO/IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 7.5,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 1000
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": true,
+      "notes": "Not recommended for chronic use due to neurotoxicity risk"
+    },
+    {
+      "drug_id": "micafungin_iv",
+      "generic_name": "micafungin",
+      "brand_names": ["Mycamine"],
+      "drug_class": "Antifungal (Echinocandin)",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "<1 month",
+          "dose_mg_kg": "7-10",
+          "frequency": "Q24H",
+          "max_single_dose_mg": 150
+        },
+        {
+          "indication": "standard",
+          "age_group": "1-4 months",
+          "dose_mg_kg": "5-7",
+          "frequency": "Q24H",
+          "max_single_dose_mg": 150
+        },
+        {
+          "indication": "standard",
+          "age_group": ">4 months",
+          "dose_mg_kg": "3-4",
+          "frequency": "Q24H",
+          "max_single_dose_mg": 150
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "nafcillin_iv",
+      "generic_name": "nafcillin",
+      "brand_names": [],
+      "drug_class": "Anti-Staph Penicillin",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 50,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 3000
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": true
+    },
+    {
+      "drug_id": "penicillin_g_iv",
+      "generic_name": "penicillin G",
+      "brand_names": [],
+      "drug_class": "Penicillin",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_units_kg": 50000,
+          "frequency": "Q4H",
+          "max_single_dose_units": 4000000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "penicillin_g_benzathine_im",
+      "generic_name": "penicillin G benzathine",
+      "brand_names": ["Bicillin LA"],
+      "drug_class": "Penicillin",
+      "route": "IM",
+      "dosing": [
+        {
+          "indication": "strep pharyngitis",
+          "age_group": "<27 kg",
+          "dose_units": "300000-600000",
+          "frequency": "single dose"
+        },
+        {
+          "indication": "strep pharyngitis",
+          "age_group": ">=27 kg",
+          "dose_units": 900000,
+          "frequency": "single dose"
+        },
+        {
+          "indication": "strep pharyngitis",
+          "age_group": "adult",
+          "dose_units": 1200000,
+          "frequency": "single dose"
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "penicillin_vk_po",
+      "generic_name": "penicillin V potassium",
+      "brand_names": [],
+      "drug_class": "Penicillin",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 10,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 500
+        },
+        {
+          "indication": "prophylaxis (asplenia, sickle cell)",
+          "age_group": "all",
+          "dose_mg": "125-250",
+          "frequency": "Q12H",
+          "max_single_dose_mg": 250
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "piperacillin_tazobactam_iv",
+      "generic_name": "piperacillin/tazobactam",
+      "brand_names": ["Zosyn"],
+      "drug_class": "Anti-Pseudomonal Penicillin + beta-lactamase inhibitor",
+      "route": "IV",
+      "antipseudomonal": true,
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 100,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 3375,
+          "notes": "Combined pip + tazo dosing"
+        },
+        {
+          "indication": "CF/HAP",
+          "age_group": "all",
+          "dose_mg_kg": 100,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 4500
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "rifampin_po_iv",
+      "generic_name": "rifampin",
+      "brand_names": ["Rifadin"],
+      "drug_class": "Rifamycin",
+      "route": "PO/IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": 10,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 300
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": true,
+      "drug_interactions": "Potent CYP450 inducer - many drug interactions"
+    },
+    {
+      "drug_id": "tmp_smx_po",
+      "generic_name": "trimethoprim/sulfamethoxazole",
+      "brand_names": ["Bactrim", "Septra"],
+      "drug_class": "Sulfonamide",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "UTI",
+          "age_group": "all",
+          "dose_mg_kg_tmp": 5,
+          "frequency": "Q12H",
+          "max_single_dose_mg_tmp": 160
+        },
+        {
+          "indication": "PCP prophylaxis",
+          "age_group": "all",
+          "dose_mg_kg_tmp": 5,
+          "frequency": "Q12-24H 3x/week",
+          "max_single_dose_mg_tmp": 320
+        },
+        {
+          "indication": "PCP treatment/other serious infections",
+          "age_group": "all",
+          "dose_mg_kg_tmp": 5,
+          "frequency": "Q6-8H",
+          "max_single_dose_mg_tmp": 320,
+          "notes": "PO max; no max for IV"
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false
+    },
+    {
+      "drug_id": "vancomycin_iv",
+      "generic_name": "vancomycin",
+      "brand_names": [],
+      "drug_class": "Glycopeptide",
+      "route": "IV",
+      "dosing": [
+        {
+          "indication": "bacteremia, skin/soft tissue",
+          "age_group": "<1 month",
+          "dose_mg_kg": 15,
+          "frequency": "Q12H",
+          "max_single_dose_mg": null
+        },
+        {
+          "indication": "bacteremia, skin/soft tissue",
+          "age_group": "1 month - 14 years",
+          "dose_mg_kg": 15,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 1000
+        },
+        {
+          "indication": "bacteremia, skin/soft tissue",
+          "age_group": ">14 years",
+          "dose_mg_kg": 15,
+          "frequency": "Q12H",
+          "max_single_dose_mg": 1500
+        },
+        {
+          "indication": "meningitis, osteomyelitis, endocarditis, pneumonia",
+          "age_group": "<1 month",
+          "dose_mg_kg": 15,
+          "frequency": "Q8H",
+          "max_single_dose_mg": null
+        },
+        {
+          "indication": "meningitis, osteomyelitis, endocarditis, pneumonia",
+          "age_group": ">1 month",
+          "dose_mg_kg": 15,
+          "frequency": "Q6H",
+          "max_single_dose_mg": 1000
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": false,
+      "therapeutic_monitoring": true,
+      "notes": "Target trough or AUC-based dosing per institutional protocol"
+    },
+    {
+      "drug_id": "vancomycin_po",
+      "generic_name": "vancomycin",
+      "brand_names": [],
+      "drug_class": "Glycopeptide",
+      "route": "PO",
+      "dosing": [
+        {
+          "indication": "C. difficile - non-severe",
+          "age_group": "pediatric",
+          "dose_mg_kg": 10,
+          "frequency": "QID",
+          "max_single_dose_mg": 125,
+          "duration_days": 10
+        },
+        {
+          "indication": "C. difficile - severe",
+          "age_group": "pediatric",
+          "dose_mg_kg": 10,
+          "frequency": "QID",
+          "max_single_dose_mg": 500,
+          "duration_days": 10
+        }
+      ],
+      "renal_adjustment": false,
+      "hepatic_adjustment": false,
+      "notes": "PO vancomycin only for C. difficile - not absorbed systemically"
+    },
+    {
+      "drug_id": "voriconazole_po_iv",
+      "generic_name": "voriconazole",
+      "brand_names": [],
+      "drug_class": "Antifungal",
+      "route": "PO/IV",
+      "dosing": [
+        {
+          "indication": "standard",
+          "age_group": "all",
+          "dose_mg_kg": "5-7",
+          "frequency": "Q12H",
+          "max_single_dose_mg": 400
+        }
+      ],
+      "renal_adjustment": true,
+      "hepatic_adjustment": true,
+      "therapeutic_monitoring": true,
+      "notes": "IV formulation contains cyclodextrin - avoid in renal impairment"
+    }
+  ]
+}

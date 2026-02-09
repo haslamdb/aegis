@@ -1,0 +1,150 @@
+{% extends "abx_indications/base.html" %}
+
+{% block title %}Help - ABX Indication Monitoring{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>ABX Indication Monitoring Guide</h1>
+    <p>Clinical syndrome taxonomy, workflow reference, and red flag explanations</p>
+</div>
+
+<!-- Workflow Overview -->
+<div class="card">
+    <div class="card-header">Workflow Overview</div>
+    <div class="card-body">
+        <ol style="line-height: 2; padding-left: 1.5rem;">
+            <li><strong>Order Detection</strong> — FHIR MedicationRequest polling detects new antibiotic orders for 21 monitored medications.</li>
+            <li><strong>Note Retrieval</strong> — Recent clinical notes (progress notes, consults, H&Ps) are fetched via FHIR DocumentReference.</li>
+            <li><strong>LLM Extraction</strong> — The LLM extracts the clinical syndrome (e.g., "CAP", "UTI") from the notes, along with confidence level and supporting evidence.</li>
+            <li><strong>Guideline Check</strong> — If the syndrome maps to CCHMC guidelines, the prescribed antibiotic is checked for appropriateness (first-line, alternative, or off-guideline).</li>
+            <li><strong>Alert Creation</strong> — Red flags (no indication, viral illness, never-appropriate) and off-guideline agents generate alerts for pharmacist review.</li>
+            <li><strong>Pharmacist Review</strong> — Review the extracted syndrome, confirm or correct it, and assess agent appropriateness.</li>
+        </ol>
+    </div>
+</div>
+
+<!-- Red Flags -->
+<div class="card">
+    <div class="card-header">Red Flags</div>
+    <div class="card-body">
+        <table class="table">
+            <thead><tr><th>Flag</th><th>Description</th><th>Severity</th><th>Action</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-red-flag">Never Appropriate</span></td>
+                    <td>Antibiotics prescribed for a condition where they are rarely/never indicated (e.g., bronchiolitis, viral URI).</td>
+                    <td><span class="badge badge-critical">Critical</span></td>
+                    <td>Contact prescriber. Recommend discontinuation.</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-red-flag">Likely Viral</span></td>
+                    <td>Clinical notes suggest viral illness but systemic antibiotics were ordered.</td>
+                    <td><span class="badge badge-high">High</span></td>
+                    <td>Review notes. Confirm viral diagnosis. Recommend discontinuation if appropriate.</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-red-flag">No Indication</span></td>
+                    <td>No clinical indication documented in the notes to justify the antibiotic order.</td>
+                    <td><span class="badge badge-high">High</span></td>
+                    <td>Contact prescriber for indication documentation (Joint Commission requirement).</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-red-flag">ASB</span></td>
+                    <td>Positive urine culture without symptoms of UTI (asymptomatic bacteriuria).</td>
+                    <td><span class="badge badge-high">High</span></td>
+                    <td>Treatment not indicated except in pregnancy or pre-urologic procedure.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Agent Categories -->
+<div class="card">
+    <div class="card-header">CCHMC Agent Categories</div>
+    <div class="card-body">
+        <table class="table">
+            <thead><tr><th>Category</th><th>Description</th><th>Alert Level</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><span class="badge badge-first-line">First Line</span></td>
+                    <td>The prescribed antibiotic is a first-line recommendation per CCHMC Pocket Docs guidelines for the identified disease.</td>
+                    <td>No alert</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-alternative">Alternative</span></td>
+                    <td>The prescribed antibiotic is an acceptable alternative per guidelines (e.g., for allergies, clinical context).</td>
+                    <td>No alert</td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-off-guideline">Off Guideline</span></td>
+                    <td>The prescribed antibiotic is not recommended for this indication. Consider de-escalation or change.</td>
+                    <td><span class="badge badge-medium">Medium</span></td>
+                </tr>
+                <tr>
+                    <td><span class="badge badge-not-assessed">Not Assessed</span></td>
+                    <td>No CCHMC guideline exists for this indication, or the syndrome did not map to a guideline disease.</td>
+                    <td>No alert</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Clinical Syndrome Taxonomy -->
+<div class="card">
+    <div class="card-header">Clinical Syndrome Taxonomy ({{ taxonomy_by_category|length }} categories)</div>
+    <div class="card-body">
+        {% for category, syndromes in taxonomy_by_category.items %}
+        <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem; color: #d4a017; text-transform: capitalize;">
+            {{ category|title }}
+        </h3>
+        <table class="table">
+            <thead><tr><th>Syndrome</th><th>ID</th><th>Guidelines</th><th>Notes</th></tr></thead>
+            <tbody>
+                {% for s in syndromes %}
+                <tr>
+                    <td>
+                        {{ s.name }}
+                        {% if s.never_appropriate %}<span class="badge badge-red-flag" style="margin-left: 0.5rem;">Never Appropriate</span>{% endif %}
+                    </td>
+                    <td><code>{{ s.id }}</code></td>
+                    <td>{% if s.has_guidelines %}<span class="badge badge-first-line">Yes</span>{% else %}<span class="badge badge-info">No</span>{% endif %}</td>
+                    <td style="font-size: 0.85rem; color: #666;">{{ s.notes }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Review Decisions -->
+<div class="card">
+    <div class="card-header">Review Decision Guide</div>
+    <div class="card-body">
+        <h3 style="margin-bottom: 0.75rem;">Syndrome Decisions</h3>
+        <table class="table">
+            <thead><tr><th>Decision</th><th>When to Use</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Confirm Syndrome</strong></td><td>The LLM-extracted syndrome is correct. No changes needed.</td></tr>
+                <tr><td><strong>Correct Syndrome</strong></td><td>The LLM extracted the wrong syndrome. Select the correct one from the dropdown.</td></tr>
+                <tr><td><strong>No Indication</strong></td><td>No clinical indication can be identified in the notes.</td></tr>
+                <tr><td><strong>Viral Illness</strong></td><td>The patient has a viral illness; antibiotics are not indicated.</td></tr>
+                <tr><td><strong>Asymptomatic Bacteriuria</strong></td><td>Positive UA/culture but no UTI symptoms documented.</td></tr>
+            </tbody>
+        </table>
+
+        <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Agent Decisions</h3>
+        <table class="table">
+            <thead><tr><th>Decision</th><th>When to Use</th></tr></thead>
+            <tbody>
+                <tr><td><strong>Appropriate</strong></td><td>The prescribed antibiotic is appropriate for the indication.</td></tr>
+                <tr><td><strong>Acceptable</strong></td><td>Not first-line, but acceptable given clinical context.</td></tr>
+                <tr><td><strong>Inappropriate</strong></td><td>The prescribed antibiotic is not appropriate; recommend a change.</td></tr>
+                <tr><td><strong>Skip</strong></td><td>Agent assessment not applicable (e.g., no guideline exists).</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

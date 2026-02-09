@@ -1,0 +1,111 @@
+{% extends "abx_indications/base.html" %}
+
+{% block title %}History - ABX Indication Monitoring{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Reviewed Indications</h1>
+    <p>Previously reviewed antibiotic indication candidates</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        History
+        <a href="{% url 'abx_indications:api_export' %}?type=history&days={{ current_filters.days }}" class="btn btn-outline btn-sm">Export CSV</a>
+    </div>
+    <div class="card-body">
+        <form method="get" class="filters">
+            <label>Category:</label>
+            <select name="category" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="respiratory" {% if current_filters.category == 'respiratory' %}selected{% endif %}>Respiratory</option>
+                <option value="bloodstream" {% if current_filters.category == 'bloodstream' %}selected{% endif %}>Bloodstream</option>
+                <option value="urinary" {% if current_filters.category == 'urinary' %}selected{% endif %}>Urinary</option>
+                <option value="intraabdominal" {% if current_filters.category == 'intraabdominal' %}selected{% endif %}>Intra-abdominal</option>
+                <option value="skin_soft_tissue" {% if current_filters.category == 'skin_soft_tissue' %}selected{% endif %}>Skin/Soft Tissue</option>
+                <option value="cns" {% if current_filters.category == 'cns' %}selected{% endif %}>CNS</option>
+                <option value="bone_joint" {% if current_filters.category == 'bone_joint' %}selected{% endif %}>Bone/Joint</option>
+            </select>
+
+            <label>Agent Decision:</label>
+            <select name="agent_decision" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="appropriate" {% if current_filters.agent_decision == 'appropriate' %}selected{% endif %}>Appropriate</option>
+                <option value="acceptable" {% if current_filters.agent_decision == 'acceptable' %}selected{% endif %}>Acceptable</option>
+                <option value="inappropriate" {% if current_filters.agent_decision == 'inappropriate' %}selected{% endif %}>Inappropriate</option>
+            </select>
+
+            <label>Days:</label>
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if current_filters.days == 7 %}selected{% endif %}>7 days</option>
+                <option value="14" {% if current_filters.days == 14 %}selected{% endif %}>14 days</option>
+                <option value="30" {% if current_filters.days == 30 %}selected{% endif %}>30 days</option>
+                <option value="90" {% if current_filters.days == 90 %}selected{% endif %}>90 days</option>
+            </select>
+
+            {% if current_filters.category or current_filters.agent_decision %}
+            <a href="{% url 'abx_indications:history' %}?days={{ current_filters.days }}" class="btn btn-sm btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if candidates %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Medication</th>
+                    <th>Syndrome</th>
+                    <th>Agent Category</th>
+                    <th>Review Decision</th>
+                    <th>Reviewed</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in candidates %}
+                <tr>
+                    <td>
+                        <strong>{{ c.patient_name }}</strong><br>
+                        <small style="color: #888;">{{ c.patient_mrn }}</small>
+                    </td>
+                    <td>{{ c.medication_name }}</td>
+                    <td>{{ c.clinical_syndrome_display|default:"Unknown" }}</td>
+                    <td>
+                        {% if c.cchmc_agent_category %}
+                        <span class="badge badge-{{ c.cchmc_agent_category }}">{{ c.get_cchmc_agent_category_display }}</span>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% with review=c.latest_review %}
+                        {% if review %}
+                        {{ review.get_syndrome_decision_display }}
+                        {% if review.agent_decision %}
+                        / {{ review.get_agent_decision_display }}
+                        {% endif %}
+                        {% if review.is_override %}
+                        <span class="badge badge-off-guideline">Override</span>
+                        {% endif %}
+                        {% else %}
+                        <span class="badge badge-auto-accepted">Auto</span>
+                        {% endif %}
+                        {% endwith %}
+                    </td>
+                    <td>{{ c.created_at|date:"M d" }}</td>
+                    <td>
+                        <a href="{% url 'abx_indications:detail' c.id %}" class="btn btn-sm btn-secondary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>No reviewed candidates</h3>
+            <p>No indications have been reviewed in the last {{ days }} days.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
