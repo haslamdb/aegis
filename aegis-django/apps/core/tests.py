@@ -1,7 +1,179 @@
-"""Core app tests, including Celery integration tests."""
+"""Core app tests, including Celery integration tests and base model tests."""
+
+import uuid
+from datetime import timedelta
 
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from unittest.mock import patch, MagicMock
+
+from apps.alerts.models import Alert, AlertType, AlertStatus, AlertSeverity
+from apps.authentication.models import User, UserRole
+
+
+# =============================================================================
+# Base Model Tests (TimeStampedModel, UUIDModel, SoftDeletableModel, PatientRelatedModel)
+# =============================================================================
+# We test abstract base models via concrete models that inherit from them.
+# Alert inherits UUIDModel + TimeStampedModel + SoftDeletableModel.
+
+
+class TimeStampedModelTests(TestCase):
+    """Test TimeStampedModel via Alert (which inherits it)."""
+
+    def test_created_at_auto_set(self):
+        """created_at is automatically set on creation."""
+        alert = Alert.objects.create(
+            alert_type=AlertType.OTHER,
+            source_module='core_test',
+            source_id='ts-1',
+            title='Timestamp test',
+            summary='Testing timestamps',
+        )
+        self.assertIsNotNone(alert.created_at)
+        self.assertAlmostEqual(
+            alert.created_at, timezone.now(), delta=timedelta(seconds=5)
+        )
+
+    def test_updated_at_auto_set(self):
+        """updated_at is automatically set on creation."""
+        alert = Alert.objects.create(
+            alert_type=AlertType.OTHER,
+            source_module='core_test',
+            source_id='ts-2',
+            title='Timestamp test',
+            summary='Testing timestamps',
+        )
+        self.assertIsNotNone(alert.updated_at)
+
+    def test_updated_at_changes_on_save(self):
+        """updated_at changes when the record is saved."""
+        alert = Alert.objects.create(
+            alert_type=AlertType.OTHER,
+            source_module='core_test',
+            source_id='ts-3',
+            title='Timestamp test',
+            summary='Testing timestamps',
+        )
+        original_updated = alert.updated_at
+        alert.title = 'Updated title'
+        alert.save()
+        alert.refresh_from_db()
+        self.assertGreaterEqual(alert.updated_at, original_updated)
+
+
+class UUIDModelTests(TestCase):
+    """Test UUIDModel via Alert (which inherits it)."""
+
+    def test_uuid_primary_key(self):
+        """Primary key is a UUID."""
+        alert = Alert.objects.create(
+            alert_type=AlertType.OTHER,
+            source_module='core_test',
+            source_id='uuid-1',
+            title='UUID test',
+            summary='Testing UUID PK',
+        )
+        self.assertIsInstance(alert.id, uuid.UUID)
+
+    def test_uuid_unique_across_instances(self):
+        """Each instance gets a unique UUID."""
+        a1 = Alert.objects.create(
+            alert_type=AlertType.OTHER,
+            source_module='core_test',
+            source_id='uuid-2a',
+            title='UUID test 1',
+            summary='First',
+        )
+        a2 = Alert.objects.create(
+            alert_type=AlertType.OTHER,
+            source_module='core_test',
+            source_id='uuid-2b',
+            title='UUID test 2',
+            summary='Second',
+        )
+        self.assertNotEqual(a1.id, a2.id)
+
+    def test_uuid_not_editable(self):
+        """UUID field is not editable."""
+        field = Alert._meta.get_field('id')
+        self.assertFalse(field.editable)
+
+
+class SoftDeletableModelTests(TestCase):
+    """Test SoftDeletableModel via Alert (which inherits it)."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='deleter', email='del@test.com', password='pass',
+            role=UserRole.ADMIN,
+        )
+        self.alert = Alert.objects.create(
+            alert_type=AlertType.OTHER,
+            source_module='core_test',
+            source_id='sd-1',
+            title='Soft delete test',
+            summary='Testing soft delete',
+        )
+
+    def test_not_deleted_by_default(self):
+        """New records are not deleted."""
+        self.assertFalse(self.alert.is_deleted)
+        self.assertIsNone(self.alert.deleted_at)
+
+    def test_soft_delete(self):
+        """Soft delete sets deleted_at and deleted_by."""
+        self.alert.delete(deleted_by=self.user)
+        self.alert.refresh_from_db()
+        self.assertTrue(self.alert.is_deleted)
+        self.assertIsNotNone(self.alert.deleted_at)
+        self.assertEqual(self.alert.deleted_by, self.user)
+        # Record still exists in DB
+        self.assertTrue(Alert.objects.filter(id=self.alert.id).exists())
+
+    def test_restore(self):
+        """Restore clears deleted_at and deleted_by."""
+        self.alert.delete(deleted_by=self.user)
+        self.alert.restore()
+        self.alert.refresh_from_db()
+        self.assertFalse(self.alert.is_deleted)
+        self.assertIsNone(self.alert.deleted_at)
+        self.assertIsNone(self.alert.deleted_by)
+
+    def test_hard_delete(self):
+        """Hard delete actually removes from DB."""
+        alert_id = self.alert.id
+        self.alert.delete(hard_delete=True)
+        self.assertFalse(Alert.objects.filter(id=alert_id).exists())
+
+    def test_is_deleted_property(self):
+        """is_deleted returns True only when deleted_at is set."""
+        self.assertFalse(self.alert.is_deleted)
+        self.alert.deleted_at = timezone.now()
+        self.assertTrue(self.alert.is_deleted)
+
+
+class PatientRelatedModelTests(TestCase):
+    """Test PatientRelatedModel fields via HAICandidate or IndicationCandidate."""
+
+    def test_patient_fields_exist_on_alert(self):
+        """Alert has patient_id, patient_mrn, patient_name fields."""
+        alert = Alert.objects.create(
+            alert_type=AlertType.CLABSI,
+            source_module='core_test',
+            source_id='pr-1',
+            title='Patient test',
+            summary='Testing patient fields',
+            patient_id='fhir-123',
+            patient_mrn='MRN-001',
+            patient_name='Test Patient',
+            patient_location='G3NE - PICU',
+        )
+        alert.refresh_from_db()
+        self.assertEqual(alert.patient_id, 'fhir-123')
+        self.assertEqual(alert.patient_mrn, 'MRN-001')
+        self.assertEqual(alert.patient_name, 'Test Patient')
+        self.assertEqual(alert.patient_location, 'G3NE - PICU')
 
 
 class CeleryAppTests(TestCase):

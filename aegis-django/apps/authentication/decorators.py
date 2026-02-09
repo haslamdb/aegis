@@ -31,14 +31,15 @@ def role_required(*roles):
         @login_required
         def wrapped_view(request, *args, **kwargs):
             if request.user.role not in roles:
+                role_labels = ', '.join([str(UserRole(r).label) for r in roles])
                 messages.error(
                     request,
                     f"Access denied. This page requires one of the following roles: "
-                    f"{', '.join([UserRole(r).label for r in roles])}"
+                    f"{role_labels}"
                 )
                 raise PermissionDenied(
                     f"User role '{request.user.get_role_display()}' is not authorized. "
-                    f"Required: {', '.join([UserRole(r).label for r in roles])}"
+                    f"Required: {role_labels}"
                 )
             return view_func(request, *args, **kwargs)
         return wrapped_view
