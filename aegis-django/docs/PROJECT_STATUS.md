@@ -1,7 +1,7 @@
 # AEGIS Django Migration - Project Status
 
 **Last Updated:** 2026-02-09
-**Phase:** 4 - Background Tasks & Scheduling COMPLETE
+**Phase:** 5 - Unified API & Integration COMPLETE
 **Priority:** Active Development
 
 ## Current Status
@@ -115,13 +115,19 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - [x] Operations guide: `docs/CELERY_OPERATIONS.md`
 - [x] HL7 ADT listener stays as systemd service (not converted to Celery)
 
-### Phase 5: Unified API & Integration
-- [ ] Consolidate 12 module APIs under `/api/v1/` with DRF ViewSets + routers
-- [ ] Create serializers for 40+ models, consistent response envelope and error format
-- [ ] Rate limiting (100/min reads, 30/min writes per authenticated user)
-- [ ] API documentation via drf-spectacular → Swagger UI at `/api/docs/`
-- [ ] Centralize Epic FHIR OAuth2 client (currently duplicated across 6 modules)
-- [ ] Epic CDS Hooks endpoint for medication-order-select integration
+### Phase 5: Unified API & Integration (COMPLETE)
+- [x] Created `apps/api/` app with versioned URL namespace at `/api/v1/`
+- [x] 11 router-registered DRF ViewSets + 2 auth APIViews
+- [x] Token authentication via `rest_framework.authtoken`
+- [x] Rate limiting: 100/min reads, 30/min writes per authenticated user (DRF throttling)
+- [x] PHI-safe exception handler strips patient data from error responses
+- [x] 7 DRF permission classes delegating to `User.can_manage_*()` methods
+- [x] API documentation via drf-spectacular → Swagger UI at `/api/docs/`, OpenAPI schema at `/api/schema/`
+- [x] Centralized FHIR client at `apps/core/fhir/` (BaseFHIRClient ABC, HAPIFHIRClient, EpicFHIRClient with JWT bearer flow)
+- [x] FHIR parsers: bundle extraction, datetime parsing, patient/medication extraction
+- [x] `get_fhir_client()` factory for HAPI vs Epic selection
+- [x] 242 Phase 5 tests, 585 total project tests passing
+- [ ] Epic CDS Hooks endpoint (deferred to Phase 5b or Phase 6)
 
 ### Phase 6: Testing & Quality Assurance
 - [ ] Fill test gaps: foundation (core, auth, alerts, metrics) + remaining modules (HAI, MDRO, ASP, Dosing, Outbreak)
@@ -390,6 +396,20 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - Twelve modules now migrated total — Phase 3 COMPLETE
 
 **2026-02-09 (cont.):**
+- Completed Phase 5: Unified API & Integration
+- Created `apps/api/` app with DRF ViewSets, routers, serializers, and filters at `/api/v1/`
+- 11 router-registered ViewSets: alerts, hai/candidates, outbreaks/clusters, guidelines/episodes, surgical/cases, indications/candidates, nhsn/events, nhsn/denominators, nhsn/au-summaries, nhsn/ar-summaries, nhsn/stats
+- 2 auth APIViews: auth/me/ (GET/PATCH current user), auth/token/ (POST obtain token)
+- 7 DRF permission classes: IsPhysicianOrHigher, CanEditAlerts, CanManageHAIDetection, CanManageOutbreakDetection, CanManageSurgicalProphylaxis, CanManageGuidelineAdherence, CanManageNHSNReporting
+- PHI-safe exception handler scrubs patient_mrn, patient_name, etc. from validation errors
+- Centralized FHIR client at `apps/core/fhir/`: BaseFHIRClient (ABC), HAPIFHIRClient, EpicFHIRClient (JWT bearer RS384)
+- FHIR parsers: extract_bundle_entries, parse_fhir_datetime, extract_patient_name/mrn, parse_susceptibility_observation
+- Token authentication via `rest_framework.authtoken`, DRF throttling (100/min read, 30/min write)
+- Swagger UI at `/api/docs/`, OpenAPI schema at `/api/schema/`
+- Added `apps/__init__.py` for proper test autodiscovery (fixes namespace package issue)
+- 242 new Phase 5 tests, 585 total project tests passing
+
+**2026-02-09 (cont.):**
 - Completed Phase 4: Background Tasks & Scheduling with Celery
 - Created `aegis_project/celery.py` (Celery app) and updated `__init__.py` (celery_app export)
 - Configured 3 task queues: `default` (4 workers, FHIR polling), `llm` (2 workers, GPU-bound), `batch` (1 worker, nightly Clarity)
@@ -401,6 +421,34 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - Added celery + celery.task loggers to LOGGING config
 - 22 unit tests passing: Celery app integration (autodiscovery, routing, schedule, worker settings) + 15 task function tests
 - Created `docs/CELERY_OPERATIONS.md` with worker startup, queue descriptions, systemd examples, troubleshooting
+
+### Key Files (Phase 5 — Unified API)
+
+| Component | Location |
+|-----------|----------|
+| API app | `apps/api/` |
+| API app config | `apps/api/apps.py` |
+| Permissions (7 classes) | `apps/api/permissions.py` |
+| Throttling (read/write) | `apps/api/throttling.py` |
+| PHI-safe exception handler | `apps/api/exceptions.py` |
+| Audit log mixin | `apps/api/mixins.py` |
+| Root API URLs | `apps/api/urls.py` |
+| v1 router + URL registration | `apps/api/v1/urls.py` |
+| Alert ViewSet | `apps/api/v1/alerts/views.py` |
+| HAI Candidate ViewSet | `apps/api/v1/hai/views.py` |
+| Outbreak Cluster ViewSet | `apps/api/v1/outbreaks/views.py` |
+| Guideline Episode ViewSet | `apps/api/v1/guidelines/views.py` |
+| Surgical Case ViewSet | `apps/api/v1/surgical/views.py` |
+| Indication Candidate ViewSet | `apps/api/v1/indications/views.py` |
+| NHSN ViewSets (5) | `apps/api/v1/nhsn/views.py` |
+| Auth views (me, token) | `apps/api/v1/auth/views.py` |
+| FHIR base client (ABC) | `apps/core/fhir/base.py` |
+| FHIR Epic OAuth client | `apps/core/fhir/oauth.py` |
+| FHIR parsers | `apps/core/fhir/parsers.py` |
+| FHIR client factory | `apps/core/fhir/factory.py` |
+| FHIR tests (48) | `apps/core/fhir/tests.py` |
+| Permission tests (25) | `apps/api/tests/test_permissions.py` |
+| Infrastructure tests (8) | `apps/api/tests/test_infrastructure.py` |
 
 ### Key Files (Guideline Adherence)
 

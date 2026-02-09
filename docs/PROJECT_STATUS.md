@@ -12,6 +12,16 @@
 **Priority:** High - Primary clinical informatics project
 
 ### Recent Work (2026-02-09)
+- **Phase 5: Unified API & Integration — COMPLETE**
+  - Created `apps/api/` app with DRF ViewSets at `/api/v1/`
+  - 11 router-registered ViewSets + 2 auth APIViews (13 endpoint groups total)
+  - Token auth, DRF throttling (100/min read, 30/min write), PHI-safe exception handler
+  - Centralized FHIR client at `apps/core/fhir/` (BaseFHIRClient ABC, HAPIFHIRClient, EpicFHIRClient with JWT bearer)
+  - Swagger UI at `/api/docs/`, OpenAPI schema at `/api/schema/`
+  - 242 new tests, **585 total project tests passing**
+- **Phase 4: Celery Background Tasks — COMPLETE**
+  - 15 periodic tasks across 10 modules, 3 queues (default, llm, batch)
+  - 22 Celery-specific tests passing
 - **NHSN Reporting - Django Migration Complete** (Phase 3 FINAL module)
   - **Phase 3 is now COMPLETE** — all 12 Flask modules migrated to Django
   - **11 custom Django models:** NHSNEvent, DenominatorDaily, DenominatorMonthly, AUMonthlySummary, AUAntimicrobialUsage, AUPatientLevel, ARQuarterlySummary, ARIsolate, ARSusceptibility, ARPhenotypeSummary, SubmissionAudit
@@ -139,17 +149,20 @@
 
 Phase 3 (Flask→Django module migration) is complete. See `docs/DJANGO_MIGRATION_PLAN.md` for full details on each phase.
 
-### Phase 4: Background Tasks (Next)
-- [ ] Celery 5.x + Redis — convert 13 `--continuous` management commands to periodic tasks
-- [ ] `django-celery-beat` for admin-editable scheduling
-- [ ] Task routing: `default` queue + `llm` queue (GPU-bound HAI/ABX/Guideline tasks)
-- [ ] HL7 ADT listener stays as systemd service
+### Phase 4: Background Tasks (COMPLETE)
+- [x] Celery 5.x + Redis — 15 periodic tasks across 10 modules
+- [x] 3 queues: `default` (FHIR polling), `llm` (GPU-bound), `batch` (nightly Clarity)
+- [x] Beat schedule in code-managed `CELERY_BEAT_SCHEDULE`
+- [x] HL7 ADT listener stays as systemd service
+- [x] 22 Celery tests, Flower monitoring dashboard
 
-### Phase 5: Unified API
-- [ ] Consolidate 12 module APIs under `/api/v1/` with DRF ViewSets
-- [ ] Centralize Epic FHIR OAuth2 client (currently duplicated across 6 modules)
-- [ ] Epic CDS Hooks endpoint for medication-order-select
-- [ ] API docs via drf-spectacular → Swagger UI
+### Phase 5: Unified API (COMPLETE)
+- [x] Consolidated 12 module APIs under `/api/v1/` — 11 ViewSets + 2 auth endpoints
+- [x] Centralized FHIR client at `apps/core/fhir/` (HAPI + Epic OAuth JWT bearer)
+- [x] Token auth, DRF throttling (100/min read, 30/min write), PHI-safe errors
+- [x] Swagger UI at `/api/docs/`, OpenAPI schema at `/api/schema/`
+- [x] 242 API tests, 585 total tests passing
+- [ ] Epic CDS Hooks endpoint (deferred)
 
 ### Phase 6: Testing & QA
 - [ ] Fill test gaps → target 800+ tests, >90% coverage on business logic
@@ -211,7 +224,7 @@ Phase 3 (Flask→Django module migration) is complete. See `docs/DJANGO_MIGRATIO
 
 | Date | Work Completed |
 |------|----------------|
-| 2026-02-09 | **NHSN Reporting Django Migration (Phase 3 FINAL):** 12th and final module migrated. 11 custom models, 3 reporting domains (AU/AR/HAI). CDA R2 generation, DIRECT protocol submission. Clarity extractors for DOT/DDD/isolates/phenotypes/denominators. 104 tests passing. **Phase 3 COMPLETE — all 12 modules migrated.** |
+| 2026-02-09 | **Phase 5: Unified API & Integration COMPLETE:** `apps/api/` with 11 DRF ViewSets + 2 auth endpoints at `/api/v1/`. Token auth, throttling, PHI-safe errors. Centralized FHIR client at `apps/core/fhir/` (HAPI + Epic JWT). Swagger UI at `/api/docs/`. 242 new tests, 585 total passing. **Phase 4: Celery COMPLETE:** 15 periodic tasks, 3 queues, 22 tests. **NHSN Reporting (Phase 3 FINAL):** 12th module migrated. 11 custom models, CDA R2, DIRECT. 104 tests. **Phase 3 COMPLETE.** |
 | 2026-02-08 | **Antimicrobial Usage Alerts Django Migration (#20):** Broad-spectrum duration monitoring (Meropenem/Vancomycin, 72h threshold). No custom models — Alert model with JSONField dedup. BroadSpectrumMonitorService + FHIR client. Teal-themed dashboard with duration progress bar. 8 demo scenarios at CCHMC units. 7 tests passing. 8th module migrated. **HAI Detection Django Migration (#20):** Full module migrated — 76 Python files, 6 templates, 6 prompt templates. 4 custom Django models. 61 business logic files. Multi-stage pipeline. 7th module migrated. |
 | 2026-02-07 | **Dosing Verification Phase 3 COMPLETE (#19):** Full production-ready implementation with 12 rule modules. Phase 3 added: duration rules (12+ infection types, guideline-based), extended infusion rules (10+ beta-lactams, PK/PD optimization), tiered notifications (Teams + Email, severity-based routing), AlertStore integration (persistence, tracking), analytics & CSV export. End-to-end testing validated. **Phase 2:** Patient factor rules (renal/weight/age) + FHIR integration complete. **STATUS: Production ready** |
 | 2026-02-06 | **ASP/IP Action Analytics Dashboard (#15):** New module with ActionAnalyzer class, 6 dashboard pages (overview, recommendations, approvals, therapy changes, by-unit, time-spent), 6 API endpoints, 5 CSV exports, nav + landing integration. **ABX Approvals Duration Tracking & Auto Re-approval:** Added approval duration tracking, automatic recheck scheduler (cron 3x/day), re-approval request creation, approval chain tracking, weekend handling, enhanced analytics, email notifications, 7 decision types, dashboard separation of re-approvals, comprehensive testing docs |

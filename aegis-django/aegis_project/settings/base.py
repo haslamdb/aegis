@@ -58,7 +58,7 @@ INSTALLED_APPS = [
     'apps.nhsn_reporting',  # ✅ Phase 3 - NHSN Reporting (final module)
 
     # API
-    # 'apps.api',
+    'apps.api',  # ✅ Phase 5 - Unified REST API
 ]
 
 MIDDLEWARE = [
@@ -171,6 +171,14 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'apps.api.throttling.ReadRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'read': '100/min',
+        'write': '30/min',
+    },
+    'EXCEPTION_HANDLER': 'apps.api.exceptions.phi_safe_exception_handler',
 }
 
 # DRF Spectacular (API documentation)
@@ -178,7 +186,7 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'AEGIS API',
     'DESCRIPTION': 'Antimicrobial Stewardship & Infection Prevention Platform',
     'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
+    'SERVE_INCLUDE_SCHEMA': True,
 }
 
 # Celery Configuration

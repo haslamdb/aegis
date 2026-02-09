@@ -1,0 +1,1 @@
+"""HAI Detection API endpoints."""
