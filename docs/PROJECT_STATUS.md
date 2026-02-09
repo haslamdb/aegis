@@ -135,28 +135,53 @@
 
 ---
 
-## Upcoming Work
+## Upcoming Work — Phases 4-9
 
-### This Week
-- [ ] IS meeting preparation - review integration-requirements.md
-- [ ] Begin CLABSI validation case collection (target: 25 cases)
-- [ ] Begin Indication extraction validation case collection (target: 30 cases)
+Phase 3 (Flask→Django module migration) is complete. See `docs/DJANGO_MIGRATION_PLAN.md` for full details on each phase.
 
-### Next Sprint
-- [ ] Epic FHIR API integration testing
-- [ ] Multi-site analytics data model design
-- [ ] Run validation framework against collected cases
+### Phase 4: Background Tasks (Next)
+- [ ] Celery 5.x + Redis — convert 13 `--continuous` management commands to periodic tasks
+- [ ] `django-celery-beat` for admin-editable scheduling
+- [ ] Task routing: `default` queue + `llm` queue (GPU-bound HAI/ABX/Guideline tasks)
+- [ ] HL7 ADT listener stays as systemd service
+
+### Phase 5: Unified API
+- [ ] Consolidate 12 module APIs under `/api/v1/` with DRF ViewSets
+- [ ] Centralize Epic FHIR OAuth2 client (currently duplicated across 6 modules)
+- [ ] Epic CDS Hooks endpoint for medication-order-select
+- [ ] API docs via drf-spectacular → Swagger UI
+
+### Phase 6: Testing & QA
+- [ ] Fill test gaps → target 800+ tests, >90% coverage on business logic
+- [ ] LLM validation: 25 CLABSI + 30 indication gold standard cases
+- [ ] OWASP ZAP security scan, PHI exposure audit
+- [ ] UAT sign-off from pharmacists, IPs, physicians, admins
+
+### Phase 7: Deployment
+- [ ] PostgreSQL 16 migration (replace SQLite)
+- [ ] Docker Compose (web, celery, redis, postgres, nginx, ollama)
+- [ ] CI/CD: GitHub Actions — test on PR, deploy on merge
+- [ ] Monitoring: Sentry, structured logs, `/health/` endpoint
+
+### Phase 8: CCHMC IT Integration
+- [ ] SSO: Connect SAML backend to CCHMC IdP, AD group → role mapping
+- [ ] Epic FHIR R4 API access, Clarity read-only, HL7 ADT feed, NHSN DIRECT
+- [ ] Security: vulnerability scan, penetration test, CSP nonce-based
+- [ ] HIPAA docs: architecture diagram, risk assessment, DR plan
+
+### Phase 9: Cutover
+- [ ] Flask read-only → data export → PostgreSQL import → DNS switch
+- [ ] 2-week post-cutover monitoring, user feedback
+- [ ] Archive Flask codebase, remove after 30-day grace
 
 ### Backlog
 - [x] CDA generation for NHSN submission - DONE 2026-02-09
-- [ ] HL7 ADT feed integration for surgical prophylaxis
-- [ ] Docker containerization
-- [ ] Allergy delabeling opportunity tracker (#14)
 - [x] ASP/IP Action Analytics Dashboard (#15) - DONE 2026-02-06
+- [ ] Allergy delabeling opportunity tracker (#14)
 - [ ] Epic Communicator integration for secure messaging (#16)
-- [ ] Celery background tasks (alert scanning, auto-recheck)
-- [ ] Unified API consolidation under `/api/v1/`
-- [ ] PostgreSQL migration for production
+- [ ] Multi-site analytics data model design
+- [ ] FHIR Subscription support (R4 topic-based)
+- [ ] SMART on FHIR launch context for EHR-embedded views
 
 ---
 

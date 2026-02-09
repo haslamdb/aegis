@@ -97,21 +97,65 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - [x] Detail view links to existing `asp_alerts:detail` (no duplicate detail page needed)
 - [x] URL routing at `/drug-bug/` with `app_name='drug_bug'`
 
-## Next Steps
+## Next Steps — Phases 4-9
 
-### Immediate (next session)
-- [ ] Unit tests for foundation code (models, views, decorators)
-- [ ] Epic FHIR API integration layer
-- [ ] Celery background tasks (alert scanning, auto-recheck)
+Phase 3 (module migration) is complete. The remaining phases focus on production hardening, integration, and deployment at CCHMC. See `docs/DJANGO_MIGRATION_PLAN.md` for full details.
 
-### Upcoming
-- [ ] Unified API consolidation under `/api/v1/`
-- [ ] Docker containerization and deployment
-- [ ] PostgreSQL migration for production
+### Phase 4: Background Tasks & Scheduling
+- [ ] Install Celery 5.x + Redis (broker + result backend)
+- [ ] Create `tasks.py` in each module — convert 13 `--continuous` commands to periodic Celery tasks
+- [ ] Configure `django-celery-beat` for admin-editable scheduling
+- [ ] Task routing: `default` queue for most, `llm` queue for GPU-bound tasks (HAI, ABX Indications, Guidelines)
+- [ ] Keep HL7 ADT listener as systemd service (long-running TCP server, not Celery)
+- [ ] Flower dashboard for task monitoring
 
-### Lower Priority
-- [ ] CSP `unsafe-inline` removal (nonce-based CSP) in production settings
-- [ ] Remove dead `MultiAuthBackend` class from backends.py
+### Phase 5: Unified API & Integration
+- [ ] Consolidate 12 module APIs under `/api/v1/` with DRF ViewSets + routers
+- [ ] Create serializers for 40+ models, consistent response envelope and error format
+- [ ] Rate limiting (100/min reads, 30/min writes per authenticated user)
+- [ ] API documentation via drf-spectacular → Swagger UI at `/api/docs/`
+- [ ] Centralize Epic FHIR OAuth2 client (currently duplicated across 6 modules)
+- [ ] Epic CDS Hooks endpoint for medication-order-select integration
+
+### Phase 6: Testing & Quality Assurance
+- [ ] Fill test gaps: foundation (core, auth, alerts, metrics) + remaining modules (HAI, MDRO, ASP, Dosing, Outbreak)
+- [ ] Target: 800+ tests, >90% line coverage on business logic
+- [ ] Integration tests: end-to-end FHIR → alert → review → resolution per module
+- [ ] Cross-module tests: HAI → NHSN event → CDA → DIRECT; MDRO → Outbreak cluster
+- [ ] LLM validation: 25 CLABSI + 30 indication gold standard cases (>90% sensitivity target)
+- [ ] Security: OWASP ZAP scan, PHI exposure audit, decorator coverage audit
+- [ ] Performance: 500 patients, 50 concurrent users, page load < 2s, API < 500ms
+- [ ] UAT sign-off from all 4 roles (pharmacist, IP, physician, admin)
+
+### Phase 7: Deployment & Infrastructure
+- [ ] PostgreSQL 16 migration (replace SQLite, import existing data, connection pooling, nightly backups)
+- [ ] Docker Compose: web, celery (2 queues), celery-beat, hl7-listener, redis, postgres, nginx, ollama
+- [ ] TLS: Nginx with HSTS, OCSP stapling (Let's Encrypt or CCHMC cert)
+- [ ] CI/CD: GitHub Actions — test on PR, deploy staging on develop, deploy prod on main (manual gate)
+- [ ] Monitoring: Sentry (errors), structured JSON logs, `/health/` endpoint, uptime monitoring
+
+### Phase 8: CCHMC IT Integration
+- [ ] SSO: Connect SAML backend to CCHMC IdP (ADFS/Azure AD), AD group → role mapping
+- [ ] Epic access: FHIR R4 API (read-only), Clarity (read-only), HL7 ADT feed, NHSN DIRECT registration
+- [ ] Network: deploy on CCHMC internal network, firewall rules, internal DNS (`aegis.cchmc.org`)
+- [ ] Security: vulnerability scan (Qualys/Nessus), penetration test, CSP nonce-based (remove `unsafe-inline`)
+- [ ] HIPAA documentation: security architecture diagram, data flow diagram, risk assessment, DR plan, incident response
+- [ ] User training: guides for pharmacists, IPs, physicians, admins + on-call runbook
+
+### Phase 9: Cutover & Flask Decommission
+- [ ] Pre-cutover checklist: all phases complete, CCHMC approval, UAT signed off
+- [ ] Cutover execution: Flask read-only → data export → PostgreSQL import → DNS switch → verify all 12 modules
+- [ ] Rollback plan: revert DNS within 48 hours if critical issues found
+- [ ] Post-cutover: 2-week monitoring, user feedback, performance tuning
+- [ ] Archive Flask codebase (`flask-final` tag), remove after 30-day grace period
+
+### Backlog (Lower Priority)
+- [ ] Remove dead `MultiAuthBackend` class from `backends.py`
+- [ ] FHIR Subscription support (R4 topic-based) for real-time notifications
+- [ ] SMART on FHIR launch context for EHR-embedded views
+- [ ] Multi-site analytics data model design
+- [ ] Allergy delabeling opportunity tracker (#14)
+- [ ] Epic Communicator integration for secure messaging (#16)
 
 ### Dosing Verification Module (2026-02-08)
 - [x] App scaffolding: `apps/dosing/` with AppConfig (no custom models — uses Alert model)

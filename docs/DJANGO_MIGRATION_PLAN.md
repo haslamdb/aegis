@@ -211,152 +211,409 @@ Apps created: `core`, `authentication`, `alerts`, `metrics`, `notifications`, `a
 
 ---
 
-## Phase 4: Background Tasks & Scheduling (Week 15)
+## Phase 4: Background Tasks & Scheduling
 
-### 4.1 Set Up Celery
-- [ ] Install Celery + Redis/RabbitMQ
-- [ ] Configure Celery workers
-- [ ] Convert cron jobs to Celery periodic tasks:
-  - ABX approvals auto-recheck (3x daily)
-  - HAI detection scan (hourly)
-  - Metrics aggregation (daily)
-  - Auto-accept old alerts (daily)
+**Goal:** Replace cron jobs and `--continuous` management commands with a proper task queue for reliability, monitoring, and scalability.
 
-### 4.2 Configure Django-Q or Celery Beat
-- [ ] Periodic task scheduling
-- [ ] Task monitoring and retry logic
-- [ ] Dead letter queue for failed tasks
+### 4.1 Set Up Celery + Redis
+
+- [ ] Install Celery 5.x + Redis (broker + result backend)
+- [ ] Add `aegis_project/celery.py` with autodiscover
+- [ ] Add `CELERY_*` settings to `settings/base.py` (broker URL, result backend, serializer, timezone)
+- [ ] Create `tasks.py` in each module that has a `--continuous` management command
+
+### 4.2 Convert Management Commands to Celery Tasks
+
+Each module's `--continuous` polling loop becomes a periodic Celery task:
+
+| Module | Current Command | Celery Task | Schedule |
+|--------|----------------|-------------|----------|
+| HAI Detection | `monitor_hai --continuous` | `hai_detection.tasks.scan_for_candidates` | Every 15 min |
+| HAI Detection | `monitor_hai --classify` | `hai_detection.tasks.classify_pending` | Every 30 min |
+| Drug-Bug Mismatch | `monitor_drug_bug --continuous` | `drug_bug.tasks.check_mismatches` | Every 15 min |
+| Dosing Verification | `monitor_dosing --continuous` | `dosing.tasks.evaluate_active_orders` | Every 15 min |
+| Antimicrobial Usage | `monitor_usage --continuous` | `antimicrobial_usage.tasks.check_durations` | Every 30 min |
+| ABX Indications | `monitor_indications --continuous` | `abx_indications.tasks.check_new_orders` | Every 15 min |
+| ABX Indications | `monitor_indications --auto-accept` | `abx_indications.tasks.auto_accept_old` | Daily 6 AM |
+| Surgical Prophylaxis | `monitor_prophylaxis --continuous` | `surgical_prophylaxis.tasks.evaluate_cases` | Every 15 min |
+| Guideline Adherence | `monitor_guidelines --all` | `guideline_adherence.tasks.run_all_monitors` | Every 15 min |
+| Outbreak Detection | `detect_outbreaks --continuous` | `outbreak_detection.tasks.detect_clusters` | Every 60 min |
+| NHSN Reporting | `nhsn_extract --all` | `nhsn_reporting.tasks.monthly_extract` | 1st of month |
+| Metrics | (manual) | `metrics.tasks.aggregate_daily_snapshot` | Daily midnight |
+| Alerts | (manual) | `alerts.tasks.auto_resolve_stale` | Daily 6 AM |
+
+### 4.3 Celery Beat Configuration
+
+- [ ] Use `django-celery-beat` for database-backed schedule (admin-editable)
+- [ ] Configure schedule in Django admin (not hardcoded)
+- [ ] Add `PeriodicTask` entries for all tasks above
+- [ ] Configure retry policy: max 3 retries with exponential backoff
+- [ ] Configure task routing: `default` queue for most, `llm` queue for HAI/ABX/Guideline tasks (GPU-bound)
+- [ ] Dead letter queue for tasks that exceed retry limit → create Alert with type `SYSTEM_ERROR`
+
+### 4.4 HL7 ADT Listener (Surgical Prophylaxis)
+
+- [ ] Keep `run_realtime_prophylaxis` as a systemd service (not Celery — it's a long-running TCP server)
+- [ ] Add health check endpoint that Celery Beat pings every 5 min
+- [ ] Auto-restart via systemd `Restart=always`
+- [ ] Create `surgical_prophylaxis.tasks.check_hl7_listener_health` periodic task
+
+### 4.5 Monitoring & Alerting
+
+- [ ] Flower dashboard for Celery monitoring (or django-celery-results admin)
+- [ ] Alert if task queue depth > 100 (backlog warning)
+- [ ] Alert if task failure rate > 10% in any 1-hour window
+- [ ] Log all task executions with duration, result, and error details
 
 ---
 
-## Phase 5: API & Mobile Support (Week 16)
+## Phase 5: Unified API & Integration
 
-### 5.1 Unified API
-- [ ] Consolidate all module APIs under `/api/v1/`
-- [ ] DRF routers for consistent endpoints
-- [ ] API versioning strategy
-- [ ] Rate limiting per user role
-- [ ] API documentation (Swagger UI)
+**Goal:** Consolidate 12 module APIs into a versioned, documented REST API. Enable Epic FHIR integration and future mobile/third-party access.
 
-### 5.2 API Authentication
-- [ ] Token-based auth for mobile apps
-- [ ] OAuth2 for third-party integrations
-- [ ] API key management
+### 5.1 API Consolidation
+
+Current state: Each module has its own `/api/` endpoints (e.g., `/hai-detection/api/stats/`, `/dosing/api/stats/`). These work but are inconsistent in naming, response format, and error handling.
+
+- [ ] Create `apps/api/` app with versioned URL namespace: `/api/v1/`
+- [ ] DRF DefaultRouter with ViewSets for each module:
+  ```
+  /api/v1/alerts/              — AlertViewSet (list, retrieve, acknowledge, resolve)
+  /api/v1/hai/candidates/      — HAICandidateViewSet (list, retrieve, review)
+  /api/v1/hai/classifications/  — HAIClassificationViewSet (list)
+  /api/v1/dosing/assessments/  — DosingAssessmentViewSet (list, retrieve)
+  /api/v1/drug-bug/mismatches/ — MismatchViewSet (list, retrieve)
+  /api/v1/indications/         — IndicationViewSet (list, retrieve, review)
+  /api/v1/prophylaxis/cases/   — SurgicalCaseViewSet (list, retrieve)
+  /api/v1/guidelines/episodes/ — BundleEpisodeViewSet (list, retrieve, review)
+  /api/v1/outbreaks/clusters/  — OutbreakClusterViewSet (list, retrieve)
+  /api/v1/nhsn/events/         — NHSNEventViewSet (list, retrieve, submit)
+  /api/v1/nhsn/au/             — AUViewSet (list, export)
+  /api/v1/nhsn/ar/             — ARViewSet (list, export)
+  /api/v1/usage/               — UsageAlertViewSet (list, retrieve)
+  /api/v1/metrics/             — MetricsViewSet (overview, by-module)
+  ```
+- [ ] Consistent response envelope: `{"status": "ok", "data": {...}, "count": N}`
+- [ ] Consistent error format: `{"status": "error", "code": "NOT_FOUND", "message": "..."}`
+- [ ] Pagination: `LimitOffsetPagination` (default 50, max 200)
+- [ ] Filtering: `django-filter` for date ranges, status, severity, module-specific fields
+
+### 5.2 Serializers
+
+- [ ] Create DRF serializers for all 40+ models across 12 modules
+- [ ] Nested serializers for related objects (e.g., `AlertSerializer` includes `audit_log`)
+- [ ] Read-only serializers for list views (performance)
+- [ ] Write serializers for review/action endpoints
+- [ ] Validate PHI fields are excluded from public-facing responses
+
+### 5.3 API Authentication & Security
+
+- [ ] Session auth (existing — for browser-based access)
+- [ ] Token auth via DRF `TokenAuthentication` (for scripts, Celery, internal services)
+- [ ] Rate limiting: `django-ratelimit` or DRF throttling
+  - Anonymous: 0 (no anonymous access)
+  - Authenticated: 100/min for reads, 30/min for writes
+  - Admin: 500/min
+- [ ] API key management for future third-party integrations (Epic CDS Hooks)
+- [ ] CORS configuration for future frontend separation
+
+### 5.4 API Documentation
+
+- [ ] drf-spectacular (already installed) → generate OpenAPI 3.0 schema
+- [ ] Swagger UI at `/api/docs/`
+- [ ] ReDoc at `/api/redoc/`
+- [ ] Export schema for Epic integration team review
+
+### 5.5 Epic FHIR Integration Layer
+
+- [ ] Create `apps/integrations/epic/` for shared Epic FHIR client
+- [ ] Centralize OAuth2 client credentials flow (currently duplicated across 6 modules)
+- [ ] FHIR Subscription support for real-time notifications (R4 topic-based)
+- [ ] SMART on FHIR launch context for future EHR-embedded views
+- [ ] Epic CDS Hooks endpoint (`/api/v1/cds-hooks/`) for medication-order-select, order-sign
 
 ---
 
-## Phase 6: Testing & Quality Assurance (Week 17-18)
+## Phase 6: Testing & Quality Assurance
 
-### 6.1 Automated Testing
-- [ ] Unit tests for all models (Django TestCase)
-- [ ] Integration tests for all modules
-- [ ] API tests (DRF test client)
-- [ ] Security tests (OWASP, penetration testing)
-- [ ] Performance tests (load testing)
-- [ ] HIPAA compliance audit
+**Goal:** Comprehensive test coverage, integration testing, and clinical validation before production deployment.
 
-### 6.2 Data Migration Testing
-- [ ] Migrate production data from SQLite to PostgreSQL
-- [ ] Verify data integrity (checksums, counts)
-- [ ] Test rollback procedures
+### 6.1 Current Test Coverage
 
-### 6.3 User Acceptance Testing
-- [ ] Pharmacists test ABX approvals workflow
-- [ ] Infection preventionists test HAI detection
-- [ ] Physicians test read-only access
-- [ ] Admin tests user management
+Tests already written per module:
+
+| Module | Tests | Status |
+|--------|-------|--------|
+| Drug-Bug Mismatch | 7 | Passing |
+| Antimicrobial Usage | 7 | Passing |
+| ABX Indications | 64 | Passing |
+| Surgical Prophylaxis | 66 | Passing |
+| Guideline Adherence | 70 | Passing |
+| NHSN Reporting | 104 | Passing |
+| **Total** | **318** | **All passing** |
+
+### 6.2 Fill Test Gaps
+
+- [ ] Foundation tests: `apps/core/` models (TimeStampedModel, UUIDModel, SoftDeletableModel)
+- [ ] Authentication tests: User model, roles, decorators, session management, SAML/LDAP backends
+- [ ] Alert model tests: CRUD, status transitions, audit log creation, JSONField queries
+- [ ] Metrics tests: ProviderActivity, DailySnapshot aggregation
+- [ ] Notification tests: NotificationLog creation, multi-channel dispatch
+- [ ] Action Analytics tests: ActionAnalyzer methods, API endpoints
+- [ ] ASP Alerts tests: coverage rules, alert type filtering, demo data
+- [ ] MDRO tests: case management, detection logic
+- [ ] HAI Detection tests: candidate detection, LLM mocking, classification pipeline
+- [ ] Outbreak Detection tests: cluster algorithm, ORM data sources
+- [ ] Dosing tests: each of 9 rule modules individually, rules engine orchestration
+- [ ] **Target: 800+ tests total, >90% line coverage on business logic**
+
+### 6.3 Integration Tests
+
+- [ ] End-to-end FHIR polling → alert creation → IP review → resolution for each module
+- [ ] Cross-module: HAI Detection → NHSN Event creation → CDA generation → DIRECT submission
+- [ ] Cross-module: MDRO case creation → Outbreak Detection cluster formation
+- [ ] Celery task execution (use `CELERY_ALWAYS_EAGER=True` for tests)
+- [ ] Template rendering with realistic context data (all 50+ templates)
+
+### 6.4 LLM Validation (Clinical Accuracy)
+
+Uses existing validation framework (`validation/validation_runner.py`):
+
+- [ ] Collect 25 gold standard CLABSI cases from CCHMC records
+- [ ] Collect 30 indication extraction cases from CCHMC pharmacy reviews
+- [ ] Run validation against gold standards, measure precision/recall/F1
+- [ ] Tune LLM prompts based on validation results
+- [ ] Target: >90% sensitivity, >85% specificity for HAI classification
+- [ ] Target: >85% accuracy for indication extraction
+
+### 6.5 Security Testing
+
+- [ ] OWASP ZAP scan against all endpoints
+- [ ] SQL injection testing (ORM should prevent, but verify raw queries in Clarity extractors)
+- [ ] XSS testing on all template input fields
+- [ ] CSRF verification on all POST endpoints
+- [ ] Authentication bypass testing (decorator coverage audit)
+- [ ] PHI exposure audit (ensure no PHI in logs, error messages, API responses without auth)
+
+### 6.6 Performance Testing
+
+- [ ] Load test with realistic data volumes:
+  - 500 active patients, 2,000 active medication orders
+  - 50 concurrent users (10 pharmacists, 5 IPs, 30 physicians, 5 admins)
+  - 12 modules polling simultaneously
+- [ ] Database query optimization (identify N+1 queries, add `select_related`/`prefetch_related`)
+- [ ] Page load targets: dashboard < 2s, detail views < 1s, API < 500ms
+- [ ] LLM latency targets: HAI classification < 30s, indication extraction < 15s
+
+### 6.7 User Acceptance Testing
+
+- [ ] ASP Pharmacists: full approval workflow (new order → review → decision → re-approval chain)
+- [ ] Infection Preventionists: HAI candidate review, outbreak dashboard, NHSN submission
+- [ ] Physicians: read-only dashboard access, alert visibility
+- [ ] Admin: user management, role assignment, system configuration
+- [ ] Create UAT checklist document with pass/fail criteria per role
 
 ---
 
-## Phase 7: Deployment & Infrastructure (Week 19-20)
+## Phase 7: Deployment & Infrastructure
 
-### 7.1 Containerization (Docker)
-```dockerfile
-# Dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-RUN python manage.py collectstatic --noinput
-CMD ["gunicorn", "aegis_project.wsgi:application"]
+**Goal:** Production-grade containerized deployment with PostgreSQL, monitoring, and CI/CD.
+
+### 7.1 PostgreSQL Migration
+
+- [ ] Install PostgreSQL 16 on production server (or use CCHMC-provided instance)
+- [ ] Configure `settings/production.py` with PostgreSQL connection (DATABASE_URL via python-decouple)
+- [ ] Run `python manage.py migrate` against PostgreSQL
+- [ ] Import existing SQLite data: `python manage.py dumpdata | python manage.py loaddata` (or custom migration script)
+- [ ] Verify data integrity: compare record counts, spot-check key records
+- [ ] Configure connection pooling via `django-db-connection-pool` or pgBouncer
+- [ ] Set up nightly backups (pg_dump) and WAL archiving for point-in-time recovery
+- [ ] Enable SSL for database connections
+
+### 7.2 Docker Containerization
+
+Docker Compose services:
+
+```yaml
+services:
+  web:          # Django + Gunicorn (4 workers)
+  celery:       # Celery worker (default queue)
+  celery-llm:   # Celery worker (llm queue, GPU-capable host)
+  celery-beat:  # Celery Beat scheduler
+  hl7-listener: # Surgical prophylaxis HL7 ADT TCP listener
+  redis:        # Celery broker + cache
+  postgres:     # PostgreSQL 16
+  nginx:        # Reverse proxy + static files + TLS termination
+  ollama:       # LLM server (llama3.3:70b, qwen2.5:7b)
 ```
 
-**Docker Compose:**
-- Django app container
-- PostgreSQL container
-- Redis container (Celery)
-- Nginx container (reverse proxy)
-- Celery worker container
+- [ ] Write `Dockerfile` (Python 3.11-slim, multi-stage build, non-root user)
+- [ ] Write `docker-compose.yml` with all services above
+- [ ] Write `docker-compose.prod.yml` override (production secrets, volumes, restart policies)
+- [ ] Configure health checks for all containers
+- [ ] Static files: `collectstatic` in build, served by Nginx
+- [ ] Media files: volume mount for any uploaded documents
+- [ ] Environment variables: `.env` file (not committed), documented in `.env.example`
 
-### 7.2 Infrastructure as Code (Optional)
-- [ ] Terraform or Ansible for provisioning
-- [ ] Kubernetes manifests if deploying to K8s
+### 7.3 TLS & Reverse Proxy
 
-### 7.3 CI/CD Pipeline
-- [ ] GitHub Actions or GitLab CI
-- [ ] Automated testing on PR
-- [ ] Automated deployment to staging
-- [ ] Manual approval for production
+- [ ] Nginx config: TLS 1.2+, HSTS, OCSP stapling
+- [ ] Let's Encrypt certificate for `aegis-asp.com` (or CCHMC-provided cert)
+- [ ] Proxy headers: `X-Forwarded-For`, `X-Forwarded-Proto` for Django `SECURE_PROXY_SSL_HEADER`
+- [ ] Rate limiting at Nginx level (backup to application-level)
+- [ ] Static file caching headers (1 year for hashed assets)
 
-### 7.4 Monitoring & Logging
-- [ ] Set up Sentry for error tracking
-- [ ] Configure logging (syslog, CloudWatch, Splunk)
-- [ ] APM monitoring (New Relic, Datadog)
-- [ ] Health check endpoints
-- [ ] Uptime monitoring
+### 7.4 CI/CD Pipeline
+
+GitHub Actions workflows:
+
+- [ ] **`test.yml`** — On PR: run `python manage.py test` against SQLite, lint with ruff, type-check with mypy
+- [ ] **`deploy-staging.yml`** — On merge to `develop`: build Docker image, push to registry, deploy to staging
+- [ ] **`deploy-prod.yml`** — On merge to `main`: build, push, deploy with manual approval gate
+- [ ] Container registry: GitHub Container Registry (ghcr.io) or CCHMC-provided registry
+- [ ] Deployment target: `docker compose pull && docker compose up -d` via SSH or Watchtower
+
+### 7.5 Monitoring & Observability
+
+- [ ] **Error tracking:** Sentry (self-hosted or cloud) — capture unhandled exceptions, slow queries
+- [ ] **Application logging:** Structured JSON logs → syslog or ELK stack
+  - Audit logs: separate file, 500MB x 50 rotations (HIPAA requirement — already configured)
+  - Application logs: stdout for Docker, captured by logging driver
+- [ ] **Health checks:** `/health/` endpoint (database, Redis, Celery, Ollama connectivity)
+- [ ] **Uptime monitoring:** UptimeRobot or Healthchecks.io for `/health/` endpoint
+- [ ] **Metrics:** Prometheus + Grafana (optional) — request latency, task queue depth, error rate
+- [ ] **Alerting:** PagerDuty or email for critical failures (database down, task queue stalled, LLM unavailable)
 
 ---
 
-## Phase 8: Cincinnati Children's IT Requirements (Week 21-22)
+## Phase 8: CCHMC IT Integration
+
+**Goal:** Meet Cincinnati Children's Hospital IT security requirements for production deployment on hospital infrastructure.
 
 ### 8.1 SSO Integration
-- [ ] Integrate with Cincinnati Children's SSO (SAML/LDAP)
-- [ ] Test with hospital credentials
-- [ ] Configure group-based role mapping
-- [ ] Set up MFA if required
 
-### 8.2 Security Hardening
-- [ ] Vulnerability scan (Nessus, OpenVAS)
-- [ ] Penetration testing
-- [ ] HIPAA compliance review
-- [ ] Security audit documentation
-- [ ] Incident response plan
+AEGIS already has SAML and LDAP backends written (`apps/authentication/backends.py`). This phase connects them to CCHMC's actual identity provider.
 
-### 8.3 Network & Firewall Configuration
-- [ ] Deploy within hospital network
-- [ ] Configure firewall rules
-- [ ] Set up VPN access if needed
-- [ ] Network segmentation (DMZ if public-facing)
+- [ ] Submit Epic FHIR API access request to CCHMC IS (already drafted in `docs/integration-requirements.md`)
+- [ ] Obtain SAML metadata from CCHMC Identity Provider (likely ADFS or Azure AD)
+- [ ] Configure `python3-saml` with CCHMC-specific:
+  - Entity ID, SSO URL, SLO URL
+  - X.509 certificate for signature validation
+  - Attribute mapping: `sAMAccountName` → username, `mail` → email, `memberOf` → roles
+- [ ] Role mapping from AD groups:
+  - `CCHMC-ASP-Pharmacists` → `asp_pharmacist`
+  - `CCHMC-Infection-Prevention` → `infection_preventionist`
+  - `CCHMC-Physicians-ID` → `physician`
+  - `CCHMC-AEGIS-Admins` → `admin`
+- [ ] Test SSO flow: login → attribute mapping → role assignment → session creation
+- [ ] LDAP fallback configuration: `ldaps://ldap.cchmc.org:636` with service account
+- [ ] MFA: CCHMC likely handles MFA at the IdP level (Duo); verify no AEGIS-side changes needed
 
-### 8.4 Compliance Documentation
-- [ ] Security architecture diagram
-- [ ] Data flow diagrams
-- [ ] Risk assessment (HIPAA Security Rule)
-- [ ] Business associate agreements (BAA) if using cloud
-- [ ] Disaster recovery plan
+### 8.2 Network & Firewall
+
+- [ ] Deploy on CCHMC internal network (not public internet for production)
+- [ ] Firewall rules:
+  - Inbound: HTTPS (443) from CCHMC network only
+  - Outbound: FHIR server (Epic), Clarity DB, NHSN DIRECT (port 587), Ollama LLM server
+  - Inbound: HL7 ADT (port 2575) from Epic Interface Engine
+- [ ] DNS: `aegis.cchmc.org` (internal) — coordinate with CCHMC networking
+- [ ] SSL certificate: CCHMC-issued certificate (not Let's Encrypt for internal)
+- [ ] VPN access for remote administration (if allowed by CCHMC policy)
+
+### 8.3 Epic Integration Requirements
+
+From `docs/integration-requirements.md`:
+
+- [ ] Epic FHIR R4 API access (read-only for: Patient, Observation, MedicationRequest, MedicationAdministration, Condition, Procedure, DocumentReference, Encounter, Appointment)
+- [ ] Epic client credentials (non-user OAuth2 — backend service)
+- [ ] Clarity read-only access (reporting database — for NHSN denominators, AU/AR extraction)
+- [ ] HL7 ADT feed from Epic Interface Engine (TCP/MLLP on port 2575)
+- [ ] NHSN DIRECT address registration with CDC (HISP setup)
+
+### 8.4 Security Hardening
+
+- [ ] Vulnerability scan: CCHMC likely uses Qualys or Nessus — schedule scan
+- [ ] Penetration test: coordinate with CCHMC InfoSec team (or approved vendor)
+- [ ] Code review: remove all `DEBUG=True` paths, verify `ALLOWED_HOSTS`, verify `SECRET_KEY` is production-grade
+- [ ] CSP: replace `unsafe-inline` with nonce-based CSP (TODO from Phase 1)
+- [ ] Database encryption at rest (PostgreSQL TDE or filesystem-level)
+- [ ] PHI handling audit: verify all PHI access is logged, no PHI in error logs or Sentry
+
+### 8.5 HIPAA Compliance Documentation
+
+CCHMC IT will require these documents before production approval:
+
+- [ ] **Security Architecture Diagram** — network topology, data flows, encryption points
+- [ ] **Data Flow Diagram** — PHI data lifecycle: FHIR → AEGIS → review → NHSN
+- [ ] **Risk Assessment** (HIPAA Security Rule §164.308(a)(1)) — threats, vulnerabilities, mitigations
+- [ ] **Access Control Policy** — role definitions, minimum necessary access, session management
+- [ ] **Audit Control Policy** — what's logged, retention period (7 years for HIPAA), review process
+- [ ] **Disaster Recovery Plan** — RTO/RPO targets, backup procedures, failover
+- [ ] **Incident Response Plan** — PHI breach notification procedures, containment steps
+- [ ] **Business Associate Agreements** — if using any cloud services (Sentry, monitoring)
+
+### 8.6 Training & Documentation
+
+- [ ] User guide for ASP pharmacists (approval workflow, alert management)
+- [ ] User guide for Infection Preventionists (HAI review, NHSN submission, outbreak monitoring)
+- [ ] Admin guide (user management, system configuration, troubleshooting)
+- [ ] Clinical decision support documentation (what each alert type means, expected actions)
+- [ ] On-call runbook (common issues, restart procedures, escalation contacts)
 
 ---
 
-## Phase 9: Cutover & Decommission Flask (Week 23)
+## Phase 9: Cutover & Flask Decommission
 
-### 9.1 Final Data Migration
-- [ ] Freeze Flask app (read-only mode)
-- [ ] Final data sync to Django/PostgreSQL
-- [ ] Verify all data migrated
-- [ ] Update Nginx to route 100% traffic to Django
+**Goal:** Complete transition from Flask to Django with zero data loss and minimal disruption.
 
-### 9.2 Decommission Flask
-- [ ] Archive Flask codebase
-- [ ] Remove Flask app from servers
-- [ ] Clean up old databases
-- [ ] Update documentation
+### 9.1 Pre-Cutover Checklist
 
-### 9.3 Post-Launch Monitoring
-- [ ] Monitor for 2 weeks
-- [ ] Address any issues
-- [ ] Gather user feedback
-- [ ] Performance tuning
+- [ ] All Phase 4-8 items complete
+- [ ] All tests passing (800+ target)
+- [ ] CCHMC IT security approval obtained
+- [ ] SSO tested with real CCHMC credentials
+- [ ] Epic FHIR integration tested with production endpoints (read-only)
+- [ ] LLM validation results acceptable (>90% sensitivity for HAI)
+- [ ] User acceptance testing signed off by all 4 roles
+- [ ] Monitoring and alerting verified functional
+- [ ] Disaster recovery tested (backup restore, failover)
+- [ ] Communication plan: notify all users of cutover date and expected downtime
+
+### 9.2 Cutover Execution
+
+1. **T-1 week:** Final round of testing on staging with production-like data
+2. **T-1 day:** Notify all users of planned maintenance window
+3. **T-0 (maintenance window, e.g., Saturday 2 AM):**
+   - Set Flask app to read-only mode
+   - Final data export from Flask SQLite databases
+   - Import into Django PostgreSQL (verify counts match)
+   - Update DNS / Nginx to route all traffic to Django
+   - Verify SSO login works
+   - Verify all 12 module dashboards load correctly
+   - Verify Celery tasks are running (check Flower)
+   - Verify HL7 ADT listener is receiving messages
+4. **T+1 hour:** Send "cutover complete" notification to users
+5. **T+1 day:** Monitor for issues, check error rates in Sentry
+
+### 9.3 Rollback Plan
+
+If critical issues are found within the first 48 hours:
+
+1. Revert DNS / Nginx to Flask
+2. Flask app is still running (read-only) — switch back to read-write
+3. Any data entered in Django during the window needs manual reconciliation
+4. Fix the issue in Django, re-test, schedule new cutover window
+
+### 9.4 Post-Cutover
+
+- [ ] Monitor for 2 weeks (daily error review, weekly performance review)
+- [ ] Collect user feedback (survey or informal check-ins)
+- [ ] Performance tuning based on real production load
+- [ ] Archive Flask codebase (tag `flask-final`, keep repository intact)
+- [ ] Remove Flask from server (after 30-day grace period)
+- [ ] Clean up old SQLite databases (after verifying all data migrated)
+- [ ] Update all documentation to reflect Django-only architecture
+- [ ] Close out migration tracking issues in GitHub Project Tracker
 
 ---
 
@@ -406,19 +663,17 @@ location / {
 
 ## Timeline Summary
 
-| Phase | Duration | Milestone |
-|-------|----------|-----------|
-| 1. Infrastructure Setup | Week 1-2 | Django running, auth working |
-| 2. Core Models | Week 3-4 | All shared models in Django |
-| 3. Module Migration | Week 5-14 | All 10 modules migrated |
-| 4. Background Tasks | Week 15 | Celery running |
-| 5. API Consolidation | Week 16 | Unified API |
-| 6. Testing | Week 17-18 | All tests passing |
-| 7. Deployment | Week 19-20 | Containerized, deployed |
-| 8. IT Requirements | Week 21-22 | SSO, security audit |
-| 9. Cutover | Week 23 | Flask decommissioned |
-
-**Total:** ~6 months for complete migration
+| Phase | Status | Milestone |
+|-------|--------|-----------|
+| 1. Infrastructure Setup | ✅ COMPLETE | Django running, auth working, audit logging |
+| 2. Core Models | ✅ COMPLETE | All shared models, DRF configured |
+| 3. Module Migration | ✅ COMPLETE | All 12 modules migrated (318 tests passing) |
+| 4. Background Tasks | TODO | Celery + Redis, 13 periodic tasks, HL7 listener service |
+| 5. Unified API | TODO | `/api/v1/` consolidation, Epic FHIR integration layer |
+| 6. Testing & QA | TODO | 800+ tests, LLM validation, security scan, UAT |
+| 7. Deployment | TODO | PostgreSQL, Docker Compose, CI/CD, monitoring |
+| 8. CCHMC IT | TODO | SSO, Epic access, security audit, HIPAA docs |
+| 9. Cutover | TODO | Data migration, DNS switch, Flask decommission |
 
 ---
 
