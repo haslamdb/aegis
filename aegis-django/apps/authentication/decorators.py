@@ -265,6 +265,28 @@ def can_manage_guideline_adherence(view_func):
     return wrapped_view
 
 
+def can_manage_nhsn_reporting(view_func):
+    """
+    Decorator to check if user can manage NHSN reporting.
+
+    Usage:
+        @can_manage_nhsn_reporting
+        def view(request):
+            ...
+    """
+    @wraps(view_func)
+    @login_required
+    def wrapped_view(request, *args, **kwargs):
+        if not request.user.can_manage_nhsn_reporting():
+            messages.error(
+                request,
+                "Access denied. This page requires NHSN reporting management permissions."
+            )
+            raise PermissionDenied("User cannot manage NHSN reporting")
+        return view_func(request, *args, **kwargs)
+    return wrapped_view
+
+
 def can_edit_alerts(view_func):
     """
     Decorator to check if user can acknowledge/resolve alerts.

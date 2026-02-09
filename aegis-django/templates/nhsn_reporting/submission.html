@@ -1,0 +1,238 @@
+{% extends "nhsn_reporting/base.html" %}
+
+{% block title %}Submission - NHSN Reporting{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>NHSN Submission</h1>
+    <p>Export CSV files, submit via DIRECT messaging, mark reports as submitted, and review audit log</p>
+</div>
+
+<!-- Pending Items -->
+{% if unreported_count > 0 %}
+<div class="alert-banner warning">
+    <strong>{{ unreported_count }} unreported HAI event{{ unreported_count|pluralize }}.</strong>
+    <a href="{% url 'nhsn_reporting:hai_events' %}?status=unreported" style="color: #856404; font-weight: 600;">Review unreported events</a>
+</div>
+{% endif %}
+
+<div class="two-col">
+    <!-- Left Column: Export & Submit -->
+    <div>
+        <!-- CSV Export -->
+        <div class="card">
+            <div class="card-header">CSV Export</div>
+            <div class="card-body">
+                <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">
+                    Download CSV files formatted for NHSN manual upload (CDA-compatible format).
+                </p>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                    <a href="{% url 'nhsn_reporting:api_au_export' %}" class="btn btn-outline">AU Data (CSV)</a>
+                    <a href="{% url 'nhsn_reporting:api_ar_export' %}" class="btn btn-outline">AR Data (CSV)</a>
+                    <a href="{% url 'nhsn_reporting:api_hai_export' %}" class="btn btn-outline">HAI Events (CSV)</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- DIRECT Submit -->
+        <div class="card">
+            <div class="card-header">
+                DIRECT Electronic Submission
+                {% if direct_configured %}
+                <span class="badge badge-success">Configured</span>
+                {% else %}
+                <span class="badge badge-failed">Not Configured</span>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                {% if direct_configured %}
+                <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">
+                    Submit CDA documents directly to the NHSN via DIRECT messaging protocol. Reports are packaged as HL7 CDA R2 documents.
+                </p>
+                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                    <button class="btn btn-primary" onclick="directSubmit('au')">Submit AU</button>
+                    <button class="btn btn-primary" onclick="directSubmit('ar')">Submit AR</button>
+                    <button class="btn btn-primary" onclick="directSubmit('hai')">Submit HAI</button>
+                    <button class="btn btn-secondary btn-sm" onclick="testDirect()" style="margin-left: 1rem;">Test Connection</button>
+                </div>
+                <div id="direct-status" style="margin-top: 0.75rem;"></div>
+                {% else %}
+                <p style="font-size: 0.9rem; color: #555;">
+                    DIRECT messaging is not configured. Configure DIRECT credentials in settings to enable electronic submission to the NHSN.
+                    Use CSV export for manual upload in the meantime.
+                </p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Mark as Submitted -->
+        <div class="card">
+            <div class="card-header">Mark as Submitted</div>
+            <div class="card-body">
+                <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">
+                    After manually uploading CSV files to the NHSN portal, mark the reporting period as submitted to maintain an accurate audit trail.
+                </p>
+                {% if unreported_events %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;"><input type="checkbox" id="select-all-unreported" title="Select all"></th>
+                            <th>Type</th>
+                            <th>Period</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in unreported_events %}
+                        <tr>
+                            <td><input type="checkbox" name="mark_ids" value="{{ item.id }}" class="unreported-cb"></td>
+                            <td><span class="badge badge-blue">{{ item.report_type|upper }}</span></td>
+                            <td>{{ item.period_label|default:item.period }}</td>
+                            <td style="font-size: 0.85rem; color: #666;">{{ item.description|default:"--" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button class="btn btn-accent" onclick="markAsSubmitted()" style="margin-top: 0.5rem;">Mark Selected as Submitted</button>
+                {% else %}
+                <div style="color: #888; font-size: 0.9rem;">All reportable items have been submitted.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Audit Log -->
+    <div>
+        <div class="card">
+            <div class="card-header">Submission Audit Log</div>
+            <div class="card-body">
+                {% if audit_log %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Method</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in audit_log %}
+                        <tr>
+                            <td style="font-size: 0.85rem;">{{ entry.submitted_at|date:"M d, Y" }}<br><small style="color: #888;">{{ entry.submitted_at|date:"H:i" }}</small></td>
+                            <td><span class="badge badge-blue">{{ entry.report_type|upper }}</span></td>
+                            <td style="font-size: 0.85rem;">{{ entry.method }}</td>
+                            <td>
+                                {% if entry.status == 'success' %}
+                                <span class="badge badge-success">Success</span>
+                                {% elif entry.status == 'failed' %}
+                                <span class="badge badge-failed">Failed</span>
+                                {% else %}
+                                <span class="badge badge-pending">{{ entry.status|title }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="empty-state" style="padding: 1.5rem;">
+                    <h3>No submissions</h3>
+                    <p>No submission history recorded yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Select all unreported checkboxes
+    document.getElementById('select-all-unreported')?.addEventListener('change', function() {
+        document.querySelectorAll('.unreported-cb').forEach(function(cb) {
+            cb.checked = this.checked;
+        }.bind(this));
+    });
+
+    function getCsrfToken() {
+        var cookie = document.cookie.split(';').find(function(c) { return c.trim().startsWith('csrftoken='); });
+        return cookie ? cookie.split('=')[1] : '';
+    }
+
+    function directSubmit(reportType) {
+        var statusEl = document.getElementById('direct-status');
+        statusEl.innerHTML = '<span style="color: #666;">Submitting ' + reportType.toUpperCase() + ' data...</span>';
+
+        fetch('{% url "nhsn_reporting:api_direct_submit" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ report_type: reportType })
+        }).then(function(r) { return r.json(); })
+          .then(function(data) {
+              if (data.success) {
+                  statusEl.innerHTML = '<div class="alert-banner success">' + reportType.toUpperCase() + ' submitted successfully. Transaction ID: ' + (data.transaction_id || 'N/A') + '</div>';
+                  setTimeout(function() { location.reload(); }, 2000);
+              } else {
+                  statusEl.innerHTML = '<div class="alert-banner danger">Submission failed: ' + (data.error || 'Unknown error') + '</div>';
+              }
+          }).catch(function(err) {
+              statusEl.innerHTML = '<div class="alert-banner danger">Network error: ' + err + '</div>';
+          });
+    }
+
+    function testDirect() {
+        var statusEl = document.getElementById('direct-status');
+        statusEl.innerHTML = '<span style="color: #666;">Testing DIRECT connection...</span>';
+
+        fetch('{% url "nhsn_reporting:api_test_direct" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        }).then(function(r) { return r.json(); })
+          .then(function(data) {
+              if (data.success) {
+                  statusEl.innerHTML = '<div class="alert-banner success">DIRECT connection test successful.</div>';
+              } else {
+                  statusEl.innerHTML = '<div class="alert-banner danger">Connection test failed: ' + (data.error || 'Unknown error') + '</div>';
+              }
+          }).catch(function(err) {
+              statusEl.innerHTML = '<div class="alert-banner danger">Network error: ' + err + '</div>';
+          });
+    }
+
+    function markAsSubmitted() {
+        var checked = document.querySelectorAll('.unreported-cb:checked');
+        if (checked.length === 0) {
+            alert('Select at least one item to mark as submitted.');
+            return;
+        }
+
+        var ids = Array.from(checked).map(function(cb) { return cb.value; });
+
+        fetch('{% url "nhsn_reporting:api_mark_submitted" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ event_ids: ids })
+        }).then(function(r) { return r.json(); })
+          .then(function(data) {
+              if (data.success) {
+                  location.reload();
+              } else {
+                  alert('Error: ' + (data.error || 'Failed to mark as submitted.'));
+              }
+          }).catch(function(err) {
+              alert('Network error: ' + err);
+          });
+    }
+</script>
+{% endblock %}

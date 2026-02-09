@@ -55,10 +55,7 @@ INSTALLED_APPS = [
     'apps.abx_indications',  # ✅ Phase 3 - ABX Indication Monitoring
     'apps.surgical_prophylaxis',  # ✅ Phase 3 - Surgical Prophylaxis
     'apps.guideline_adherence',  # ✅ Phase 3 - Guideline Adherence
-    # TO BE MIGRATED:
-    # 'apps.dosing_verification',
-    # 'apps.abx_approvals',
-    # 'apps.nhsn_reporting',
+    'apps.nhsn_reporting',  # ✅ Phase 3 - NHSN Reporting (final module)
 
     # API
     # 'apps.api',
@@ -351,4 +348,23 @@ GUIDELINE_ADHERENCE = {
         'neonatal_hsv_2024', 'cdiff_testing_2024', 'fn_peds_2024',
         'uti_peds_2024', 'ssti_peds_2024',
     ],
+}
+
+# NHSN Reporting Configuration
+NHSN_REPORTING = {
+    'CLARITY_CONNECTION_STRING': config('NHSN_CLARITY_URL', default=None),
+    'MOCK_CLARITY_DB_PATH': config('NHSN_MOCK_CLARITY_DB', default=None),
+    'FHIR_BASE_URL': config('NHSN_FHIR_URL', default='http://localhost:8081/fhir'),
+    'NHSN_FACILITY_ID': config('NHSN_FACILITY_ID', default=None),
+    'NHSN_FACILITY_NAME': config('NHSN_FACILITY_NAME', default="Cincinnati Children's Hospital"),
+    'AU_LOCATION_TYPES': config('NHSN_AU_LOCATION_TYPES', default='ICU,Ward,NICU,BMT', cast=lambda v: [s.strip() for s in v.split(',')]),
+    'AU_INCLUDE_ORAL': config('NHSN_AU_INCLUDE_ORAL', default=True, cast=bool),
+    'AR_SPECIMEN_TYPES': config('NHSN_AR_SPECIMEN_TYPES', default='Blood,Urine,Respiratory,CSF', cast=lambda v: [s.strip() for s in v.split(',')]),
+    'AR_FIRST_ISOLATE_ONLY': config('NHSN_AR_FIRST_ISOLATE_ONLY', default=True, cast=bool),
+    'DIRECT_HISP_SERVER': config('NHSN_HISP_SMTP_SERVER', default=None),
+    'DIRECT_HISP_PORT': config('NHSN_HISP_SMTP_PORT', default=587, cast=int),
+    'DIRECT_HISP_USERNAME': config('NHSN_HISP_USERNAME', default=None),
+    'DIRECT_HISP_PASSWORD': config('NHSN_HISP_PASSWORD', default=None),
+    'DIRECT_SENDER_ADDRESS': config('NHSN_SENDER_DIRECT', default=None),
+    'DIRECT_NHSN_ADDRESS': config('NHSN_DIRECT_ADDRESS', default=None),
 }

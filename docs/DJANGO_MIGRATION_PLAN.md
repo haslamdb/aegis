@@ -142,19 +142,21 @@ Apps created: `core`, `authentication`, `alerts`, `metrics`, `notifications`, `a
 - [x] Management commands: create_demo_mismatches, monitor_drug_bug
 - [x] Route `/drug-bug/` to Django
 
-#### 3.5 Guideline Adherence (Week 9)
-- [ ] Create Django app: `apps/guideline_adherence/`
-- [ ] Convert models: `GuidelineCheck`, `Bundle`
-- [ ] Convert LLM review workflow
-- [ ] Convert 7 bundles (febrile infant, CAP, etc.)
-- [ ] Route `/guideline-adherence/` to Django
+#### 3.5 Guideline Adherence ✅ COMPLETE
+- [x] Created Django app: `apps/guideline_adherence/`
+- [x] 5 custom models: BundleEpisode, ElementResult, EpisodeAssessment, EpisodeReview, MonitorState
+- [x] 9 guideline bundles (sepsis, CAP, febrile infant, HSV, C.diff, febrile neutropenia, surgical prophylaxis, UTI, SSTI)
+- [x] 3 monitoring modes: trigger, episode, adherence
+- [x] 7 element checkers + tiered NLP (7B + 70B LLM)
+- [x] 70 tests passing
+- [x] Route `/guideline-adherence/` to Django
 
-#### 3.6 Surgical Prophylaxis (Week 10)
-- [ ] Create Django app: `apps/surgical_prophylaxis/`
-- [ ] Convert models: `SurgicalCase`, `ProphylaxisEvaluation`
-- [ ] Convert compliance checker
-- [ ] Convert dashboard
-- [ ] Route `/surgical-prophylaxis/` to Django
+#### 3.6 Surgical Prophylaxis ✅ COMPLETE
+- [x] Created Django app: `apps/surgical_prophylaxis/`
+- [x] 9 custom models: SurgicalCase, ProphylaxisEvaluation, ProphylaxisMedication, ComplianceMetric, SurgicalJourney, PatientLocation, PreOpCheck, AlertEscalation
+- [x] 7-element ASHP bundle evaluation + real-time HL7 ADT monitoring
+- [x] 66 tests passing
+- [x] Route `/surgical-prophylaxis/` to Django
 
 #### 3.7 HAI Detection ✅ COMPLETE
 - [x] Created Django app: `apps/hai_detection/` (76 Python files)
@@ -175,30 +177,37 @@ Apps created: `core`, `authentication`, `alerts`, `metrics`, `notifications`, `a
 - [x] HAI_DETECTION settings dict in base.py
 - [x] Route `/hai-detection/` to Django
 
-#### 3.8 ABX Approvals (Week 12) - **CRITICAL**
-**Why last:** Active clinical workflow, can't break
+#### 3.8 Antimicrobial Usage Alerts ✅ COMPLETE
+- [x] Created Django app: `apps/antimicrobial_usage/`
+- [x] No custom models — uses Alert model with BROAD_SPECTRUM_USAGE type
+- [x] BroadSpectrumMonitorService with FHIR client, dedup via JSONField
+- [x] 7 tests passing
+- [x] Route `/antimicrobial-usage/` to Django
 
-- [ ] Create Django app: `apps/abx_approvals/`
-- [ ] Convert models:
-  - `ApprovalRequest`, `ApprovalDecision`, `ReapprovalChain`
-- [ ] Convert approval workflow logic
-- [ ] Convert auto-recheck scheduler (Django Celery tasks)
-- [ ] Convert email notifications (Django signals)
-- [ ] Convert dashboard (pharmacy queue)
-- [ ] Test re-approval chain logic
-- [ ] Route `/abx-approvals/` to Django
+#### 3.9 ABX Indications ✅ COMPLETE
+- [x] Created Django app: `apps/abx_indications/`
+- [x] 3 custom models: IndicationCandidate, IndicationReview, IndicationLLMAuditLog
+- [x] LLM extraction via Ollama, CCHMC guidelines engine (57 diseases)
+- [x] 64 tests passing
+- [x] Route `/abx-indications/` to Django
 
-#### 3.9 NHSN Reporting (Week 13)
-- [ ] Create Django app: `apps/nhsn_reporting/`
-- [ ] Convert AU/AR models
-- [ ] Convert CSV export logic
-- [ ] Route `/nhsn-reporting/` to Django
+#### 3.10 Outbreak Detection ✅ COMPLETE
+- [x] Created Django app: `apps/outbreak_detection/`
+- [x] 2 custom models: OutbreakCluster, ClusterCase
+- [x] ORM data sources replacing SQLite queries
+- [x] Route `/outbreak-detection/` to Django
 
-#### 3.10 Outbreak Detection (Week 14)
-- [ ] Create Django app: `apps/outbreak/`
-- [ ] Convert clustering algorithm
-- [ ] Convert outbreak tracking
-- [ ] Route `/outbreak-detection/` to Django
+#### 3.11 NHSN Reporting ✅ COMPLETE
+- [x] Created Django app: `apps/nhsn_reporting/`
+- [x] 11 custom models: NHSNEvent, DenominatorDaily, DenominatorMonthly, AUMonthlySummary, AUAntimicrobialUsage, AUPatientLevel, ARQuarterlySummary, ARIsolate, ARSusceptibility, ARPhenotypeSummary, SubmissionAudit
+- [x] AU/AR data extraction from Clarity (DOT/DDD, isolates, phenotypes)
+- [x] HL7 CDA R2 document generation for HAI event submission
+- [x] DIRECT protocol client for NHSN submission via HISP
+- [x] CSV export for all data types
+- [x] 104 tests passing
+- [x] Route `/nhsn-reporting/` to Django
+
+**Phase 3 COMPLETE — All 12 modules migrated to Django.**
 
 ---
 

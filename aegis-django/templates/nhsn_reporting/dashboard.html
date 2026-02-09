@@ -1,0 +1,117 @@
+{% extends "nhsn_reporting/base.html" %}
+
+{% block title %}Dashboard - NHSN Reporting{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>NHSN Reporting Dashboard</h1>
+    <p>Antimicrobial Use (AU), Antimicrobial Resistance (AR), HAI events, and denominator reporting to the CDC NHSN</p>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-row">
+    <div class="stat-card green">
+        <div class="stat-value">{{ stats.au_dot_rate|default:"--" }}</div>
+        <div class="stat-label">AU Monthly DOT Rate (per 1,000 PD)</div>
+    </div>
+    <div class="stat-card dark-green">
+        <div class="stat-value">{{ stats.ar_pct_resistant|default:"--" }}{% if stats.ar_pct_resistant %}%{% endif %}</div>
+        <div class="stat-label">AR Quarterly %R</div>
+    </div>
+    <div class="stat-card accent">
+        <div class="stat-value">{{ stats.active_hai_events|default:0 }}</div>
+        <div class="stat-label">Active HAI Events</div>
+    </div>
+    <div class="stat-card {% if stats.denominator_coverage >= 80 %}green{% elif stats.denominator_coverage >= 50 %}amber{% else %}red{% endif %}">
+        <div class="stat-value">{{ stats.denominator_coverage|default:0 }}%</div>
+        <div class="stat-label">Denominator Coverage</div>
+    </div>
+</div>
+
+<!-- Configuration Status -->
+{% if not clarity_configured or not direct_configured %}
+<div class="alert-banner warning">
+    <strong>Configuration:</strong>
+    {% if not clarity_configured %}Clarity data source is not configured. Denominator and historical data will be unavailable. {% endif %}
+    {% if not direct_configured %}DIRECT messaging is not configured. Electronic submission to NHSN is unavailable.{% endif %}
+</div>
+{% endif %}
+
+<!-- Quick Links -->
+<div class="section-header">Reporting Modules</div>
+<div class="link-grid">
+    <a href="{% url 'nhsn_reporting:au_detail' %}" class="link-card">
+        <div class="link-title">Antimicrobial Use (AU)</div>
+        <div class="link-desc">Monthly DOT and DDD rates by antimicrobial agent and location. Export CSV for NHSN upload.</div>
+    </a>
+    <a href="{% url 'nhsn_reporting:ar_detail' %}" class="link-card">
+        <div class="link-title">Antimicrobial Resistance (AR)</div>
+        <div class="link-desc">Quarterly isolate counts and resistance phenotypes (MRSA, VRE, ESBL, CRE). First-isolate deduplication.</div>
+    </a>
+    <a href="{% url 'nhsn_reporting:hai_events' %}" class="link-card">
+        <div class="link-title">HAI Events</div>
+        <div class="link-desc">Healthcare-associated infection events: CLABSI, CAUTI, VAE, SSI, CDI, MRSA bacteremia. Mark as submitted to NHSN.</div>
+    </a>
+    <a href="{% url 'nhsn_reporting:denominators' %}" class="link-card">
+        <div class="link-title">Denominator Data</div>
+        <div class="link-desc">Monthly patient-days, device-days, and device utilization ratios by location. Clarity batch import.</div>
+    </a>
+    <a href="{% url 'nhsn_reporting:submission' %}" class="link-card">
+        <div class="link-title">Submission</div>
+        <div class="link-desc">CSV export, DIRECT electronic submission, mark-as-submitted, and submission audit log.</div>
+    </a>
+    <a href="{% url 'nhsn_reporting:help' %}" class="link-card">
+        <div class="link-title">Help &amp; Reference</div>
+        <div class="link-desc">NHSN reporting requirements, AU/AR definitions, CDA format, DIRECT protocol documentation.</div>
+    </a>
+</div>
+
+<!-- Recent Submissions -->
+<div class="card">
+    <div class="card-header">
+        Recent Submissions
+        <a href="{% url 'nhsn_reporting:submission' %}" class="btn btn-sm btn-primary">View All</a>
+    </div>
+    <div class="card-body">
+        {% if recent_submissions %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Period</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>User</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in recent_submissions %}
+                <tr>
+                    <td>{{ sub.submitted_at|date:"M d, Y H:i" }}</td>
+                    <td><span class="badge badge-blue">{{ sub.report_type|upper }}</span></td>
+                    <td>{{ sub.period_label|default:sub.period }}</td>
+                    <td>{{ sub.method }}</td>
+                    <td>
+                        {% if sub.status == 'success' %}
+                        <span class="badge badge-success">Success</span>
+                        {% elif sub.status == 'failed' %}
+                        <span class="badge badge-failed">Failed</span>
+                        {% else %}
+                        <span class="badge badge-pending">{{ sub.status|title }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ sub.submitted_by|default:"--" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>No submissions yet</h3>
+            <p>No NHSN reports have been submitted. Use the Submission page to export and submit data.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -70,6 +70,9 @@ class AlertType(models.TextChoices):
     ABX_NEVER_APPROPRIATE = 'abx_never_appropriate', 'ABX: Never Appropriate'
     ABX_OFF_GUIDELINE = 'abx_off_guideline', 'ABX: Off Guideline'
 
+    # NHSN Reporting
+    NHSN_SUBMISSION = 'nhsn_submission', 'NHSN Submission Alert'
+
     # General
     BROAD_SPECTRUM_USAGE = 'broad_spectrum_usage', 'Broad Spectrum Usage'
     DUPLICATE_THERAPY = 'duplicate_therapy', 'Duplicate Therapy'

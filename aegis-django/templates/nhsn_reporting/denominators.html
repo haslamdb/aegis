@@ -1,0 +1,110 @@
+{% extends "nhsn_reporting/base.html" %}
+
+{% block title %}Denominators - NHSN Reporting{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Denominator Data</h1>
+    <p>Monthly patient-days, device-days, and device utilization ratios by location (Clarity batch import)</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Denominator Summary
+    </div>
+    <div class="card-body">
+        <form method="get" class="filters">
+            <label>Month:</label>
+            <select name="month" onchange="this.form.submit()">
+                <option value="">All Months</option>
+                {% for m in months %}
+                <option value="{{ m.value }}" {% if month_filter == m.value %}selected{% endif %}>{{ m.label }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Location:</label>
+            <select name="location" onchange="this.form.submit()">
+                <option value="">All Locations</option>
+                {% for loc in locations %}
+                <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>{{ loc }}</option>
+                {% endfor %}
+            </select>
+
+            {% if month_filter or location_filter %}
+            <a href="{% url 'nhsn_reporting:denominators' %}" class="btn btn-sm btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if denominators %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Location</th>
+                    <th>Month</th>
+                    <th>Patient-Days</th>
+                    <th>Admissions</th>
+                    <th>Central Line Days</th>
+                    <th>CL Util. Ratio</th>
+                    <th>Urinary Cath Days</th>
+                    <th>UC Util. Ratio</th>
+                    <th>Ventilator Days</th>
+                    <th>Vent Util. Ratio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for d in denominators %}
+                <tr>
+                    <td><strong>{{ d.location }}</strong></td>
+                    <td style="font-size: 0.85rem;">{{ d.month_label }}</td>
+                    <td style="font-weight: 600;">{{ d.patient_days }}</td>
+                    <td>{{ d.admissions|default:"--" }}</td>
+                    <td>{{ d.central_line_days|default:"--" }}</td>
+                    <td>
+                        {% if d.cl_utilization_ratio is not None %}
+                        <span style="font-weight: 600; color: #2e7d32;">{{ d.cl_utilization_ratio }}</span>
+                        {% else %}
+                        <span style="color: #888;">--</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ d.urinary_catheter_days|default:"--" }}</td>
+                    <td>
+                        {% if d.uc_utilization_ratio is not None %}
+                        <span style="font-weight: 600; color: #2e7d32;">{{ d.uc_utilization_ratio }}</span>
+                        {% else %}
+                        <span style="color: #888;">--</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ d.ventilator_days|default:"--" }}</td>
+                    <td>
+                        {% if d.vent_utilization_ratio is not None %}
+                        <span style="font-weight: 600; color: #2e7d32;">{{ d.vent_utilization_ratio }}</span>
+                        {% else %}
+                        <span style="color: #888;">--</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Totals Row -->
+        {% if denominators %}
+        <div style="margin-top: 1rem; padding: 0.75rem; background: #f8f9fa; border-radius: 4px; font-size: 0.9rem;">
+            <strong>Totals:</strong>
+            {% for d in denominators %}{% if forloop.last %}
+            {{ d.total_patient_days|default:"--" }} patient-days |
+            {{ d.total_central_line_days|default:"--" }} CL-days |
+            {{ d.total_urinary_catheter_days|default:"--" }} UC-days |
+            {{ d.total_ventilator_days|default:"--" }} vent-days
+            {% endif %}{% endfor %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="empty-state">
+            <h3>No denominator data</h3>
+            <p>No denominator data available for the selected filters. Ensure Clarity batch jobs are configured and running (nightly/weekly schedule).</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

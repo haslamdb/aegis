@@ -35,4 +35,5 @@ urlpatterns = [
     path('abx-indications/', include('apps.abx_indications.urls')),
     path('surgical-prophylaxis/', include('apps.surgical_prophylaxis.urls')),
     path('guideline-adherence/', include('apps.guideline_adherence.urls')),
+    path('nhsn-reporting/', include('apps.nhsn_reporting.urls')),
 ]

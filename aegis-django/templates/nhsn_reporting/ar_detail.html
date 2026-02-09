@@ -1,0 +1,118 @@
+{% extends "nhsn_reporting/base.html" %}
+
+{% block title %}Antimicrobial Resistance - NHSN Reporting{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Antimicrobial Resistance (AR)</h1>
+    <p>Quarterly isolate counts by organism with resistance phenotype classification (first-isolate deduplication applied)</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        AR Summary
+        <div>
+            <a href="{% url 'nhsn_reporting:api_ar_export' %}?quarter={{ quarter_filter }}&location={{ location_filter }}" class="btn btn-outline btn-sm">Export CSV</a>
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="get" class="filters">
+            <label>Quarter:</label>
+            <select name="quarter" onchange="this.form.submit()">
+                <option value="">All Quarters</option>
+                {% for q in quarters %}
+                <option value="{{ q.value }}" {% if quarter_filter == q.value %}selected{% endif %}>{{ q.label }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Location:</label>
+            <select name="location" onchange="this.form.submit()">
+                <option value="">All Locations</option>
+                {% for loc in locations %}
+                <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>{{ loc }}</option>
+                {% endfor %}
+            </select>
+
+            {% if quarter_filter or location_filter %}
+            <a href="{% url 'nhsn_reporting:ar_detail' %}" class="btn btn-sm btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if summaries %}
+        <!-- Phenotype Summary -->
+        <div class="section-header">Resistance Phenotypes</div>
+        <div class="stats-row" style="margin-bottom: 1.5rem;">
+            <div class="stat-card green">
+                <div class="stat-value">{{ summaries.mrsa_count|default:0 }}</div>
+                <div class="stat-label">MRSA Isolates</div>
+            </div>
+            <div class="stat-card dark-green">
+                <div class="stat-value">{{ summaries.vre_count|default:0 }}</div>
+                <div class="stat-label">VRE Isolates</div>
+            </div>
+            <div class="stat-card accent">
+                <div class="stat-value">{{ summaries.esbl_count|default:0 }}</div>
+                <div class="stat-label">ESBL Isolates</div>
+            </div>
+            <div class="stat-card red">
+                <div class="stat-value">{{ summaries.cre_count|default:0 }}</div>
+                <div class="stat-label">CRE Isolates</div>
+            </div>
+        </div>
+
+        <!-- Organism Detail Table -->
+        <div class="section-header">Isolates by Organism</div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Organism</th>
+                    <th>Total Isolates</th>
+                    <th>First Isolates</th>
+                    <th>Resistant</th>
+                    <th>%R</th>
+                    <th>Phenotype</th>
+                    <th>Location</th>
+                    <th>Quarter</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in summaries.organisms %}
+                <tr>
+                    <td>
+                        <strong><em>{{ s.organism_name }}</em></strong><br>
+                        <small style="color: #888;">{{ s.nhsn_code|default:"" }}</small>
+                    </td>
+                    <td>{{ s.total_isolates }}</td>
+                    <td style="font-weight: 600;">{{ s.first_isolates }}</td>
+                    <td style="color: #dc3545; font-weight: 600;">{{ s.resistant_count }}</td>
+                    <td>
+                        {% if s.first_isolates > 0 %}
+                        <span class="badge {% if s.pct_resistant > 30 %}badge-red{% elif s.pct_resistant > 15 %}badge-amber{% else %}badge-green{% endif %}">
+                            {{ s.pct_resistant }}%
+                        </span>
+                        {% else %}
+                        <span class="badge badge-info">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% for pheno in s.phenotypes %}
+                        <span class="badge badge-{{ pheno|lower }}">{{ pheno }}</span>
+                        {% empty %}
+                        <span style="color: #888;">--</span>
+                        {% endfor %}
+                    </td>
+                    <td>{{ s.location }}</td>
+                    <td style="font-size: 0.85rem;">{{ s.quarter_label }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>No AR data available</h3>
+            <p>No antimicrobial resistance data for the selected filters. Ensure Clarity batch jobs are running and culture results are being processed.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
