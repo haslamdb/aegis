@@ -12,7 +12,15 @@
 **Priority:** High - Primary clinical informatics project
 
 ### Recent Work (2026-02-08)
-- **HAI Detection Module - Django Migration Complete** (Issue #20, Phase 3 cont.)
+- **Antimicrobial Usage Alerts - Django Migration Complete** (Issue #20, Phase 3 cont.)
+  - **Broad-spectrum duration monitoring:** Meropenem/Vancomycin, 72h threshold (configurable)
+  - **No custom models** — uses unified Alert model with `alert_type=BROAD_SPECTRUM_USAGE`
+  - **Services layer:** `BroadSpectrumMonitorService` with FHIR client, dedup via JSONField lookup
+  - **Severity:** HIGH at 72h, CRITICAL at 144h (2x threshold)
+  - **Views:** Dashboard (teal #00796B theme), detail (duration progress bar), history, help + 5 API endpoints
+  - **Management commands:** `monitor_usage` (--once/--continuous/--stats/--dry-run), `create_demo_usage` (8 CCHMC-unit scenarios)
+  - **8 modules now migrated** in Django
+- **HAI Detection Module - Django Migration Complete** (earlier)
   - **Full module migrated:** 76 Python files, 6 templates, 6 prompt templates
   - **4 custom Django models:** HAICandidate, HAIClassification, HAIReview, LLMAuditLog
   - **61 business logic files** copied to `logic/` subdirectory (candidates, classifiers, rules, extraction, notes, LLM, data)
@@ -21,7 +29,6 @@
   - **Views:** Dashboard, candidate detail, history, reports, help + 5 API endpoints
   - **Management commands:** `monitor_hai` (detection pipeline), `create_demo_hai` (20+ demo scenarios)
   - **Settings:** HAI_DETECTION config dict, URL routing at `/hai-detection/`
-  - **6 modules now migrated** in Django (Action Analytics, ASP Alerts, MDRO, Drug-Bug Mismatch, Dosing Verification, HAI Detection)
 
 ### Recent Work (2026-02-07)
 - **Antimicrobial Dosing Verification - Phase 3 Complete** (Issue #19)
@@ -105,7 +112,7 @@
 | **MDRO Surveillance** | Demo Ready | FHIR-based, dashboard functional |
 | **Guideline Adherence** | Complete | 7 bundles including febrile infant |
 | **Surgical Prophylaxis** | Core Complete | Dashboard pending |
-| **Antimicrobial Usage Alerts** | Functional | Duration monitoring |
+| **Antimicrobial Usage Alerts** | Django Migrated | Broad-spectrum duration monitoring (8th module migrated) |
 | **ABX Approvals** | Production | Duration tracking, auto re-approval, chain tracking |
 | **NHSN Reporting (AU/AR)** | Functional | CSV export working |
 | **Outbreak Detection** | Demo Ready | Clustering algorithm working |
@@ -163,7 +170,7 @@
 
 | Date | Work Completed |
 |------|----------------|
-| 2026-02-08 | **HAI Detection Django Migration (#20):** Full module migrated — 76 Python files, 6 templates, 6 prompt templates. 4 custom Django models (HAICandidate, HAIClassification, HAIReview, LLMAuditLog). 61 business logic files copied with import fixes. Multi-stage pipeline: detection → LLM extraction → rules engine → IP review with override tracking. Views, API endpoints, management commands, demo data all verified. 6th module migrated to Django. |
+| 2026-02-08 | **Antimicrobial Usage Alerts Django Migration (#20):** Broad-spectrum duration monitoring (Meropenem/Vancomycin, 72h threshold). No custom models — Alert model with JSONField dedup. BroadSpectrumMonitorService + FHIR client. Teal-themed dashboard with duration progress bar. 8 demo scenarios at CCHMC units. 7 tests passing. 8th module migrated. **HAI Detection Django Migration (#20):** Full module migrated — 76 Python files, 6 templates, 6 prompt templates. 4 custom Django models. 61 business logic files. Multi-stage pipeline. 7th module migrated. |
 | 2026-02-07 | **Dosing Verification Phase 3 COMPLETE (#19):** Full production-ready implementation with 12 rule modules. Phase 3 added: duration rules (12+ infection types, guideline-based), extended infusion rules (10+ beta-lactams, PK/PD optimization), tiered notifications (Teams + Email, severity-based routing), AlertStore integration (persistence, tracking), analytics & CSV export. End-to-end testing validated. **Phase 2:** Patient factor rules (renal/weight/age) + FHIR integration complete. **STATUS: Production ready** |
 | 2026-02-06 | **ASP/IP Action Analytics Dashboard (#15):** New module with ActionAnalyzer class, 6 dashboard pages (overview, recommendations, approvals, therapy changes, by-unit, time-spent), 6 API endpoints, 5 CSV exports, nav + landing integration. **ABX Approvals Duration Tracking & Auto Re-approval:** Added approval duration tracking, automatic recheck scheduler (cron 3x/day), re-approval request creation, approval chain tracking, weekend handling, enhanced analytics, email notifications, 7 decision types, dashboard separation of re-approvals, comprehensive testing docs |
 | 2026-02-05 | Verified CDI module complete (all 31 tests pass), updated status to reflect all 5 HAI types now complete |

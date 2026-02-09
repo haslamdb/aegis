@@ -1,0 +1,108 @@
+{% extends "antimicrobial_usage/base.html" %}
+
+{% block content %}
+
+<!-- Stats Row -->
+<div class="stats-row">
+    <div class="stat-box active-stat">
+        <div class="stat-value">{{ stats.active_count }}</div>
+        <div class="stat-label">Active Alerts</div>
+    </div>
+    <div class="stat-box critical-stat">
+        <div class="stat-value">{{ stats.critical_count }}</div>
+        <div class="stat-label">Critical</div>
+    </div>
+    <div class="stat-box high-stat">
+        <div class="stat-value">{{ stats.high_count }}</div>
+        <div class="stat-label">High</div>
+    </div>
+    <div class="stat-box resolved-stat">
+        <div class="stat-value">{{ stats.resolved_today }}</div>
+        <div class="stat-label">Resolved Today</div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+    <form method="get">
+        <label>Severity:</label>
+        <select name="severity" onchange="this.form.submit()">
+            <option value="">All</option>
+            <option value="critical" {% if current_filters.severity == "critical" %}selected{% endif %}>Critical</option>
+            <option value="high" {% if current_filters.severity == "high" %}selected{% endif %}>High</option>
+        </select>
+
+        <label>Medication:</label>
+        <select name="medication" onchange="this.form.submit()">
+            <option value="">All Medications</option>
+            {% for med in med_list %}
+            <option value="{{ med }}" {% if current_filters.medication == med %}selected{% endif %}>{{ med }}</option>
+            {% endfor %}
+        </select>
+
+        {% if current_filters.severity or current_filters.medication %}
+        <a href="{% url 'antimicrobial_usage:dashboard' %}" class="btn btn-primary" style="font-size: 12px;">Clear Filters</a>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Active Alerts Table -->
+<h2>Active Alerts</h2>
+
+{% if alerts %}
+<table>
+    <thead>
+        <tr>
+            <th>Severity</th>
+            <th>Patient</th>
+            <th>Medication</th>
+            <th>Duration</th>
+            <th>Location</th>
+            <th>Start Date</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for alert in alerts %}
+        <tr>
+            <td><span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span></td>
+            <td>
+                <strong>{{ alert.patient_name }}</strong><br>
+                <small>{{ alert.patient_mrn }}</small>
+            </td>
+            <td>
+                {{ alert.details.medication_name }}
+                {% if alert.details.dose %}<br><small>{{ alert.details.dose }} {{ alert.details.route }}</small>{% endif %}
+            </td>
+            <td>
+                {% widthratio alert.details.duration_hours 24 1 %} days
+                <br><small>({{ alert.details.duration_hours|floatformat:0 }}h)</small>
+            </td>
+            <td>
+                {{ alert.patient_location }}
+                {% if alert.details.department %}<br><small>{{ alert.details.department }}</small>{% endif %}
+            </td>
+            <td>
+                {% if alert.details.start_date %}
+                {{ alert.details.start_date|truncatechars:16 }}
+                {% endif %}
+            </td>
+            <td>
+                <a href="{% url 'antimicrobial_usage:detail' alert.id %}" class="btn btn-primary" style="font-size: 12px;">Review</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p>
+    <a href="{% url 'antimicrobial_usage:api_export' %}?type=active" class="btn btn-primary" style="font-size: 12px;">Export CSV</a>
+</p>
+
+{% else %}
+<div class="alert-box">
+    <p>No active antimicrobial usage alerts. All broad-spectrum antibiotics are within threshold limits.</p>
+</div>
+{% endif %}
+
+{% endblock %}

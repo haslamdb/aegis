@@ -6,7 +6,7 @@
 
 ## Current Status
 
-Django migration is in progress. Foundation (Phase 1) is complete and audited. Seven modules have been migrated:
+Django migration is in progress. Foundation (Phase 1) is complete and audited. Eight modules have been migrated:
 
 1. **Action Analytics** - Read-only analytics dashboard (Phase 2, audited and fixed)
 2. **ASP Alerts** - Complete ASP bacteremia/stewardship alerts with clinical features (Phase 2)
@@ -15,6 +15,7 @@ Django migration is in progress. Foundation (Phase 1) is complete and audited. S
 5. **Dosing Verification** - Antimicrobial dosing rules engine with 9 clinical rule modules (Phase 3)
 6. **HAI Detection** - Full HAI surveillance with 5 HAI types, LLM classification, IP review (Phase 3)
 7. **Outbreak Detection** - Cluster-based outbreak detection aggregating MDRO and HAI data (Phase 3)
+8. **Antimicrobial Usage Alerts** - Broad-spectrum antibiotic duration monitoring (Phase 3)
 
 Foundation code audit is complete — 10 bugs identified and fixed across framework infrastructure, authentication, and Action Analytics. The codebase is now solid for building additional modules.
 
@@ -41,6 +42,7 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - [x] Dosing Verification (`apps/dosing/`) - 9-rule antimicrobial dosing engine
 - [x] HAI Detection (`apps/hai_detection/`) - 5 HAI types, LLM classification, IP review with override tracking
 - [x] Outbreak Detection (`apps/outbreak_detection/`) - Cluster-based outbreak detection aggregating MDRO/HAI data
+- [x] Antimicrobial Usage Alerts (`apps/antimicrobial_usage/`) - Broad-spectrum duration monitoring (meropenem/vancomycin 72h threshold)
 
 ### Code Audit & Bug Fixes (2026-02-07)
 
@@ -88,14 +90,13 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 ## Next Steps
 
 ### Immediate (next session)
-- [ ] Antimicrobial Usage Alerts module migration
+- [ ] Abx Indications module migration (NLP/LLM extraction from clinical notes)
 - [ ] Unit tests for foundation code (models, views, decorators)
 
 ### Upcoming
 - [ ] Surgical Prophylaxis module migration
 - [ ] Guideline Adherence module migration
 - [ ] NHSN Reporting module migration
-- [ ] Abx Indications module migration
 - [ ] Epic FHIR API integration layer
 - [ ] Celery background tasks (alert scanning, auto-recheck)
 
@@ -164,6 +165,13 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 | Outbreak templates | `templates/outbreak_detection/` (6 files) |
 | Outbreak demo data | `apps/outbreak_detection/management/commands/create_demo_outbreaks.py` |
 | Outbreak monitor | `apps/outbreak_detection/management/commands/detect_outbreaks.py` |
+| Antimicrobial Usage app | `apps/antimicrobial_usage/` |
+| Antimicrobial Usage views | `apps/antimicrobial_usage/views.py` |
+| Antimicrobial Usage services | `apps/antimicrobial_usage/services.py` |
+| Antimicrobial Usage FHIR | `apps/antimicrobial_usage/fhir_client.py` |
+| Antimicrobial Usage templates | `templates/antimicrobial_usage/` (5 files) |
+| Antimicrobial Usage demo | `apps/antimicrobial_usage/management/commands/create_demo_usage.py` |
+| Antimicrobial Usage monitor | `apps/antimicrobial_usage/management/commands/monitor_usage.py` |
 | Action Analytics | `apps/action_analytics/` |
 | Authentication | `apps/authentication/` |
 | Core models | `apps/core/models.py` |
@@ -220,3 +228,15 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - Management commands: detect_outbreaks (--once/--continuous/--stats), create_demo_outbreaks (6 CCHMC-unit scenarios)
 - Demo data: 6 clusters (MRSA/G3NE, VRE/A6N, CRE/G5NE, CDI/A4N, CLABSI/G6SE, ESBL/G1NE), 19 cases, 5 alerts
 - Seven modules now migrated total
+- Migrated Antimicrobial Usage Alerts module from Flask to Django (16 new files, 5 templates)
+- No custom models needed — all data in Alert model with alert_type=BROAD_SPECTRUM_USAGE (already existed)
+- Adapted from Flask au_alerts_src/: data_models.py (3 dataclasses), fhir_client.py (trimmed for duration only), services.py (BroadSpectrumMonitorService)
+- Deduplication via JSONField lookup: Alert.objects.filter(details__medication_fhir_id=order_id)
+- Severity mapping: Flask WARNING → Django HIGH, Flask CRITICAL → Django CRITICAL (≥144h)
+- Views: dashboard (stats + medication filter), detail (duration progress bar + resolve form), history, help + 5 API endpoints
+- Templates: teal theme (#00796B), duration bar visualization, de-escalation workflow docs
+- Management commands: monitor_usage (--once/--continuous/--stats/--dry-run), create_demo_usage (8 CCHMC-unit scenarios)
+- Demo data: 8 scenarios — Meropenem/Vancomycin at G3NE, G1NE, A6N, G6SE, A4N, G5NE, A5N1, A3N (2 CRITICAL, 4 HIGH, 2 resolved)
+- ANTIMICROBIAL_USAGE settings dict: 72h threshold, 2 monitored medications (Meropenem/Vancomycin), 300s poll interval
+- 7 unit tests passing (data models, service stats, template rendering, alert type)
+- Eight modules now migrated total

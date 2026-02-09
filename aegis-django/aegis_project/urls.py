@@ -31,4 +31,5 @@ urlpatterns = [
     path('dosing/', include('apps.dosing.urls')),
     path('hai-detection/', include('apps.hai_detection.urls')),
     path('outbreak-detection/', include('apps.outbreak_detection.urls')),
+    path('antimicrobial-usage/', include('apps.antimicrobial_usage.urls')),
 ]

@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'apps.dosing',  # ✅ Phase 3 - Dosing Verification
     'apps.hai_detection',  # ✅ Phase 3 - HAI Detection
     'apps.outbreak_detection',  # ✅ Phase 3 - Outbreak Detection
+    'apps.antimicrobial_usage',  # ✅ Phase 3 - Antimicrobial Usage Alerts
     # TO BE MIGRATED:
     # 'apps.dosing_verification',
     # 'apps.abx_approvals',
@@ -272,4 +273,14 @@ OUTBREAK_DETECTION = {
     'CLUSTER_WINDOW_DAYS': 14,
     'MIN_CLUSTER_SIZE': 2,
     'POLL_INTERVAL_MINUTES': 30,
+}
+
+# Antimicrobial Usage Alerts Configuration
+ANTIMICROBIAL_USAGE = {
+    'ALERT_THRESHOLD_HOURS': 72,
+    'MONITORED_MEDICATIONS': {
+        '29561': 'Meropenem',
+        '11124': 'Vancomycin',
+    },
+    'POLL_INTERVAL_SECONDS': 300,
 }

@@ -1,0 +1,150 @@
+{% extends "antimicrobial_usage/base.html" %}
+
+{% block content %}
+
+<p><a href="{% url 'antimicrobial_usage:dashboard' %}">&larr; Back to Dashboard</a></p>
+
+<div style="margin-bottom: 15px;">
+    <span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span>
+    <span class="badge {{ alert.status }}">{{ alert.get_status_display }}</span>
+</div>
+
+<h2>{{ alert.title }}</h2>
+
+<div class="detail-layout">
+    <!-- Main Content -->
+    <div class="detail-main">
+        <!-- Medication Info -->
+        <div class="sidebar-card">
+            <h4>Medication Details</h4>
+            <p><span class="label">Medication:</span> {{ details.medication_name }}</p>
+            {% if details.rxnorm_code %}<p><span class="label">RxNorm:</span> {{ details.rxnorm_code }}</p>{% endif %}
+            {% if details.dose %}<p><span class="label">Dose:</span> {{ details.dose }}</p>{% endif %}
+            {% if details.route %}<p><span class="label">Route:</span> {{ details.route }}</p>{% endif %}
+            {% if details.start_date %}<p><span class="label">Start Date:</span> {{ details.start_date|truncatechars:19 }}</p>{% endif %}
+        </div>
+
+        <!-- Duration Bar -->
+        <div class="sidebar-card">
+            <h4>Duration</h4>
+            <p>
+                <strong>{{ details.duration_hours|floatformat:1 }} hours</strong>
+                ({{ duration_days }} days)
+                &mdash; Threshold: {{ details.threshold_hours }} hours
+            </p>
+            <div class="duration-bar-container">
+                <div class="duration-bar-fill {% if alert.severity == 'critical' %}critical{% else %}high{% endif %}"
+                     style="width: {% widthratio duration_pct 1 1 %}%;"></div>
+                <div class="duration-bar-threshold" style="left: {% widthratio threshold_pct 2 1 %}%;">
+                    <span class="duration-bar-label">{{ details.threshold_hours }}h</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recommendation -->
+        <div class="alert-box {{ alert.severity }}">
+            <h4 style="margin-top: 0;">Recommendation</h4>
+            <p>{{ details.recommendation }}</p>
+        </div>
+
+        <!-- Actions -->
+        {% if alert.status != 'resolved' %}
+        <div class="sidebar-card">
+            <h4>Actions</h4>
+
+            {% if alert.status != 'acknowledged' %}
+            <form method="post" action="{% url 'antimicrobial_usage:api_acknowledge' alert.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary">Acknowledge</button>
+            </form>
+            {% endif %}
+
+            <h4>Resolve Alert</h4>
+            <form method="post" action="{% url 'antimicrobial_usage:api_resolve' alert.id %}">
+                {% csrf_token %}
+                <p>
+                    <label><strong>Resolution Reason:</strong></label><br>
+                    <select name="reason" required style="width: 100%; padding: 8px; margin: 5px 0;">
+                        <option value="">-- Select reason --</option>
+                        {% for value, label in resolution_reasons %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </p>
+                <p>
+                    <label><strong>Notes:</strong></label><br>
+                    <textarea name="notes" rows="3" style="width: 100%; padding: 8px; margin: 5px 0;"
+                              placeholder="Optional notes about the resolution..."></textarea>
+                </p>
+                <button type="submit" class="btn btn-success">Resolve</button>
+            </form>
+        </div>
+        {% endif %}
+
+        <!-- Add Note -->
+        <div class="sidebar-card">
+            <h4>Add Note</h4>
+            <form method="post" action="{% url 'antimicrobial_usage:api_add_note' alert.id %}">
+                {% csrf_token %}
+                <textarea name="note" rows="2" style="width: 100%; padding: 8px;" placeholder="Add a clinical note..."></textarea>
+                <br>
+                <button type="submit" class="btn btn-primary" style="margin-top: 5px;">Add Note</button>
+            </form>
+        </div>
+
+        <!-- Notes -->
+        {% if details.notes %}
+        <div class="sidebar-card">
+            <h4>Notes</h4>
+            {% for note in details.notes %}
+            <div class="audit-log">
+                <strong>{{ note.user }}</strong> &mdash; {{ note.timestamp|truncatechars:19 }}<br>
+                {{ note.text }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Audit Log -->
+        <div class="sidebar-card">
+            <h4>Audit Log</h4>
+            {% for entry in audit_log %}
+            <div class="audit-log">
+                <strong>{{ entry.action }}</strong>
+                {% if entry.performed_by %} by {{ entry.performed_by.username }}{% endif %}
+                &mdash; {{ entry.performed_at|date:"Y-m-d H:i:s" }}
+                {% if entry.old_status %} ({{ entry.old_status }} &rarr; {{ entry.new_status }}){% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="detail-sidebar">
+        <!-- Patient Info -->
+        <div class="sidebar-card">
+            <h4>Patient Information</h4>
+            <p><span class="label">Name:</span> {{ alert.patient_name }}</p>
+            <p><span class="label">MRN:</span> {{ alert.patient_mrn }}</p>
+            <p><span class="label">Location:</span> {{ alert.patient_location }}</p>
+            {% if details.department %}<p><span class="label">Department:</span> {{ details.department }}</p>{% endif %}
+        </div>
+
+        <!-- Timeline -->
+        <div class="sidebar-card">
+            <h4>Timeline</h4>
+            <p><span class="label">Created:</span> {{ alert.created_at|date:"Y-m-d H:i:s" }}</p>
+            {% if alert.acknowledged_at %}
+            <p><span class="label">Acknowledged:</span> {{ alert.acknowledged_at|date:"Y-m-d H:i:s" }}</p>
+            {% endif %}
+            {% if alert.resolved_at %}
+            <p><span class="label">Resolved:</span> {{ alert.resolved_at|date:"Y-m-d H:i:s" }}</p>
+            <p><span class="label">Reason:</span> {{ alert.get_resolution_reason_display }}</p>
+            {% if alert.resolved_by %}<p><span class="label">Resolved By:</span> {{ alert.resolved_by.username }}</p>{% endif %}
+            {% if alert.resolution_notes %}<p><span class="label">Notes:</span> {{ alert.resolution_notes }}</p>{% endif %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

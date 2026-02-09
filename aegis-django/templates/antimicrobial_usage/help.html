@@ -1,0 +1,222 @@
+{% extends "antimicrobial_usage/base.html" %}
+
+{% block content %}
+
+<h2>Help &amp; Documentation</h2>
+
+<div class="help-section">
+    <h3>Overview</h3>
+    <p>
+        The Antimicrobial Usage Alerts module monitors broad-spectrum antibiotic duration for
+        hospitalized patients. When a monitored medication exceeds the configured threshold
+        (default: 72 hours), an alert is generated for ASP pharmacist review.
+    </p>
+    <p>
+        The goal is to prompt timely de-escalation conversations, reduce unnecessary
+        broad-spectrum exposure, and support antimicrobial stewardship best practices.
+    </p>
+</div>
+
+<div class="help-section">
+    <h3>Monitored Medications</h3>
+    <table class="med-table">
+        <thead>
+            <tr>
+                <th>Medication</th>
+                <th>RxNorm Code</th>
+                <th>Common Indications</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Meropenem</strong></td>
+                <td>29561</td>
+                <td>Broad-spectrum carbapenem; multi-drug resistant gram-negative infections, intra-abdominal infections, meningitis</td>
+            </tr>
+            <tr>
+                <td><strong>Vancomycin</strong></td>
+                <td>11124</td>
+                <td>MRSA coverage; bacteremia, endocarditis, osteomyelitis, CNS infections</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="help-section">
+    <h3>Duration Thresholds</h3>
+    <table class="med-table">
+        <thead>
+            <tr>
+                <th>Threshold</th>
+                <th>Duration</th>
+                <th>Severity</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Standard</td>
+                <td>&ge; 72 hours (3 days)</td>
+                <td><span class="badge high">High</span></td>
+                <td>Review for potential de-escalation based on culture data</td>
+            </tr>
+            <tr>
+                <td>Urgent</td>
+                <td>&ge; 144 hours (6 days)</td>
+                <td><span class="badge critical">Critical</span></td>
+                <td>Urgent review &mdash; consider de-escalation or discontinuation</td>
+            </tr>
+        </tbody>
+    </table>
+    <p>
+        The 72-hour threshold aligns with the typical 48-72 hour window for culture results
+        to return, after which empiric broad-spectrum therapy should be reassessed.
+    </p>
+</div>
+
+<div class="help-section">
+    <h3>Alert Severity Levels</h3>
+    <table class="med-table">
+        <thead>
+            <tr>
+                <th>Severity</th>
+                <th>Condition</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="badge critical">Critical</span></td>
+                <td>&ge; 144 hours (2x threshold)</td>
+                <td>Extended broad-spectrum use requiring urgent review for de-escalation or discontinuation</td>
+            </tr>
+            <tr>
+                <td><span class="badge high">High</span></td>
+                <td>&ge; 72 hours (threshold)</td>
+                <td>Broad-spectrum use exceeding review threshold; culture results should be available</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="help-section">
+    <h3>Alert Workflow</h3>
+    <ol>
+        <li><strong>Alert Created</strong> &mdash; System detects medication exceeding threshold</li>
+        <li><strong>Acknowledge</strong> &mdash; ASP pharmacist acknowledges review of the alert</li>
+        <li><strong>Resolve</strong> &mdash; Document the clinical decision with a resolution reason</li>
+    </ol>
+</div>
+
+<div class="help-section">
+    <h3>Resolution Options</h3>
+    <table class="med-table">
+        <thead>
+            <tr>
+                <th>Resolution</th>
+                <th>When to Use</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Therapy Changed / De-escalated</strong></td>
+                <td>Antibiotic changed to narrower-spectrum agent based on culture/clinical data</td>
+            </tr>
+            <tr>
+                <td><strong>Therapy Stopped</strong></td>
+                <td>Antibiotic discontinued (course complete, not indicated, etc.)</td>
+            </tr>
+            <tr>
+                <td><strong>Clinical Justification</strong></td>
+                <td>Continued broad-spectrum use is clinically justified (e.g., polymicrobial infection)</td>
+            </tr>
+            <tr>
+                <td><strong>Discussed with Team</strong></td>
+                <td>Discussed de-escalation options with primary team</td>
+            </tr>
+            <tr>
+                <td><strong>Messaged Team</strong></td>
+                <td>Sent recommendation to primary team via EHR messaging</td>
+            </tr>
+            <tr>
+                <td><strong>Culture Pending</strong></td>
+                <td>Awaiting culture results before making a change</td>
+            </tr>
+            <tr>
+                <td><strong>Escalated to Attending</strong></td>
+                <td>Referred to attending physician or ID consultant</td>
+            </tr>
+            <tr>
+                <td><strong>No Action Needed</strong></td>
+                <td>Alert reviewed, no change required at this time</td>
+            </tr>
+            <tr>
+                <td><strong>Patient Discharged</strong></td>
+                <td>Patient has been discharged</td>
+            </tr>
+            <tr>
+                <td><strong>False Positive</strong></td>
+                <td>Alert triggered in error (e.g., medication already discontinued)</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="help-section">
+    <h3>ASP De-escalation Workflow</h3>
+    <ol>
+        <li>Review the alert and confirm the medication is still active</li>
+        <li>Check culture and sensitivity results in the EHR</li>
+        <li>If cultures show susceptible organism: recommend targeted (narrower-spectrum) therapy</li>
+        <li>If cultures are negative: consider whether antibiotics are still indicated</li>
+        <li>If cultures are pending: consider clinical trajectory and reassess when results return</li>
+        <li>Document the recommendation and resolution in AEGIS</li>
+    </ol>
+</div>
+
+<div class="help-section">
+    <h3>API Endpoints</h3>
+    <table class="med-table">
+        <thead>
+            <tr>
+                <th>Endpoint</th>
+                <th>Method</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>/antimicrobial-usage/api/stats/</code></td>
+                <td>GET</td>
+                <td>Current alert statistics (JSON)</td>
+            </tr>
+            <tr>
+                <td><code>/antimicrobial-usage/api/&lt;uuid&gt;/acknowledge/</code></td>
+                <td>POST</td>
+                <td>Acknowledge an alert</td>
+            </tr>
+            <tr>
+                <td><code>/antimicrobial-usage/api/&lt;uuid&gt;/resolve/</code></td>
+                <td>POST</td>
+                <td>Resolve an alert (requires reason)</td>
+            </tr>
+            <tr>
+                <td><code>/antimicrobial-usage/api/&lt;uuid&gt;/add-note/</code></td>
+                <td>POST</td>
+                <td>Add a note to an alert</td>
+            </tr>
+            <tr>
+                <td><code>/antimicrobial-usage/api/export/?type=active</code></td>
+                <td>GET</td>
+                <td>Export active alerts as CSV</td>
+            </tr>
+            <tr>
+                <td><code>/antimicrobial-usage/api/export/?type=history</code></td>
+                <td>GET</td>
+                <td>Export resolved alerts as CSV</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}
