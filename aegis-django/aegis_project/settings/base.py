@@ -54,10 +54,10 @@ INSTALLED_APPS = [
     'apps.antimicrobial_usage',  # ✅ Phase 3 - Antimicrobial Usage Alerts
     'apps.abx_indications',  # ✅ Phase 3 - ABX Indication Monitoring
     'apps.surgical_prophylaxis',  # ✅ Phase 3 - Surgical Prophylaxis
+    'apps.guideline_adherence',  # ✅ Phase 3 - Guideline Adherence
     # TO BE MIGRATED:
     # 'apps.dosing_verification',
     # 'apps.abx_approvals',
-    # 'apps.guideline_adherence',
     # 'apps.nhsn_reporting',
 
     # API
@@ -335,4 +335,20 @@ SURGICAL_PROPHYLAXIS = {
     'ALERT_T0_ENABLED': True,
     'EPIC_CHAT_ENABLED': False,
     'TEAMS_ENABLED': False,
+}
+
+# Guideline Adherence Configuration
+GUIDELINE_ADHERENCE = {
+    'FHIR_BASE_URL': config('GA_FHIR_URL', default='http://localhost:8081/fhir'),
+    'LLM_BACKEND': 'ollama',
+    'OLLAMA_BASE_URL': config('GA_OLLAMA_URL', default='http://localhost:11434'),
+    'FULL_MODEL': config('GA_FULL_MODEL', default='llama3.3:70b'),
+    'TRIAGE_MODEL': config('GA_TRIAGE_MODEL', default='qwen2.5:7b'),
+    'CHECK_INTERVAL_MINUTES': 15,
+    'POLL_INTERVAL_SECONDS': 300,
+    'ENABLED_BUNDLES': [
+        'sepsis_peds_2024', 'cap_peds_2024', 'febrile_infant_2024',
+        'neonatal_hsv_2024', 'cdiff_testing_2024', 'fn_peds_2024',
+        'uti_peds_2024', 'ssti_peds_2024',
+    ],
 }

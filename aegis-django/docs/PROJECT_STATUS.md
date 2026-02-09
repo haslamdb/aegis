@@ -6,7 +6,7 @@
 
 ## Current Status
 
-Django migration is in progress. Foundation (Phase 1) is complete and audited. Ten modules have been migrated:
+Django migration is in progress. Foundation (Phase 1) is complete and audited. Eleven modules have been migrated:
 
 1. **Action Analytics** - Read-only analytics dashboard (Phase 2, audited and fixed)
 2. **ASP Alerts** - Complete ASP bacteremia/stewardship alerts with clinical features (Phase 2)
@@ -18,6 +18,7 @@ Django migration is in progress. Foundation (Phase 1) is complete and audited. T
 8. **Antimicrobial Usage Alerts** - Broad-spectrum antibiotic duration monitoring (Phase 3)
 9. **ABX Indications** - Antibiotic indication documentation monitoring with LLM extraction (Phase 3)
 10. **Surgical Prophylaxis** - ASHP bundle compliance evaluation with real-time HL7 ADT monitoring (Phase 3)
+11. **Guideline Adherence** - 9-bundle clinical guideline compliance monitoring with tiered NLP and 3-mode operation (Phase 3)
 
 Foundation code audit is complete — 10 bugs identified and fixed across framework infrastructure, authentication, and Action Analytics. The codebase is now solid for building additional modules.
 
@@ -47,6 +48,7 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - [x] Antimicrobial Usage Alerts (`apps/antimicrobial_usage/`) - Broad-spectrum duration monitoring (meropenem/vancomycin 72h threshold)
 - [x] ABX Indications (`apps/abx_indications/`) - Antibiotic indication documentation with LLM extraction, CCHMC guidelines engine
 - [x] Surgical Prophylaxis (`apps/surgical_prophylaxis/`) - 7-element ASHP bundle compliance + real-time HL7 ADT surgical pathway monitoring
+- [x] Guideline Adherence (`apps/guideline_adherence/`) - 9-bundle clinical guideline compliance with tiered NLP, 3 monitoring modes, human review workflow
 
 ### Code Audit & Bug Fixes (2026-02-07)
 
@@ -94,11 +96,10 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 ## Next Steps
 
 ### Immediate (next session)
-- [ ] Guideline Adherence module migration (time-window episode monitoring, NLP)
+- [ ] NHSN Reporting module migration (Clarity batch jobs, CDA generation)
 - [ ] Unit tests for foundation code (models, views, decorators)
 
 ### Upcoming
-- [ ] NHSN Reporting module migration (Clarity batch jobs, CDA generation)
 - [ ] Epic FHIR API integration layer
 - [ ] Celery background tasks (alert scanning, auto-recheck)
 
@@ -291,3 +292,39 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - SURGICAL_PROPHYLAXIS settings dict: FHIR + HL7 configuration, trigger enable/disable, notification channels
 - 66 unit tests passing
 - Ten modules now migrated total
+
+**2026-02-08 (cont.):**
+- Migrated Guideline Adherence module from Flask to Django (29 new files, 8 templates)
+- Most complex monitoring module: 5 custom Django models, 9 guideline bundles, 3 coordinated monitoring modes
+- Core models: BundleEpisode (episode tracking + adherence calculation), ElementResult (per-element status), EpisodeAssessment (LLM analysis), EpisodeReview (human review + override), MonitorState (polling checkpoints)
+- 9 evidence-based guideline bundles: Pediatric Sepsis, CAP, Febrile Infant (AAP 2021), Neonatal HSV, C.diff Testing Stewardship, Febrile Neutropenia, Surgical Prophylaxis, UTI, SSTI
+- 3 monitoring modes: trigger monitoring (FHIR polling), episode monitoring (deadline violations), adherence monitoring (element completion)
+- 7 element checkers: base, lab, medication, note, febrile_infant (AAP 2021 age-stratified), hsv (classification-based), cdiff_testing (diagnostic stewardship)
+- Tiered NLP pipeline: 7B triage (qwen2.5:7b) → 70B full analysis (llama3.3:70b) with 5 escalation triggers
+- NLP extractors: clinical_impression, triage_extractor, gi_symptoms (C.diff criteria)
+- Services: GuidelineAdherenceService (3-mode orchestrator, checker routing, alert dedup, review workflow)
+- 2 AlertTypes: GUIDELINE_ADHERENCE, BUNDLE_INCOMPLETE
+- Views: dashboard, active_episodes, episode_detail, bundle_detail, metrics, history, help + 4 API endpoints
+- Templates: blue/navy clinical theme (#1a4b8c, #0d2b5e)
+- Management commands: monitor_guidelines (--trigger/--episodes/--adherence/--all/--once/--continuous/--stats/--dry-run/--bundle), create_demo_guidelines (5 CCHMC scenarios)
+- Demo data: 5 scenarios — Febrile Infant 14d well (100%), Sepsis 3y (50%, 2 alerts), HSV 10d (72.7%, 1 critical), Febrile Infant 10d ill (92.3%), C.diff 8y (100%)
+- GUIDELINE_ADHERENCE settings dict: FHIR URL, dual LLM models (70B + 7B), 8 enabled bundles
+- Decorator: can_manage_guideline_adherence (ASP_PHARMACIST or ADMIN)
+- 70 unit tests passing
+- Eleven modules now migrated total
+
+### Key Files (Guideline Adherence)
+
+| Component | Location |
+|-----------|----------|
+| Guideline Adherence app | `apps/guideline_adherence/` |
+| Guideline Adherence models | `apps/guideline_adherence/models.py` (5 models) |
+| Bundle definitions | `apps/guideline_adherence/bundles.py` (9 bundles) |
+| Element checkers | `apps/guideline_adherence/logic/checkers/` (7 files) |
+| NLP extractors | `apps/guideline_adherence/logic/nlp/` (3 extractors) |
+| FHIR client | `apps/guideline_adherence/fhir_client.py` |
+| Services | `apps/guideline_adherence/services.py` |
+| Views | `apps/guideline_adherence/views.py` |
+| Templates | `templates/guideline_adherence/` (8 files) |
+| Demo data | `apps/guideline_adherence/management/commands/create_demo_guidelines.py` |
+| Monitor command | `apps/guideline_adherence/management/commands/monitor_guidelines.py` |

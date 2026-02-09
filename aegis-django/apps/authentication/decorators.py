@@ -243,6 +243,28 @@ def can_manage_surgical_prophylaxis(view_func):
     return wrapped_view
 
 
+def can_manage_guideline_adherence(view_func):
+    """
+    Decorator to check if user can manage guideline adherence.
+
+    Usage:
+        @can_manage_guideline_adherence
+        def view(request):
+            ...
+    """
+    @wraps(view_func)
+    @login_required
+    def wrapped_view(request, *args, **kwargs):
+        if not request.user.can_manage_guideline_adherence():
+            messages.error(
+                request,
+                "Access denied. This page requires guideline adherence management permissions."
+            )
+            raise PermissionDenied("User cannot manage guideline adherence")
+        return view_func(request, *args, **kwargs)
+    return wrapped_view
+
+
 def can_edit_alerts(view_func):
     """
     Decorator to check if user can acknowledge/resolve alerts.

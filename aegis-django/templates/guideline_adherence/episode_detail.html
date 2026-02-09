@@ -1,0 +1,339 @@
+{% extends "guideline_adherence/base.html" %}
+
+{% block title %}{{ episode.bundle_name }} - {{ episode.patient_name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ episode.bundle_name }} -- {{ episode.patient_name }}</h1>
+    <p>MRN: {{ episode.patient_mrn }} | {{ episode.patient_unit|default:"Unit unknown" }} | Triggered: {{ episode.trigger_time|date:"M d, Y H:i" }}</p>
+</div>
+
+{% if episode.adherence_level == 'low' %}
+<div class="alert-banner danger">
+    <strong>Low Adherence:</strong> Only {{ episode.adherence_percentage }}% of applicable bundle elements are met. Review required.
+</div>
+{% endif %}
+
+<div class="two-col">
+    <!-- Left Column: Patient Info + Elements -->
+    <div>
+        <!-- Patient & Bundle Info -->
+        <div class="card">
+            <div class="card-header">Episode Details</div>
+            <div class="card-body">
+                <div class="detail-row"><div class="detail-label">Patient</div><div class="detail-value">{{ episode.patient_name }} ({{ episode.patient_mrn }})</div></div>
+                <div class="detail-row"><div class="detail-label">Encounter</div><div class="detail-value"><code style="font-size: 0.8rem;">{{ episode.encounter_id }}</code></div></div>
+                <div class="detail-row"><div class="detail-label">Unit</div><div class="detail-value">{{ episode.patient_unit|default:"--" }}</div></div>
+                {% if episode.patient_age_months %}
+                <div class="detail-row"><div class="detail-label">Age</div><div class="detail-value">{{ episode.patient_age_months|floatformat:1 }} months</div></div>
+                {% endif %}
+                <div class="detail-row"><div class="detail-label">Bundle</div><div class="detail-value"><a href="{% url 'guideline_adherence:bundle_detail' episode.bundle_id %}" style="color: #1a4b8c;">{{ episode.bundle_name }}</a></div></div>
+                <div class="detail-row"><div class="detail-label">Trigger</div><div class="detail-value">{{ episode.trigger_description|default:episode.trigger_type }}</div></div>
+                {% if episode.trigger_code %}
+                <div class="detail-row"><div class="detail-label">Trigger Code</div><div class="detail-value"><span class="icd-badge">{{ episode.trigger_code }}</span></div></div>
+                {% endif %}
+                <div class="detail-row"><div class="detail-label">Trigger Time</div><div class="detail-value">{{ episode.trigger_time|date:"M d, Y H:i" }}</div></div>
+                <div class="detail-row">
+                    <div class="detail-label">Status</div>
+                    <div class="detail-value"><span class="badge badge-{{ episode.status }}">{{ episode.get_status_display }}</span></div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Adherence</div>
+                    <div class="detail-value">
+                        <span class="badge badge-{{ episode.adherence_level }}">{{ episode.adherence_percentage }}% - {{ episode.get_adherence_level_display }}</span>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Elements</div>
+                    <div class="detail-value">
+                        <span style="color: #28a745;">{{ episode.elements_met }} met</span> /
+                        <span style="color: #dc3545;">{{ episode.elements_not_met }} not met</span> /
+                        <span style="color: #d4a017;">{{ episode.elements_pending }} pending</span>
+                        ({{ episode.elements_applicable }} applicable of {{ episode.elements_total }} total)
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Element Results -->
+        <div class="card">
+            <div class="card-header">Bundle Element Results</div>
+            <div class="card-body" style="padding: 0;">
+                <ul class="element-list">
+                    {% for elem in elements %}
+                    <li class="element-item">
+                        <div class="element-status-icon {% if elem.status == 'met' %}met{% elif elem.status == 'not_met' %}not-met{% elif elem.status == 'pending' %}pending{% elif elem.status == 'na' %}na{% else %}unable{% endif %}">
+                            {% if elem.status == 'met' %}&#10003;{% elif elem.status == 'not_met' %}&#10007;{% elif elem.status == 'pending' %}?{% elif elem.status == 'na' %}--{% else %}!{% endif %}
+                        </div>
+                        <div class="element-content">
+                            <div class="element-name">
+                                {{ elem.element_name }}
+                                {% if not elem.required %}<span class="badge badge-optional" style="margin-left: 0.3rem;">Optional</span>{% endif %}
+                                {% if elem.is_overdue %}<span class="badge badge-overdue" style="margin-left: 0.3rem;">Overdue</span>{% endif %}
+                            </div>
+                            <div class="element-desc">{{ elem.element_description }}</div>
+                            <div class="element-meta">
+                                <span class="badge badge-{{ elem.status }}">{{ elem.get_status_display }}</span>
+                                {% if elem.deadline %} | Deadline: {{ elem.deadline|date:"M d, H:i" }}{% endif %}
+                                {% if elem.time_window_hours %} | Window: {{ elem.time_window_hours }}h{% endif %}
+                                {% if elem.completed_at %} | Completed: {{ elem.completed_at|date:"M d, H:i" }}{% endif %}
+                            </div>
+                            {% if elem.value %}
+                            <div class="element-meta" style="color: #333;"><strong>Value:</strong> {{ elem.value }}</div>
+                            {% endif %}
+                            {% if elem.notes %}
+                            <div class="element-meta" style="color: #555;"><strong>Notes:</strong> {{ elem.notes }}</div>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% empty %}
+                    <li class="element-item" style="justify-content: center; color: #888;">No element results recorded.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Review + Assessments + Alerts -->
+    <div>
+        <!-- Review Form -->
+        {% if episode.status == 'active' and episode.review_status != 'reviewed' %}
+        <div class="card">
+            <div class="card-header">Submit Review</div>
+            <div class="card-body">
+                <form id="review-form" method="post" action="{% url 'guideline_adherence:api_review' episode.id %}">
+                    {% csrf_token %}
+
+                    <div class="form-group">
+                        <label>Decision *</label>
+                        <select name="reviewer_decision" required>
+                            <option value="">Select...</option>
+                            {% for value, label in review_decisions %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="deviation-group" style="display: none;">
+                        <label>Deviation Type</label>
+                        <select name="deviation_type">
+                            <option value="">Select...</option>
+                            <option value="documentation">Documentation</option>
+                            <option value="timing">Timing</option>
+                            <option value="missing_element">Missing Element</option>
+                            <option value="clinical_judgment">Clinical Judgment</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Override Reason (if overriding LLM)</label>
+                        <select name="override_reason">
+                            <option value="">Not an override</option>
+                            <option value="extraction_error">Extraction Error</option>
+                            <option value="element_detection_error">Element Detection Error</option>
+                            <option value="clinical_judgment">Clinical Judgment</option>
+                            <option value="documentation_issue">Documentation Issue</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea name="notes" placeholder="Optional review notes..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Submit Review</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Latest LLM Assessment -->
+        {% if latest_assessment %}
+        <div class="card">
+            <div class="card-header">Latest Assessment</div>
+            <div class="card-body">
+                <div class="detail-row"><div class="detail-label">Type</div><div class="detail-value">{{ latest_assessment.assessment_type }}</div></div>
+                <div class="detail-row">
+                    <div class="detail-label">Determination</div>
+                    <div class="detail-value">
+                        <span class="badge {% if latest_assessment.primary_determination == 'guideline_appropriate' %}badge-met{% elif latest_assessment.primary_determination == 'guideline_deviation' %}badge-not-met{% else %}badge-pending{% endif %}">
+                            {{ latest_assessment.primary_determination|title }}
+                        </span>
+                    </div>
+                </div>
+                <div class="detail-row"><div class="detail-label">Confidence</div><div class="detail-value">{{ latest_assessment.confidence|title }}</div></div>
+                <div class="detail-row"><div class="detail-label">Model</div><div class="detail-value">{{ latest_assessment.model_used }}</div></div>
+                {% if latest_assessment.response_time_ms %}
+                <div class="detail-row"><div class="detail-label">Response Time</div><div class="detail-value">{{ latest_assessment.response_time_ms }}ms</div></div>
+                {% endif %}
+                {% if latest_assessment.reasoning %}
+                <div style="margin-top: 0.75rem;">
+                    <div class="detail-label" style="margin-bottom: 0.3rem;">Reasoning</div>
+                    <p style="font-size: 0.85rem; color: #555; line-height: 1.5;">{{ latest_assessment.reasoning }}</p>
+                </div>
+                {% endif %}
+                {% if latest_assessment.supporting_evidence %}
+                <div style="margin-top: 0.75rem;">
+                    <div class="detail-label" style="margin-bottom: 0.3rem;">Supporting Evidence</div>
+                    <ul style="padding-left: 1.2rem; font-size: 0.85rem; color: #555;">
+                        {% for evidence in latest_assessment.supporting_evidence %}
+                        <li>{{ evidence }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <div style="font-size: 0.8rem; color: #888; margin-top: 0.75rem;">{{ latest_assessment.created_at|date:"M d, Y H:i" }}</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Alerts -->
+        {% if alerts %}
+        <div class="card">
+            <div class="card-header">Related Alerts</div>
+            <div class="card-body">
+                {% for alert in alerts %}
+                <div style="{% if not forloop.last %}border-bottom: 1px solid #eee; margin-bottom: 0.75rem; padding-bottom: 0.75rem;{% endif %}">
+                    <div class="detail-row">
+                        <div class="detail-label">Type</div>
+                        <div class="detail-value"><span class="badge badge-blue">{{ alert.get_alert_type_display }}</span></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Severity</div>
+                        <div class="detail-value"><span class="badge badge-{{ alert.severity }}">{{ alert.get_severity_display }}</span></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Status</div>
+                        <div class="detail-value"><span class="badge badge-{{ alert.status }}">{{ alert.get_status_display }}</span></div>
+                    </div>
+                    {% if alert.description %}
+                    <p style="font-size: 0.85rem; color: #555; margin-top: 0.5rem;">{{ alert.description }}</p>
+                    {% endif %}
+
+                    {% if alert.status == 'pending' or alert.status == 'acknowledged' %}
+                    <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                        {% if alert.status == 'pending' %}
+                        <button class="btn btn-sm btn-secondary" onclick="acknowledgeAlert('{{ alert.id }}')">Acknowledge</button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-primary" onclick="document.getElementById('resolve-{{ alert.id }}').style.display='block'">Resolve</button>
+                    </div>
+
+                    <form id="resolve-{{ alert.id }}" style="display: none; margin-top: 0.75rem;" method="post" action="{% url 'guideline_adherence:api_resolve' alert.id %}">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label>Resolution Reason *</label>
+                            <select name="reason" required>
+                                <option value="">Select reason...</option>
+                                {% for value, label in resolution_reasons %}
+                                <option value="{{ value }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <textarea name="notes"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">Resolve Alert</button>
+                    </form>
+                    {% endif %}
+
+                    <div style="font-size: 0.8rem; color: #888; margin-top: 0.3rem;">{{ alert.created_at|date:"M d, Y H:i" }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Previous Reviews -->
+        {% if reviews %}
+        <div class="card">
+            <div class="card-header">Review History</div>
+            <div class="card-body">
+                {% for review in reviews %}
+                <div style="{% if not forloop.last %}border-bottom: 1px solid #eee; margin-bottom: 0.75rem; padding-bottom: 0.75rem;{% endif %}">
+                    <div class="detail-row"><div class="detail-label">Reviewer</div><div class="detail-value">{{ review.reviewer }}</div></div>
+                    <div class="detail-row"><div class="detail-label">Decision</div><div class="detail-value">{{ review.get_reviewer_decision_display }}</div></div>
+                    {% if review.deviation_type %}
+                    <div class="detail-row"><div class="detail-label">Deviation Type</div><div class="detail-value">{{ review.deviation_type|title }}</div></div>
+                    {% endif %}
+                    {% if review.is_override %}
+                    <span class="badge badge-override">Override</span>
+                    {% if review.override_reason_category %}
+                    <span style="font-size: 0.8rem; color: #666; margin-left: 0.5rem;">{{ review.override_reason_category|title }}</span>
+                    {% endif %}
+                    {% endif %}
+                    {% if review.notes %}
+                    <p style="font-size: 0.85rem; color: #555; margin-top: 0.3rem;">{{ review.notes }}</p>
+                    {% endif %}
+                    <div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">{{ review.reviewed_at|date:"M d, Y H:i" }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- All Assessments -->
+        {% if assessments.count > 1 %}
+        <div class="card">
+            <div class="card-header">Assessment History</div>
+            <div class="card-body">
+                <table class="table">
+                    <thead><tr><th>Type</th><th>Determination</th><th>Confidence</th><th>Model</th><th>Time</th></tr></thead>
+                    <tbody>
+                        {% for assess in assessments %}
+                        <tr>
+                            <td>{{ assess.assessment_type }}</td>
+                            <td>
+                                <span class="badge {% if assess.primary_determination == 'guideline_appropriate' %}badge-met{% elif assess.primary_determination == 'guideline_deviation' %}badge-not-met{% else %}badge-pending{% endif %}">
+                                    {{ assess.primary_determination|title }}
+                                </span>
+                            </td>
+                            <td>{{ assess.confidence }}</td>
+                            <td style="font-size: 0.8rem;">{{ assess.model_used }}</td>
+                            <td style="font-size: 0.8rem;">{{ assess.created_at|date:"M d, H:i" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelector('[name=reviewer_decision]')?.addEventListener('change', function() {
+    var group = document.getElementById('deviation-group');
+    if (group) {
+        group.style.display = this.value === 'guideline_deviation' ? 'block' : 'none';
+    }
+});
+
+function acknowledgeAlert(alertId) {
+    fetch('/guideline-adherence/api/' + alertId + '/acknowledge/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+        },
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) location.reload();
+        else alert(data.error);
+    });
+}
+
+document.getElementById('review-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var formData = new FormData(this);
+    fetch(this.action, {
+        method: 'POST',
+        body: formData,
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.success) location.reload();
+        else alert(data.error || 'Error submitting review');
+    });
+});
+</script>
+{% endblock %}

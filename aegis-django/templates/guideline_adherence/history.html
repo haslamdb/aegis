@@ -1,0 +1,118 @@
+{% extends "guideline_adherence/base.html" %}
+
+{% block title %}History - Guideline Adherence{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Episode History</h1>
+    <p>All guideline bundle episodes (active and completed)</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Episodes
+        <a href="{% url 'guideline_adherence:api_export' %}?type=history&days={{ days }}" class="btn btn-outline btn-sm">Export CSV</a>
+    </div>
+    <div class="card-body">
+        <form method="get" class="filters">
+            <label>Status:</label>
+            <select name="status" onchange="this.form.submit()">
+                <option value="">All Statuses</option>
+                <option value="active" {% if current_filters.status == 'active' %}selected{% endif %}>Active</option>
+                <option value="complete" {% if current_filters.status == 'complete' %}selected{% endif %}>Complete</option>
+                <option value="closed" {% if current_filters.status == 'closed' %}selected{% endif %}>Closed</option>
+            </select>
+
+            <label>Bundle:</label>
+            <select name="bundle" onchange="this.form.submit()">
+                <option value="">All Bundles</option>
+                {% for b in bundles %}
+                <option value="{{ b.bundle_id }}" {% if current_filters.bundle == b.bundle_id %}selected{% endif %}>{{ b.name }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Adherence:</label>
+            <select name="adherence" onchange="this.form.submit()">
+                <option value="">All Levels</option>
+                <option value="full" {% if current_filters.adherence == 'full' %}selected{% endif %}>Full</option>
+                <option value="partial" {% if current_filters.adherence == 'partial' %}selected{% endif %}>Partial</option>
+                <option value="low" {% if current_filters.adherence == 'low' %}selected{% endif %}>Low</option>
+            </select>
+
+            <label>Days:</label>
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if current_filters.days == 7 %}selected{% endif %}>7 days</option>
+                <option value="14" {% if current_filters.days == 14 %}selected{% endif %}>14 days</option>
+                <option value="30" {% if current_filters.days == 30 %}selected{% endif %}>30 days</option>
+                <option value="60" {% if current_filters.days == 60 %}selected{% endif %}>60 days</option>
+                <option value="90" {% if current_filters.days == 90 %}selected{% endif %}>90 days</option>
+            </select>
+
+            {% if current_filters.status or current_filters.bundle or current_filters.adherence %}
+            <a href="{% url 'guideline_adherence:history' %}?days={{ current_filters.days }}" class="btn btn-sm btn-secondary">Clear</a>
+            {% endif %}
+        </form>
+
+        {% if episodes %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Bundle</th>
+                    <th>Unit</th>
+                    <th>Status</th>
+                    <th>Adherence</th>
+                    <th>Elements</th>
+                    <th>Review</th>
+                    <th>Trigger</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ep in episodes %}
+                <tr>
+                    <td>
+                        <strong>{{ ep.patient_name }}</strong><br>
+                        <small style="color: #888;">{{ ep.patient_mrn }}</small>
+                    </td>
+                    <td>
+                        <a href="{% url 'guideline_adherence:bundle_detail' ep.bundle_id %}" style="color: #1a4b8c; text-decoration: none;">
+                            {{ ep.bundle_name }}
+                        </a>
+                    </td>
+                    <td>{{ ep.patient_unit|default:"--" }}</td>
+                    <td><span class="badge badge-{{ ep.status }}">{{ ep.get_status_display }}</span></td>
+                    <td><span class="badge badge-{{ ep.adherence_level }}">{{ ep.adherence_percentage }}%</span></td>
+                    <td style="font-size: 0.85rem;">
+                        <span style="color: #28a745;">{{ ep.elements_met }}</span> /
+                        <span style="color: #dc3545;">{{ ep.elements_not_met }}</span> /
+                        <span style="color: #d4a017;">{{ ep.elements_pending }}</span>
+                    </td>
+                    <td>
+                        {% if ep.review_status == 'pending_review' %}
+                        <span class="badge badge-pending-review">Pending</span>
+                        {% elif ep.review_status == 'reviewed' %}
+                        <span class="badge badge-reviewed">Reviewed</span>
+                        {% elif ep.overall_determination %}
+                        <span class="badge badge-info">{{ ep.overall_determination|title }}</span>
+                        {% else %}
+                        <span style="color: #888;">--</span>
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 0.85rem;">{{ ep.trigger_description|default:ep.trigger_type|truncatewords:4 }}</td>
+                    <td style="font-size: 0.85rem;">{{ ep.created_at|date:"M d, H:i" }}</td>
+                    <td><a href="{% url 'guideline_adherence:episode_detail' ep.id %}" class="btn btn-sm btn-primary">View</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>No episodes found</h3>
+            <p>No guideline episodes match the current filters for the last {{ days }} days.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

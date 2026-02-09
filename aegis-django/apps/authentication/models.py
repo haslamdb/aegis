@@ -205,6 +205,10 @@ class User(AbstractUser):
         """Check if user can manage surgical prophylaxis."""
         return self.role in [UserRole.ASP_PHARMACIST, UserRole.ADMIN]
 
+    def can_manage_guideline_adherence(self) -> bool:
+        """Check if user can manage guideline adherence."""
+        return self.role in [UserRole.ASP_PHARMACIST, UserRole.ADMIN]
+
     def can_edit_alerts(self) -> bool:
         """Check if user can acknowledge/resolve alerts."""
         return self.role in [

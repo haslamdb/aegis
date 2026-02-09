@@ -1,0 +1,156 @@
+{% extends "guideline_adherence/base.html" %}
+
+{% block title %}Metrics - Guideline Adherence{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Compliance Metrics</h1>
+    <p>Adherence rates and review statistics</p>
+</div>
+
+<!-- Date Range Filter -->
+<div class="card">
+    <div class="card-body">
+        <form method="get" class="filters">
+            <label>Time Period:</label>
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="14" {% if days == 14 %}selected{% endif %}>Last 14 days</option>
+                <option value="30" {% if days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="60" {% if days == 60 %}selected{% endif %}>Last 60 days</option>
+                <option value="90" {% if days == 90 %}selected{% endif %}>Last 90 days</option>
+            </select>
+        </form>
+    </div>
+</div>
+
+<!-- Overall Compliance Stats -->
+<div class="stats-row">
+    <div class="stat-card {% if overall_compliance >= 80 %}green{% elif overall_compliance >= 50 %}amber{% else %}red{% endif %}">
+        <div class="stat-value">{{ overall_compliance }}%</div>
+        <div class="stat-label">Overall Compliance</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="stat-value">{{ total }}</div>
+        <div class="stat-label">Total Completed</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-value">{{ full }}</div>
+        <div class="stat-label">Full Adherence</div>
+    </div>
+    <div class="stat-card amber">
+        <div class="stat-value">{{ partial }}</div>
+        <div class="stat-label">Partial Adherence</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-value">{{ low }}</div>
+        <div class="stat-label">Low Adherence</div>
+    </div>
+</div>
+
+<!-- Adherence Distribution -->
+{% if total > 0 %}
+<div class="card">
+    <div class="card-header">Adherence Distribution</div>
+    <div class="card-body">
+        <div style="display: flex; height: 32px; border-radius: 4px; overflow: hidden; margin-bottom: 1rem;">
+            {% if full > 0 %}
+            <div style="background: #28a745; width: {% widthratio full total 100 %}%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem; font-weight: 600;">
+                {{ full }}
+            </div>
+            {% endif %}
+            {% if partial > 0 %}
+            <div style="background: #d4a017; width: {% widthratio partial total 100 %}%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem; font-weight: 600;">
+                {{ partial }}
+            </div>
+            {% endif %}
+            {% if low > 0 %}
+            <div style="background: #dc3545; width: {% widthratio low total 100 %}%; display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem; font-weight: 600;">
+                {{ low }}
+            </div>
+            {% endif %}
+        </div>
+        <div style="display: flex; gap: 2rem; font-size: 0.85rem;">
+            <div><span style="display: inline-block; width: 12px; height: 12px; background: #28a745; border-radius: 2px; margin-right: 0.3rem;"></span> Full ({{ full }})</div>
+            <div><span style="display: inline-block; width: 12px; height: 12px; background: #d4a017; border-radius: 2px; margin-right: 0.3rem;"></span> Partial ({{ partial }})</div>
+            <div><span style="display: inline-block; width: 12px; height: 12px; background: #dc3545; border-radius: 2px; margin-right: 0.3rem;"></span> Low ({{ low }})</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Per-Bundle Compliance -->
+<div class="card">
+    <div class="card-header">Per-Bundle Compliance</div>
+    <div class="card-body">
+        {% if bundle_metrics %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Bundle</th>
+                    <th>Total Completed</th>
+                    <th>Full Adherence</th>
+                    <th>Compliance Rate</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for bm in bundle_metrics %}
+                <tr>
+                    <td>
+                        <a href="{% url 'guideline_adherence:bundle_detail' bm.bundle.bundle_id %}" style="color: #1a4b8c; text-decoration: none; font-weight: 600;">
+                            {{ bm.bundle.name }}
+                        </a>
+                    </td>
+                    <td>{{ bm.total }}</td>
+                    <td style="color: #28a745; font-weight: 600;">{{ bm.full }}</td>
+                    <td>
+                        {% if bm.total > 0 %}
+                        <span class="badge {% if bm.compliance_pct >= 80 %}badge-met{% elif bm.compliance_pct >= 50 %}badge-partial{% else %}badge-not-met{% endif %}">
+                            {{ bm.compliance_pct }}%
+                        </span>
+                        {% else %}
+                        <span class="badge badge-na">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td style="width: 200px;">
+                        {% if bm.total > 0 %}
+                        <div class="progress-bar">
+                            <div class="progress-fill {% if bm.compliance_pct >= 80 %}green{% elif bm.compliance_pct >= 50 %}amber{% else %}red{% endif %}" style="width: {{ bm.compliance_pct }}%;"></div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>No bundle data</h3>
+            <p>No completed episodes in the selected time period.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Review Statistics -->
+<div class="card">
+    <div class="card-header">Review Statistics</div>
+    <div class="card-body">
+        <div class="stats-row" style="margin-bottom: 0;">
+            <div class="stat-card blue">
+                <div class="stat-value">{{ review_count }}</div>
+                <div class="stat-label">Total Reviews</div>
+            </div>
+            <div class="stat-card {% if override_rate > 20 %}red{% elif override_rate > 10 %}amber{% else %}green{% endif %}">
+                <div class="stat-value">{{ override_count }}</div>
+                <div class="stat-label">Overrides</div>
+            </div>
+            <div class="stat-card {% if override_rate > 20 %}red{% elif override_rate > 10 %}amber{% else %}green{% endif %}">
+                <div class="stat-value">{{ override_rate }}%</div>
+                <div class="stat-label">Override Rate</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

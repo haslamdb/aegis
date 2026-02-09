@@ -1,0 +1,193 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Guideline Adherence{% endblock %} - AEGIS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #333; }
+
+        /* Navigation */
+        .nav-bar { background: #0d2b5e; padding: 0 2rem; display: flex; align-items: center; height: 56px; }
+        .nav-brand { color: #5b9cf5; font-weight: 700; font-size: 1.1rem; margin-right: 2rem; text-decoration: none; }
+        .nav-brand:hover { color: #7db4fc; }
+        .nav-links { display: flex; gap: 0.25rem; }
+        .nav-links a { color: #ccc; text-decoration: none; padding: 0.5rem 1rem; border-radius: 4px; font-size: 0.9rem; }
+        .nav-links a:hover { background: rgba(37, 99, 235, 0.2); color: #5b9cf5; }
+        .nav-links a.active { background: rgba(37, 99, 235, 0.25); color: #5b9cf5; }
+        .nav-right { margin-left: auto; color: #888; font-size: 0.85rem; }
+
+        /* Main content */
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
+        .page-header { margin-bottom: 1.5rem; }
+        .page-header h1 { font-size: 1.5rem; color: #0d2b5e; }
+        .page-header p { color: #666; margin-top: 0.25rem; }
+
+        /* Stats cards */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card { background: white; border-radius: 8px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .stat-card .stat-value { font-size: 2rem; font-weight: 700; }
+        .stat-card .stat-label { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+        .stat-card.blue .stat-value { color: #1a4b8c; }
+        .stat-card.navy .stat-value { color: #0d2b5e; }
+        .stat-card.accent .stat-value { color: #2563eb; }
+        .stat-card.green .stat-value { color: #28a745; }
+        .stat-card.red .stat-value { color: #dc3545; }
+        .stat-card.amber .stat-value { color: #d4a017; }
+
+        /* Cards and panels */
+        .card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+        .card-header { padding: 1rem 1.25rem; border-bottom: 1px solid #eee; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+        .card-body { padding: 1.25rem; }
+
+        /* Tables */
+        .table { width: 100%; border-collapse: collapse; }
+        .table th { text-align: left; padding: 0.75rem; font-size: 0.8rem; text-transform: uppercase; color: #666; border-bottom: 2px solid #eee; }
+        .table td { padding: 0.75rem; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+        .table tr:hover { background: #fafafa; }
+
+        /* Badges */
+        .badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 600; }
+        .badge-met { background: #d4edda; color: #155724; }
+        .badge-not-met { background: #f8d7da; color: #721c24; }
+        .badge-pending { background: #fff3cd; color: #856404; }
+        .badge-na { background: #e2e3e5; color: #383d41; }
+        .badge-unable { background: #e2e3e5; color: #383d41; }
+        .badge-full { background: #d4edda; color: #155724; }
+        .badge-partial { background: #fff3cd; color: #856404; }
+        .badge-low { background: #f8d7da; color: #721c24; }
+        .badge-active { background: #cce5ff; color: #004085; }
+        .badge-complete { background: #d4edda; color: #155724; }
+        .badge-closed { background: #e2e3e5; color: #383d41; }
+        .badge-reviewed { background: #d4edda; color: #155724; }
+        .badge-pending-review { background: #fff3cd; color: #856404; }
+        .badge-override { background: #f8d7da; color: #721c24; }
+        .badge-critical { background: #f8d7da; color: #721c24; }
+        .badge-high { background: #fff3cd; color: #856404; }
+        .badge-medium { background: #d1ecf1; color: #0c5460; }
+        .badge-info { background: #e2e3e5; color: #383d41; }
+        .badge-blue { background: #cce5ff; color: #004085; }
+        .badge-required { background: #cce5ff; color: #004085; }
+        .badge-optional { background: #e2e3e5; color: #383d41; }
+        .badge-overdue { background: #dc3545; color: white; }
+        .badge-diagnosis { background: #d4c5f9; color: #3b2075; }
+        .badge-order { background: #c9e4f9; color: #0c5460; }
+        .badge-lab { background: #d4edda; color: #155724; }
+
+        /* Buttons */
+        .btn { display: inline-block; padding: 0.4rem 1rem; border-radius: 4px; font-size: 0.85rem; text-decoration: none; cursor: pointer; border: none; }
+        .btn-primary { background: #1a4b8c; color: white; }
+        .btn-primary:hover { background: #0d2b5e; }
+        .btn-accent { background: #2563eb; color: white; }
+        .btn-accent:hover { background: #1d4ed8; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-danger:hover { background: #c82333; }
+        .btn-sm { padding: 0.25rem 0.6rem; font-size: 0.8rem; }
+        .btn-outline { background: transparent; border: 1px solid #1a4b8c; color: #1a4b8c; }
+        .btn-outline:hover { background: #1a4b8c; color: white; }
+
+        /* Filters */
+        .filters { display: flex; gap: 1rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+        .filters select { padding: 0.4rem 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.85rem; }
+        .filters label { font-size: 0.85rem; color: #666; }
+
+        /* Forms */
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: #555; }
+        .form-group select, .form-group input, .form-group textarea {
+            width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-size: 0.9rem;
+        }
+        .form-group textarea { resize: vertical; min-height: 80px; }
+
+        /* Two-column layout */
+        .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+        @media (max-width: 900px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* Detail sections */
+        .detail-row { display: flex; padding: 0.5rem 0; border-bottom: 1px solid #f0f0f0; }
+        .detail-label { width: 180px; font-size: 0.85rem; color: #666; flex-shrink: 0; }
+        .detail-value { font-size: 0.9rem; }
+
+        /* Progress bars */
+        .progress-bar { background: #e9ecef; border-radius: 4px; height: 8px; overflow: hidden; }
+        .progress-bar .progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s ease; }
+        .progress-fill.green { background: #28a745; }
+        .progress-fill.amber { background: #d4a017; }
+        .progress-fill.red { background: #dc3545; }
+        .progress-fill.blue { background: #1a4b8c; }
+
+        /* Compliance card grid */
+        .bundle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+        .bundle-card { background: white; border-radius: 8px; padding: 1.25rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-left: 4px solid #1a4b8c; }
+        .bundle-card .bundle-name { font-weight: 600; font-size: 0.95rem; color: #0d2b5e; margin-bottom: 0.5rem; }
+        .bundle-card .bundle-stat { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .bundle-card .bundle-meta { font-size: 0.8rem; color: #888; }
+
+        /* Element list */
+        .element-list { list-style: none; padding: 0; }
+        .element-item { padding: 0.75rem; border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; gap: 0.75rem; }
+        .element-item:last-child { border-bottom: none; }
+        .element-status-icon { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: white; margin-top: 2px; }
+        .element-status-icon.met { background: #28a745; }
+        .element-status-icon.not-met { background: #dc3545; }
+        .element-status-icon.pending { background: #d4a017; }
+        .element-status-icon.na { background: #adb5bd; }
+        .element-status-icon.unable { background: #6c757d; }
+        .element-content { flex: 1; }
+        .element-name { font-weight: 600; font-size: 0.9rem; }
+        .element-desc { font-size: 0.8rem; color: #666; margin-top: 0.15rem; }
+        .element-meta { font-size: 0.8rem; color: #888; margin-top: 0.3rem; }
+
+        /* ICD-10 badges */
+        .icd-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 3px; font-size: 0.75rem; font-family: monospace; background: #eef2ff; color: #1a4b8c; border: 1px solid #c7d2fe; margin: 0.15rem; }
+
+        /* Empty state */
+        .empty-state { text-align: center; padding: 3rem; color: #888; }
+        .empty-state h3 { margin-bottom: 0.5rem; }
+
+        /* Alert banner */
+        .alert-banner { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; }
+        .alert-banner.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-banner.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .alert-banner.danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .alert-banner.info { background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+
+        /* Section headers */
+        .section-header { color: #1a4b8c; font-size: 1rem; font-weight: 600; margin: 1.5rem 0 0.75rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid #e9ecef; }
+
+        /* Help page */
+        .help-bundle { margin-bottom: 2rem; }
+        .help-bundle h3 { color: #1a4b8c; margin-bottom: 0.5rem; }
+        .help-bundle .bundle-desc { color: #555; font-size: 0.9rem; margin-bottom: 0.75rem; }
+        .reference-list { list-style: none; padding: 0; }
+        .reference-list li { padding: 0.2rem 0; font-size: 0.85rem; color: #555; }
+        .reference-list li::before { content: "\1F4D6"; margin-right: 0.5rem; }
+    </style>
+</head>
+<body>
+    <nav class="nav-bar">
+        <a href="{% url 'guideline_adherence:dashboard' %}" class="nav-brand">Guideline Adherence</a>
+        <div class="nav-links">
+            <a href="{% url 'guideline_adherence:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="{% url 'guideline_adherence:active_episodes' %}" class="{% if request.resolver_match.url_name == 'active_episodes' %}active{% endif %}">Active</a>
+            <a href="{% url 'guideline_adherence:metrics' %}" class="{% if request.resolver_match.url_name == 'metrics' %}active{% endif %}">Metrics</a>
+            <a href="{% url 'guideline_adherence:history' %}" class="{% if request.resolver_match.url_name == 'history' %}active{% endif %}">History</a>
+            <a href="{% url 'guideline_adherence:help' %}" class="{% if request.resolver_match.url_name == 'help' %}active{% endif %}">Help</a>
+            <a href="/admin/">Admin</a>
+        </div>
+        <div class="nav-right">
+            {% if user.is_authenticated %}{{ user.username }}{% endif %}
+        </div>
+    </nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

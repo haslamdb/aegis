@@ -1,0 +1,124 @@
+{% extends "guideline_adherence/base.html" %}
+
+{% block title %}Dashboard - Guideline Adherence{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Guideline Adherence Dashboard</h1>
+    <p>Clinical guideline bundle compliance monitoring across 9 evidence-based bundles</p>
+</div>
+
+<!-- Stats Row -->
+<div class="stats-row">
+    <div class="stat-card green">
+        <div class="stat-value">{{ stats.overall_compliance }}%</div>
+        <div class="stat-label">Overall Compliance (30d)</div>
+    </div>
+    <div class="stat-card blue">
+        <div class="stat-value">{{ stats.bundles_tracked }}</div>
+        <div class="stat-label">Bundles Tracked</div>
+    </div>
+    <div class="stat-card accent">
+        <div class="stat-value">{{ stats.active_episodes }}</div>
+        <div class="stat-label">Active Episodes</div>
+    </div>
+    <div class="stat-card red">
+        <div class="stat-value">{{ stats.active_alerts }}</div>
+        <div class="stat-label">Active Alerts</div>
+    </div>
+</div>
+
+<!-- Bundle Compliance Cards -->
+<div class="section-header">Bundle Compliance (Last 30 Days)</div>
+<div class="bundle-grid">
+    {% for bs in bundle_stats %}
+    <a href="{% url 'guideline_adherence:bundle_detail' bs.bundle.bundle_id %}" class="bundle-card" style="text-decoration: none; color: inherit;">
+        <div class="bundle-name">{{ bs.bundle.name }}</div>
+        <div class="bundle-stat" style="color: {% if bs.compliance_pct >= 80 %}#28a745{% elif bs.compliance_pct >= 50 %}#d4a017{% else %}#dc3545{% endif %};">
+            {{ bs.compliance_pct }}%
+        </div>
+        <div class="progress-bar" style="margin-bottom: 0.5rem;">
+            <div class="progress-fill {% if bs.compliance_pct >= 80 %}green{% elif bs.compliance_pct >= 50 %}amber{% else %}red{% endif %}" style="width: {{ bs.compliance_pct }}%;"></div>
+        </div>
+        <div class="bundle-meta">
+            {{ bs.total_episodes }} completed | {{ bs.active_count }} active
+        </div>
+    </a>
+    {% empty %}
+    <div class="empty-state" style="grid-column: 1 / -1;">
+        <h3>No bundle data</h3>
+        <p>No completed episodes in the last 30 days.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Recent Active Episodes -->
+<div class="card">
+    <div class="card-header">
+        Recent Active Episodes
+        <div>
+            <a href="{% url 'guideline_adherence:api_export' %}?type=active" class="btn btn-outline btn-sm">Export CSV</a>
+            <a href="{% url 'guideline_adherence:active_episodes' %}" class="btn btn-sm btn-primary" style="margin-left: 0.5rem;">View All</a>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if active_episodes %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Bundle</th>
+                    <th>Unit</th>
+                    <th>Trigger</th>
+                    <th>Adherence</th>
+                    <th>Elements</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ep in active_episodes %}
+                <tr>
+                    <td>
+                        <strong>{{ ep.patient_name }}</strong><br>
+                        <small style="color: #888;">{{ ep.patient_mrn }}</small>
+                    </td>
+                    <td>{{ ep.bundle_name }}</td>
+                    <td>{{ ep.patient_unit|default:"--" }}</td>
+                    <td>
+                        <span style="font-size: 0.85rem;">{{ ep.trigger_description|default:ep.trigger_type|truncatewords:6 }}</span><br>
+                        <small style="color: #888;">{{ ep.trigger_time|date:"M d, H:i" }}</small>
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ ep.adherence_level }}">{{ ep.adherence_percentage }}%</span>
+                    </td>
+                    <td style="font-size: 0.85rem;">
+                        <span style="color: #28a745;">{{ ep.elements_met }}</span> /
+                        <span style="color: #dc3545;">{{ ep.elements_not_met }}</span> /
+                        <span style="color: #d4a017;">{{ ep.elements_pending }}</span>
+                    </td>
+                    <td>
+                        {% if ep.review_status == 'pending_review' %}
+                        <span class="badge badge-pending-review">Pending Review</span>
+                        {% elif ep.review_status == 'reviewed' %}
+                        <span class="badge badge-reviewed">Reviewed</span>
+                        {% else %}
+                        <span class="badge badge-active">Active</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'guideline_adherence:episode_detail' ep.id %}" class="btn btn-sm btn-primary">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <h3>No active episodes</h3>
+            <p>No guideline bundle episodes are currently being tracked.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
