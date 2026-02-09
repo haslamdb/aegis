@@ -52,11 +52,12 @@ INSTALLED_APPS = [
     'apps.hai_detection',  # ✅ Phase 3 - HAI Detection
     'apps.outbreak_detection',  # ✅ Phase 3 - Outbreak Detection
     'apps.antimicrobial_usage',  # ✅ Phase 3 - Antimicrobial Usage Alerts
+    'apps.abx_indications',  # ✅ Phase 3 - ABX Indication Monitoring
+    'apps.surgical_prophylaxis',  # ✅ Phase 3 - Surgical Prophylaxis
     # TO BE MIGRATED:
     # 'apps.dosing_verification',
     # 'apps.abx_approvals',
     # 'apps.guideline_adherence',
-    # 'apps.surgical_prophylaxis',
     # 'apps.nhsn_reporting',
 
     # API
@@ -283,4 +284,55 @@ ANTIMICROBIAL_USAGE = {
         '11124': 'Vancomycin',
     },
     'POLL_INTERVAL_SECONDS': 300,
+}
+
+# ABX Indication Monitoring Configuration
+ABX_INDICATIONS = {
+    'LLM_MODEL': config('ABX_IND_LLM_MODEL', default='qwen2.5:7b'),
+    'OLLAMA_BASE_URL': config('ABX_IND_OLLAMA_URL', default='http://localhost:11434'),
+    'FHIR_BASE_URL': config('ABX_IND_FHIR_URL', default='http://localhost:8081/fhir'),
+    'LOOKBACK_HOURS': 24,
+    'AUTO_ACCEPT_HOURS': 48,
+    'POLL_INTERVAL_SECONDS': 300,
+    'MONITORED_MEDICATIONS': {
+        '29561': 'Meropenem',
+        '3356': 'Ceftriaxone',
+        '2180': 'Cefepime',
+        '18631': 'Piperacillin-Tazobactam',
+        '11124': 'Vancomycin',
+        '1665005': 'Ceftazidime-Avibactam',
+        '82122': 'Levofloxacin',
+        '2551': 'Ciprofloxacin',
+        '190376': 'Linezolid',
+        '1664986': 'Daptomycin',
+        '1596450': 'Tedizolid',
+        '325642': 'Micafungin',
+        '121243': 'Caspofungin',
+        '283742': 'Voriconazole',
+        '1720673': 'Isavuconazonium',
+        '644': 'Amphotericin B Lipid Complex',
+        '2059746': 'Meropenem-Vaborbactam',
+        '1535224': 'Ceftolozane-Tazobactam',
+        '1597608': 'Ertapenem',
+        '1723476': 'Imipenem-Cilastatin-Relebactam',
+        '1807508': 'Aztreonam-Avibactam',
+    },
+}
+
+# Surgical Prophylaxis Configuration
+SURGICAL_PROPHYLAXIS = {
+    'FHIR_BASE_URL': config('SP_FHIR_URL', default='http://localhost:8081/fhir'),
+    'HL7_ENABLED': config('SP_HL7_ENABLED', default='false', cast=bool),
+    'HL7_HOST': config('SP_HL7_HOST', default='0.0.0.0'),
+    'HL7_PORT': config('SP_HL7_PORT', default=2575, cast=int),
+    'FHIR_SCHEDULE_POLL_INTERVAL': 15,
+    'FHIR_PROPHYLAXIS_POLL_INTERVAL': 5,
+    'FHIR_LOOKAHEAD_HOURS': 48,
+    'POLL_INTERVAL_SECONDS': 300,
+    'ALERT_T24_ENABLED': True,
+    'ALERT_T2_ENABLED': True,
+    'ALERT_T60_ENABLED': True,
+    'ALERT_T0_ENABLED': True,
+    'EPIC_CHAT_ENABLED': False,
+    'TEAMS_ENABLED': False,
 }

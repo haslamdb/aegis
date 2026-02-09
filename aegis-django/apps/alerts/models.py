@@ -65,6 +65,11 @@ class AlertType(models.TextChoices):
     # Bacteremia
     BACTEREMIA = 'bacteremia', 'Bacteremia Alert'
 
+    # ABX Indications
+    ABX_NO_INDICATION = 'abx_no_indication', 'ABX: No Indication Documented'
+    ABX_NEVER_APPROPRIATE = 'abx_never_appropriate', 'ABX: Never Appropriate'
+    ABX_OFF_GUIDELINE = 'abx_off_guideline', 'ABX: Off Guideline'
+
     # General
     BROAD_SPECTRUM_USAGE = 'broad_spectrum_usage', 'Broad Spectrum Usage'
     DUPLICATE_THERAPY = 'duplicate_therapy', 'Duplicate Therapy'

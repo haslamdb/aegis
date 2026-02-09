@@ -201,6 +201,10 @@ class User(AbstractUser):
         """Check if user can manage outbreak detection."""
         return self.role in [UserRole.INFECTION_PREVENTIONIST, UserRole.ADMIN]
 
+    def can_manage_surgical_prophylaxis(self) -> bool:
+        """Check if user can manage surgical prophylaxis."""
+        return self.role in [UserRole.ASP_PHARMACIST, UserRole.ADMIN]
+
     def can_edit_alerts(self) -> bool:
         """Check if user can acknowledge/resolve alerts."""
         return self.role in [

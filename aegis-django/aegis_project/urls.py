@@ -32,4 +32,6 @@ urlpatterns = [
     path('hai-detection/', include('apps.hai_detection.urls')),
     path('outbreak-detection/', include('apps.outbreak_detection.urls')),
     path('antimicrobial-usage/', include('apps.antimicrobial_usage.urls')),
+    path('abx-indications/', include('apps.abx_indications.urls')),
+    path('surgical-prophylaxis/', include('apps.surgical_prophylaxis.urls')),
 ]

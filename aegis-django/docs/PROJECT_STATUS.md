@@ -6,7 +6,7 @@
 
 ## Current Status
 
-Django migration is in progress. Foundation (Phase 1) is complete and audited. Eight modules have been migrated:
+Django migration is in progress. Foundation (Phase 1) is complete and audited. Ten modules have been migrated:
 
 1. **Action Analytics** - Read-only analytics dashboard (Phase 2, audited and fixed)
 2. **ASP Alerts** - Complete ASP bacteremia/stewardship alerts with clinical features (Phase 2)
@@ -16,6 +16,8 @@ Django migration is in progress. Foundation (Phase 1) is complete and audited. E
 6. **HAI Detection** - Full HAI surveillance with 5 HAI types, LLM classification, IP review (Phase 3)
 7. **Outbreak Detection** - Cluster-based outbreak detection aggregating MDRO and HAI data (Phase 3)
 8. **Antimicrobial Usage Alerts** - Broad-spectrum antibiotic duration monitoring (Phase 3)
+9. **ABX Indications** - Antibiotic indication documentation monitoring with LLM extraction (Phase 3)
+10. **Surgical Prophylaxis** - ASHP bundle compliance evaluation with real-time HL7 ADT monitoring (Phase 3)
 
 Foundation code audit is complete — 10 bugs identified and fixed across framework infrastructure, authentication, and Action Analytics. The codebase is now solid for building additional modules.
 
@@ -43,6 +45,8 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - [x] HAI Detection (`apps/hai_detection/`) - 5 HAI types, LLM classification, IP review with override tracking
 - [x] Outbreak Detection (`apps/outbreak_detection/`) - Cluster-based outbreak detection aggregating MDRO/HAI data
 - [x] Antimicrobial Usage Alerts (`apps/antimicrobial_usage/`) - Broad-spectrum duration monitoring (meropenem/vancomycin 72h threshold)
+- [x] ABX Indications (`apps/abx_indications/`) - Antibiotic indication documentation with LLM extraction, CCHMC guidelines engine
+- [x] Surgical Prophylaxis (`apps/surgical_prophylaxis/`) - 7-element ASHP bundle compliance + real-time HL7 ADT surgical pathway monitoring
 
 ### Code Audit & Bug Fixes (2026-02-07)
 
@@ -90,13 +94,11 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 ## Next Steps
 
 ### Immediate (next session)
-- [ ] Abx Indications module migration (NLP/LLM extraction from clinical notes)
+- [ ] Guideline Adherence module migration (time-window episode monitoring, NLP)
 - [ ] Unit tests for foundation code (models, views, decorators)
 
 ### Upcoming
-- [ ] Surgical Prophylaxis module migration
-- [ ] Guideline Adherence module migration
-- [ ] NHSN Reporting module migration
+- [ ] NHSN Reporting module migration (Clarity batch jobs, CDA generation)
 - [ ] Epic FHIR API integration layer
 - [ ] Celery background tasks (alert scanning, auto-recheck)
 
@@ -172,6 +174,26 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 | Antimicrobial Usage templates | `templates/antimicrobial_usage/` (5 files) |
 | Antimicrobial Usage demo | `apps/antimicrobial_usage/management/commands/create_demo_usage.py` |
 | Antimicrobial Usage monitor | `apps/antimicrobial_usage/management/commands/monitor_usage.py` |
+| ABX Indications app | `apps/abx_indications/` |
+| ABX Indications models | `apps/abx_indications/models.py` |
+| ABX Indications services | `apps/abx_indications/services.py` |
+| ABX Indications logic | `apps/abx_indications/logic/` (taxonomy, extractor, guidelines) |
+| ABX Indications templates | `templates/abx_indications/` (6 files) |
+| ABX Indications demo | `apps/abx_indications/management/commands/create_demo_indications.py` |
+| ABX Indications monitor | `apps/abx_indications/management/commands/monitor_indications.py` |
+| Surgical Prophylaxis app | `apps/surgical_prophylaxis/` |
+| Surgical Prophylaxis models | `apps/surgical_prophylaxis/models.py` (9 models) |
+| Surgical Prophylaxis evaluator | `apps/surgical_prophylaxis/logic/evaluator.py` (7 ASHP elements) |
+| Surgical Prophylaxis guidelines | `apps/surgical_prophylaxis/logic/guidelines.py` |
+| Surgical Prophylaxis HL7 | `apps/surgical_prophylaxis/logic/hl7/` (parser, listener, location_tracker) |
+| Surgical Prophylaxis realtime | `apps/surgical_prophylaxis/realtime/` (state_manager, preop_checker, schedule_monitor, escalation_engine, service) |
+| Surgical Prophylaxis services | `apps/surgical_prophylaxis/services.py` |
+| Surgical Prophylaxis FHIR | `apps/surgical_prophylaxis/fhir_client.py` |
+| Surgical Prophylaxis views | `apps/surgical_prophylaxis/views.py` |
+| Surgical Prophylaxis templates | `templates/surgical_prophylaxis/` (6 files) |
+| Surgical Prophylaxis demo | `apps/surgical_prophylaxis/management/commands/create_demo_prophylaxis.py` |
+| Surgical Prophylaxis monitor | `apps/surgical_prophylaxis/management/commands/monitor_prophylaxis.py` |
+| Surgical Prophylaxis realtime cmd | `apps/surgical_prophylaxis/management/commands/run_realtime_prophylaxis.py` |
 | Action Analytics | `apps/action_analytics/` |
 | Authentication | `apps/authentication/` |
 | Core models | `apps/core/models.py` |
@@ -240,3 +262,32 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - ANTIMICROBIAL_USAGE settings dict: 72h threshold, 2 monitored medications (Meropenem/Vancomycin), 300s poll interval
 - 7 unit tests passing (data models, service stats, template rendering, alert type)
 - Eight modules now migrated total
+- Migrated ABX Indications module from Flask to Django (25+ new files, 6 templates)
+- 3 custom Django models: IndicationCandidate, IndicationReview, IndicationLLMAuditLog
+- Logic layer: taxonomy.py (41 syndromes), extractor.py (LLM extraction via Ollama), guidelines.py (CCHMC engine with 57 disease guidelines)
+- Data files: cchmc_disease_guidelines.json (57 diseases), cchmc_antimicrobial_dosing.json
+- FHIR client: MedicationRequest, DocumentReference, Condition, Encounter queries
+- Services layer: IndicationMonitorService (check_new_alerts, auto_accept_old, get_stats)
+- 3 AlertTypes: ABX_NO_INDICATION, ABX_NEVER_APPROPRIATE, ABX_OFF_GUIDELINE
+- Views: dashboard (stats + syndrome filter), candidate detail (LLM extraction panel + review form), compliance, history, help + 6 API endpoints
+- Templates: amber/gold theme (#d4a017), syndrome breakdown, guideline comparison panel
+- Management commands: monitor_indications (--once/--continuous/--stats/--auto-accept/--dry-run), create_demo_indications (10 CCHMC scenarios)
+- 64 unit tests passing
+- Nine modules now migrated total
+- Migrated Surgical Prophylaxis module from Flask to Django (30+ new files, 6 templates)
+- Most complex module: 9 custom Django models, 7-element ASHP bundle evaluation, real-time HL7 ADT monitoring
+- Core models: SurgicalCase, ProphylaxisEvaluation (7 JSONField element results), ProphylaxisMedication, ComplianceMetric
+- Realtime models: SurgicalJourney (state machine), PatientLocation, PreOpCheck, AlertEscalation
+- Logic: evaluator.py (7 ASHP elements), guidelines.py (CCHMC JSON + 13 antibiotic dosing), config.py
+- HL7 v2.x: parser.py (ADT/ORM/SIU parsing), listener.py (async MLLP TCP server), location_tracker.py (state machine)
+- Realtime: state_manager (ORM), preop_checker, schedule_monitor (FHIR Appointments), escalation_engine (multi-level routing), service.py (orchestrator)
+- Two operational modes: batch evaluation (FHIR polling) + real-time monitoring (HL7 ADT listener)
+- Alert triggers: T-24h, T-2h, T-60min, T-0, Pre-op Arrival, OR Entry with escalation (pharmacy → preop_rn → anesthesia → surgeon → ASP)
+- Single AlertType: SURGICAL_PROPHYLAXIS with violation details in JSONField
+- Views: dashboard (compliance stats + element bars), case_detail (7-element cards + meds timeline), compliance (per-element + per-category), realtime (active journeys + escalations), help + 5 API endpoints
+- Templates: teal theme (#0d7377, #095c5e), compliance bars, element grid cards
+- Management commands: monitor_prophylaxis (--once/--continuous/--stats/--dry-run/--hours), run_realtime_prophylaxis (HL7 daemon), create_demo_prophylaxis (8 CCHMC scenarios)
+- Demo data: 8 scenarios (VSD repair compliant, spinal fusion MRSA+, appendectomy timing fail, colectomy wrong agent, cochlear implant missing prophylaxis, cholecystectomy withheld, emergency craniotomy excluded, perforated appendectomy excluded)
+- SURGICAL_PROPHYLAXIS settings dict: FHIR + HL7 configuration, trigger enable/disable, notification channels
+- 66 unit tests passing
+- Ten modules now migrated total
