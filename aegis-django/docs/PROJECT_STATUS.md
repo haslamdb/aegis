@@ -1,7 +1,7 @@
 # AEGIS Django Migration - Project Status
 
 **Last Updated:** 2026-02-09
-**Phase:** 7 - Deployment & Infrastructure COMPLETE
+**Phase:** 7.5 - Template Refactoring COMPLETE
 **Priority:** Active Development — Staging live at staging.aegis-asp.com
 
 ## Current Status
@@ -97,9 +97,29 @@ Foundation code audit is complete — 10 bugs identified and fixed across framew
 - [x] Detail view links to existing `asp_alerts:detail` (no duplicate detail page needed)
 - [x] URL routing at `/drug-bug/` with `app_name='drug_bug'`
 
-## Next Steps — Phases 4-9
+## Next Steps — Phases 8-9
 
-Phase 3 (module migration) is complete. The remaining phases focus on production hardening, integration, and deployment at CCHMC. See `docs/DJANGO_MIGRATION_PLAN.md` for full details.
+Phases 1-7 (module migration, background tasks, API, testing, deployment) are complete. Template refactoring (Phase 7.5) is complete. The remaining phases focus on CCHMC IT integration and Flask cutover.
+
+### Phase 7.5: Template Refactoring (COMPLETE)
+- [x] Global `_base.html` with shared navbar, footer, messages, auto-refresh JS
+- [x] Navigation context processor (`aegis_project/context_processors.py`)
+- [x] 6 include partials: `_includes/navbar.html`, `messages.html`, `footer.html`, `stat_card.html`, `badge.html`, `empty_state.html`
+- [x] `static/style-supplements.css` — module-specific CSS not in Flask `style.css`
+- [x] All 12 module `base.html` files converted to thin wrappers extending `_base.html`
+- [x] ~60 child templates updated with BEM class names from shared `style.css`
+- [x] ~6,300 lines of inline CSS removed (net -2,708 lines across 89 files)
+- [x] Zero `<style>` blocks remaining in any template
+- [x] 1120 tests passing
+- [x] See `docs/TEMPLATE_MIGRATION.md` for full details
+
+### Bacteremia Monitoring Module (2026-02-09)
+- [x] App scaffolding: `apps/bacteremia/` — blood culture coverage assessment
+- [x] Uses `apps.asp_alerts.coverage_rules` for organism-antibiotic matching
+- [x] AlertType.BACTEREMIA, source_module='bacteremia_monitor', severity=HIGH, priority=80
+- [x] ESBL coverage rule added (meropenem adequate)
+- [x] FHIR: LOINC 600-7 (blood culture)
+- [x] 35 tests passing
 
 ### Phase 4: Background Tasks & Scheduling (COMPLETE)
 - [x] Celery app initialization (`aegis_project/celery.py` + `__init__.py` import)
@@ -126,7 +146,7 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - [x] Centralized FHIR client at `apps/core/fhir/` (BaseFHIRClient ABC, HAPIFHIRClient, EpicFHIRClient with JWT bearer flow)
 - [x] FHIR parsers: bundle extraction, datetime parsing, patient/medication extraction
 - [x] `get_fhir_client()` factory for HAPI vs Epic selection
-- [x] 242 Phase 5 tests, 1085 total project tests passing
+- [x] 242 Phase 5 tests, 1120 total project tests passing
 - [ ] Epic CDS Hooks endpoint (deferred to Phase 5b or Phase 6)
 
 ### Phase 6: Testing & Quality Assurance (COMPLETE)
@@ -413,7 +433,7 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - Token authentication via `rest_framework.authtoken`, DRF throttling (100/min read, 30/min write)
 - Swagger UI at `/api/docs/`, OpenAPI schema at `/api/schema/`
 - Added `apps/__init__.py` for proper test autodiscovery (fixes namespace package issue)
-- 242 new Phase 5 tests, 1085 total project tests passing
+- 242 new Phase 5 tests, 1120 total project tests passing
 
 **2026-02-09 (cont.):**
 - Completed Phase 7: Deployment & Infrastructure
@@ -427,7 +447,7 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - Deploy configs in `deploy/`: `systemd/` (3 unit files), `nginx/` (site config), `setup-staging.sh` (automated setup)
 - All migrations applied to PostgreSQL, static files collected
 - Flask app at `aegis-asp.com` completely untouched
-- 3 new health check tests, 1085 total tests passing
+- 3 new health check tests, 1120 total tests passing
 - All services verified healthy: `curl https://staging.aegis-asp.com/health/` → `{"status": "healthy"}`
 
 **2026-02-09 (cont.):**
@@ -459,6 +479,38 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - Added celery + celery.task loggers to LOGGING config
 - 22 unit tests passing: Celery app integration (autodiscovery, routing, schedule, worker settings) + 15 task function tests
 - Created `docs/CELERY_OPERATIONS.md` with worker startup, queue descriptions, systemd examples, troubleshooting
+
+**2026-02-09 (cont.):**
+- Added Bacteremia Monitoring module (`apps/bacteremia/`) — blood culture coverage assessment using ASP coverage rules
+- 35 bacteremia tests passing, 1120 total tests
+
+**2026-02-09 (cont.):**
+- Completed Phase 7.5: Template Refactoring — replaced inline CSS with shared Flask-style design system
+- Created global `_base.html` with navbar (12 modules), footer, messages, auto-refresh JS
+- Created 6 `_includes/` partials (navbar, messages, footer, stat_card, badge, empty_state)
+- Created `aegis_project/context_processors.py` — `navigation_context()` provides `current_module`, `current_view`, `module_display_name`
+- Created `static/style-supplements.css` (~300 lines) for module-specific CSS not in Flask `style.css`
+- Migrated all 12 module `base.html` files from 200-300 line standalone HTML to 2-3 line thin wrappers
+- Updated ~60 child templates with BEM class names: `.stat-cards`, `.badge--*`, `.data-table`, `.filter-bar`, `.detail-layout__main/__sidebar`, `.btn--primary/--secondary/--danger/--success`
+- Removed ~6,300 lines of duplicated inline CSS (net -2,708 lines across 89 files)
+- Fixed 7 test assertions referencing old inline CSS colors/strings
+- Zero `<style>` blocks remaining in any template, all 1120 tests passing
+
+### Key Files (Phase 7.5 — Template Refactoring)
+
+| Component | Location |
+|-----------|----------|
+| Global base template | `templates/_base.html` |
+| Navbar include | `templates/_includes/navbar.html` |
+| Messages include | `templates/_includes/messages.html` |
+| Footer include | `templates/_includes/footer.html` |
+| Stat card include | `templates/_includes/stat_card.html` |
+| Badge include | `templates/_includes/badge.html` |
+| Empty state include | `templates/_includes/empty_state.html` |
+| Context processor | `aegis_project/context_processors.py` |
+| Supplement CSS | `static/style-supplements.css` |
+| Flask CSS (shared) | `static/style.css` |
+| Migration details | `docs/TEMPLATE_MIGRATION.md` |
 
 ### Key Files (Phase 5 — Unified API)
 
