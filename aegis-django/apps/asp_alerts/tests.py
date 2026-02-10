@@ -306,7 +306,8 @@ class GetCoverageRuleTests(TestCase):
         rule = get_coverage_rule(OrganismCategory.UNKNOWN)
         self.assertIsNone(rule)
 
-    def test_returns_none_for_esbl(self):
-        """ESBL does not have a rule in the current coverage rules."""
+    def test_returns_rule_for_esbl(self):
+        """ESBL has a coverage rule requiring carbapenem."""
         rule = get_coverage_rule(OrganismCategory.ESBL)
-        self.assertIsNone(rule)
+        self.assertIsNotNone(rule)
+        self.assertEqual(rule.organism_category, OrganismCategory.ESBL)

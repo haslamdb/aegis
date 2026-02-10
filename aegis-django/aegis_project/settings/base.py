@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'apps.asp_alerts',  # ✅ Phase 2 - ASP Alerts Dashboard
     'apps.mdro',  # ✅ Phase 3 - MDRO Surveillance
     'apps.drug_bug',  # ✅ Phase 3 - Drug-Bug Mismatch
+    'apps.bacteremia',  # ✅ Bacteremia Monitoring
     'apps.dosing',  # ✅ Phase 3 - Dosing Verification
     'apps.hai_detection',  # ✅ Phase 3 - HAI Detection
     'apps.outbreak_detection',  # ✅ Phase 3 - Outbreak Detection
@@ -206,6 +207,7 @@ CELERY_TASK_ROUTES = {
     # FHIR polling tasks → default queue
     'apps.mdro.tasks.*': {'queue': 'default'},
     'apps.drug_bug.tasks.*': {'queue': 'default'},
+    'apps.bacteremia.tasks.*': {'queue': 'default'},
     'apps.dosing.tasks.*': {'queue': 'default'},
     'apps.antimicrobial_usage.tasks.*': {'queue': 'default'},
     'apps.surgical_prophylaxis.tasks.*': {'queue': 'default'},
@@ -228,6 +230,10 @@ CELERY_BEAT_SCHEDULE = {
     },
     'monitor-drug-bug-every-5m': {
         'task': 'apps.drug_bug.tasks.monitor_drug_bug',
+        'schedule': 300.0,  # 5 minutes
+    },
+    'monitor-bacteremia-every-5m': {
+        'task': 'apps.bacteremia.tasks.monitor_bacteremia',
         'schedule': 300.0,  # 5 minutes
     },
     'monitor-dosing-every-15m': {

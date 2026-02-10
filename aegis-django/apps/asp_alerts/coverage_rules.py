@@ -168,6 +168,17 @@ COVERAGE_RULES: dict[OrganismCategory, CoverageRule] = {
         recommendation="Add anti-pseudomonal agent (cefepime, pip-tazo, meropenem)",
     ),
 
+    OrganismCategory.ESBL: CoverageRule(
+        organism_category=OrganismCategory.ESBL,
+        adequate_antibiotics={RXNORM["meropenem"]},
+        inadequate_antibiotics={
+            RXNORM["ceftriaxone"],
+            RXNORM["cefepime"],
+            RXNORM["piperacillin_tazobactam"],
+        },
+        recommendation="Add carbapenem (meropenem) for ESBL coverage",
+    ),
+
     OrganismCategory.GRAM_NEG_SUSCEPTIBLE: CoverageRule(
         organism_category=OrganismCategory.GRAM_NEG_SUSCEPTIBLE,
         adequate_antibiotics={
@@ -285,6 +296,9 @@ def categorize_organism(organism_text: str, gram_stain: str | None = None) -> Or
 
     if "candida" in organism_lower:
         return OrganismCategory.CANDIDA
+
+    if "esbl" in organism_lower or "extended spectrum" in organism_lower:
+        return OrganismCategory.ESBL
 
     # Common gram-negative organisms
     gram_neg_organisms = [

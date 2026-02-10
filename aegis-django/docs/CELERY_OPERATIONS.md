@@ -6,7 +6,7 @@ AEGIS uses Celery for background task processing across all clinical monitoring 
 
 | Queue | Purpose | Concurrency | Modules |
 |-------|---------|-------------|---------|
-| `default` | FHIR polling | 4 workers | MDRO, Drug-Bug, Dosing, Usage, Prophylaxis, Outbreak |
+| `default` | FHIR polling | 4 workers | MDRO, Drug-Bug, Bacteremia, Dosing, Usage, Prophylaxis, Outbreak |
 | `llm` | GPU-bound LLM inference | 2 workers | HAI Detection, ABX Indications, Guideline Adherence |
 | `batch` | Nightly Clarity batch jobs | 1 worker | NHSN Reporting |
 
@@ -59,6 +59,7 @@ Access at `http://localhost:5555`
 |------|----------|-------------|
 | `monitor_mdro` | every 15 min | Detect new MDRO cases from cultures |
 | `monitor_drug_bug` | every 5 min | Check for drug-bug mismatches |
+| `monitor_bacteremia` | every 5 min | Assess blood culture antibiotic coverage |
 | `monitor_dosing` | every 15 min | Verify dosing against rules engine |
 | `monitor_usage` | every 5 min | Check broad-spectrum usage durations |
 | `monitor_prophylaxis` | every 5 min | Evaluate surgical prophylaxis compliance |
@@ -95,6 +96,7 @@ All monitoring management commands continue to work for ad-hoc runs:
 # One-off runs (bypass Celery)
 python manage.py monitor_mdro --once
 python manage.py monitor_drug_bug --once --hours 48
+python manage.py monitor_bacteremia --once
 python manage.py monitor_dosing --once
 python manage.py monitor_usage --once
 python manage.py monitor_prophylaxis --once
