@@ -5,17 +5,17 @@
 <p><a href="{% url 'antimicrobial_usage:dashboard' %}">&larr; Back to Dashboard</a></p>
 
 <div style="margin-bottom: 15px;">
-    <span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span>
-    <span class="badge {{ alert.status }}">{{ alert.get_status_display }}</span>
+    {% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity %}
+    {% include "_includes/badge.html" with text=alert.get_status_display color=alert.status %}
 </div>
 
 <h2>{{ alert.title }}</h2>
 
 <div class="detail-layout">
     <!-- Main Content -->
-    <div class="detail-main">
+    <div class="detail-layout__main">
         <!-- Medication Info -->
-        <div class="sidebar-card">
+        <div class="detail-section">
             <h4>Medication Details</h4>
             <p><span class="label">Medication:</span> {{ details.medication_name }}</p>
             {% if details.rxnorm_code %}<p><span class="label">RxNorm:</span> {{ details.rxnorm_code }}</p>{% endif %}
@@ -25,7 +25,7 @@
         </div>
 
         <!-- Duration Bar -->
-        <div class="sidebar-card">
+        <div class="detail-section">
             <h4>Duration</h4>
             <p>
                 <strong>{{ details.duration_hours|floatformat:1 }} hours</strong>
@@ -42,20 +42,20 @@
         </div>
 
         <!-- Recommendation -->
-        <div class="alert-box {{ alert.severity }}">
+        <div class="action-card">
             <h4 style="margin-top: 0;">Recommendation</h4>
             <p>{{ details.recommendation }}</p>
         </div>
 
         <!-- Actions -->
         {% if alert.status != 'resolved' %}
-        <div class="sidebar-card">
+        <div class="detail-section">
             <h4>Actions</h4>
 
             {% if alert.status != 'acknowledged' %}
             <form method="post" action="{% url 'antimicrobial_usage:api_acknowledge' alert.id %}" style="display: inline;">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-primary">Acknowledge</button>
+                <button type="submit" class="btn btn--primary">Acknowledge</button>
             </form>
             {% endif %}
 
@@ -76,25 +76,25 @@
                     <textarea name="notes" rows="3" style="width: 100%; padding: 8px; margin: 5px 0;"
                               placeholder="Optional notes about the resolution..."></textarea>
                 </p>
-                <button type="submit" class="btn btn-success">Resolve</button>
+                <button type="submit" class="btn btn--success">Resolve</button>
             </form>
         </div>
         {% endif %}
 
         <!-- Add Note -->
-        <div class="sidebar-card">
+        <div class="detail-section">
             <h4>Add Note</h4>
             <form method="post" action="{% url 'antimicrobial_usage:api_add_note' alert.id %}">
                 {% csrf_token %}
                 <textarea name="note" rows="2" style="width: 100%; padding: 8px;" placeholder="Add a clinical note..."></textarea>
                 <br>
-                <button type="submit" class="btn btn-primary" style="margin-top: 5px;">Add Note</button>
+                <button type="submit" class="btn btn--primary" style="margin-top: 5px;">Add Note</button>
             </form>
         </div>
 
         <!-- Notes -->
         {% if details.notes %}
-        <div class="sidebar-card">
+        <div class="detail-section">
             <h4>Notes</h4>
             {% for note in details.notes %}
             <div class="audit-log">
@@ -106,7 +106,7 @@
         {% endif %}
 
         <!-- Audit Log -->
-        <div class="sidebar-card">
+        <div class="detail-section">
             <h4>Audit Log</h4>
             {% for entry in audit_log %}
             <div class="audit-log">
@@ -120,7 +120,7 @@
     </div>
 
     <!-- Sidebar -->
-    <div class="detail-sidebar">
+    <div class="detail-layout__sidebar">
         <!-- Patient Info -->
         <div class="sidebar-card">
             <h4>Patient Information</h4>

@@ -2,23 +2,14 @@
 {% block content %}
 <h2>Overview (Last {{ days }} days)</h2>
 
-<div>
-    <div class="stat-box">
-        <div class="stat-value">{{ data.total_actions }}</div>
-        <div class="stat-label">Total Actions</div>
-    </div>
-    <div class="stat-box">
-        <div class="stat-value">{{ data.unique_patients }}</div>
-        <div class="stat-label">Unique Patients</div>
-    </div>
-    <div class="stat-box">
-        <div class="stat-value">{{ data.avg_duration_seconds|floatformat:0 }}s</div>
-        <div class="stat-label">Avg Duration</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=data.total_actions title="Total Actions" color="teal" %}
+    {% include "_includes/stat_card.html" with value=data.unique_patients title="Unique Patients" color="blue" %}
+    {% include "_includes/stat_card.html" with value=data.avg_duration_seconds|floatformat:0 title="Avg Duration" subtitle="seconds" color="green" %}
 </div>
 
 <h3>Actions by Module</h3>
-<table>
+<table class="data-table">
     <tr><th>Module</th><th>Count</th></tr>
     {% for item in data.by_module %}
     <tr><td>{{ item.module }}</td><td>{{ item.count }}</td></tr>
@@ -28,7 +19,7 @@
 </table>
 
 <h3>Top Users</h3>
-<table>
+<table class="data-table">
     <tr><th>User</th><th>Actions</th></tr>
     {% for item in data.by_user %}
     <tr><td>{{ item.user__username }}</td><td>{{ item.count }}</td></tr>

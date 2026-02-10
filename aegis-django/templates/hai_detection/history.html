@@ -3,38 +3,46 @@
 {% block content %}
 <h2>HAI Detection History</h2>
 
-<div class="filters">
-    <form method="get">
-        <label>HAI Type:</label>
-        <select name="type" onchange="this.form.submit()">
-            <option value="">All Types</option>
-            {% for type_value, type_label in hai_types %}
-            <option value="{{ type_value }}" {% if hai_type_filter == type_value %}selected{% endif %}>
-                {{ type_label }}
-            </option>
-            {% endfor %}
-        </select>
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label>HAI Type:</label>
+            <select name="type" onchange="this.form.submit()">
+                <option value="">All Types</option>
+                {% for type_value, type_label in hai_types %}
+                <option value="{{ type_value }}" {% if hai_type_filter == type_value %}selected{% endif %}>
+                    {{ type_label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <label>Status:</label>
-        <select name="status" onchange="this.form.submit()">
-            <option value="">All Resolved</option>
-            <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed HAI</option>
-            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Not HAI</option>
-        </select>
+        <div class="filter-group">
+            <label>Status:</label>
+            <select name="status" onchange="this.form.submit()">
+                <option value="">All Resolved</option>
+                <option value="confirmed" {% if status_filter == 'confirmed' %}selected{% endif %}>Confirmed HAI</option>
+                <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Not HAI</option>
+            </select>
+        </div>
 
-        <label>From:</label>
-        <input type="date" name="date_from" value="{{ date_from|default:'' }}" onchange="this.form.submit()">
+        <div class="filter-group">
+            <label>From:</label>
+            <input type="date" name="date_from" value="{{ date_from|default:'' }}" onchange="this.form.submit()">
+        </div>
 
-        <label>To:</label>
-        <input type="date" name="date_to" value="{{ date_to|default:'' }}" onchange="this.form.submit()">
+        <div class="filter-group">
+            <label>To:</label>
+            <input type="date" name="date_to" value="{{ date_to|default:'' }}" onchange="this.form.submit()">
+        </div>
 
-        <button type="submit" class="btn btn-primary">Apply</button>
+        <button type="submit" class="btn btn--primary">Apply</button>
     </form>
 </div>
 
 <p><strong>{{ candidates|length }}</strong> resolved candidate{{ candidates|length|pluralize }}</p>
 
-<table>
+<table class="data-table">
     <tr>
         <th>HAI Type</th>
         <th>Patient</th>
@@ -48,7 +56,7 @@
     {% for candidate in candidates %}
     <tr style="{% if candidate.status == 'confirmed' %}background: #f0fdf4;{% endif %}">
         <td>
-            <span class="badge {{ candidate.hai_type|lower }}">{{ candidate.get_hai_type_display }}</span>
+            {% include "_includes/badge.html" with text=candidate.get_hai_type_display color=candidate.hai_type|lower %}
         </td>
         <td>
             {% if candidate.patient_name %}
@@ -61,34 +69,36 @@
         <td>{{ candidate.organism|default:"Unknown" }}</td>
         <td>
             {% if candidate.llm_decision %}
-            <span class="badge {{ candidate.llm_decision|lower }}">
-                {% if candidate.llm_decision == 'hai_confirmed' %}HAI
-                {% elif candidate.llm_decision == 'not_hai' %}Not HAI
-                {% else %}{{ candidate.llm_decision }}
-                {% endif %}
-            </span>
+            {% if candidate.llm_decision == 'hai_confirmed' %}
+                {% include "_includes/badge.html" with text="HAI" color=candidate.llm_decision|lower %}
+            {% elif candidate.llm_decision == 'not_hai' %}
+                {% include "_includes/badge.html" with text="Not HAI" color=candidate.llm_decision|lower %}
+            {% else %}
+                {% include "_includes/badge.html" with text=candidate.llm_decision color=candidate.llm_decision|lower %}
+            {% endif %}
             {% else %}
                 <span style="color: #95a5a6;">N/A</span>
             {% endif %}
         </td>
         <td>
-            <span class="badge {{ candidate.status|lower }}">
-                {% if candidate.status == 'confirmed' %}Confirmed HAI
-                {% elif candidate.status == 'rejected' %}Not HAI
-                {% else %}{{ candidate.get_status_display }}
-                {% endif %}
-            </span>
+            {% if candidate.status == 'confirmed' %}
+                {% include "_includes/badge.html" with text="Confirmed HAI" color=candidate.status|lower %}
+            {% elif candidate.status == 'rejected' %}
+                {% include "_includes/badge.html" with text="Not HAI" color=candidate.status|lower %}
+            {% else %}
+                {% include "_includes/badge.html" with text=candidate.get_status_display color=candidate.status|lower %}
+            {% endif %}
         </td>
         <td style="text-align: center;">
             {% if candidate.is_override %}
-                <span class="badge" style="background: #f39c12;">Override</span>
+                {% include "_includes/badge.html" with text="Override" color="warning" %}
             {% else %}
                 -
             {% endif %}
         </td>
         <td>{{ candidate.reviewed_at|date:"Y-m-d H:i" }}</td>
         <td>
-            <a href="{% url 'hai_detection:candidate_detail' candidate.id %}" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">
+            <a href="{% url 'hai_detection:candidate_detail' candidate.id %}" class="btn btn--primary" style="font-size: 12px; padding: 5px 10px;">
                 View
             </a>
         </td>

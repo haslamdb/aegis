@@ -621,7 +621,7 @@ class TemplateRenderingTests(TestCase):
             'active_episodes': BundleEpisode.objects.none(),
         }
         html = render_to_string('guideline_adherence/dashboard.html', context)
-        self.assertIn('75.0', html)
+        self.assertIn('75%', html)
 
     def test_render_active_episodes(self):
         self._create_test_episode()
@@ -672,7 +672,7 @@ class TemplateRenderingTests(TestCase):
             'override_rate': 20.0,
         }
         html = render_to_string('guideline_adherence/metrics.html', context)
-        self.assertIn('70.0', html)
+        self.assertIn('70%', html)
 
     def test_render_history(self):
         context = {

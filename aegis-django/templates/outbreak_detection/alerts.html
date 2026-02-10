@@ -7,11 +7,11 @@
 <div class="section">
     <h3>Pending Alerts ({{ pending_alerts|length }})</h3>
     {% for alert in pending_alerts %}
-    <div class="alert-box {{ alert.severity }}">
+    <div class="action-card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
                 <strong>{{ alert.title }}</strong>
-                <span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span>
+                {% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity %}
                 <p style="margin: 5px 0;">{{ alert.summary }}</p>
                 <small class="text-muted">{{ alert.created_at|date:"Y-m-d H:i" }}</small>
                 {% if alert.details.cluster_id %}
@@ -20,7 +20,7 @@
             </div>
             <form method="POST" action="{% url 'outbreak_detection:acknowledge_alert' alert.id %}" style="margin-left: 15px;">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline">Acknowledge</button>
+                <button type="submit" class="btn btn--secondary" style="padding: 5px 10px; font-size: 12px;">Acknowledge</button>
             </form>
         </div>
     </div>
@@ -35,7 +35,7 @@
 {% if acknowledged_alerts %}
 <div class="section">
     <h3>Recently Acknowledged</h3>
-    <table>
+    <table class="data-table">
         <tr>
             <th>Title</th>
             <th>Severity</th>
@@ -51,10 +51,10 @@
                 <br><a href="{% url 'outbreak_detection:cluster_detail' alert.details.cluster_id %}" style="font-size: 12px;">View Cluster</a>
                 {% endif %}
             </td>
-            <td><span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span></td>
+            <td>{% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity %}</td>
             <td>{{ alert.summary }}</td>
             <td>{{ alert.created_at|date:"Y-m-d H:i" }}</td>
-            <td><span class="badge acknowledged">Acknowledged</span></td>
+            <td>{% include "_includes/badge.html" with text="Acknowledged" color="acknowledged" %}</td>
         </tr>
         {% endfor %}
     </table>

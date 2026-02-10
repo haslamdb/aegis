@@ -2,13 +2,12 @@
 {% block content %}
 <h2>Time Spent Analysis (Last {{ days }} days)</h2>
 
-<div class="stat-box">
-    <div class="stat-value">{{ data.total_time_seconds|floatformat:0 }}s</div>
-    <div class="stat-label">Total Time Spent</div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=data.total_time_seconds|floatformat:0 title="Total Time Spent" subtitle="seconds" color="teal" %}
 </div>
 
 <h3>Time by Module</h3>
-<table>
+<table class="data-table">
     <tr><th>Module</th><th>Total Time</th><th>Avg Time</th><th>Actions</th></tr>
     {% for item in data.by_module %}
     <tr>

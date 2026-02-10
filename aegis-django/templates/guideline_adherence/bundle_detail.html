@@ -9,161 +9,159 @@
 </div>
 
 <!-- Bundle Info Card -->
-<div class="card">
-    <div class="card-header">Bundle Information</div>
-    <div class="card-body">
-        <div class="detail-row"><div class="detail-label">Bundle ID</div><div class="detail-value"><code>{{ bundle.bundle_id }}</code></div></div>
-        <div class="detail-row"><div class="detail-label">Version</div><div class="detail-value">{{ bundle.version }}</div></div>
-        <div class="detail-row"><div class="detail-label">Elements</div><div class="detail-value">{{ bundle.elements|length }} elements</div></div>
+<div class="detail-section">
+    <div class="detail-section__title">Bundle Information</div>
+    <div class="detail-row"><div class="detail-label">Bundle ID</div><div class="detail-value"><code>{{ bundle.bundle_id }}</code></div></div>
+    <div class="detail-row"><div class="detail-label">Version</div><div class="detail-value">{{ bundle.version }}</div></div>
+    <div class="detail-row"><div class="detail-label">Elements</div><div class="detail-value">{{ bundle.elements|length }} elements</div></div>
 
-        {% if bundle.trigger_criteria %}
-        <div style="margin-top: 1rem;">
-            <div class="detail-label" style="margin-bottom: 0.5rem;">Trigger Conditions</div>
-            {% for trigger in bundle.trigger_criteria %}
-            <div style="margin-bottom: 0.5rem;">
-                <span class="badge badge-{{ trigger.trigger_type }}">{{ trigger.trigger_type|title }}</span>
-                <span style="font-size: 0.85rem; color: #555; margin-left: 0.5rem;">{{ trigger.description }}</span>
-                {% if trigger.icd10_prefixes %}
-                <div style="margin-top: 0.3rem;">
-                    {% for code in trigger.icd10_prefixes %}
-                    <span class="icd-badge">{{ code }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {% if trigger.loinc_codes %}
-                <div style="margin-top: 0.3rem;">
-                    {% for code in trigger.loinc_codes %}
-                    <span class="icd-badge">LOINC: {{ code }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {% if trigger.min_age_days or trigger.max_age_days %}
-                <div style="font-size: 0.8rem; color: #888; margin-top: 0.2rem;">
-                    Age:
-                    {% if trigger.min_age_days %}min {{ trigger.min_age_days }} days{% endif %}
-                    {% if trigger.min_age_days and trigger.max_age_days %} - {% endif %}
-                    {% if trigger.max_age_days %}max {{ trigger.max_age_days }} days{% endif %}
-                </div>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if bundle.references %}
-        <div style="margin-top: 1rem;">
-            <div class="detail-label" style="margin-bottom: 0.5rem;">Clinical References</div>
-            <ul style="padding-left: 1.2rem; font-size: 0.85rem; color: #555;">
-                {% for ref in bundle.references %}
-                <li style="padding: 0.2rem 0;">{{ ref }}</li>
+    {% if bundle.trigger_criteria %}
+    <div style="margin-top: 1rem;">
+        <div class="detail-label" style="margin-bottom: 0.5rem;">Trigger Conditions</div>
+        {% for trigger in bundle.trigger_criteria %}
+        <div style="margin-bottom: 0.5rem;">
+            {% include "_includes/badge.html" with text=trigger.trigger_type|title color=trigger.trigger_type %}
+            <span style="font-size: 0.85rem; color: #555; margin-left: 0.5rem;">{{ trigger.description }}</span>
+            {% if trigger.icd10_prefixes %}
+            <div style="margin-top: 0.3rem;">
+                {% for code in trigger.icd10_prefixes %}
+                <span class="icd-badge">{{ code }}</span>
                 {% endfor %}
-            </ul>
+            </div>
+            {% endif %}
+            {% if trigger.loinc_codes %}
+            <div style="margin-top: 0.3rem;">
+                {% for code in trigger.loinc_codes %}
+                <span class="icd-badge">LOINC: {{ code }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if trigger.min_age_days or trigger.max_age_days %}
+            <div style="font-size: 0.8rem; color: #888; margin-top: 0.2rem;">
+                Age:
+                {% if trigger.min_age_days %}min {{ trigger.min_age_days }} days{% endif %}
+                {% if trigger.min_age_days and trigger.max_age_days %} - {% endif %}
+                {% if trigger.max_age_days %}max {{ trigger.max_age_days }} days{% endif %}
+            </div>
+            {% endif %}
         </div>
-        {% endif %}
+        {% endfor %}
     </div>
+    {% endif %}
+
+    {% if bundle.references %}
+    <div style="margin-top: 1rem;">
+        <div class="detail-label" style="margin-bottom: 0.5rem;">Clinical References</div>
+        <ul style="padding-left: 1.2rem; font-size: 0.85rem; color: #555;">
+            {% for ref in bundle.references %}
+            <li style="padding: 0.2rem 0;">{{ ref }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
 </div>
 
 <!-- Element Compliance (Last 30 Days) -->
-<div class="card">
-    <div class="card-header">Element Compliance (Last 30 Days)</div>
-    <div class="card-body">
-        {% if element_stats %}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Element</th>
-                    <th>Required</th>
-                    <th>Met</th>
-                    <th>Total Assessed</th>
-                    <th>Compliance</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for es in element_stats %}
-                <tr>
-                    <td>
-                        <strong>{{ es.element.name }}</strong><br>
-                        <small style="color: #888;">{{ es.element.description|truncatewords:12 }}</small>
-                    </td>
-                    <td>
-                        {% if es.element.required %}
-                        <span class="badge badge-required">Required</span>
+<div class="detail-section">
+    <div class="detail-section__title">Element Compliance (Last 30 Days)</div>
+    {% if element_stats %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Element</th>
+                <th>Required</th>
+                <th>Met</th>
+                <th>Total Assessed</th>
+                <th>Compliance</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for es in element_stats %}
+            <tr>
+                <td>
+                    <strong>{{ es.element.name }}</strong><br>
+                    <small style="color: #888;">{{ es.element.description|truncatewords:12 }}</small>
+                </td>
+                <td>
+                    {% if es.element.required %}
+                        {% include "_includes/badge.html" with text="Required" color="blue" %}
+                    {% else %}
+                        {% include "_includes/badge.html" with text="Optional" color="gray" %}
+                    {% endif %}
+                </td>
+                <td style="color: #28a745; font-weight: 600;">{{ es.met }}</td>
+                <td>{{ es.total }}</td>
+                <td>
+                    {% if es.total > 0 %}
+                        {% if es.compliance_pct >= 80 %}
+                            {% include "_includes/badge.html" with text=es.compliance_pct|stringformat:"d"|add:"%" color="green" %}
+                        {% elif es.compliance_pct >= 50 %}
+                            {% include "_includes/badge.html" with text=es.compliance_pct|stringformat:"d"|add:"%" color="yellow" %}
                         {% else %}
-                        <span class="badge badge-optional">Optional</span>
+                            {% include "_includes/badge.html" with text=es.compliance_pct|stringformat:"d"|add:"%" color="red" %}
                         {% endif %}
-                    </td>
-                    <td style="color: #28a745; font-weight: 600;">{{ es.met }}</td>
-                    <td>{{ es.total }}</td>
-                    <td>
-                        {% if es.total > 0 %}
-                        <span class="badge {% if es.compliance_pct >= 80 %}badge-met{% elif es.compliance_pct >= 50 %}badge-partial{% else %}badge-not-met{% endif %}">
-                            {{ es.compliance_pct }}%
-                        </span>
-                        {% else %}
-                        <span class="badge badge-na">N/A</span>
-                        {% endif %}
-                    </td>
-                    <td style="width: 150px;">
-                        {% if es.total > 0 %}
-                        <div class="progress-bar">
-                            <div class="progress-fill {% if es.compliance_pct >= 80 %}green{% elif es.compliance_pct >= 50 %}amber{% else %}red{% endif %}" style="width: {{ es.compliance_pct }}%;"></div>
-                        </div>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="empty-state">
-            <h3>No compliance data</h3>
-            <p>No completed episodes in the last 30 days for this bundle.</p>
-        </div>
-        {% endif %}
+                    {% else %}
+                        {% include "_includes/badge.html" with text="N/A" color="gray" %}
+                    {% endif %}
+                </td>
+                <td style="width: 150px;">
+                    {% if es.total > 0 %}
+                    <div class="progress-bar">
+                        <div class="progress-fill {% if es.compliance_pct >= 80 %}green{% elif es.compliance_pct >= 50 %}amber{% else %}red{% endif %}" style="width: {{ es.compliance_pct }}%;"></div>
+                    </div>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>No compliance data</h3>
+        <p>No completed episodes in the last 30 days for this bundle.</p>
     </div>
+    {% endif %}
 </div>
 
 <!-- Recent Episodes -->
-<div class="card">
-    <div class="card-header">Recent Episodes</div>
-    <div class="card-body">
-        {% if recent_episodes %}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Patient</th>
-                    <th>Unit</th>
-                    <th>Trigger</th>
-                    <th>Status</th>
-                    <th>Adherence</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for ep in recent_episodes %}
-                <tr>
-                    <td>
-                        <strong>{{ ep.patient_name }}</strong><br>
-                        <small style="color: #888;">{{ ep.patient_mrn }}</small>
-                    </td>
-                    <td>{{ ep.patient_unit|default:"--" }}</td>
-                    <td style="font-size: 0.85rem;">{{ ep.trigger_description|default:ep.trigger_type|truncatewords:6 }}</td>
-                    <td><span class="badge badge-{{ ep.status }}">{{ ep.get_status_display }}</span></td>
-                    <td><span class="badge badge-{{ ep.adherence_level }}">{{ ep.adherence_percentage }}%</span></td>
-                    <td style="font-size: 0.85rem;">{{ ep.created_at|date:"M d, H:i" }}</td>
-                    <td><a href="{% url 'guideline_adherence:episode_detail' ep.id %}" class="btn btn-sm btn-primary">View</a></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="empty-state">
-            <h3>No episodes</h3>
-            <p>No episodes have been recorded for this bundle.</p>
-        </div>
-        {% endif %}
+<div class="detail-section">
+    <div class="detail-section__title">Recent Episodes</div>
+    {% if recent_episodes %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Unit</th>
+                <th>Trigger</th>
+                <th>Status</th>
+                <th>Adherence</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ep in recent_episodes %}
+            <tr>
+                <td>
+                    <strong>{{ ep.patient_name }}</strong><br>
+                    <small style="color: #888;">{{ ep.patient_mrn }}</small>
+                </td>
+                <td>{{ ep.patient_unit|default:"--" }}</td>
+                <td style="font-size: 0.85rem;">{{ ep.trigger_description|default:ep.trigger_type|truncatewords:6 }}</td>
+                <td>{% include "_includes/badge.html" with text=ep.get_status_display color=ep.status %}</td>
+                <td>{% include "_includes/badge.html" with text=ep.adherence_percentage|stringformat:"d"|add:"%" color=ep.adherence_level %}</td>
+                <td style="font-size: 0.85rem;">{{ ep.created_at|date:"M d, H:i" }}</td>
+                <td><a href="{% url 'guideline_adherence:episode_detail' ep.id %}" class="btn btn--primary btn--sm">View</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>No episodes</h3>
+        <p>No episodes have been recorded for this bundle.</p>
     </div>
+    {% endif %}
 </div>
 {% endblock %}

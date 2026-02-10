@@ -1,0 +1,127 @@
+<nav class="navbar">
+    <div class="nav-brand">
+        <svg class="nav-shield" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <path d="M50 5 L90 20 L90 45 C90 70 70 90 50 95 C30 90 10 70 10 45 L10 20 Z" fill="#0E7490"/>
+            <path d="M50 15 L80 27 L80 45 C80 65 65 80 50 85 C35 80 20 65 20 45 L20 27 Z" fill="#0891B2"/>
+        </svg>
+        {% if current_module == 'asp_alerts' %}
+        <a href="{% url 'asp_alerts:active' %}">ASP Alerts</a>
+        {% elif current_module == 'hai_detection' %}
+        <a href="{% url 'hai_detection:dashboard' %}">HAI Detection</a>
+        {% elif current_module == 'nhsn_reporting' %}
+        <a href="{% url 'nhsn_reporting:dashboard' %}">NHSN Reporting</a>
+        {% elif current_module == 'abx_indications' %}
+        <a href="{% url 'abx_indications:dashboard' %}">ABX Indications</a>
+        {% elif current_module == 'guideline_adherence' %}
+        <a href="{% url 'guideline_adherence:dashboard' %}">Guideline Adherence</a>
+        {% elif current_module == 'surgical_prophylaxis' %}
+        <a href="{% url 'surgical_prophylaxis:dashboard' %}">Surgical Prophylaxis</a>
+        {% elif current_module == 'drug_bug' %}
+        <a href="{% url 'drug_bug:dashboard' %}">Drug-Bug Mismatch</a>
+        {% elif current_module == 'mdro' %}
+        <a href="{% url 'mdro:dashboard' %}">MDRO Surveillance</a>
+        {% elif current_module == 'outbreak_detection' %}
+        <a href="{% url 'outbreak_detection:dashboard' %}">Outbreak Detection</a>
+        {% elif current_module == 'action_analytics' %}
+        <a href="{% url 'action_analytics:overview' %}">Action Analytics</a>
+        {% elif current_module == 'dosing' %}
+        <a href="{% url 'dosing:dashboard' %}">Dosing Verification</a>
+        {% elif current_module == 'antimicrobial_usage' %}
+        <a href="{% url 'antimicrobial_usage:dashboard' %}">Antimicrobial Usage</a>
+        {% else %}
+        <a href="/">AEGIS</a>
+        {% endif %}
+    </div>
+    <div class="nav-links">
+        {% if current_module == 'asp_alerts' %}
+        <a href="{% url 'asp_alerts:active' %}" {% if current_view == 'active' or current_view == 'detail' %}class="active"{% endif %}>Active Alerts</a>
+        <a href="{% url 'asp_alerts:history' %}" {% if current_view == 'history' %}class="active"{% endif %}>History</a>
+        <a href="{% url 'asp_alerts:reports' %}" {% if current_view == 'reports' %}class="active"{% endif %}>Reports</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'asp_alerts:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'hai_detection' %}
+        <a href="{% url 'hai_detection:dashboard' %}" {% if current_view == 'dashboard' or current_view == 'candidate_detail' %}class="active"{% endif %}>Dashboard</a>
+        <a href="{% url 'hai_detection:history' %}" {% if current_view == 'history' %}class="active"{% endif %}>History</a>
+        <a href="{% url 'hai_detection:reports' %}" {% if current_view == 'reports' %}class="active"{% endif %}>Reports</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'hai_detection:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'nhsn_reporting' %}
+        <a href="{% url 'nhsn_reporting:dashboard' %}" {% if current_view == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+        <a href="{% url 'nhsn_reporting:au_detail' %}" {% if current_view == 'au_detail' %}class="active"{% endif %}>AU Detail</a>
+        <a href="{% url 'nhsn_reporting:ar_detail' %}" {% if current_view == 'ar_detail' %}class="active"{% endif %}>AR Detail</a>
+        <a href="{% url 'nhsn_reporting:hai_events' %}" {% if current_view == 'hai_events' %}class="active"{% endif %}>HAI Events</a>
+        <a href="{% url 'nhsn_reporting:denominators' %}" {% if current_view == 'denominators' %}class="active"{% endif %}>Denominators</a>
+        <a href="{% url 'nhsn_reporting:submission' %}" {% if current_view == 'submission' %}class="active"{% endif %}>Submission</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'nhsn_reporting:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'abx_indications' %}
+        <a href="{% url 'abx_indications:dashboard' %}" {% if current_view == 'dashboard' or current_view == 'detail' %}class="active"{% endif %}>Dashboard</a>
+        <a href="{% url 'abx_indications:history' %}" {% if current_view == 'history' %}class="active"{% endif %}>History</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'abx_indications:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'guideline_adherence' %}
+        <a href="{% url 'guideline_adherence:dashboard' %}" {% if current_view == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+        <a href="{% url 'guideline_adherence:active_episodes' %}" {% if current_view == 'active_episodes' or current_view == 'episode_detail' %}class="active"{% endif %}>Active</a>
+        <a href="{% url 'guideline_adherence:history' %}" {% if current_view == 'history' %}class="active"{% endif %}>History</a>
+        <a href="{% url 'guideline_adherence:metrics' %}" {% if current_view == 'metrics' %}class="active"{% endif %}>Metrics</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'guideline_adherence:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'surgical_prophylaxis' %}
+        <a href="{% url 'surgical_prophylaxis:dashboard' %}" {% if current_view == 'dashboard' or current_view == 'case_detail' %}class="active"{% endif %}>Dashboard</a>
+        <a href="{% url 'surgical_prophylaxis:compliance' %}" {% if current_view == 'compliance' %}class="active"{% endif %}>Compliance</a>
+        <a href="{% url 'surgical_prophylaxis:realtime' %}" {% if current_view == 'realtime' %}class="active"{% endif %}>Real-time</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'surgical_prophylaxis:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'drug_bug' %}
+        <a href="{% url 'drug_bug:dashboard' %}" {% if current_view == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+        <a href="{% url 'drug_bug:history' %}" {% if current_view == 'history' %}class="active"{% endif %}>History</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'drug_bug:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'mdro' %}
+        <a href="{% url 'mdro:dashboard' %}" {% if current_view == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+        <a href="{% url 'mdro:cases' %}" {% if current_view == 'cases' or current_view == 'case_detail' %}class="active"{% endif %}>Cases</a>
+        <a href="{% url 'mdro:analytics' %}" {% if current_view == 'analytics' %}class="active"{% endif %}>Analytics</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'mdro:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'outbreak_detection' %}
+        <a href="{% url 'outbreak_detection:dashboard' %}" {% if current_view == 'dashboard' %}class="active"{% endif %}>Dashboard</a>
+        <a href="{% url 'outbreak_detection:clusters_list' %}" {% if current_view == 'clusters_list' or current_view == 'cluster_detail' %}class="active"{% endif %}>Clusters</a>
+        <a href="{% url 'outbreak_detection:alerts_list' %}" {% if current_view == 'alerts_list' %}class="active"{% endif %}>Alerts</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'outbreak_detection:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'action_analytics' %}
+        <a href="{% url 'action_analytics:overview' %}" {% if current_view == 'overview' %}class="active"{% endif %}>Overview</a>
+        <a href="{% url 'action_analytics:by_module' %}" {% if current_view == 'by_module' %}class="active"{% endif %}>By Module</a>
+        <a href="{% url 'action_analytics:time_spent' %}" {% if current_view == 'time_spent' %}class="active"{% endif %}>Time Spent</a>
+        <a href="{% url 'action_analytics:productivity' %}" {% if current_view == 'productivity' %}class="active"{% endif %}>Productivity</a>
+        <a href="/" class="nav-home">Main</a>
+
+        {% elif current_module == 'dosing' %}
+        <a href="{% url 'dosing:dashboard' %}" {% if current_view == 'dashboard' or current_view == 'detail' %}class="active"{% endif %}>Active</a>
+        <a href="{% url 'dosing:history' %}" {% if current_view == 'history' %}class="active"{% endif %}>History</a>
+        <a href="{% url 'dosing:reports' %}" {% if current_view == 'reports' %}class="active"{% endif %}>Reports</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'dosing:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% elif current_module == 'antimicrobial_usage' %}
+        <a href="{% url 'antimicrobial_usage:dashboard' %}" {% if current_view == 'dashboard' or current_view == 'detail' %}class="active"{% endif %}>Dashboard</a>
+        <a href="{% url 'antimicrobial_usage:history' %}" {% if current_view == 'history' %}class="active"{% endif %}>History</a>
+        <a href="/" class="nav-home">Main</a>
+        <a href="{% url 'antimicrobial_usage:help' %}" {% if current_view == 'help' %}class="active"{% endif %}>Help</a>
+
+        {% endif %}
+
+        {% if request.user.is_authenticated %}
+        <span class="nav-user">{{ request.user.get_full_name|default:request.user.username }}</span>
+        {% endif %}
+    </div>
+</nav>

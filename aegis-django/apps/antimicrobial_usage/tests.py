@@ -96,8 +96,7 @@ class TemplateRenderTests(TestCase):
 
     def test_base_template(self):
         html = render_to_string('antimicrobial_usage/base.html')
-        self.assertIn('Antimicrobial Usage Alerts', html)
-        self.assertIn('#00796B', html)
+        self.assertIn('Antimicrobial Usage', html)
 
     def test_help_template(self):
         html = render_to_string('antimicrobial_usage/help.html')

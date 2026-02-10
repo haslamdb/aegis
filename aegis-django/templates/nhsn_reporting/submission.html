@@ -16,138 +16,130 @@
 </div>
 {% endif %}
 
-<div class="two-col">
+<div class="detail-layout">
     <!-- Left Column: Export & Submit -->
-    <div>
+    <div class="detail-layout__main">
         <!-- CSV Export -->
-        <div class="card">
-            <div class="card-header">CSV Export</div>
-            <div class="card-body">
-                <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">
-                    Download CSV files formatted for NHSN manual upload (CDA-compatible format).
-                </p>
-                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                    <a href="{% url 'nhsn_reporting:api_au_export' %}" class="btn btn-outline">AU Data (CSV)</a>
-                    <a href="{% url 'nhsn_reporting:api_ar_export' %}" class="btn btn-outline">AR Data (CSV)</a>
-                    <a href="{% url 'nhsn_reporting:api_hai_export' %}" class="btn btn-outline">HAI Events (CSV)</a>
-                </div>
+        <div class="detail-section">
+            <div class="detail-section__title">CSV Export</div>
+            <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">
+                Download CSV files formatted for NHSN manual upload (CDA-compatible format).
+            </p>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                <a href="{% url 'nhsn_reporting:api_au_export' %}" class="btn btn--secondary">AU Data (CSV)</a>
+                <a href="{% url 'nhsn_reporting:api_ar_export' %}" class="btn btn--secondary">AR Data (CSV)</a>
+                <a href="{% url 'nhsn_reporting:api_hai_export' %}" class="btn btn--secondary">HAI Events (CSV)</a>
             </div>
         </div>
 
         <!-- DIRECT Submit -->
-        <div class="card">
-            <div class="card-header">
+        <div class="detail-section">
+            <div class="detail-section__title" style="display: flex; align-items: center; justify-content: space-between;">
                 DIRECT Electronic Submission
                 {% if direct_configured %}
-                <span class="badge badge-success">Configured</span>
+                    {% include "_includes/badge.html" with text="Configured" color="green" %}
                 {% else %}
-                <span class="badge badge-failed">Not Configured</span>
+                    {% include "_includes/badge.html" with text="Not Configured" color="red" %}
                 {% endif %}
             </div>
-            <div class="card-body">
-                {% if direct_configured %}
-                <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">
-                    Submit CDA documents directly to the NHSN via DIRECT messaging protocol. Reports are packaged as HL7 CDA R2 documents.
-                </p>
-                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
-                    <button class="btn btn-primary" onclick="directSubmit('au')">Submit AU</button>
-                    <button class="btn btn-primary" onclick="directSubmit('ar')">Submit AR</button>
-                    <button class="btn btn-primary" onclick="directSubmit('hai')">Submit HAI</button>
-                    <button class="btn btn-secondary btn-sm" onclick="testDirect()" style="margin-left: 1rem;">Test Connection</button>
-                </div>
-                <div id="direct-status" style="margin-top: 0.75rem;"></div>
-                {% else %}
-                <p style="font-size: 0.9rem; color: #555;">
-                    DIRECT messaging is not configured. Configure DIRECT credentials in settings to enable electronic submission to the NHSN.
-                    Use CSV export for manual upload in the meantime.
-                </p>
-                {% endif %}
+            {% if direct_configured %}
+            <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">
+                Submit CDA documents directly to the NHSN via DIRECT messaging protocol. Reports are packaged as HL7 CDA R2 documents.
+            </p>
+            <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+                <button class="btn btn--primary" onclick="directSubmit('au')">Submit AU</button>
+                <button class="btn btn--primary" onclick="directSubmit('ar')">Submit AR</button>
+                <button class="btn btn--primary" onclick="directSubmit('hai')">Submit HAI</button>
+                <button class="btn btn--secondary btn--sm" onclick="testDirect()" style="margin-left: 1rem;">Test Connection</button>
             </div>
+            <div id="direct-status" style="margin-top: 0.75rem;"></div>
+            {% else %}
+            <p style="font-size: 0.9rem; color: #555;">
+                DIRECT messaging is not configured. Configure DIRECT credentials in settings to enable electronic submission to the NHSN.
+                Use CSV export for manual upload in the meantime.
+            </p>
+            {% endif %}
         </div>
 
         <!-- Mark as Submitted -->
-        <div class="card">
-            <div class="card-header">Mark as Submitted</div>
-            <div class="card-body">
-                <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">
-                    After manually uploading CSV files to the NHSN portal, mark the reporting period as submitted to maintain an accurate audit trail.
-                </p>
-                {% if unreported_events %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th style="width: 40px;"><input type="checkbox" id="select-all-unreported" title="Select all"></th>
-                            <th>Type</th>
-                            <th>Period</th>
-                            <th>Details</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in unreported_events %}
-                        <tr>
-                            <td><input type="checkbox" name="mark_ids" value="{{ item.id }}" class="unreported-cb"></td>
-                            <td><span class="badge badge-blue">{{ item.report_type|upper }}</span></td>
-                            <td>{{ item.period_label|default:item.period }}</td>
-                            <td style="font-size: 0.85rem; color: #666;">{{ item.description|default:"--" }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <button class="btn btn-accent" onclick="markAsSubmitted()" style="margin-top: 0.5rem;">Mark Selected as Submitted</button>
-                {% else %}
-                <div style="color: #888; font-size: 0.9rem;">All reportable items have been submitted.</div>
-                {% endif %}
-            </div>
+        <div class="detail-section">
+            <div class="detail-section__title">Mark as Submitted</div>
+            <p style="font-size: 0.9rem; color: #555; margin-bottom: 1rem;">
+                After manually uploading CSV files to the NHSN portal, mark the reporting period as submitted to maintain an accurate audit trail.
+            </p>
+            {% if unreported_events %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40px;"><input type="checkbox" id="select-all-unreported" title="Select all"></th>
+                        <th>Type</th>
+                        <th>Period</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in unreported_events %}
+                    <tr>
+                        <td><input type="checkbox" name="mark_ids" value="{{ item.id }}" class="unreported-cb"></td>
+                        <td>{% include "_includes/badge.html" with text=item.report_type|upper color="blue" %}</td>
+                        <td>{{ item.period_label|default:item.period }}</td>
+                        <td style="font-size: 0.85rem; color: #666;">{{ item.description|default:"--" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button class="btn btn--primary" onclick="markAsSubmitted()" style="margin-top: 0.5rem;">Mark Selected as Submitted</button>
+            {% else %}
+            <div style="color: #888; font-size: 0.9rem;">All reportable items have been submitted.</div>
+            {% endif %}
         </div>
     </div>
 
     <!-- Right Column: Audit Log -->
-    <div>
-        <div class="card">
-            <div class="card-header">Submission Audit Log</div>
-            <div class="card-body">
-                {% if audit_log %}
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Type</th>
-                            <th>Method</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for entry in audit_log %}
-                        <tr>
-                            <td style="font-size: 0.85rem;">{{ entry.submitted_at|date:"M d, Y" }}<br><small style="color: #888;">{{ entry.submitted_at|date:"H:i" }}</small></td>
-                            <td><span class="badge badge-blue">{{ entry.report_type|upper }}</span></td>
-                            <td style="font-size: 0.85rem;">{{ entry.method }}</td>
-                            <td>
-                                {% if entry.status == 'success' %}
-                                <span class="badge badge-success">Success</span>
-                                {% elif entry.status == 'failed' %}
-                                <span class="badge badge-failed">Failed</span>
-                                {% else %}
-                                <span class="badge badge-pending">{{ entry.status|title }}</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <div class="empty-state" style="padding: 1.5rem;">
-                    <h3>No submissions</h3>
-                    <p>No submission history recorded yet.</p>
-                </div>
-                {% endif %}
+    <div class="detail-layout__sidebar">
+        <div class="detail-section">
+            <div class="detail-section__title">Submission Audit Log</div>
+            {% if audit_log %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Type</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in audit_log %}
+                    <tr>
+                        <td style="font-size: 0.85rem;">{{ entry.submitted_at|date:"M d, Y" }}<br><small style="color: #888;">{{ entry.submitted_at|date:"H:i" }}</small></td>
+                        <td>{% include "_includes/badge.html" with text=entry.report_type|upper color="blue" %}</td>
+                        <td style="font-size: 0.85rem;">{{ entry.method }}</td>
+                        <td>
+                            {% if entry.status == 'success' %}
+                                {% include "_includes/badge.html" with text="Success" color="green" %}
+                            {% elif entry.status == 'failed' %}
+                                {% include "_includes/badge.html" with text="Failed" color="red" %}
+                            {% else %}
+                                {% include "_includes/badge.html" with text=entry.status|title color="yellow" %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state" style="padding: 1.5rem;">
+                <h3>No submissions</h3>
+                <p>No submission history recorded yet.</p>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
     // Select all unreported checkboxes
     document.getElementById('select-all-unreported')?.addEventListener('change', function() {

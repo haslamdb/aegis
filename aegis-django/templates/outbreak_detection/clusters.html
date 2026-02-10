@@ -3,18 +3,20 @@
 {% block content %}
 <h2>Outbreak Clusters</h2>
 
-<div class="filters">
-    <label>Status:</label>
-    <select onchange="window.location.href='{% url 'outbreak_detection:clusters_list' %}?status=' + this.value">
-        <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
-        <option value="investigating" {% if current_status == 'investigating' %}selected{% endif %}>Investigating</option>
-        <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
-    </select>
+<div class="filter-bar">
+    <div class="filter-group">
+        <label>Status:</label>
+        <select onchange="window.location.href='{% url 'outbreak_detection:clusters_list' %}?status=' + this.value">
+            <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
+            <option value="investigating" {% if current_status == 'investigating' %}selected{% endif %}>Investigating</option>
+            <option value="resolved" {% if current_status == 'resolved' %}selected{% endif %}>Resolved</option>
+        </select>
+    </div>
 </div>
 
 <p><strong>{{ clusters|length }}</strong> cluster{{ clusters|length|pluralize }} ({{ current_status }})</p>
 
-<table>
+<table class="data-table">
     <tr>
         <th>Unit</th>
         <th>Infection Type</th>
@@ -29,19 +31,19 @@
     {% for cluster in clusters %}
     <tr>
         <td><strong>{{ cluster.unit }}</strong></td>
-        <td><span class="badge" style="background: #4a1942;">{{ cluster.infection_type|upper }}</span></td>
+        <td>{% include "_includes/badge.html" with text=cluster.infection_type|upper color="module" %}</td>
         <td>{{ cluster.organism|default:"-" }}</td>
         <td style="text-align: center;"><strong>{{ cluster.case_count }}</strong></td>
         <td style="text-align: center;">
-            <span class="badge {{ cluster.severity }}">{{ cluster.get_severity_display }}</span>
+            {% include "_includes/badge.html" with text=cluster.get_severity_display color=cluster.severity %}
         </td>
         <td>
-            <span class="badge {{ cluster.status }}">{{ cluster.get_status_display }}</span>
+            {% include "_includes/badge.html" with text=cluster.get_status_display color=cluster.status %}
         </td>
         <td>{{ cluster.first_case_date|date:"Y-m-d"|default:"-" }}</td>
         <td>{{ cluster.last_case_date|date:"Y-m-d"|default:"-" }}</td>
         <td style="text-align: center;">
-            <a href="{% url 'outbreak_detection:cluster_detail' cluster.id %}" class="btn btn-primary btn-sm">View</a>
+            <a href="{% url 'outbreak_detection:cluster_detail' cluster.id %}" class="btn btn--primary" style="padding: 5px 10px; font-size: 12px;">View</a>
         </td>
     </tr>
     {% empty %}

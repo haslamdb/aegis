@@ -4,11 +4,11 @@
 <h2>Case: {{ case.procedure_description|truncatechars:60 }}</h2>
 
 <div class="detail-layout">
-    <div class="detail-main">
+    <div class="detail-layout__main">
         <!-- Case Info -->
-        <div class="action-card">
-            <h3>Case Information</h3>
-            <table style="box-shadow: none; margin: 0;">
+        <div class="detail-section">
+            <h3 class="detail-section__title">Case Information</h3>
+            <table class="data-table">
                 <tr><td style="width: 180px;"><strong>Case ID</strong></td><td>{{ case.case_id }}</td></tr>
                 <tr><td><strong>Patient MRN</strong></td><td>{{ case.patient_mrn }}</td></tr>
                 <tr><td><strong>Patient Name</strong></td><td>{{ case.patient_name|default:"-" }}</td></tr>
@@ -28,14 +28,14 @@
         </div>
 
         <!-- Patient Factors -->
-        <div class="action-card">
-            <h3>Patient Factors</h3>
-            <table style="box-shadow: none; margin: 0;">
+        <div class="detail-section">
+            <h3 class="detail-section__title">Patient Factors</h3>
+            <table class="data-table">
                 <tr><td style="width: 180px;"><strong>Weight</strong></td><td>{% if case.patient_weight_kg %}{{ case.patient_weight_kg|floatformat:1 }} kg{% else %}-{% endif %}</td></tr>
                 <tr><td><strong>Age</strong></td><td>{% if case.patient_age_years %}{{ case.patient_age_years|floatformat:1 }} years{% else %}-{% endif %}</td></tr>
-                <tr><td><strong>Beta-lactam Allergy</strong></td><td>{% if case.has_beta_lactam_allergy %}<span class="badge" style="background: #e74c3c;">Yes</span>{% else %}No{% endif %}</td></tr>
-                <tr><td><strong>MRSA Colonized</strong></td><td>{% if case.mrsa_colonized %}<span class="badge" style="background: #e67e22;">Yes</span>{% else %}No{% endif %}</td></tr>
-                <tr><td><strong>Emergency</strong></td><td>{% if case.is_emergency %}<span class="badge" style="background: #e74c3c;">Yes</span>{% else %}No{% endif %}</td></tr>
+                <tr><td><strong>Beta-lactam Allergy</strong></td><td>{% if case.has_beta_lactam_allergy %}{% include "_includes/badge.html" with text="Yes" color="red" %}{% else %}No{% endif %}</td></tr>
+                <tr><td><strong>MRSA Colonized</strong></td><td>{% if case.mrsa_colonized %}{% include "_includes/badge.html" with text="Yes" color="orange" %}{% else %}No{% endif %}</td></tr>
+                <tr><td><strong>Emergency</strong></td><td>{% if case.is_emergency %}{% include "_includes/badge.html" with text="Yes" color="red" %}{% else %}No{% endif %}</td></tr>
                 <tr><td><strong>On Therapeutic Abx</strong></td><td>{% if case.already_on_therapeutic_abx %}Yes{% else %}No{% endif %}</td></tr>
                 <tr><td><strong>Documented Infection</strong></td><td>{% if case.documented_infection %}Yes{% else %}No{% endif %}</td></tr>
             </table>
@@ -43,15 +43,15 @@
 
         <!-- 7-Element Evaluation -->
         {% if latest_eval %}
-        <div class="action-card">
-            <h3>
+        <div class="detail-section">
+            <h3 class="detail-section__title">
                 Bundle Compliance
                 {% if latest_eval.excluded %}
-                <span class="badge excluded">Excluded</span>
+                {% include "_includes/badge.html" with text="Excluded" color="gray" %}
                 {% elif latest_eval.bundle_compliant %}
-                <span class="badge compliant">Compliant</span>
+                {% include "_includes/badge.html" with text="Compliant" color="green" %}
                 {% else %}
-                <span class="badge non-compliant">Non-compliant</span>
+                {% include "_includes/badge.html" with text="Non-compliant" color="red" %}
                 {% endif %}
                 — {{ latest_eval.compliance_score|floatformat:0 }}%
                 ({{ latest_eval.elements_met }}/{{ latest_eval.elements_total }} elements met)
@@ -65,13 +65,17 @@
                 {% for name, result in latest_eval.element_results_list %}
                 <div class="element-card {{ result.status|default:'pending' }}">
                     <div class="element-name">{{ name }}</div>
-                    <span class="badge {{ result.status|default:'pending' }}">
-                        {% if result.status == 'met' %}Met
-                        {% elif result.status == 'not_met' %}Not Met
-                        {% elif result.status == 'n/a' %}N/A
-                        {% elif result.status == 'unable' %}Unable
-                        {% else %}Pending{% endif %}
-                    </span>
+                    {% if result.status == 'met' %}
+                    {% include "_includes/badge.html" with text="Met" color="green" %}
+                    {% elif result.status == 'not_met' %}
+                    {% include "_includes/badge.html" with text="Not Met" color="red" %}
+                    {% elif result.status == 'n/a' %}
+                    {% include "_includes/badge.html" with text="N/A" color="gray" %}
+                    {% elif result.status == 'unable' %}
+                    {% include "_includes/badge.html" with text="Unable" color="gray" %}
+                    {% else %}
+                    {% include "_includes/badge.html" with text="Pending" color="yellow" %}
+                    {% endif %}
                     <div class="element-detail">{{ result.details|default:"" }}</div>
                     {% if result.recommendation %}
                     <div class="element-detail" style="color: #e67e22; margin-top: 4px;">{{ result.recommendation }}</div>
@@ -101,10 +105,10 @@
         {% endif %}
 
         <!-- Medications -->
-        <div class="action-card">
-            <h3>Medications</h3>
+        <div class="detail-section">
+            <h3 class="detail-section__title">Medications</h3>
             {% if medications %}
-            <table style="box-shadow: none; margin: 0;">
+            <table class="data-table">
                 <tr>
                     <th>Type</th>
                     <th>Medication</th>
@@ -116,9 +120,9 @@
                 <tr>
                     <td>
                         {% if med.medication_type == 'order' %}
-                        <span class="badge" style="background: #3498db;">Order</span>
+                        {% include "_includes/badge.html" with text="Order" color="blue" %}
                         {% else %}
-                        <span class="badge" style="background: #27ae60;">Admin</span>
+                        {% include "_includes/badge.html" with text="Admin" color="green" %}
                         {% endif %}
                     </td>
                     <td>{{ med.medication_name }}</td>
@@ -134,15 +138,15 @@
         </div>
     </div>
 
-    <div class="detail-sidebar">
+    <div class="detail-layout__sidebar">
         <!-- Alert Status -->
         {% if alerts %}
-        <div class="action-card">
-            <h3>Alerts</h3>
+        <div class="detail-section">
+            <h3 class="detail-section__title">Alerts</h3>
             {% for alert in alerts %}
-            <div class="alert-box {{ alert.severity }}" style="margin: 5px 0;">
-                <span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span>
-                <span class="badge {{ alert.status }}">{{ alert.get_status_display }}</span>
+            <div style="border-left: 4px solid {% if alert.severity == 'critical' %}var(--color-danger){% elif alert.severity == 'high' %}#e67e22{% elif alert.severity == 'medium' %}var(--color-warning){% else %}var(--color-info){% endif %}; padding: 8px 12px; margin: 5px 0;">
+                {% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity %}
+                {% include "_includes/badge.html" with text=alert.get_status_display color="gray" %}
                 <p style="font-size: 13px; margin: 5px 0;">{{ alert.summary|truncatechars:100 }}</p>
                 <small class="text-muted">{{ alert.created_at|date:"Y-m-d H:i" }}</small>
             </div>
@@ -152,14 +156,14 @@
 
         <!-- Audit Log -->
         {% if alerts %}
-        <div class="action-card">
-            <h3>Audit Log</h3>
-            <div class="timeline">
+        <div class="detail-section">
+            <h3 class="detail-section__title">Audit Log</h3>
+            <div class="sp-timeline">
                 {% for alert in alerts %}
                 {% for audit in alert.audit_log.all %}
-                <div class="timeline-item">
-                    <div class="timeline-time">{{ audit.created_at|date:"Y-m-d H:i" }}</div>
-                    <div class="timeline-text">
+                <div class="sp-timeline-item">
+                    <div class="sp-timeline-time">{{ audit.created_at|date:"Y-m-d H:i" }}</div>
+                    <div class="sp-timeline-text">
                         <strong>{{ audit.action }}</strong>
                         {% if audit.performed_by %} by {{ audit.performed_by }}{% endif %}
                     </div>
@@ -174,10 +178,10 @@
         {% endif %}
 
         <!-- Quick Actions -->
-        <div class="action-card">
-            <h3>Actions</h3>
-            <a href="{% url 'surgical_prophylaxis:dashboard' %}" class="btn btn-outline btn-sm" style="display: block; margin-bottom: 8px; text-align: center;">Back to Dashboard</a>
-            <a href="{% url 'surgical_prophylaxis:compliance' %}" class="btn btn-outline btn-sm" style="display: block; text-align: center;">Compliance Report</a>
+        <div class="detail-section">
+            <h3 class="detail-section__title">Actions</h3>
+            <a href="{% url 'surgical_prophylaxis:dashboard' %}" class="btn btn--secondary btn--sm" style="display: block; margin-bottom: 8px; text-align: center;">Back to Dashboard</a>
+            <a href="{% url 'surgical_prophylaxis:compliance' %}" class="btn btn--secondary btn--sm" style="display: block; text-align: center;">Compliance Report</a>
         </div>
     </div>
 </div>

@@ -3,7 +3,7 @@
 {% block content %}
 <h2>Surgical Prophylaxis - Help &amp; Documentation</h2>
 
-<div class="action-card">
+<div class="detail-section">
     <h3>Overview</h3>
     <p>
         The Surgical Prophylaxis module monitors compliance with ASHP (American Society of Health-System
@@ -21,7 +21,7 @@
     </ul>
 
     <h3>7 ASHP Bundle Elements</h3>
-    <table style="box-shadow: none;">
+    <table class="data-table">
         <tr>
             <th>#</th>
             <th>Element</th>
@@ -70,11 +70,11 @@
 
     <h3>Compliance Scoring</h3>
     <p>
-        Each element is assessed as <span class="badge met">Met</span>,
-        <span class="badge not-met">Not Met</span>,
-        <span class="badge n-a">N/A</span>,
-        <span class="badge pending">Pending</span>, or
-        <span class="badge unable">Unable to Assess</span>.
+        Each element is assessed as {% include "_includes/badge.html" with text="Met" color="green" %},
+        {% include "_includes/badge.html" with text="Not Met" color="red" %},
+        {% include "_includes/badge.html" with text="N/A" color="gray" %},
+        {% include "_includes/badge.html" with text="Pending" color="yellow" %}, or
+        {% include "_includes/badge.html" with text="Unable" color="gray" %}.
     </p>
     <p>
         The bundle compliance score is calculated as: <code>(elements met) / (applicable elements) &times; 100%</code>.
@@ -90,7 +90,7 @@
     </ul>
 
     <h3>Real-time Trigger Points</h3>
-    <table style="box-shadow: none;">
+    <table class="data-table">
         <tr>
             <th>Trigger</th>
             <th>Timing</th>
@@ -134,33 +134,33 @@
     </table>
 
     <h3>Alert Severity</h3>
-    <table style="box-shadow: none;">
+    <table class="data-table">
         <tr>
             <th>Severity</th>
             <th>Condition</th>
         </tr>
         <tr>
-            <td><span class="badge critical">Critical</span></td>
+            <td>{% include "_includes/badge.html" with text="Critical" color="critical" %}</td>
             <td>No prophylaxis at OR entry, or ordered but not administered at incision</td>
         </tr>
         <tr>
-            <td><span class="badge high">High</span></td>
+            <td>{% include "_includes/badge.html" with text="High" color="high" %}</td>
             <td>Wrong agent, incorrect dosing, or no order at T-60min/T-2h</td>
         </tr>
         <tr>
-            <td><span class="badge medium">Medium</span></td>
+            <td>{% include "_includes/badge.html" with text="Medium" color="medium" %}</td>
             <td>Duration/redosing issues, or no order at T-24h</td>
         </tr>
     </table>
 
     <h3>Patient Location Tracking</h3>
     <div style="background: #ecf0f1; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 14px;">
-        <span class="badge unknown">Unknown</span>
-        &rarr; <span class="badge inpatient">Inpatient</span>
-        &rarr; <span class="badge pre_op">Pre-Op</span>
-        &rarr; <span class="badge or_suite">OR Suite</span>
-        &rarr; <span class="badge pacu">PACU</span>
-        &rarr; <span class="badge discharged">Discharged</span>
+        {% include "_includes/badge.html" with text="Unknown" color="gray" %}
+        &rarr; {% include "_includes/badge.html" with text="Inpatient" color="teal" %}
+        &rarr; {% include "_includes/badge.html" with text="Pre-Op" color="yellow" %}
+        &rarr; {% include "_includes/badge.html" with text="OR Suite" color="red" %}
+        &rarr; {% include "_includes/badge.html" with text="PACU" color="blue" %}
+        &rarr; {% include "_includes/badge.html" with text="Discharged" color="green" %}
     </div>
     <p style="margin-top: 10px;">
         Location is determined from HL7 ADT A02 (transfer) messages. The system uses regex pattern
@@ -168,7 +168,7 @@
     </p>
 
     <h3>Management Commands</h3>
-    <table style="box-shadow: none;">
+    <table class="data-table">
         <tr>
             <th>Command</th>
             <th>Description</th>

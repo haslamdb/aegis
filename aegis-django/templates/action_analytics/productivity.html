@@ -2,7 +2,7 @@
 {% block content %}
 <h2>User Productivity (Last {{ days }} days)</h2>
 
-<table>
+<table class="data-table">
     <tr><th>User</th><th>Role</th><th>Actions</th><th>Patients</th><th>Total Time</th><th>Avg Time</th></tr>
     {% for item in data %}
     <tr>

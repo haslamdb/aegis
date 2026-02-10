@@ -3,17 +3,17 @@
 {% block content %}
 <h2>
     Cluster: {{ cluster.infection_type|upper }} in {{ cluster.unit }}
-    <span class="badge {{ cluster.severity }}">{{ cluster.get_severity_display }}</span>
-    <span class="badge {{ cluster.status }}">{{ cluster.get_status_display }}</span>
+    {% include "_includes/badge.html" with text=cluster.get_severity_display color=cluster.severity %}
+    {% include "_includes/badge.html" with text=cluster.get_status_display color=cluster.status %}
 </h2>
 
 <div class="detail-layout">
     <!-- Left Column: Cluster Info + Cases -->
-    <div class="detail-main">
+    <div class="detail-layout__main">
         <!-- Cluster Information -->
-        <div class="action-card">
+        <div class="detail-section">
             <h3>Cluster Information</h3>
-            <table style="box-shadow: none; margin: 0;">
+            <table class="data-table" style="box-shadow: none; margin: 0;">
                 <tr><td><strong>Infection Type</strong></td><td>{{ cluster.infection_type|upper }}</td></tr>
                 <tr><td><strong>Organism</strong></td><td>{{ cluster.organism|default:"Not specified" }}</td></tr>
                 <tr><td><strong>Unit</strong></td><td>{{ cluster.unit }}</td></tr>
@@ -26,10 +26,10 @@
         </div>
 
         <!-- Cases -->
-        <div class="action-card">
+        <div class="detail-section">
             <h3>Cases ({{ cases|length }})</h3>
             {% if cases %}
-            <table style="box-shadow: none; margin: 0;">
+            <table class="data-table" style="box-shadow: none; margin: 0;">
                 <tr>
                     <th>Patient MRN</th>
                     <th>Source</th>
@@ -40,7 +40,7 @@
                 {% for case in cases %}
                 <tr>
                     <td><strong>{{ case.patient_mrn }}</strong></td>
-                    <td><span class="badge {{ case.source }}">{{ case.source|upper }}</span></td>
+                    <td>{% include "_includes/badge.html" with text=case.source|upper color=case.source %}</td>
                     <td>{{ case.organism|default:"-" }}</td>
                     <td>{{ case.unit }}</td>
                     <td>{{ case.event_date|date:"Y-m-d" }}</td>
@@ -54,9 +54,9 @@
 
         <!-- Resolution (if resolved) -->
         {% if cluster.status == 'resolved' %}
-        <div class="action-card">
+        <div class="detail-section">
             <h3>Resolution</h3>
-            <table style="box-shadow: none; margin: 0;">
+            <table class="data-table" style="box-shadow: none; margin: 0;">
                 <tr><td><strong>Resolved By</strong></td><td>{{ cluster.resolved_by|default:"-" }}</td></tr>
                 <tr><td><strong>Resolved At</strong></td><td>{{ cluster.resolved_at|date:"Y-m-d H:i"|default:"-" }}</td></tr>
             </table>
@@ -71,12 +71,12 @@
 
         <!-- Alert History -->
         {% if alerts %}
-        <div class="action-card">
+        <div class="detail-section">
             <h3>Alert History</h3>
             {% for alert in alerts %}
-            <div class="alert-box {{ alert.severity }}" style="margin: 5px 0;">
+            <div class="action-card" style="margin: 5px 0;">
                 <strong>{{ alert.title }}</strong>
-                <span class="badge {{ alert.status }}">{{ alert.get_status_display }}</span>
+                {% include "_includes/badge.html" with text=alert.get_status_display color=alert.status %}
                 <p style="margin: 5px 0;">{{ alert.summary }}</p>
                 <small class="text-muted">{{ alert.created_at|date:"Y-m-d H:i" }}</small>
             </div>
@@ -86,7 +86,7 @@
     </div>
 
     <!-- Right Column: IP Investigation Actions -->
-    <div class="detail-sidebar">
+    <div class="detail-layout__sidebar">
         {% if cluster.status != 'resolved' %}
         <div id="review-form-container">
             <div class="action-card">
@@ -98,10 +98,10 @@
                 </div>
 
                 <div style="margin: 15px 0;">
-                    <button type="button" class="btn btn-danger btn-block decision-btn" data-decision="confirmed" data-status="active">
+                    <button type="button" class="btn btn--danger btn-block decision-btn" data-decision="confirmed" data-status="active">
                         Confirm Outbreak
                     </button>
-                    <button type="button" class="btn btn-warning btn-block decision-btn" data-decision="investigating" data-status="investigating">
+                    <button type="button" class="btn btn--secondary btn-block decision-btn" data-decision="investigating" data-status="investigating">
                         Under Investigation
                     </button>
                 </div>
@@ -109,10 +109,10 @@
                 <div style="text-align: center; color: #7f8c8d; margin: 10px 0;">Or:</div>
 
                 <div>
-                    <button type="button" class="btn btn-secondary btn-block decision-btn" data-decision="not_outbreak" data-status="not_outbreak">
+                    <button type="button" class="btn btn--secondary btn-block decision-btn" data-decision="not_outbreak" data-status="not_outbreak">
                         Not an Outbreak
                     </button>
-                    <button type="button" class="btn btn-success btn-block decision-btn" data-decision="resolved" data-status="resolved">
+                    <button type="button" class="btn btn--success btn-block decision-btn" data-decision="resolved" data-status="resolved">
                         Resolve Cluster
                     </button>
                 </div>
@@ -144,7 +144,7 @@
                     <textarea id="notes" rows="4" class="form-textarea"
                               placeholder="Investigation notes, actions taken, environmental findings..."></textarea>
                 </div>
-                <button type="button" class="btn btn-primary btn-block" id="submit-review-btn">
+                <button type="button" class="btn btn--primary btn-block" id="submit-review-btn">
                     Submit Decision
                 </button>
             </div>
@@ -156,7 +156,7 @@
                 <div class="success-icon">&#10003;</div>
                 <h3>Decision Submitted</h3>
                 <p id="success-message">Your decision has been recorded.</p>
-                <a href="{% url 'outbreak_detection:clusters_list' %}" class="btn btn-primary btn-block" style="margin-top: 15px;">
+                <a href="{% url 'outbreak_detection:clusters_list' %}" class="btn btn--primary btn-block" style="margin-top: 15px;">
                     Return to Clusters
                 </a>
             </div>
@@ -168,7 +168,7 @@
             <div class="success-icon">&#10003;</div>
             <h3>Cluster Resolved</h3>
             <p>This cluster has been resolved.</p>
-            <span class="badge resolved" style="font-size: 14px; padding: 6px 12px;">Resolved</span>
+            {% include "_includes/badge.html" with text="Resolved" color="resolved" %}
             <p class="text-muted" style="margin-top: 10px;">
                 by {{ cluster.resolved_by|default:"Unknown" }}
                 on {{ cluster.resolved_at|date:"Y-m-d H:i"|default:"" }}
@@ -178,8 +178,8 @@
 
         <div class="action-card">
             <h3>Quick Links</h3>
-            <a href="{% url 'outbreak_detection:clusters_list' %}" class="btn btn-outline btn-block">&larr; Back to Clusters</a>
-            <a href="{% url 'outbreak_detection:dashboard' %}" class="btn btn-outline btn-block">Dashboard</a>
+            <a href="{% url 'outbreak_detection:clusters_list' %}" class="btn btn--secondary btn-block">&larr; Back to Clusters</a>
+            <a href="{% url 'outbreak_detection:dashboard' %}" class="btn btn--secondary btn-block">Dashboard</a>
         </div>
     </div>
 </div>

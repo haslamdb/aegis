@@ -18,239 +18,235 @@
 </div>
 {% endif %}
 
-<div class="two-col">
+<div class="detail-layout">
     <!-- Left Column: Extraction Results -->
-    <div>
+    <div class="detail-layout__main">
         <!-- Patient & Medication -->
-        <div class="card">
-            <div class="card-header">Medication Details</div>
-            <div class="card-body">
-                <div class="detail-row"><div class="detail-label">Medication</div><div class="detail-value">{{ candidate.medication_name }}</div></div>
-                <div class="detail-row"><div class="detail-label">RxNorm Code</div><div class="detail-value">{{ candidate.rxnorm_code|default:"—" }}</div></div>
-                <div class="detail-row"><div class="detail-label">Order Date</div><div class="detail-value">{{ candidate.order_date|date:"M d, Y H:i" }}</div></div>
-                <div class="detail-row"><div class="detail-label">Location</div><div class="detail-value">{{ candidate.location|default:"—" }}</div></div>
-                <div class="detail-row"><div class="detail-label">Service</div><div class="detail-value">{{ candidate.service|default:"—" }}</div></div>
-                <div class="detail-row">
-                    <div class="detail-label">Status</div>
-                    <div class="detail-value">
-                        <span class="badge badge-{{ candidate.status }}">{{ candidate.get_status_display }}</span>
-                    </div>
+        <div class="detail-section">
+            <div class="detail-section__title">Medication Details</div>
+            <div class="detail-row"><div class="detail-label">Medication</div><div class="detail-value">{{ candidate.medication_name }}</div></div>
+            <div class="detail-row"><div class="detail-label">RxNorm Code</div><div class="detail-value">{{ candidate.rxnorm_code|default:"\u2014" }}</div></div>
+            <div class="detail-row"><div class="detail-label">Order Date</div><div class="detail-value">{{ candidate.order_date|date:"M d, Y H:i" }}</div></div>
+            <div class="detail-row"><div class="detail-label">Location</div><div class="detail-value">{{ candidate.location|default:"\u2014" }}</div></div>
+            <div class="detail-row"><div class="detail-label">Service</div><div class="detail-value">{{ candidate.service|default:"\u2014" }}</div></div>
+            <div class="detail-row">
+                <div class="detail-label">Status</div>
+                <div class="detail-value">
+                    {% include "_includes/badge.html" with text=candidate.get_status_display color=candidate.status %}
                 </div>
             </div>
         </div>
 
         <!-- LLM Extraction -->
-        <div class="card">
-            <div class="card-header">LLM Extraction Results</div>
-            <div class="card-body">
-                <div class="detail-row"><div class="detail-label">Clinical Syndrome</div><div class="detail-value"><strong>{{ candidate.clinical_syndrome_display|default:"Unknown" }}</strong> ({{ candidate.clinical_syndrome }})</div></div>
-                <div class="detail-row"><div class="detail-label">Category</div><div class="detail-value">{{ candidate.syndrome_category|default:"—"|title }}</div></div>
-                <div class="detail-row">
-                    <div class="detail-label">Confidence</div>
-                    <div class="detail-value">
-                        <span class="badge {% if candidate.syndrome_confidence == 'definite' %}badge-first-line{% elif candidate.syndrome_confidence == 'probable' %}badge-alternative{% else %}badge-off-guideline{% endif %}">
-                            {{ candidate.syndrome_confidence }}
-                        </span>
-                    </div>
+        <div class="detail-section">
+            <div class="detail-section__title">LLM Extraction Results</div>
+            <div class="detail-row"><div class="detail-label">Clinical Syndrome</div><div class="detail-value"><strong>{{ candidate.clinical_syndrome_display|default:"Unknown" }}</strong> ({{ candidate.clinical_syndrome }})</div></div>
+            <div class="detail-row"><div class="detail-label">Category</div><div class="detail-value">{{ candidate.syndrome_category|default:"\u2014"|title }}</div></div>
+            <div class="detail-row">
+                <div class="detail-label">Confidence</div>
+                <div class="detail-value">
+                    {% if candidate.syndrome_confidence == 'definite' %}
+                        {% include "_includes/badge.html" with text=candidate.syndrome_confidence color="green" %}
+                    {% elif candidate.syndrome_confidence == 'probable' %}
+                        {% include "_includes/badge.html" with text=candidate.syndrome_confidence color="yellow" %}
+                    {% else %}
+                        {% include "_includes/badge.html" with text=candidate.syndrome_confidence color="red" %}
+                    {% endif %}
                 </div>
-                <div class="detail-row"><div class="detail-label">Therapy Intent</div><div class="detail-value">{{ candidate.get_therapy_intent_display }}</div></div>
-
-                {% if candidate.supporting_evidence %}
-                <div style="margin-top: 1rem;">
-                    <div class="detail-label" style="margin-bottom: 0.5rem;">Supporting Evidence</div>
-                    <ul class="evidence-list">
-                        {% for evidence in candidate.supporting_evidence %}
-                        <li>{{ evidence }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-
-                {% if candidate.evidence_quotes %}
-                <div style="margin-top: 1rem;">
-                    <div class="detail-label" style="margin-bottom: 0.5rem;">Evidence Quotes</div>
-                    {% for quote in candidate.evidence_quotes %}
-                    <div class="quote">{{ quote }}</div>
-                    {% endfor %}
-                </div>
-                {% endif %}
             </div>
+            <div class="detail-row"><div class="detail-label">Therapy Intent</div><div class="detail-value">{{ candidate.get_therapy_intent_display }}</div></div>
+
+            {% if candidate.supporting_evidence %}
+            <div style="margin-top: 1rem;">
+                <div class="detail-label" style="margin-bottom: 0.5rem;">Supporting Evidence</div>
+                <ul class="evidence-list">
+                    {% for evidence in candidate.supporting_evidence %}
+                    <li>{{ evidence }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            {% if candidate.evidence_quotes %}
+            <div style="margin-top: 1rem;">
+                <div class="detail-label" style="margin-bottom: 0.5rem;">Evidence Quotes</div>
+                {% for quote in candidate.evidence_quotes %}
+                <div class="quote">{{ quote }}</div>
+                {% endfor %}
+            </div>
+            {% endif %}
         </div>
 
         <!-- CCHMC Guideline Match -->
-        <div class="card">
-            <div class="card-header">CCHMC Guideline Match</div>
-            <div class="card-body">
-                {% if candidate.cchmc_disease_matched %}
-                <div class="detail-row"><div class="detail-label">Disease Matched</div><div class="detail-value">{{ candidate.cchmc_disease_matched }}</div></div>
-                <div class="detail-row">
-                    <div class="detail-label">Agent Category</div>
-                    <div class="detail-value">
-                        <span class="badge badge-{{ candidate.cchmc_agent_category }}">{{ candidate.get_cchmc_agent_category_display }}</span>
-                    </div>
+        <div class="detail-section">
+            <div class="detail-section__title">CCHMC Guideline Match</div>
+            {% if candidate.cchmc_disease_matched %}
+            <div class="detail-row"><div class="detail-label">Disease Matched</div><div class="detail-value">{{ candidate.cchmc_disease_matched }}</div></div>
+            <div class="detail-row">
+                <div class="detail-label">Agent Category</div>
+                <div class="detail-value">
+                    {% include "_includes/badge.html" with text=candidate.get_cchmc_agent_category_display color=candidate.cchmc_agent_category %}
                 </div>
-                {% if candidate.cchmc_first_line_agents %}
-                <div class="detail-row"><div class="detail-label">First-Line Agents</div><div class="detail-value">{{ candidate.cchmc_first_line_agents|join:", " }}</div></div>
-                {% endif %}
-                {% if candidate.cchmc_recommendation %}
-                <div class="detail-row"><div class="detail-label">Recommendation</div><div class="detail-value">{{ candidate.cchmc_recommendation }}</div></div>
-                {% endif %}
-                {% else %}
-                <p style="color: #888;">No CCHMC guideline match available for this indication.</p>
-                {% endif %}
             </div>
+            {% if candidate.cchmc_first_line_agents %}
+            <div class="detail-row"><div class="detail-label">First-Line Agents</div><div class="detail-value">{{ candidate.cchmc_first_line_agents|join:", " }}</div></div>
+            {% endif %}
+            {% if candidate.cchmc_recommendation %}
+            <div class="detail-row"><div class="detail-label">Recommendation</div><div class="detail-value">{{ candidate.cchmc_recommendation }}</div></div>
+            {% endif %}
+            {% else %}
+            <p style="color: #888;">No CCHMC guideline match available for this indication.</p>
+            {% endif %}
         </div>
     </div>
 
     <!-- Right Column: Review Form & Audit -->
-    <div>
+    <div class="detail-layout__sidebar">
         <!-- Review Form -->
         {% if candidate.status != 'reviewed' and candidate.status != 'auto_accepted' %}
-        <div class="card">
-            <div class="card-header">Submit Review</div>
-            <div class="card-body">
-                <form id="review-form" method="post" action="{% url 'abx_indications:api_review' candidate.id %}">
-                    {% csrf_token %}
+        <div class="detail-section">
+            <div class="detail-section__title">Submit Review</div>
+            <form id="review-form" method="post" action="{% url 'abx_indications:api_review' candidate.id %}">
+                {% csrf_token %}
 
-                    <div class="form-group">
-                        <label>Syndrome Decision *</label>
-                        <select name="syndrome_decision" id="syndrome-decision" required>
-                            <option value="">Select...</option>
-                            {% for value, label in syndrome_decisions %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label>Syndrome Decision *</label>
+                    <select name="syndrome_decision" id="syndrome-decision" required>
+                        <option value="">Select...</option>
+                        {% for value, label in syndrome_decisions %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-                    <div class="form-group" id="correct-syndrome-group" style="display: none;">
-                        <label>Corrected Syndrome</label>
-                        <select name="confirmed_syndrome" id="confirmed-syndrome">
-                            <option value="">Select syndrome...</option>
-                            {% for id, name, cat in syndrome_choices %}
-                            <option value="{{ id }}" data-display="{{ name }}">{{ name }} ({{ cat }})</option>
-                            {% endfor %}
-                        </select>
-                        <input type="hidden" name="confirmed_syndrome_display" id="confirmed-syndrome-display">
-                    </div>
+                <div class="form-group" id="correct-syndrome-group" style="display: none;">
+                    <label>Corrected Syndrome</label>
+                    <select name="confirmed_syndrome" id="confirmed-syndrome">
+                        <option value="">Select syndrome...</option>
+                        {% for id, name, cat in syndrome_choices %}
+                        <option value="{{ id }}" data-display="{{ name }}">{{ name }} ({{ cat }})</option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" name="confirmed_syndrome_display" id="confirmed-syndrome-display">
+                </div>
 
-                    <div class="form-group">
-                        <label>Agent Decision</label>
-                        <select name="agent_decision">
-                            <option value="">Select...</option>
-                            {% for value, label in agent_decisions %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label>Agent Decision</label>
+                    <select name="agent_decision">
+                        <option value="">Select...</option>
+                        {% for value, label in agent_decisions %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label>Agent Notes</label>
-                        <textarea name="agent_notes" placeholder="Optional notes about agent appropriateness..."></textarea>
-                    </div>
+                <div class="form-group">
+                    <label>Agent Notes</label>
+                    <textarea name="agent_notes" placeholder="Optional notes about agent appropriateness..."></textarea>
+                </div>
 
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" name="is_override" value="true"> This is an override of LLM classification
-                        </label>
-                    </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" name="is_override" value="true"> This is an override of LLM classification
+                    </label>
+                </div>
 
-                    <div class="form-group">
-                        <label>Notes</label>
-                        <textarea name="notes" placeholder="Optional review notes..."></textarea>
-                    </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" placeholder="Optional review notes..."></textarea>
+                </div>
 
-                    <button type="submit" class="btn btn-primary">Submit Review</button>
-                </form>
-            </div>
+                <button type="submit" class="btn btn--primary">Submit Review</button>
+            </form>
         </div>
         {% endif %}
 
         <!-- Alert Actions -->
         {% if candidate.alert and candidate.alert.status != 'resolved' %}
-        <div class="card">
-            <div class="card-header">Alert Actions</div>
-            <div class="card-body">
-                <div class="detail-row">
-                    <div class="detail-label">Alert Status</div>
-                    <div class="detail-value"><span class="badge badge-{{ candidate.alert.status }}">{{ candidate.alert.get_status_display }}</span></div>
-                </div>
-                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                    {% if candidate.alert.status == 'pending' %}
-                    <button class="btn btn-sm btn-secondary" onclick="acknowledgeAlert()">Acknowledge</button>
-                    {% endif %}
-                    <button class="btn btn-sm btn-primary" onclick="document.getElementById('resolve-form').style.display='block'">Resolve</button>
-                </div>
-
-                <form id="resolve-form" style="display: none; margin-top: 1rem;" method="post" action="{% url 'abx_indications:api_resolve' candidate.id %}">
-                    {% csrf_token %}
-                    <div class="form-group">
-                        <label>Resolution Reason *</label>
-                        <select name="reason" required>
-                            <option value="">Select reason...</option>
-                            {% for value, label in resolution_reasons %}
-                            <option value="{{ value }}">{{ label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Notes</label>
-                        <textarea name="notes"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-sm">Resolve Alert</button>
-                </form>
+        <div class="detail-section">
+            <div class="detail-section__title">Alert Actions</div>
+            <div class="detail-row">
+                <div class="detail-label">Alert Status</div>
+                <div class="detail-value">{% include "_includes/badge.html" with text=candidate.alert.get_status_display color=candidate.alert.status %}</div>
             </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                {% if candidate.alert.status == 'pending' %}
+                <button class="btn btn--secondary btn--sm" onclick="acknowledgeAlert()">Acknowledge</button>
+                {% endif %}
+                <button class="btn btn--primary btn--sm" onclick="document.getElementById('resolve-form').style.display='block'">Resolve</button>
+            </div>
+
+            <form id="resolve-form" style="display: none; margin-top: 1rem;" method="post" action="{% url 'abx_indications:api_resolve' candidate.id %}">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Resolution Reason *</label>
+                    <select name="reason" required>
+                        <option value="">Select reason...</option>
+                        {% for value, label in resolution_reasons %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes"></textarea>
+                </div>
+                <button type="submit" class="btn btn--primary btn--sm">Resolve Alert</button>
+            </form>
         </div>
         {% endif %}
 
         <!-- Previous Reviews -->
         {% if reviews %}
-        <div class="card">
-            <div class="card-header">Review History</div>
-            <div class="card-body">
-                {% for review in reviews %}
-                <div style="{% if not forloop.last %}border-bottom: 1px solid #eee; margin-bottom: 0.75rem; padding-bottom: 0.75rem;{% endif %}">
-                    <div class="detail-row"><div class="detail-label">Reviewer</div><div class="detail-value">{{ review.reviewer.username|default:"System" }}</div></div>
-                    <div class="detail-row"><div class="detail-label">Syndrome</div><div class="detail-value">{{ review.get_syndrome_decision_display }}</div></div>
-                    {% if review.confirmed_syndrome_display %}
-                    <div class="detail-row"><div class="detail-label">Corrected To</div><div class="detail-value">{{ review.confirmed_syndrome_display }}</div></div>
-                    {% endif %}
-                    {% if review.agent_decision %}
-                    <div class="detail-row"><div class="detail-label">Agent</div><div class="detail-value">{{ review.get_agent_decision_display }}</div></div>
-                    {% endif %}
-                    {% if review.is_override %}<span class="badge badge-off-guideline">Override</span>{% endif %}
-                    <div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">{{ review.reviewed_at|date:"M d, Y H:i" }}</div>
-                </div>
-                {% endfor %}
+        <div class="detail-section">
+            <div class="detail-section__title">Review History</div>
+            {% for review in reviews %}
+            <div style="{% if not forloop.last %}border-bottom: 1px solid #eee; margin-bottom: 0.75rem; padding-bottom: 0.75rem;{% endif %}">
+                <div class="detail-row"><div class="detail-label">Reviewer</div><div class="detail-value">{{ review.reviewer.username|default:"System" }}</div></div>
+                <div class="detail-row"><div class="detail-label">Syndrome</div><div class="detail-value">{{ review.get_syndrome_decision_display }}</div></div>
+                {% if review.confirmed_syndrome_display %}
+                <div class="detail-row"><div class="detail-label">Corrected To</div><div class="detail-value">{{ review.confirmed_syndrome_display }}</div></div>
+                {% endif %}
+                {% if review.agent_decision %}
+                <div class="detail-row"><div class="detail-label">Agent</div><div class="detail-value">{{ review.get_agent_decision_display }}</div></div>
+                {% endif %}
+                {% if review.is_override %}{% include "_includes/badge.html" with text="Override" color="red" %}{% endif %}
+                <div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">{{ review.reviewed_at|date:"M d, Y H:i" }}</div>
             </div>
+            {% endfor %}
         </div>
         {% endif %}
 
         <!-- LLM Audit Log -->
         {% if llm_calls %}
-        <div class="card">
-            <div class="card-header">LLM Audit Log</div>
-            <div class="card-body">
-                <table class="table">
-                    <thead><tr><th>Model</th><th>Status</th><th>Tokens</th><th>Time</th></tr></thead>
-                    <tbody>
-                        {% for call in llm_calls %}
-                        <tr>
-                            <td>{{ call.model }}</td>
-                            <td><span class="badge {% if call.success %}badge-first-line{% else %}badge-off-guideline{% endif %}">{% if call.success %}OK{% else %}Error{% endif %}</span></td>
-                            <td>{{ call.input_tokens }}+{{ call.output_tokens }}</td>
-                            <td>{{ call.response_time_ms }}ms</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+        <div class="detail-section">
+            <div class="detail-section__title">LLM Audit Log</div>
+            <table class="data-table">
+                <thead><tr><th>Model</th><th>Status</th><th>Tokens</th><th>Time</th></tr></thead>
+                <tbody>
+                    {% for call in llm_calls %}
+                    <tr>
+                        <td>{{ call.model }}</td>
+                        <td>
+                            {% if call.success %}
+                                {% include "_includes/badge.html" with text="OK" color="green" %}
+                            {% else %}
+                                {% include "_includes/badge.html" with text="Error" color="red" %}
+                            {% endif %}
+                        </td>
+                        <td>{{ call.input_tokens }}+{{ call.output_tokens }}</td>
+                        <td>{{ call.response_time_ms }}ms</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
         {% endif %}
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
 document.getElementById('syndrome-decision')?.addEventListener('change', function() {
     var group = document.getElementById('correct-syndrome-group');

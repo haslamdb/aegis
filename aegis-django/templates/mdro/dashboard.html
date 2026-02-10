@@ -4,34 +4,18 @@
 <p class="subtitle">Multi-Drug Resistant Organism Tracking</p>
 
 <!-- Stats Cards -->
-<div class="stats-row">
-    <div class="stat-box primary">
-        <div class="stat-value">{{ stats.total_cases }}</div>
-        <div class="stat-label">Total MDRO Cases</div>
-        <div class="stat-sublabel">Last 30 Days</div>
-    </div>
-    <div class="stat-box warning">
-        <div class="stat-value">{{ stats.healthcare_onset }}</div>
-        <div class="stat-label">Healthcare Onset</div>
-        <div class="stat-sublabel">&gt;48h After Admission</div>
-    </div>
-    <div class="stat-box info">
-        <div class="stat-value">{{ stats.community_onset }}</div>
-        <div class="stat-label">Community Onset</div>
-        <div class="stat-sublabel">&le;48h After Admission</div>
-    </div>
-    <div class="stat-box secondary">
-        <div class="stat-value">{{ stats.by_type|length }}</div>
-        <div class="stat-label">MDRO Types</div>
-        <div class="stat-sublabel">Active</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=stats.total_cases title="Total MDRO Cases" subtitle="Last 30 Days" color="rose" %}
+    {% include "_includes/stat_card.html" with value=stats.healthcare_onset title="Healthcare Onset" subtitle=">48h After Admission" color="amber" %}
+    {% include "_includes/stat_card.html" with value=stats.community_onset title="Community Onset" subtitle="<=48h After Admission" color="blue" %}
+    {% include "_includes/stat_card.html" with value=stats.by_type|length title="MDRO Types" subtitle="Active" color="gray" %}
 </div>
 
 <!-- Quick Links -->
 <div class="section">
     <h2>Quick Actions</h2>
-    <a href="{% url 'mdro:cases' %}" class="btn btn-secondary">All Cases</a>
-    <a href="{% url 'mdro:analytics' %}" class="btn btn-info">Analytics</a>
+    <a href="{% url 'mdro:cases' %}" class="btn btn--secondary">All Cases</a>
+    <a href="{% url 'mdro:analytics' %}" class="btn btn--primary">Analytics</a>
 </div>
 
 <!-- Cases by MDRO Type -->
@@ -67,7 +51,7 @@
 <div class="section">
     <h2>Recent MDRO Cases (Last 7 Days)</h2>
     {% if recent_cases %}
-    <table>
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Patient</th>
@@ -99,16 +83,16 @@
                 <td>{{ case.unit|default:"-" }}</td>
                 <td>
                     {% if case.transmission_status == 'healthcare' %}
-                    <span class="badge badge-warning">Healthcare</span>
+                    {% include "_includes/badge.html" with text="Healthcare" color="amber" %}
                     {% elif case.transmission_status == 'community' %}
-                    <span class="badge badge-info">Community</span>
+                    {% include "_includes/badge.html" with text="Community" color="blue" %}
                     {% else %}
-                    <span class="badge badge-secondary">{{ case.transmission_status }}</span>
+                    {% include "_includes/badge.html" with text=case.transmission_status color="gray" %}
                     {% endif %}
                 </td>
                 <td>{{ case.culture_date|date:"Y-m-d" }}</td>
                 <td class="text-center">
-                    <a href="{% url 'mdro:case_detail' case.id %}" class="btn btn-sm btn-secondary">View</a>
+                    <a href="{% url 'mdro:case_detail' case.id %}" class="btn btn--secondary">View</a>
                 </td>
             </tr>
             {% endfor %}
@@ -140,79 +124,4 @@
     </div>
 </div>
 {% endif %}
-
-<style>
-    .mdro-type-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1rem;
-    }
-    .mdro-type-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        text-align: center;
-        border-top: 4px solid #6c757d;
-    }
-    .mdro-type-card.mdro-mrsa { border-top-color: #dc3545; }
-    .mdro-type-card.mdro-vre { border-top-color: #6f42c1; }
-    .mdro-type-card.mdro-cre { border-top-color: #d63384; }
-    .mdro-type-card.mdro-esbl { border-top-color: #fd7e14; }
-    .mdro-type-card.mdro-crpa { border-top-color: #0d6efd; }
-    .mdro-type-card.mdro-crab { border-top-color: #198754; }
-    .mdro-type-count {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #2c3e50;
-    }
-    .mdro-type-label {
-        font-weight: 600;
-        font-size: 1.1rem;
-        margin: 0.25rem 0;
-    }
-    .mdro-type-name {
-        color: #6c757d;
-        font-size: 0.8rem;
-    }
-    .unit-bars {
-        background: white;
-        padding: 1rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .unit-bar-row {
-        display: flex;
-        align-items: center;
-        padding: 0.5rem 0;
-        gap: 1rem;
-    }
-    .unit-name {
-        width: 120px;
-        font-weight: 500;
-        text-align: right;
-        font-size: 0.9rem;
-    }
-    .unit-bar-container {
-        flex: 1;
-        background: #f1f3f5;
-        border-radius: 4px;
-        height: 28px;
-    }
-    .unit-bar {
-        height: 100%;
-        background: #8f4469;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        padding-right: 0.5rem;
-        min-width: 30px;
-    }
-    .unit-count {
-        color: white;
-        font-weight: 600;
-        font-size: 0.85rem;
-    }
-</style>
 {% endblock %}

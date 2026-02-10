@@ -3,11 +3,11 @@
 {% block content %}
 <h2>Culture Results</h2>
 
-<div style="background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+<div class="detail-section">
     <h3>Culture ID: {{ culture_id }}</h3>
 
     {% if error %}
-    <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 5px solid #f39c12; margin: 20px 0;">
+    <div class="alert-details">
         <p><strong>Note:</strong> {{ error }}</p>
         <p>
             This feature requires FHIR integration to retrieve DiagnosticReport resources from the EHR.
@@ -26,20 +26,24 @@
     <p><strong>Status:</strong> [FHIR Data]</p>
 
     <h4>Antimicrobial Susceptibility Testing</h4>
-    <table>
+    <table class="data-table">
+        <thead>
         <tr>
             <th>Antibiotic</th>
             <th>Interpretation</th>
             <th>MIC</th>
         </tr>
+        </thead>
+        <tbody>
         <tr>
-            <td colspan="3" style="text-align: center;">Susceptibility data will be displayed here</td>
+            <td colspan="3" class="text-center">Susceptibility data will be displayed here</td>
         </tr>
+        </tbody>
     </table>
     {% endif %}
 
     <div style="margin-top: 20px;">
-        <a href="javascript:history.back()" class="btn btn-primary">← Back</a>
+        <a href="javascript:history.back()" class="btn btn--primary">&larr; Back</a>
     </div>
 </div>
 

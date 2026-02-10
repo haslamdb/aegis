@@ -5,7 +5,7 @@
 
 <div class="detail-layout">
     {# Left sidebar: Patient Factors #}
-    <div class="detail-sidebar">
+    <div class="detail-layout__sidebar">
         <div class="sidebar-card">
             <h4>Patient Information</h4>
             {% if alert.patient_name %}
@@ -64,7 +64,7 @@
             {% for med in details.medications %}
             <div style="padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px;">
                 <strong>{{ med.drug_name }}</strong><br>
-                <small style="color: #7f8c8d;">
+                <small class="text-muted">
                     {{ med.dose_value }} {{ med.dose_unit }} {{ med.route }} {{ med.interval }}
                 </small>
             </div>
@@ -88,9 +88,7 @@
             <h4>Allergies</h4>
             {% for allergy in details.allergies %}
             <div style="padding: 4px 0; font-size: 13px;">
-                <span class="badge" style="background: {% if allergy.severity == 'severe' %}#e74c3c{% elif allergy.severity == 'moderate' %}#f39c12{% else %}#3498db{% endif %}; font-size: 10px;">
-                    {{ allergy.severity|upper|default:"UNKNOWN" }}
-                </span>
+                {% include "_includes/badge.html" with text=allergy.severity|upper|default:"UNKNOWN" color=allergy.severity|default:"gray" %}
                 {{ allergy.drug|default:allergy }}
             </div>
             {% endfor %}
@@ -99,12 +97,12 @@
     </div>
 
     {# Right main area: Dosing Issue + Actions #}
-    <div class="detail-main">
+    <div class="detail-layout__main">
         {# Status bar #}
         <div style="margin-bottom: 15px;">
-            <span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span>
-            <span class="badge {{ alert.status|lower }}">{{ alert.get_status_display }}</span>
-            <span class="badge" style="background: #8e44ad;">{{ alert.get_alert_type_display }}</span>
+            {% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity|lower %}
+            {% include "_includes/badge.html" with text=alert.get_status_display color=alert.status|lower %}
+            {% include "_includes/badge.html" with text=alert.get_alert_type_display color="purple" %}
         </div>
 
         {# Dosing Issue card #}
@@ -142,7 +140,7 @@
             {% endif %}
 
             {% if details.clinical_note %}
-            <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin-top: 10px; border-left: 4px solid #f39c12;">
+            <div class="action-card">
                 <strong>Clinical Note:</strong> {{ details.clinical_note }}
             </div>
             {% endif %}
@@ -150,9 +148,9 @@
 
         {# All Flags in Assessment #}
         {% if all_flags|length > 1 %}
-        <div style="background: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 15px 0;">
+        <div class="detail-section">
             <h3 style="margin-top: 0;">All Flags in Assessment ({{ all_flags|length }})</h3>
-            <table style="margin: 10px 0;">
+            <table class="data-table" style="margin: 10px 0;">
                 <tr>
                     <th>Severity</th>
                     <th>Type</th>
@@ -161,7 +159,7 @@
                 </tr>
                 {% for flag in all_flags %}
                 <tr>
-                    <td><span class="badge {{ flag.severity|lower }}">{{ flag.severity|upper }}</span></td>
+                    <td>{% include "_includes/badge.html" with text=flag.severity|upper color=flag.severity|lower %}</td>
                     <td>{{ flag.flag_type_display }}</td>
                     <td>{{ flag.drug }}</td>
                     <td>{{ flag.message|truncatewords:20 }}</td>
@@ -173,19 +171,19 @@
 
         {# Actions #}
         {% if alert.status != 'resolved' %}
-        <div style="background: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 15px 0;">
+        <div class="detail-section">
             <h3 style="margin-top: 0;">Actions</h3>
 
             <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                 {% if alert.status == 'pending' or alert.status == 'sent' %}
                 <form method="post" action="{% url 'dosing:api_acknowledge' alert.id %}">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-success">Acknowledge</button>
+                    <button type="submit" class="btn btn--success">Acknowledge</button>
                 </form>
                 {% endif %}
 
                 <button onclick="document.getElementById('resolve-form').style.display='block'; this.style.display='none';"
-                        class="btn btn-danger">Resolve</button>
+                        class="btn btn--danger">Resolve</button>
             </div>
 
             <div id="resolve-form" style="display: none;">
@@ -201,14 +199,14 @@
                     <label><strong>Notes:</strong></label>
                     <textarea name="notes" rows="3" style="width: 100%; padding: 5px; margin: 5px 0;"
                               placeholder="Clinical rationale for resolution..."></textarea>
-                    <button type="submit" class="btn btn-danger">Confirm Resolution</button>
+                    <button type="submit" class="btn btn--danger">Confirm Resolution</button>
                     <button type="button" onclick="document.getElementById('resolve-form').style.display='none';"
-                            class="btn" style="background: #95a5a6; color: white; margin-left: 5px;">Cancel</button>
+                            class="btn btn--secondary" style="margin-left: 5px;">Cancel</button>
                 </form>
             </div>
         </div>
         {% else %}
-        <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 5px solid #27ae60;">
+        <div class="detail-section" style="background: #d4edda; border-left: 5px solid #27ae60;">
             <h4 style="margin-top: 0;">Resolved</h4>
             <p><strong>Reason:</strong> {{ alert.get_resolution_reason_display }}</p>
             {% if alert.resolution_notes %}
@@ -219,23 +217,23 @@
         {% endif %}
 
         {# Add Note #}
-        <div style="background: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 15px 0;">
+        <div class="detail-section">
             <h4 style="margin-top: 0;">Add Note</h4>
             <form method="post" action="{% url 'dosing:api_note' alert.id %}">
                 {% csrf_token %}
                 <textarea name="note" rows="3" placeholder="Add a clinical note..."
                           style="width: 100%; padding: 5px; margin-bottom: 5px;"></textarea>
-                <button type="submit" class="btn btn-primary">Add Note</button>
+                <button type="submit" class="btn btn--primary">Add Note</button>
             </form>
         </div>
 
         {# Existing Notes #}
         {% if alert.details.notes %}
-        <div style="background: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 15px 0;">
+        <div class="detail-section">
             <h4 style="margin-top: 0;">Notes</h4>
             {% for note in alert.details.notes %}
             <div style="padding: 8px; background: #f8f9fa; border-radius: 3px; margin-bottom: 8px; font-size: 13px;">
-                <strong>{{ note.user }}</strong> <span style="color: #7f8c8d;">{{ note.timestamp }}</span>
+                <strong>{{ note.user }}</strong> <span class="text-muted">{{ note.timestamp }}</span>
                 <p style="margin: 5px 0 0 0;">{{ note.text }}</p>
             </div>
             {% endfor %}
@@ -243,7 +241,7 @@
         {% endif %}
 
         {# Timeline #}
-        <div style="background: white; padding: 15px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 15px 0;">
+        <div class="detail-section">
             <h4 style="margin-top: 0;">Timeline</h4>
             <p><strong>Created:</strong> {{ alert.created_at|date:"Y-m-d H:i:s" }}</p>
             {% if alert.acknowledged_at %}
@@ -263,7 +261,7 @@
             {% for entry in audit_log %}
             <div class="audit-log">
                 <strong>{{ entry.performed_at|date:"Y-m-d H:i:s" }}</strong> -
-                <span class="badge" style="background: #34495e;">{{ entry.action }}</span>
+                {% include "_includes/badge.html" with text=entry.action color="gray" %}
                 {% if entry.performed_by %}by {{ entry.performed_by.username }}{% endif %}
                 {% if entry.old_status %}<br><small>{{ entry.old_status }} &rarr; {{ entry.new_status }}</small>{% endif %}
                 {% if entry.details.notes %}<br><small>{{ entry.details.notes }}</small>{% endif %}
@@ -277,7 +275,7 @@
         {% endif %}
 
         <div style="margin-top: 20px;">
-            <a href="{% url 'dosing:dashboard' %}" class="btn btn-primary">&larr; Back to Dashboard</a>
+            <a href="{% url 'dosing:dashboard' %}" class="btn btn--primary">&larr; Back to Dashboard</a>
         </div>
     </div>
 </div>

@@ -3,69 +3,65 @@
 {% block content %}
 <h2>Active Alerts</h2>
 
-<div class="stats-row">
-    <div class="stat-box critical-stat">
-        <div class="stat-value">{{ stats.critical }}</div>
-        <div class="stat-label">Critical</div>
-    </div>
-    <div class="stat-box high-stat">
-        <div class="stat-value">{{ stats.high }}</div>
-        <div class="stat-label">High</div>
-    </div>
-    <div class="stat-box pending-stat">
-        <div class="stat-value">{{ stats.pending }}</div>
-        <div class="stat-label">Pending</div>
-    </div>
-    <div class="stat-box acknowledged-stat">
-        <div class="stat-value">{{ stats.acknowledged }}</div>
-        <div class="stat-label">Acknowledged</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=stats.critical title="Critical" color="red" %}
+    {% include "_includes/stat_card.html" with value=stats.high title="High" color="yellow" %}
+    {% include "_includes/stat_card.html" with value=stats.pending title="Pending" color="gray" %}
+    {% include "_includes/stat_card.html" with value=stats.acknowledged title="Acknowledged" color="blue" %}
 </div>
 
-<div class="filters">
-    <form method="get">
-        <label>Type:</label>
-        <select name="type" onchange="this.form.submit()">
-            <option value="">All</option>
-            {% for type_value, type_label in alert_types %}
-            <option value="{{ type_value }}" {% if current_filters.type == type_value %}selected{% endif %}>
-                {{ type_label }}
-            </option>
-            {% endfor %}
-        </select>
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label>Type:</label>
+            <select name="type" onchange="this.form.submit()">
+                <option value="">All</option>
+                {% for type_value, type_label in alert_types %}
+                <option value="{{ type_value }}" {% if current_filters.type == type_value %}selected{% endif %}>
+                    {{ type_label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <label>Severity:</label>
-        <select name="severity" onchange="this.form.submit()">
-            <option value="">All</option>
-            {% for severity_value, severity_label in severities %}
-            <option value="{{ severity_value }}" {% if current_filters.severity == severity_value %}selected{% endif %}>
-                {{ severity_label }}
-            </option>
-            {% endfor %}
-        </select>
+        <div class="filter-group">
+            <label>Severity:</label>
+            <select name="severity" onchange="this.form.submit()">
+                <option value="">All</option>
+                {% for severity_value, severity_label in severities %}
+                <option value="{{ severity_value }}" {% if current_filters.severity == severity_value %}selected{% endif %}>
+                    {{ severity_label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <label>MRN:</label>
-        <input type="text" name="mrn" value="{{ current_filters.mrn|default:'' }}" placeholder="Search by MRN">
+        <div class="filter-group">
+            <label>MRN:</label>
+            <input type="text" name="mrn" value="{{ current_filters.mrn|default:'' }}" placeholder="Search by MRN">
+        </div>
 
-        <label>Sort:</label>
-        <select name="sort" onchange="this.form.submit()">
-            <option value="priority" {% if current_filters.sort == 'priority' %}selected{% endif %}>Priority</option>
-            <option value="severity" {% if current_filters.sort == 'severity' %}selected{% endif %}>Severity</option>
-            <option value="patient" {% if current_filters.sort == 'patient' %}selected{% endif %}>Patient</option>
-            <option value="created" {% if current_filters.sort == 'created' %}selected{% endif %}>Created Date</option>
-        </select>
+        <div class="filter-group">
+            <label>Sort:</label>
+            <select name="sort" onchange="this.form.submit()">
+                <option value="priority" {% if current_filters.sort == 'priority' %}selected{% endif %}>Priority</option>
+                <option value="severity" {% if current_filters.sort == 'severity' %}selected{% endif %}>Severity</option>
+                <option value="patient" {% if current_filters.sort == 'patient' %}selected{% endif %}>Patient</option>
+                <option value="created" {% if current_filters.sort == 'created' %}selected{% endif %}>Created Date</option>
+            </select>
+        </div>
 
-        <button type="submit" class="btn btn-primary">Apply</button>
+        <button type="submit" class="btn btn--primary">Apply</button>
     </form>
 </div>
 
 <p><strong>{{ alerts|length }}</strong> active alert{{ alerts|length|pluralize }}</p>
 
 {% for alert in alerts %}
-<div class="alert-box {{ alert.severity|lower }}">
+<div class="action-card severity-{{ alert.severity|lower }}">
     <div>
-        <span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span>
-        <span class="badge {{ alert.status|lower }}">{{ alert.get_status_display }}</span>
+        {% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity|lower %}
+        {% include "_includes/badge.html" with text=alert.get_status_display color=alert.status|lower %}
         <span class="badge">{{ alert.get_alert_type_display }}</span>
     </div>
 
@@ -76,12 +72,12 @@
     </h3>
 
     {% if alert.summary %}
-    <p style="margin: 5px 0; color: #555;">
+    <p class="text-muted">
         {{ alert.summary|truncatewords:30 }}
     </p>
     {% endif %}
 
-    <p style="margin: 5px 0; color: #7f8c8d;">
+    <p class="text-muted">
         <strong>Patient:</strong>
         {% if alert.patient_name %}
             {{ alert.patient_name }} (MRN: {{ alert.patient_mrn }})
@@ -93,7 +89,7 @@
         {% endif %}
     </p>
 
-    <p style="margin: 5px 0; color: #7f8c8d; font-size: 13px;">
+    <p class="text-muted" style="font-size: 13px;">
         Created: {{ alert.created_at|date:"Y-m-d H:i" }}
         {% if alert.acknowledged_at %}
             | Acknowledged: {{ alert.acknowledged_at|date:"Y-m-d H:i" }} by {{ alert.acknowledged_by.username }}
@@ -104,11 +100,11 @@
     </p>
 
     <div style="margin-top: 10px;">
-        <a href="{% url 'asp_alerts:detail' alert.id %}" class="btn btn-primary">View Details</a>
+        <a href="{% url 'asp_alerts:detail' alert.id %}" class="btn btn--primary">View Details</a>
     </div>
 </div>
 {% empty %}
-<div class="alert-box">
+<div class="action-card">
     <p>No active alerts found.</p>
 </div>
 {% endfor %}

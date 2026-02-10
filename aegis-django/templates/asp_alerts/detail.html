@@ -4,24 +4,24 @@
 <h2>Alert Detail</h2>
 
 <div class="detail-layout">
-    <div class="detail-main">
-        <div class="alert-box {{ alert.severity|lower }}">
+    <div class="detail-layout__main">
+        <div class="action-card severity-{{ alert.severity|lower }}">
             <div>
-                <span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span>
-                <span class="badge {{ alert.status|lower }}">{{ alert.get_status_display }}</span>
+                {% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity|lower %}
+                {% include "_includes/badge.html" with text=alert.get_status_display color=alert.status|lower %}
                 <span class="badge">{{ alert.get_alert_type_display }}</span>
             </div>
 
             <h3>{{ alert.title }}</h3>
 
             {% if alert.summary %}
-            <p style="margin: 10px 0; color: #555; font-size: 16px;">
+            <p class="text-muted" style="font-size: 16px;">
                 {{ alert.summary }}
             </p>
             {% endif %}
 
-            <div class="patient-info">
-                <h4 style="margin-top: 0;">Patient Information</h4>
+            <div class="detail-section">
+                <h4>Patient Information</h4>
                 {% if alert.patient_name %}
                 <p><strong>Name:</strong> {{ alert.patient_name }}</p>
                 <p><strong>MRN:</strong> {{ alert.patient_mrn }}</p>
@@ -44,7 +44,7 @@
 
             {% if alert.details %}
             <div class="alert-details">
-                <h4 style="margin-top: 0;">Clinical Details</h4>
+                <h4>Clinical Details</h4>
 
                 {% if alert.details.organism %}
                 <p><strong>Organism:</strong> {{ alert.details.organism }}</p>
@@ -78,7 +78,6 @@
                 </ul>
                 {% endif %}
 
-                {# Broad spectrum specific #}
                 {% if alert.details.medication %}
                 <p><strong>Medication:</strong> {{ alert.details.medication }}</p>
                 {% endif %}
@@ -89,7 +88,6 @@
                 <p><strong>Threshold:</strong> {{ alert.details.threshold_days }} days</p>
                 {% endif %}
 
-                {# Guideline specific #}
                 {% if alert.details.bundle_name %}
                 <p><strong>Bundle:</strong> {{ alert.details.bundle_name }}</p>
                 {% endif %}
@@ -104,11 +102,10 @@
             </div>
             {% endif %}
 
-            {# Susceptibility Panel #}
             {% if alert.details.susceptibilities %}
-            <div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 5px solid #8e44ad;">
-                <h4 style="margin-top: 0;">Susceptibility Panel</h4>
-                <table class="susceptibility-table">
+            <div class="detail-section" style="border-left: 5px solid #8e44ad;">
+                <h4>Susceptibility Panel</h4>
+                <table class="data-table">
                     <tr>
                         <th>Antibiotic</th>
                         <th>Result</th>
@@ -135,7 +132,7 @@
 
             {% if alert.recommendations %}
             <div class="recommendations">
-                <h4 style="margin-top: 0;">Recommendations</h4>
+                <h4>Recommendations</h4>
                 {% if alert.recommendations|length == 1 %}
                 <p>{{ alert.recommendations.0 }}</p>
                 {% else %}
@@ -174,94 +171,95 @@
             {% endif %}
         </div>
 
-        {# Audit Log #}
         <h3>Audit Log</h3>
         {% if audit_log %}
-        <div>
+        <table class="data-table">
             {% for entry in audit_log %}
-            <div class="audit-log">
-                <strong>{{ entry.performed_at|date:"Y-m-d H:i:s" }}</strong> -
-                <span class="badge" style="background: #34495e;">{{ entry.action }}</span>
-                {% if entry.performed_by %}by {{ entry.performed_by.username }}{% endif %}
-                {% if entry.old_status %}<br><small>{{ entry.old_status }} &rarr; {{ entry.new_status }}</small>{% endif %}
-                {% if entry.details.notes %}<br><small>{{ entry.details.notes }}</small>{% endif %}
-                {% if entry.details.note %}<br><small>Note: {{ entry.details.note }}</small>{% endif %}
-                {% if entry.details.reason %}<br><small>Reason: {{ entry.details.reason }}</small>{% endif %}
-            </div>
+            <tr>
+                <td>
+                    <strong>{{ entry.performed_at|date:"Y-m-d H:i:s" }}</strong> -
+                    <span class="badge badge--gray">{{ entry.action }}</span>
+                    {% if entry.performed_by %}by {{ entry.performed_by.username }}{% endif %}
+                    {% if entry.old_status %}<br><small>{{ entry.old_status }} &rarr; {{ entry.new_status }}</small>{% endif %}
+                    {% if entry.details.notes %}<br><small>{{ entry.details.notes }}</small>{% endif %}
+                    {% if entry.details.note %}<br><small>Note: {{ entry.details.note }}</small>{% endif %}
+                    {% if entry.details.reason %}<br><small>Reason: {{ entry.details.reason }}</small>{% endif %}
+                </td>
+            </tr>
             {% endfor %}
-        </div>
+        </table>
         {% else %}
         <p>No audit log entries</p>
         {% endif %}
     </div>
 
-    {# Sidebar - Actions #}
-    <div class="detail-sidebar">
+    <div class="detail-layout__sidebar">
         {% if alert.status != 'resolved' %}
         <div class="action-card">
-            <h4 style="margin-top: 0;">Actions</h4>
+            <h4>Actions</h4>
 
             {% if alert.status == 'pending' or alert.status == 'sent' %}
-            <form method="post" action="{% url 'asp_alerts:api_acknowledge' alert.id %}" style="margin-bottom: 10px;">
+            <form method="post" action="{% url 'asp_alerts:api_acknowledge' alert.id %}" class="form-group">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-success" style="width: 100%;">Acknowledge</button>
+                <button type="submit" class="btn btn--success" style="width: 100%;">Acknowledge</button>
             </form>
             {% endif %}
 
             {% if alert.status != 'snoozed' %}
-            <form method="post" action="{% url 'asp_alerts:api_snooze' alert.id %}" style="margin-bottom: 10px;">
+            <form method="post" action="{% url 'asp_alerts:api_snooze' alert.id %}" class="form-group">
                 {% csrf_token %}
-                <select name="hours" style="width: 100%; padding: 5px; margin-bottom: 5px;">
+                <select name="hours" class="form-control" style="margin-bottom: 5px;">
                     <option value="1">1 hour</option>
                     <option value="4" selected>4 hours</option>
                     <option value="8">8 hours</option>
                     <option value="24">24 hours</option>
                 </select>
-                <button type="submit" class="btn btn-warning" style="width: 100%;">Snooze</button>
+                <button type="submit" class="btn btn--secondary" style="width: 100%;">Snooze</button>
             </form>
             {% endif %}
 
             <button onclick="document.getElementById('resolve-form').style.display='block'; this.style.display='none';"
-                    class="btn btn-danger" style="width: 100%; margin-bottom: 10px;">Resolve</button>
+                    class="btn btn--danger" style="width: 100%; margin-bottom: 10px;">Resolve</button>
 
             <div id="resolve-form" style="display: none;">
                 <form method="post" action="{% url 'asp_alerts:api_resolve' alert.id %}">
                     {% csrf_token %}
-                    <label><strong>Resolution Reason:</strong></label>
-                    <select name="reason" required style="width: 100%; padding: 5px; margin: 5px 0;">
-                        <option value="">Select reason...</option>
-                        {% for value, label in resolution_reasons %}
-                        <option value="{{ value }}">{{ label }}</option>
-                        {% endfor %}
-                    </select>
-                    <label><strong>Notes:</strong></label>
-                    <textarea name="notes" rows="3" style="width: 100%; padding: 5px; margin: 5px 0;"></textarea>
-                    <button type="submit" class="btn btn-danger" style="width: 100%;">Confirm Resolution</button>
+                    <div class="form-group">
+                        <label><strong>Resolution Reason:</strong></label>
+                        <select name="reason" required class="form-control">
+                            <option value="">Select reason...</option>
+                            {% for value, label in resolution_reasons %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><strong>Notes:</strong></label>
+                        <textarea name="notes" rows="3" class="form-textarea"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn--danger" style="width: 100%;">Confirm Resolution</button>
                     <button type="button" onclick="document.getElementById('resolve-form').style.display='none';"
-                            class="btn" style="background: #95a5a6; color: white; width: 100%; margin-top: 5px;">Cancel</button>
+                            class="btn btn--secondary" style="width: 100%; margin-top: 5px;">Cancel</button>
                 </form>
             </div>
         </div>
         {% endif %}
 
-        {# Add Note #}
         <div class="action-card">
-            <h4 style="margin-top: 0;">Add Note</h4>
+            <h4>Add Note</h4>
             <form method="post" action="{% url 'asp_alerts:api_notes' alert.id %}">
                 {% csrf_token %}
-                <textarea name="note" rows="3" placeholder="Add a clinical note..."
-                          style="width: 100%; padding: 5px; margin-bottom: 5px;"></textarea>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Add Note</button>
+                <textarea name="note" rows="3" placeholder="Add a clinical note..." class="form-textarea" style="margin-bottom: 5px;"></textarea>
+                <button type="submit" class="btn btn--primary" style="width: 100%;">Add Note</button>
             </form>
         </div>
 
-        {# Existing Notes #}
         {% if alert.details.notes %}
         <div class="action-card">
-            <h4 style="margin-top: 0;">Notes</h4>
+            <h4>Notes</h4>
             {% for note in alert.details.notes %}
             <div style="padding: 8px; background: #f8f9fa; border-radius: 3px; margin-bottom: 8px; font-size: 13px;">
-                <strong>{{ note.user }}</strong> <span style="color: #7f8c8d;">{{ note.timestamp }}</span>
+                <strong>{{ note.user }}</strong> <span class="text-muted">{{ note.timestamp }}</span>
                 <p style="margin: 5px 0 0 0;">{{ note.text }}</p>
             </div>
             {% endfor %}
@@ -269,7 +267,7 @@
         {% endif %}
 
         <div style="margin-top: 15px;">
-            <a href="{% url 'asp_alerts:active' %}" class="btn btn-primary" style="width: 100%; text-align: center;">&larr; Back to Active Alerts</a>
+            <a href="{% url 'asp_alerts:active' %}" class="btn btn--primary" style="width: 100%; text-align: center;">&larr; Back to Active Alerts</a>
         </div>
     </div>
 </div>

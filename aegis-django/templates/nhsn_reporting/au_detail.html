@@ -8,83 +8,87 @@
     <p>Monthly Days of Therapy (DOT) and Defined Daily Dose (DDD) rates by antimicrobial agent and location</p>
 </div>
 
-<div class="card">
-    <div class="card-header">
+<div class="detail-section">
+    <div class="detail-section__title" style="display: flex; align-items: center; justify-content: space-between;">
         AU Summary
-        <div>
-            <a href="{% url 'nhsn_reporting:api_au_export' %}?month={{ month_filter }}&location={{ location_filter }}" class="btn btn-outline btn-sm">Export CSV</a>
-        </div>
+        <a href="{% url 'nhsn_reporting:api_au_export' %}?month={{ month_filter }}&location={{ location_filter }}" class="btn btn--secondary btn--sm">Export CSV</a>
     </div>
-    <div class="card-body">
-        <form method="get" class="filters">
-            <label>Month:</label>
-            <select name="month" onchange="this.form.submit()">
-                <option value="">All Months</option>
-                {% for m in months %}
-                <option value="{{ m.value }}" {% if month_filter == m.value %}selected{% endif %}>{{ m.label }}</option>
-                {% endfor %}
-            </select>
+    <div class="filter-bar">
+        <form method="get" class="filter-form">
+            <div class="filter-group">
+                <label>Month:</label>
+                <select name="month" onchange="this.form.submit()">
+                    <option value="">All Months</option>
+                    {% for m in months %}
+                    <option value="{{ m.value }}" {% if month_filter == m.value %}selected{% endif %}>{{ m.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-            <label>Location:</label>
-            <select name="location" onchange="this.form.submit()">
-                <option value="">All Locations</option>
-                {% for loc in locations %}
-                <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>{{ loc }}</option>
-                {% endfor %}
-            </select>
+            <div class="filter-group">
+                <label>Location:</label>
+                <select name="location" onchange="this.form.submit()">
+                    <option value="">All Locations</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc }}" {% if location_filter == loc %}selected{% endif %}>{{ loc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
             {% if month_filter or location_filter %}
-            <a href="{% url 'nhsn_reporting:au_detail' %}" class="btn btn-sm btn-secondary">Clear</a>
+            <div class="filter-group">
+                <a href="{% url 'nhsn_reporting:au_detail' %}" class="btn btn--secondary btn--sm">Clear</a>
+            </div>
             {% endif %}
         </form>
-
-        {% if summaries %}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Antimicrobial Agent</th>
-                    <th>Route</th>
-                    <th>DOT</th>
-                    <th>DDD</th>
-                    <th>Patient-Days</th>
-                    <th>DOT per 1,000 PD</th>
-                    <th>DDD per 1,000 PD</th>
-                    <th>Location</th>
-                    <th>Month</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for s in summaries %}
-                {% ifchanged s.antimicrobial_class %}
-                <tr class="group-header">
-                    <td colspan="9">{{ s.antimicrobial_class }}</td>
-                </tr>
-                {% endifchanged %}
-                <tr>
-                    <td>
-                        <strong>{{ s.antimicrobial_name }}</strong><br>
-                        <small style="color: #888;">{{ s.nhsn_code|default:"" }}</small>
-                    </td>
-                    <td>{{ s.route|default:"IV/PO" }}</td>
-                    <td style="font-weight: 600;">{{ s.dot }}</td>
-                    <td>{{ s.ddd|default:"--" }}</td>
-                    <td>{{ s.patient_days }}</td>
-                    <td>
-                        <span style="font-weight: 600; color: #2e7d32;">{{ s.dot_rate }}</span>
-                    </td>
-                    <td>{{ s.ddd_rate|default:"--" }}</td>
-                    <td>{{ s.location }}</td>
-                    <td style="font-size: 0.85rem;">{{ s.month_label }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="empty-state">
-            <h3>No AU data available</h3>
-            <p>No antimicrobial use data for the selected filters. Ensure Clarity batch jobs are running.</p>
-        </div>
-        {% endif %}
     </div>
+
+    {% if summaries %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Antimicrobial Agent</th>
+                <th>Route</th>
+                <th>DOT</th>
+                <th>DDD</th>
+                <th>Patient-Days</th>
+                <th>DOT per 1,000 PD</th>
+                <th>DDD per 1,000 PD</th>
+                <th>Location</th>
+                <th>Month</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in summaries %}
+            {% ifchanged s.antimicrobial_class %}
+            <tr class="group-header">
+                <td colspan="9">{{ s.antimicrobial_class }}</td>
+            </tr>
+            {% endifchanged %}
+            <tr>
+                <td>
+                    <strong>{{ s.antimicrobial_name }}</strong><br>
+                    <small style="color: #888;">{{ s.nhsn_code|default:"" }}</small>
+                </td>
+                <td>{{ s.route|default:"IV/PO" }}</td>
+                <td style="font-weight: 600;">{{ s.dot }}</td>
+                <td>{{ s.ddd|default:"--" }}</td>
+                <td>{{ s.patient_days }}</td>
+                <td>
+                    <span style="font-weight: 600; color: #2e7d32;">{{ s.dot_rate }}</span>
+                </td>
+                <td>{{ s.ddd_rate|default:"--" }}</td>
+                <td>{{ s.location }}</td>
+                <td style="font-size: 0.85rem;">{{ s.month_label }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>No AU data available</h3>
+        <p>No antimicrobial use data for the selected filters. Ensure Clarity batch jobs are running.</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

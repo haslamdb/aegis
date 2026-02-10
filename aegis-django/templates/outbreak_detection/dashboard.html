@@ -3,23 +3,11 @@
 {% block content %}
 <h2>Cluster Detection & Investigation</h2>
 
-<div class="stats-row">
-    <div class="stat-box active-stat">
-        <div class="stat-value">{{ stats.active_clusters }}</div>
-        <div class="stat-label">Active Clusters</div>
-    </div>
-    <div class="stat-box investigating-stat">
-        <div class="stat-value">{{ stats.investigating_clusters }}</div>
-        <div class="stat-label">Investigating</div>
-    </div>
-    <div class="stat-box resolved-stat">
-        <div class="stat-value">{{ stats.resolved_clusters }}</div>
-        <div class="stat-label">Resolved</div>
-    </div>
-    <div class="stat-box alert-stat">
-        <div class="stat-value">{{ stats.pending_alerts }}</div>
-        <div class="stat-label">Pending Alerts</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=stats.active_clusters title="Active Clusters" color="red" %}
+    {% include "_includes/stat_card.html" with value=stats.investigating_clusters title="Investigating" color="orange" %}
+    {% include "_includes/stat_card.html" with value=stats.resolved_clusters title="Resolved" color="green" %}
+    {% include "_includes/stat_card.html" with value=stats.pending_alerts title="Pending Alerts" color="blue" %}
 </div>
 
 <!-- Severity Grid -->
@@ -52,7 +40,7 @@
 <div class="section">
     <h2>Pending Alerts</h2>
     {% for alert in pending_alerts %}
-    <div class="alert-box {{ alert.severity }}">
+    <div class="action-card">
         <strong>{{ alert.title }}</strong>
         <p>{{ alert.summary }}</p>
         <small class="text-muted">{{ alert.created_at|date:"Y-m-d H:i" }}</small>
@@ -73,7 +61,7 @@
 <div class="section">
     <h2>Active Outbreak Clusters</h2>
     {% if active_clusters %}
-    <table>
+    <table class="data-table">
         <tr>
             <th>Unit</th>
             <th>Infection Type</th>
@@ -88,19 +76,19 @@
         {% for cluster in active_clusters %}
         <tr>
             <td><strong>{{ cluster.unit }}</strong></td>
-            <td><span class="badge" style="background: #4a1942;">{{ cluster.infection_type|upper }}</span></td>
+            <td>{% include "_includes/badge.html" with text=cluster.infection_type|upper color="module" %}</td>
             <td>{{ cluster.organism|default:"-" }}</td>
             <td style="text-align: center;"><strong>{{ cluster.case_count }}</strong></td>
             <td style="text-align: center;">
-                <span class="badge {{ cluster.severity }}">{{ cluster.get_severity_display }}</span>
+                {% include "_includes/badge.html" with text=cluster.get_severity_display color=cluster.severity %}
             </td>
             <td>
-                <span class="badge {{ cluster.status }}">{{ cluster.get_status_display }}</span>
+                {% include "_includes/badge.html" with text=cluster.get_status_display color=cluster.status %}
             </td>
             <td>{{ cluster.first_case_date|date:"Y-m-d"|default:"-" }}</td>
             <td>{{ cluster.last_case_date|date:"Y-m-d"|default:"-" }}</td>
             <td style="text-align: center;">
-                <a href="{% url 'outbreak_detection:cluster_detail' cluster.id %}" class="btn btn-primary btn-sm">View</a>
+                <a href="{% url 'outbreak_detection:cluster_detail' cluster.id %}" class="btn btn--primary" style="padding: 5px 10px; font-size: 12px;">View</a>
             </td>
         </tr>
         {% endfor %}

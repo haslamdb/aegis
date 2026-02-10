@@ -3,7 +3,7 @@
 {% block content %}
 <h2>Outbreak Detection - Help &amp; Documentation</h2>
 
-<div class="action-card">
+<div class="detail-section">
     <h3>Overview</h3>
     <p>
         The Outbreak Detection module assists Infection Preventionists in identifying potential
@@ -29,36 +29,36 @@
     </ol>
 
     <h3>Severity Levels</h3>
-    <table style="box-shadow: none;">
+    <table class="data-table">
         <tr>
             <th>Severity</th>
             <th>Case Count</th>
             <th>Description</th>
         </tr>
         <tr>
-            <td><span class="badge low">Low</span></td>
+            <td>{% include "_includes/badge.html" with text="Low" color="low" %}</td>
             <td>2 cases</td>
             <td>Minimum cluster size met. Monitor for additional cases.</td>
         </tr>
         <tr>
-            <td><span class="badge medium">Medium</span></td>
+            <td>{% include "_includes/badge.html" with text="Medium" color="medium" %}</td>
             <td>3 cases</td>
             <td>Investigation recommended. Enhanced surveillance suggested.</td>
         </tr>
         <tr>
-            <td><span class="badge high">High</span></td>
+            <td>{% include "_includes/badge.html" with text="High" color="high" %}</td>
             <td>4 cases</td>
             <td>Active investigation required. Consider environmental assessment.</td>
         </tr>
         <tr>
-            <td><span class="badge critical">Critical</span></td>
+            <td>{% include "_includes/badge.html" with text="Critical" color="critical" %}</td>
             <td>5+ cases</td>
             <td>Urgent response needed. Contact IP leadership and facility management.</td>
         </tr>
     </table>
 
     <h3>Data Sources</h3>
-    <table style="box-shadow: none;">
+    <table class="data-table">
         <tr>
             <th>Source</th>
             <th>Module</th>
@@ -66,19 +66,19 @@
             <th>Criteria</th>
         </tr>
         <tr>
-            <td><span class="badge mdro">MDRO</span></td>
+            <td>{% include "_includes/badge.html" with text="MDRO" color="mdro" %}</td>
             <td>MDRO Surveillance</td>
             <td>MRSA, VRE, CRE, ESBL, etc.</td>
             <td>All MDRO cases with culture date within window</td>
         </tr>
         <tr>
-            <td><span class="badge hai">HAI</span></td>
+            <td>{% include "_includes/badge.html" with text="HAI" color="hai" %}</td>
             <td>HAI Detection</td>
             <td>CLABSI, SSI, CAUTI, VAE</td>
             <td>Confirmed HAI candidates (excluding CDI)</td>
         </tr>
         <tr>
-            <td><span class="badge cdi">CDI</span></td>
+            <td>{% include "_includes/badge.html" with text="CDI" color="cdi" %}</td>
             <td>HAI Detection</td>
             <td>C. difficile</td>
             <td>Confirmed CDI cases (tracked separately)</td>
@@ -109,9 +109,9 @@
 
     <h3>Cluster Lifecycle</h3>
     <div style="background: #ecf0f1; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 14px;">
-        Detection &rarr; <span class="badge active">Active</span>
-        &rarr; <span class="badge investigating">Investigating</span>
-        &rarr; <span class="badge resolved">Resolved</span>
+        Detection &rarr; {% include "_includes/badge.html" with text="Active" color="active" %}
+        &rarr; {% include "_includes/badge.html" with text="Investigating" color="investigating" %}
+        &rarr; {% include "_includes/badge.html" with text="Resolved" color="resolved" %}
     </div>
     <p style="margin-top: 10px;">
         Clusters can also be marked "Not an Outbreak" at any point, which resolves them with an
@@ -119,7 +119,7 @@
     </p>
 
     <h3>Management Commands</h3>
-    <table style="box-shadow: none;">
+    <table class="data-table">
         <tr>
             <th>Command</th>
             <th>Description</th>

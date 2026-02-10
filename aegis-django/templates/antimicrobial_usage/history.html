@@ -5,43 +5,51 @@
 <h2>Resolved Alerts</h2>
 
 <!-- Filters -->
-<div class="filters">
-    <form method="get">
-        <label>Date Range:</label>
-        <select name="days" onchange="this.form.submit()">
-            <option value="7" {% if current_filters.days == 7 %}selected{% endif %}>Last 7 days</option>
-            <option value="14" {% if current_filters.days == 14 %}selected{% endif %}>Last 14 days</option>
-            <option value="30" {% if current_filters.days == 30 %}selected{% endif %}>Last 30 days</option>
-            <option value="60" {% if current_filters.days == 60 %}selected{% endif %}>Last 60 days</option>
-            <option value="90" {% if current_filters.days == 90 %}selected{% endif %}>Last 90 days</option>
-        </select>
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label>Date Range:</label>
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if current_filters.days == 7 %}selected{% endif %}>Last 7 days</option>
+                <option value="14" {% if current_filters.days == 14 %}selected{% endif %}>Last 14 days</option>
+                <option value="30" {% if current_filters.days == 30 %}selected{% endif %}>Last 30 days</option>
+                <option value="60" {% if current_filters.days == 60 %}selected{% endif %}>Last 60 days</option>
+                <option value="90" {% if current_filters.days == 90 %}selected{% endif %}>Last 90 days</option>
+            </select>
+        </div>
 
-        <label>Severity:</label>
-        <select name="severity" onchange="this.form.submit()">
-            <option value="">All</option>
-            <option value="critical" {% if current_filters.severity == "critical" %}selected{% endif %}>Critical</option>
-            <option value="high" {% if current_filters.severity == "high" %}selected{% endif %}>High</option>
-        </select>
+        <div class="filter-group">
+            <label>Severity:</label>
+            <select name="severity" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="critical" {% if current_filters.severity == "critical" %}selected{% endif %}>Critical</option>
+                <option value="high" {% if current_filters.severity == "high" %}selected{% endif %}>High</option>
+            </select>
+        </div>
 
-        <label>Resolution:</label>
-        <select name="resolution" onchange="this.form.submit()">
-            <option value="">All</option>
-            {% for value, label in resolution_reasons %}
-            <option value="{{ value }}" {% if current_filters.resolution == value %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-        </select>
+        <div class="filter-group">
+            <label>Resolution:</label>
+            <select name="resolution" onchange="this.form.submit()">
+                <option value="">All</option>
+                {% for value, label in resolution_reasons %}
+                <option value="{{ value }}" {% if current_filters.resolution == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <label>Medication:</label>
-        <select name="medication" onchange="this.form.submit()">
-            <option value="">All</option>
-            <option value="Meropenem" {% if current_filters.medication == "Meropenem" %}selected{% endif %}>Meropenem</option>
-            <option value="Vancomycin" {% if current_filters.medication == "Vancomycin" %}selected{% endif %}>Vancomycin</option>
-        </select>
+        <div class="filter-group">
+            <label>Medication:</label>
+            <select name="medication" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="Meropenem" {% if current_filters.medication == "Meropenem" %}selected{% endif %}>Meropenem</option>
+                <option value="Vancomycin" {% if current_filters.medication == "Vancomycin" %}selected{% endif %}>Vancomycin</option>
+            </select>
+        </div>
     </form>
 </div>
 
 {% if alerts %}
-<table>
+<table class="data-table">
     <thead>
         <tr>
             <th>Resolved</th>
@@ -58,7 +66,7 @@
         {% for alert in alerts %}
         <tr>
             <td>{{ alert.resolved_at|date:"Y-m-d H:i" }}</td>
-            <td><span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span></td>
+            <td>{% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity %}</td>
             <td>
                 <strong>{{ alert.patient_name }}</strong><br>
                 <small>{{ alert.patient_mrn }}</small>
@@ -68,7 +76,7 @@
             <td>{{ alert.get_resolution_reason_display }}</td>
             <td>{{ alert.resolved_by.username|default:"System" }}</td>
             <td>
-                <a href="{% url 'antimicrobial_usage:detail' alert.id %}" class="btn btn-primary" style="font-size: 12px;">View</a>
+                <a href="{% url 'antimicrobial_usage:detail' alert.id %}" class="btn btn--primary" style="font-size: 12px;">View</a>
             </td>
         </tr>
         {% endfor %}
@@ -76,11 +84,11 @@
 </table>
 
 <p>
-    <a href="{% url 'antimicrobial_usage:api_export' %}?type=history&days={{ days }}" class="btn btn-primary" style="font-size: 12px;">Export CSV</a>
+    <a href="{% url 'antimicrobial_usage:api_export' %}?type=history&days={{ days }}" class="btn btn--primary" style="font-size: 12px;">Export CSV</a>
 </p>
 
 {% else %}
-<div class="alert-box">
+<div class="action-card">
     <p>No resolved antimicrobial usage alerts found in the selected time period.</p>
 </div>
 {% endif %}

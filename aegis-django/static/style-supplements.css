@@ -1,0 +1,351 @@
+/*
+ * AEGIS Django — Supplemental CSS
+ *
+ * Module-specific classes not covered by the shared style.css.
+ * Kept separate so the Flask CSS remains unmodified.
+ */
+
+/* ===== HAI Detection: Type Tabs ===== */
+.hai-type-tabs {
+    display: flex;
+    gap: 5px;
+    margin: 15px 0;
+    flex-wrap: wrap;
+}
+.hai-type-tabs a {
+    padding: 8px 16px;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #2c3e50;
+    background: #ecf0f1;
+    font-weight: bold;
+    font-size: 13px;
+}
+.hai-type-tabs a:hover { background: #bdc3c7; }
+.hai-type-tabs a.active { color: white; }
+.hai-type-tabs a.active-all { background: #c0392b; color: white; }
+.hai-type-tabs a.active-clabsi { background: #c0392b; color: white; }
+.hai-type-tabs a.active-ssi { background: #e67e22; color: white; }
+.hai-type-tabs a.active-vae { background: #2980b9; color: white; }
+.hai-type-tabs a.active-cauti { background: #8e44ad; color: white; }
+.hai-type-tabs a.active-cdi { background: #16a085; color: white; }
+
+/* ===== HAI Detection: Confidence Bars ===== */
+.confidence-bar {
+    display: inline-block;
+    width: 60px;
+    height: 8px;
+    background: #ecf0f1;
+    border-radius: 4px;
+    overflow: hidden;
+    vertical-align: middle;
+    margin-left: 5px;
+}
+.confidence-bar .fill { height: 100%; border-radius: 4px; }
+.confidence-high { background: #27ae60; }
+.confidence-medium { background: #f39c12; }
+.confidence-low { background: #e74c3c; }
+
+/* ===== Dosing: Comparison Blocks ===== */
+.dose-comparison {
+    background: white;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin: 15px 0;
+}
+.dose-actual {
+    background: #fce4e4;
+    padding: 10px 15px;
+    border-radius: 4px;
+    border-left: 4px solid #e74c3c;
+    margin: 8px 0;
+}
+.dose-expected {
+    background: #e8f8e8;
+    padding: 10px 15px;
+    border-radius: 4px;
+    border-left: 4px solid #27ae60;
+    margin: 8px 0;
+}
+
+/* ===== Compliance Bars (Surgical Prophylaxis, Guideline Adherence) ===== */
+.compliance-bar {
+    height: 24px;
+    background: #ecf0f1;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 5px 0;
+}
+.compliance-fill {
+    height: 100%;
+    background: #27ae60;
+    border-radius: 12px;
+    text-align: center;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 24px;
+}
+
+/* ===== Duration Bars (Antimicrobial Usage) ===== */
+.duration-bar-container {
+    background: #ecf0f1;
+    border-radius: 8px;
+    height: 30px;
+    position: relative;
+    margin: 15px 0;
+    overflow: hidden;
+}
+.duration-bar-fill {
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.3s;
+}
+.duration-bar-fill.high { background: #e67e22; }
+.duration-bar-fill.critical { background: #e74c3c; }
+.duration-bar-threshold {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #2c3e50;
+}
+.duration-bar-label {
+    position: absolute;
+    top: -18px;
+    font-size: 11px;
+    color: #7f8c8d;
+    transform: translateX(-50%);
+}
+
+/* ===== Surgical Prophylaxis: Element Grid ===== */
+.element-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    margin: 15px 0;
+}
+.element-card {
+    background: white;
+    padding: 12px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-left: 4px solid #bdc3c7;
+}
+.element-card.met { border-left-color: #27ae60; }
+.element-card.not_met, .element-card.not-met { border-left-color: #e74c3c; }
+.element-card.pending { border-left-color: #f39c12; }
+.element-card.n-a { border-left-color: #bdc3c7; }
+.element-name { font-weight: bold; font-size: 13px; margin-bottom: 5px; }
+.element-detail { font-size: 12px; color: #555; }
+
+/* ===== Surgical Prophylaxis: Timeline ===== */
+.sp-timeline {
+    border-left: 3px solid #0d7377;
+    padding-left: 20px;
+    margin: 15px 0;
+}
+.sp-timeline-item {
+    margin-bottom: 15px;
+    position: relative;
+}
+.sp-timeline-item::before {
+    content: '';
+    width: 12px;
+    height: 12px;
+    background: #0d7377;
+    border-radius: 50%;
+    position: absolute;
+    left: -27px;
+    top: 3px;
+}
+.sp-timeline-time { font-size: 12px; color: #7f8c8d; }
+.sp-timeline-text { font-size: 14px; }
+
+/* ===== Guideline Adherence: Bundle Grid ===== */
+.bundle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.bundle-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-left: 4px solid #1a4b8c;
+}
+.bundle-card .bundle-name { font-weight: 600; font-size: 0.95rem; color: #0d2b5e; margin-bottom: 0.5rem; }
+.bundle-card .bundle-stat { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+.bundle-card .bundle-meta { font-size: 0.8rem; color: #888; }
+
+/* ===== Guideline Adherence: Element List ===== */
+.element-list { list-style: none; padding: 0; }
+.element-item { padding: 0.75rem; border-bottom: 1px solid #f0f0f0; display: flex; align-items: flex-start; gap: 0.75rem; }
+.element-item:last-child { border-bottom: none; }
+.element-status-icon { flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: white; margin-top: 2px; }
+.element-status-icon.met { background: #28a745; }
+.element-status-icon.not-met { background: #dc3545; }
+.element-status-icon.pending { background: #d4a017; }
+.element-status-icon.na { background: #adb5bd; }
+.element-status-icon.unable { background: #6c757d; }
+.element-content { flex: 1; }
+.element-desc { font-size: 0.8rem; color: #666; margin-top: 0.15rem; }
+.element-meta { font-size: 0.8rem; color: #888; margin-top: 0.3rem; }
+
+/* ===== Guideline Adherence: Progress Bars ===== */
+.progress-bar { background: #e9ecef; border-radius: 4px; height: 8px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 4px; }
+.progress-fill.green { background: #28a745; }
+.progress-fill.yellow { background: #d4a017; }
+.progress-fill.red { background: #dc3545; }
+.progress-fill.blue { background: #1a4b8c; }
+
+/* ===== Guideline Adherence: ICD-10 Badges ===== */
+.icd-badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 3px; font-size: 0.75rem; font-family: monospace; background: #eef2ff; color: #1a4b8c; border: 1px solid #c7d2fe; margin: 0.15rem; }
+
+/* ===== Guideline Adherence: Section Headers ===== */
+.section-header { color: #1a4b8c; font-size: 1rem; font-weight: 600; margin: 1.5rem 0 0.75rem 0; padding-bottom: 0.5rem; border-bottom: 2px solid #e9ecef; }
+
+/* ===== Guideline Adherence: Help Page ===== */
+.help-bundle { margin-bottom: 2rem; }
+.help-bundle h3 { color: #1a4b8c; margin-bottom: 0.5rem; }
+.help-bundle .bundle-desc { color: #555; font-size: 0.9rem; margin-bottom: 0.75rem; }
+.reference-list { list-style: none; padding: 0; }
+.reference-list li { padding: 0.2rem 0; font-size: 0.85rem; color: #555; }
+
+/* ===== Guideline Adherence: Alert Banners ===== */
+.alert-banner { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; font-size: 0.9rem; }
+.alert-banner.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.alert-banner.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+.alert-banner.danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+.alert-banner.info { background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+
+/* ===== Login Page ===== */
+.login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #f5f5f5;
+}
+.login-container {
+    background: white;
+    padding: 40px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+}
+.login-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+.login-header h1 { color: #2c3e50; margin: 0 0 5px 0; }
+.login-header p { color: #7f8c8d; margin: 0; }
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+}
+.btn-login:hover { background: #2980b9; }
+.error-list {
+    background: #fee;
+    border: 1px solid #fcc;
+    border-radius: 4px;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    color: #c00;
+}
+.error-list ul { margin: 0; padding: 0 0 0 20px; }
+
+/* ===== Shared: Sidebar Card ===== */
+.sidebar-card {
+    background: white;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+.sidebar-card h3 { margin-top: 0; }
+.sidebar-card .label { color: #7f8c8d; font-weight: bold; }
+
+/* ===== Shared: Alert Detail Blocks ===== */
+.alert-details {
+    background: #fff3cd;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 15px 0;
+    border-left: 5px solid #f39c12;
+}
+.recommendations {
+    background: #d4edda;
+    padding: 15px;
+    border-radius: 5px;
+    margin: 15px 0;
+    border-left: 5px solid #27ae60;
+}
+.clinical-links { margin: 15px 0; }
+.clinical-links a {
+    display: inline-block;
+    margin-right: 10px;
+    padding: 6px 12px;
+    background: #ecf0f1;
+    border-radius: 3px;
+    text-decoration: none;
+    color: #2c3e50;
+    font-size: 13px;
+}
+.clinical-links a:hover { background: #bdc3c7; }
+
+/* ===== Shared: Audit Log ===== */
+.audit-log {
+    background: #ecf0f1;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 3px;
+    font-size: 14px;
+}
+
+/* ===== Shared: Form Controls ===== */
+.form-textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+    resize: vertical;
+    font-family: inherit;
+}
+.form-control {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+/* ===== Shared: Sections ===== */
+.section { margin: 25px 0; }
+
+/* ===== Shared: Nav User Display ===== */
+.nav-user {
+    color: rgba(255,255,255,0.7);
+    font-size: 13px;
+    padding: 8px 15px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+    .element-grid { grid-template-columns: 1fr; }
+    .bundle-grid { grid-template-columns: 1fr; }
+}

@@ -2,15 +2,15 @@
 
 {% block content %}
 <h2>
-    <span class="badge {{ candidate.hai_type|lower }}">{{ candidate.get_hai_type_display }}</span>
+    {% include "_includes/badge.html" with text=candidate.get_hai_type_display color=candidate.hai_type|lower %}
     Candidate Detail
-    <span class="badge {{ candidate.status|lower }}" style="font-size: 14px;">{{ candidate.get_status_display }}</span>
+    {% include "_includes/badge.html" with text=candidate.get_status_display color=candidate.status|lower %}
 </h2>
 
 <div class="detail-layout">
-    <div class="detail-main">
+    <div class="detail-layout__main">
         {# Patient Information #}
-        <div class="patient-info">
+        <div class="detail-section">
             <h4 style="margin-top: 0;">Patient Information</h4>
             {% if candidate.patient_name %}
             <p><strong>Name:</strong> {{ candidate.patient_name }}</p>
@@ -22,7 +22,7 @@
         </div>
 
         {# Culture / Device Section - varies by HAI type #}
-        <div class="alert-box">
+        <div class="detail-section">
             <h4 style="margin-top: 0;">
                 {% if candidate.hai_type == 'SSI' %}Specimen
                 {% elif candidate.hai_type == 'CDI' %}Test
@@ -97,15 +97,16 @@
 
         {# LLM Classification Section #}
         {% if classification %}
-        <div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 5px solid #c0392b; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+        <div class="detail-section">
             <h4 style="margin-top: 0;">LLM Classification</h4>
             <div style="margin-bottom: 10px;">
-                <span class="badge {{ classification.decision|lower }}" style="font-size: 14px; padding: 6px 12px;">
-                    {% if classification.decision == 'hai_confirmed' %}HAI Confirmed
-                    {% elif classification.decision == 'not_hai' %}Not HAI
-                    {% else %}{{ classification.decision }}
-                    {% endif %}
-                </span>
+                {% if classification.decision == 'hai_confirmed' %}
+                    {% include "_includes/badge.html" with text="HAI Confirmed" color=classification.decision|lower %}
+                {% elif classification.decision == 'not_hai' %}
+                    {% include "_includes/badge.html" with text="Not HAI" color=classification.decision|lower %}
+                {% else %}
+                    {% include "_includes/badge.html" with text=classification.decision color=classification.decision|lower %}
+                {% endif %}
                 <span style="margin-left: 15px; font-size: 16px; font-weight: bold;">
                     {{ classification.confidence }}% confidence
                 </span>
@@ -215,12 +216,18 @@
             {% for entry in reviews %}
             <div class="audit-log">
                 <strong>{{ entry.reviewed_at|date:"Y-m-d H:i:s" }}</strong> -
-                <span class="badge" style="background: {% if entry.decision == 'confirmed' %}#27ae60{% elif entry.decision == 'rejected' %}#e74c3c{% elif entry.decision == 'needs_more_info' %}#9b59b6{% else %}#34495e{% endif %};">
-                    {{ entry.decision }}
-                </span>
+                {% if entry.decision == 'confirmed' %}
+                    {% include "_includes/badge.html" with text="confirmed" color="confirmed" %}
+                {% elif entry.decision == 'rejected' %}
+                    {% include "_includes/badge.html" with text="rejected" color="rejected" %}
+                {% elif entry.decision == 'needs_more_info' %}
+                    {% include "_includes/badge.html" with text="needs_more_info" color="needs_more_info" %}
+                {% else %}
+                    {% include "_includes/badge.html" with text=entry.decision color="default" %}
+                {% endif %}
                 by {{ entry.reviewer }}
                 {% if entry.is_override %}
-                    <span class="badge" style="background: #f39c12;">OVERRIDE</span>
+                    {% include "_includes/badge.html" with text="OVERRIDE" color="warning" %}
                     {% if entry.override_reason_category %}
                     <br><small>Override reason: {{ entry.override_reason_category }}</small>
                     {% endif %}
@@ -235,7 +242,7 @@
     </div>
 
     {# Sidebar - Review Form #}
-    <div class="detail-sidebar">
+    <div class="detail-layout__sidebar">
         {% if candidate.status == 'pending_review' or candidate.status == 'classified' %}
         <div class="action-card">
             <h4 style="margin-top: 0;">IP Review Decision</h4>
@@ -279,7 +286,7 @@
                               style="width: 100%; padding: 5px; margin-top: 5px;"></textarea>
                 </div>
 
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Submit Review</button>
+                <button type="submit" class="btn btn--primary" style="width: 100%;">Submit Review</button>
             </form>
         </div>
         {% elif candidate.status == 'confirmed' %}
@@ -325,7 +332,7 @@
         {% endif %}
 
         <div style="margin-top: 15px;">
-            <a href="{% url 'hai_detection:dashboard' %}" class="btn btn-secondary" style="width: 100%; text-align: center;">
+            <a href="{% url 'hai_detection:dashboard' %}" class="btn btn--secondary" style="width: 100%; text-align: center;">
                 &larr; Back to Dashboard
             </a>
         </div>

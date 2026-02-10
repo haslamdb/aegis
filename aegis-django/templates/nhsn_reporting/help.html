@@ -9,288 +9,272 @@
 </div>
 
 <!-- Reporting Overview -->
-<div class="card">
-    <div class="card-header">Reporting Overview</div>
-    <div class="card-body">
-        <p style="font-size: 0.9rem; color: #555; line-height: 1.7; margin-bottom: 1rem;">
-            The NHSN is the CDC's healthcare-associated infection tracking system. Hospitals enrolled in NHSN
-            submit data on antimicrobial use (AU), antimicrobial resistance (AR), and healthcare-associated
-            infections (HAI). AEGIS automates data collection, aggregation, and formatting for all three modules.
-        </p>
-        <ol style="line-height: 2; padding-left: 1.5rem;">
-            <li><strong>Antimicrobial Use (AU)</strong> -- Monthly submission of Days of Therapy (DOT) and Defined Daily Dose (DDD) by agent, route, and location.</li>
-            <li><strong>Antimicrobial Resistance (AR)</strong> -- Quarterly submission of isolate counts with resistance phenotype classification using the first-isolate rule.</li>
-            <li><strong>HAI Events</strong> -- Individual event reporting for CLABSI, CAUTI, VAE, SSI, CDI, and MRSA bacteremia using NHSN event definitions.</li>
-            <li><strong>Denominator Data</strong> -- Monthly patient-days and device-days by location, used to calculate rates and device utilization ratios.</li>
-        </ol>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">Reporting Overview</div>
+    <p style="font-size: 0.9rem; color: #555; line-height: 1.7; margin-bottom: 1rem;">
+        The NHSN is the CDC's healthcare-associated infection tracking system. Hospitals enrolled in NHSN
+        submit data on antimicrobial use (AU), antimicrobial resistance (AR), and healthcare-associated
+        infections (HAI). AEGIS automates data collection, aggregation, and formatting for all three modules.
+    </p>
+    <ol style="line-height: 2; padding-left: 1.5rem;">
+        <li><strong>Antimicrobial Use (AU)</strong> -- Monthly submission of Days of Therapy (DOT) and Defined Daily Dose (DDD) by agent, route, and location.</li>
+        <li><strong>Antimicrobial Resistance (AR)</strong> -- Quarterly submission of isolate counts with resistance phenotype classification using the first-isolate rule.</li>
+        <li><strong>HAI Events</strong> -- Individual event reporting for CLABSI, CAUTI, VAE, SSI, CDI, and MRSA bacteremia using NHSN event definitions.</li>
+        <li><strong>Denominator Data</strong> -- Monthly patient-days and device-days by location, used to calculate rates and device utilization ratios.</li>
+    </ol>
 </div>
 
 <!-- AU Definitions -->
-<div class="card">
-    <div class="card-header">AU: Days of Therapy (DOT) and Defined Daily Dose (DDD)</div>
-    <div class="card-body">
-        <table class="table">
-            <thead><tr><th>Metric</th><th>Definition</th><th>Notes</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td><strong>DOT (Days of Therapy)</strong></td>
-                    <td>
-                        Number of calendar days a patient receives a specific antimicrobial agent, regardless of dose.
-                        If a patient receives vancomycin on Monday and Tuesday, that is 2 DOT for vancomycin.
-                    </td>
-                    <td>
-                        Binary per day (0 or 1). Multiple doses in the same day = 1 DOT.
-                        DOT is the primary NHSN AU metric. Preferred over DDD for pediatric populations.
-                    </td>
-                </tr>
-                <tr>
-                    <td><strong>DDD (Defined Daily Dose)</strong></td>
-                    <td>
-                        The assumed average maintenance dose per day for a drug used for its main indication in adults
-                        (defined by the WHO ATC/DDD system). Actual dose administered divided by DDD reference dose.
-                    </td>
-                    <td>
-                        DDD is designed for adult use. In pediatric settings like CCHMC, DOT is preferred because
-                        pediatric doses are weight-based and often far below adult DDD values.
-                    </td>
-                </tr>
-                <tr>
-                    <td><strong>DOT Rate</strong></td>
-                    <td>
-                        (Total DOT / Patient-Days) x 1,000. Expressed as DOT per 1,000 patient-days.
-                    </td>
-                    <td>Allows comparison across locations of different sizes and census.</td>
-                </tr>
-                <tr>
-                    <td><strong>Antimicrobial Agent</strong></td>
-                    <td>NHSN uses a specific list of antimicrobial agents grouped by class. Each agent has an NHSN code.</td>
-                    <td>Agents are reported by route (IV, PO, IM). Topical agents are excluded.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">AU: Days of Therapy (DOT) and Defined Daily Dose (DDD)</div>
+    <table class="data-table">
+        <thead><tr><th>Metric</th><th>Definition</th><th>Notes</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>DOT (Days of Therapy)</strong></td>
+                <td>
+                    Number of calendar days a patient receives a specific antimicrobial agent, regardless of dose.
+                    If a patient receives vancomycin on Monday and Tuesday, that is 2 DOT for vancomycin.
+                </td>
+                <td>
+                    Binary per day (0 or 1). Multiple doses in the same day = 1 DOT.
+                    DOT is the primary NHSN AU metric. Preferred over DDD for pediatric populations.
+                </td>
+            </tr>
+            <tr>
+                <td><strong>DDD (Defined Daily Dose)</strong></td>
+                <td>
+                    The assumed average maintenance dose per day for a drug used for its main indication in adults
+                    (defined by the WHO ATC/DDD system). Actual dose administered divided by DDD reference dose.
+                </td>
+                <td>
+                    DDD is designed for adult use. In pediatric settings like CCHMC, DOT is preferred because
+                    pediatric doses are weight-based and often far below adult DDD values.
+                </td>
+            </tr>
+            <tr>
+                <td><strong>DOT Rate</strong></td>
+                <td>
+                    (Total DOT / Patient-Days) x 1,000. Expressed as DOT per 1,000 patient-days.
+                </td>
+                <td>Allows comparison across locations of different sizes and census.</td>
+            </tr>
+            <tr>
+                <td><strong>Antimicrobial Agent</strong></td>
+                <td>NHSN uses a specific list of antimicrobial agents grouped by class. Each agent has an NHSN code.</td>
+                <td>Agents are reported by route (IV, PO, IM). Topical agents are excluded.</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- AR Definitions -->
-<div class="card">
-    <div class="card-header">AR: First-Isolate Rule and Resistance Phenotypes</div>
-    <div class="card-body">
-        <table class="table">
-            <thead><tr><th>Concept</th><th>Definition</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td><strong>First-Isolate Rule</strong></td>
-                    <td>
-                        Only the first isolate of a given species from a patient in the reporting period (quarter) is counted.
-                        Duplicate isolates from the same patient are excluded to avoid over-counting. This is the standard
-                        NHSN/CLSI deduplication method for resistance reporting.
-                    </td>
-                </tr>
-                <tr>
-                    <td><strong>MRSA</strong></td>
-                    <td>Methicillin-Resistant <em>Staphylococcus aureus</em>. Identified by oxacillin/cefoxitin resistance or mecA gene detection.</td>
-                </tr>
-                <tr>
-                    <td><strong>VRE</strong></td>
-                    <td>Vancomycin-Resistant <em>Enterococcus</em> (E. faecium or E. faecalis). Identified by vancomycin MIC >= 32 mcg/mL.</td>
-                </tr>
-                <tr>
-                    <td><strong>ESBL</strong></td>
-                    <td>Extended-Spectrum Beta-Lactamase producing Enterobacterales. Identified by confirmatory testing (ceftriaxone/ceftazidime + clavulanate).</td>
-                </tr>
-                <tr>
-                    <td><strong>CRE</strong></td>
-                    <td>Carbapenem-Resistant Enterobacterales. Identified by resistance to meropenem, imipenem, or doripenem (MIC >= 4 mcg/mL) or positive carbapenemase test.</td>
-                </tr>
-                <tr>
-                    <td><strong>%R (Percent Resistant)</strong></td>
-                    <td>
-                        (Resistant first-isolates / Total first-isolates) x 100 for a given organism. Reported per organism-drug combination per quarter per location.
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">AR: First-Isolate Rule and Resistance Phenotypes</div>
+    <table class="data-table">
+        <thead><tr><th>Concept</th><th>Definition</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>First-Isolate Rule</strong></td>
+                <td>
+                    Only the first isolate of a given species from a patient in the reporting period (quarter) is counted.
+                    Duplicate isolates from the same patient are excluded to avoid over-counting. This is the standard
+                    NHSN/CLSI deduplication method for resistance reporting.
+                </td>
+            </tr>
+            <tr>
+                <td><strong>MRSA</strong></td>
+                <td>Methicillin-Resistant <em>Staphylococcus aureus</em>. Identified by oxacillin/cefoxitin resistance or mecA gene detection.</td>
+            </tr>
+            <tr>
+                <td><strong>VRE</strong></td>
+                <td>Vancomycin-Resistant <em>Enterococcus</em> (E. faecium or E. faecalis). Identified by vancomycin MIC >= 32 mcg/mL.</td>
+            </tr>
+            <tr>
+                <td><strong>ESBL</strong></td>
+                <td>Extended-Spectrum Beta-Lactamase producing Enterobacterales. Identified by confirmatory testing (ceftriaxone/ceftazidime + clavulanate).</td>
+            </tr>
+            <tr>
+                <td><strong>CRE</strong></td>
+                <td>Carbapenem-Resistant Enterobacterales. Identified by resistance to meropenem, imipenem, or doripenem (MIC >= 4 mcg/mL) or positive carbapenemase test.</td>
+            </tr>
+            <tr>
+                <td><strong>%R (Percent Resistant)</strong></td>
+                <td>
+                    (Resistant first-isolates / Total first-isolates) x 100 for a given organism. Reported per organism-drug combination per quarter per location.
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- HAI Event Types -->
-<div class="card">
-    <div class="card-header">HAI Event Definitions</div>
-    <div class="card-body">
-        <table class="table">
-            <thead><tr><th>Event Type</th><th>Full Name</th><th>Key Criteria</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td><span class="badge badge-clabsi">CLABSI</span></td>
-                    <td>Central Line-Associated Bloodstream Infection</td>
-                    <td>Lab-confirmed BSI in patient with central line on date of event or day before. No other recognized source.</td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-cauti">CAUTI</span></td>
-                    <td>Catheter-Associated Urinary Tract Infection</td>
-                    <td>Urinary catheter in place >2 days. Positive urine culture (>= 10^5 CFU/mL, no more than 2 organisms). Fever or localizing signs.</td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-vae">VAE</span></td>
-                    <td>Ventilator-Associated Event</td>
-                    <td>Worsening oxygenation after >= 2 days of stable/improving ventilator settings. Three tiers: VAC, IVAC, possible/probable VAP.</td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-ssi">SSI</span></td>
-                    <td>Surgical Site Infection</td>
-                    <td>Infection within 30/90 days (procedure-dependent) of operative procedure. Superficial, deep, or organ/space classification.</td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-cdi">CDI</span></td>
-                    <td><em>Clostridioides difficile</em> Infection</td>
-                    <td>Positive C. diff test (toxin or NAAT). Classified as community-onset, HO-HCFA, or CO-HCFA based on timing.</td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-mrsa">MRSA Bacteremia</span></td>
-                    <td>MRSA Bloodstream Infection</td>
-                    <td>Blood culture positive for MRSA. Classified as community-onset or hospital-onset based on specimen collection timing.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">HAI Event Definitions</div>
+    <table class="data-table">
+        <thead><tr><th>Event Type</th><th>Full Name</th><th>Key Criteria</th></tr></thead>
+        <tbody>
+            <tr>
+                <td>{% include "_includes/badge.html" with text="CLABSI" color="blue" %}</td>
+                <td>Central Line-Associated Bloodstream Infection</td>
+                <td>Lab-confirmed BSI in patient with central line on date of event or day before. No other recognized source.</td>
+            </tr>
+            <tr>
+                <td>{% include "_includes/badge.html" with text="CAUTI" color="blue" %}</td>
+                <td>Catheter-Associated Urinary Tract Infection</td>
+                <td>Urinary catheter in place >2 days. Positive urine culture (>= 10^5 CFU/mL, no more than 2 organisms). Fever or localizing signs.</td>
+            </tr>
+            <tr>
+                <td>{% include "_includes/badge.html" with text="VAE" color="blue" %}</td>
+                <td>Ventilator-Associated Event</td>
+                <td>Worsening oxygenation after >= 2 days of stable/improving ventilator settings. Three tiers: VAC, IVAC, possible/probable VAP.</td>
+            </tr>
+            <tr>
+                <td>{% include "_includes/badge.html" with text="SSI" color="blue" %}</td>
+                <td>Surgical Site Infection</td>
+                <td>Infection within 30/90 days (procedure-dependent) of operative procedure. Superficial, deep, or organ/space classification.</td>
+            </tr>
+            <tr>
+                <td>{% include "_includes/badge.html" with text="CDI" color="blue" %}</td>
+                <td><em>Clostridioides difficile</em> Infection</td>
+                <td>Positive C. diff test (toxin or NAAT). Classified as community-onset, HO-HCFA, or CO-HCFA based on timing.</td>
+            </tr>
+            <tr>
+                <td>{% include "_includes/badge.html" with text="MRSA Bacteremia" color="blue" %}</td>
+                <td>MRSA Bloodstream Infection</td>
+                <td>Blood culture positive for MRSA. Classified as community-onset or hospital-onset based on specimen collection timing.</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- CDA Format -->
-<div class="card">
-    <div class="card-header">CDA Format (HL7 Clinical Document Architecture)</div>
-    <div class="card-body">
-        <p style="font-size: 0.9rem; color: #555; line-height: 1.7; margin-bottom: 1rem;">
-            NHSN accepts data in HL7 CDA R2 (Clinical Document Architecture, Release 2) format. CDA documents
-            are XML files structured with a header (patient, encounter, facility identifiers) and a body
-            (structured entries for each reportable data element).
-        </p>
-        <table class="table">
-            <thead><tr><th>Component</th><th>Description</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td><strong>CDA Header</strong></td>
-                    <td>Patient demographics, encounter identifiers, facility OID, reporting period, document type.</td>
-                </tr>
-                <tr>
-                    <td><strong>CDA Body</strong></td>
-                    <td>Structured sections containing coded entries (SNOMED, LOINC, RxNorm) for each reportable element.</td>
-                </tr>
-                <tr>
-                    <td><strong>Facility OID</strong></td>
-                    <td>Unique Object Identifier assigned to the facility by NHSN during enrollment. Required in all submissions.</td>
-                </tr>
-                <tr>
-                    <td><strong>Location Mapping</strong></td>
-                    <td>NHSN locations (CDC location codes) must be mapped to facility unit names. This mapping is configured in settings.</td>
-                </tr>
-                <tr>
-                    <td><strong>Validation</strong></td>
-                    <td>CDA documents are validated against NHSN-specific schematron rules before submission. AEGIS validates locally before sending.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">CDA Format (HL7 Clinical Document Architecture)</div>
+    <p style="font-size: 0.9rem; color: #555; line-height: 1.7; margin-bottom: 1rem;">
+        NHSN accepts data in HL7 CDA R2 (Clinical Document Architecture, Release 2) format. CDA documents
+        are XML files structured with a header (patient, encounter, facility identifiers) and a body
+        (structured entries for each reportable data element).
+    </p>
+    <table class="data-table">
+        <thead><tr><th>Component</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>CDA Header</strong></td>
+                <td>Patient demographics, encounter identifiers, facility OID, reporting period, document type.</td>
+            </tr>
+            <tr>
+                <td><strong>CDA Body</strong></td>
+                <td>Structured sections containing coded entries (SNOMED, LOINC, RxNorm) for each reportable element.</td>
+            </tr>
+            <tr>
+                <td><strong>Facility OID</strong></td>
+                <td>Unique Object Identifier assigned to the facility by NHSN during enrollment. Required in all submissions.</td>
+            </tr>
+            <tr>
+                <td><strong>Location Mapping</strong></td>
+                <td>NHSN locations (CDC location codes) must be mapped to facility unit names. This mapping is configured in settings.</td>
+            </tr>
+            <tr>
+                <td><strong>Validation</strong></td>
+                <td>CDA documents are validated against NHSN-specific schematron rules before submission. AEGIS validates locally before sending.</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- DIRECT Protocol -->
-<div class="card">
-    <div class="card-header">DIRECT Protocol</div>
-    <div class="card-body">
-        <p style="font-size: 0.9rem; color: #555; line-height: 1.7; margin-bottom: 1rem;">
-            DIRECT (Direct Interoperability for Exchange of Clinical Transactions) is a secure, standards-based
-            messaging protocol used to transmit CDA documents electronically to the NHSN. It uses S/MIME
-            encryption over SMTP with X.509 certificates for authentication.
-        </p>
-        <table class="table">
-            <thead><tr><th>Setting</th><th>Description</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td><strong>DIRECT Address</strong></td>
-                    <td>The facility's DIRECT email address (e.g., facility@direct.nhsn.cdc.gov). Issued during NHSN DIRECT enrollment.</td>
-                </tr>
-                <tr>
-                    <td><strong>NHSN Endpoint</strong></td>
-                    <td>The NHSN DIRECT receiving address. CDA documents are sent as MIME attachments to this address.</td>
-                </tr>
-                <tr>
-                    <td><strong>Certificate</strong></td>
-                    <td>X.509 certificate for S/MIME encryption. Must be issued by a DIRECT-compatible trust anchor.</td>
-                </tr>
-                <tr>
-                    <td><strong>Trust Anchor</strong></td>
-                    <td>Root CA certificate that both sender and receiver trust. NHSN provides their trust anchor during enrollment.</td>
-                </tr>
-                <tr>
-                    <td><strong>MDN (Message Disposition Notification)</strong></td>
-                    <td>Acknowledgment message returned by NHSN confirming receipt (processed/failed). Used for audit trail.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">DIRECT Protocol</div>
+    <p style="font-size: 0.9rem; color: #555; line-height: 1.7; margin-bottom: 1rem;">
+        DIRECT (Direct Interoperability for Exchange of Clinical Transactions) is a secure, standards-based
+        messaging protocol used to transmit CDA documents electronically to the NHSN. It uses S/MIME
+        encryption over SMTP with X.509 certificates for authentication.
+    </p>
+    <table class="data-table">
+        <thead><tr><th>Setting</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>DIRECT Address</strong></td>
+                <td>The facility's DIRECT email address (e.g., facility@direct.nhsn.cdc.gov). Issued during NHSN DIRECT enrollment.</td>
+            </tr>
+            <tr>
+                <td><strong>NHSN Endpoint</strong></td>
+                <td>The NHSN DIRECT receiving address. CDA documents are sent as MIME attachments to this address.</td>
+            </tr>
+            <tr>
+                <td><strong>Certificate</strong></td>
+                <td>X.509 certificate for S/MIME encryption. Must be issued by a DIRECT-compatible trust anchor.</td>
+            </tr>
+            <tr>
+                <td><strong>Trust Anchor</strong></td>
+                <td>Root CA certificate that both sender and receiver trust. NHSN provides their trust anchor during enrollment.</td>
+            </tr>
+            <tr>
+                <td><strong>MDN (Message Disposition Notification)</strong></td>
+                <td>Acknowledgment message returned by NHSN confirming receipt (processed/failed). Used for audit trail.</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- Data Source -->
-<div class="card">
-    <div class="card-header">Data Sources</div>
-    <div class="card-body">
-        <table class="table">
-            <thead><tr><th>Data Type</th><th>Source</th><th>Cadence</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td><strong>AU (DOT/DDD)</strong></td>
-                    <td>Clarity (Epic reporting database)</td>
-                    <td>Nightly batch job. Monthly aggregation.</td>
-                </tr>
-                <tr>
-                    <td><strong>AR (Isolates)</strong></td>
-                    <td>Clarity (microbiology tables)</td>
-                    <td>Nightly batch job. Quarterly aggregation with first-isolate deduplication.</td>
-                </tr>
-                <tr>
-                    <td><strong>HAI Events</strong></td>
-                    <td>AEGIS HAI Detection module (FHIR-sourced)</td>
-                    <td>Real-time. Events flagged by HAI detection are available for NHSN reporting.</td>
-                </tr>
-                <tr>
-                    <td><strong>Denominators</strong></td>
-                    <td>Clarity (ADT/device tracking tables)</td>
-                    <td>Nightly/weekly batch job. Monthly aggregation by location.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">Data Sources</div>
+    <table class="data-table">
+        <thead><tr><th>Data Type</th><th>Source</th><th>Cadence</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>AU (DOT/DDD)</strong></td>
+                <td>Clarity (Epic reporting database)</td>
+                <td>Nightly batch job. Monthly aggregation.</td>
+            </tr>
+            <tr>
+                <td><strong>AR (Isolates)</strong></td>
+                <td>Clarity (microbiology tables)</td>
+                <td>Nightly batch job. Quarterly aggregation with first-isolate deduplication.</td>
+            </tr>
+            <tr>
+                <td><strong>HAI Events</strong></td>
+                <td>AEGIS HAI Detection module (FHIR-sourced)</td>
+                <td>Real-time. Events flagged by HAI detection are available for NHSN reporting.</td>
+            </tr>
+            <tr>
+                <td><strong>Denominators</strong></td>
+                <td>Clarity (ADT/device tracking tables)</td>
+                <td>Nightly/weekly batch job. Monthly aggregation by location.</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- Reporting Schedule -->
-<div class="card">
-    <div class="card-header">Reporting Schedule</div>
-    <div class="card-body">
-        <table class="table">
-            <thead><tr><th>Module</th><th>Frequency</th><th>Deadline</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td><strong>AU</strong></td>
-                    <td>Monthly</td>
-                    <td>Due within 3 months after the end of the reporting month.</td>
-                </tr>
-                <tr>
-                    <td><strong>AR</strong></td>
-                    <td>Quarterly</td>
-                    <td>Due within 3 months after the end of the reporting quarter.</td>
-                </tr>
-                <tr>
-                    <td><strong>HAI Events</strong></td>
-                    <td>Monthly</td>
-                    <td>Due within 30 days after the end of the reporting month (CMS requirement).</td>
-                </tr>
-                <tr>
-                    <td><strong>Denominators</strong></td>
-                    <td>Monthly</td>
-                    <td>Submitted alongside HAI events. Due within 30 days of month end.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">Reporting Schedule</div>
+    <table class="data-table">
+        <thead><tr><th>Module</th><th>Frequency</th><th>Deadline</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>AU</strong></td>
+                <td>Monthly</td>
+                <td>Due within 3 months after the end of the reporting month.</td>
+            </tr>
+            <tr>
+                <td><strong>AR</strong></td>
+                <td>Quarterly</td>
+                <td>Due within 3 months after the end of the reporting quarter.</td>
+            </tr>
+            <tr>
+                <td><strong>HAI Events</strong></td>
+                <td>Monthly</td>
+                <td>Due within 30 days after the end of the reporting month (CMS requirement).</td>
+            </tr>
+            <tr>
+                <td><strong>Denominators</strong></td>
+                <td>Monthly</td>
+                <td>Submitted alongside HAI events. Due within 30 days of month end.</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 {% endblock %}

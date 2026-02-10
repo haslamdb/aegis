@@ -3,23 +3,11 @@
 {% block content %}
 <h2>Active Candidates</h2>
 
-<div class="stats-row">
-    <div class="stat-box hai-stat">
-        <div class="stat-value">{{ stats.active_candidates }}</div>
-        <div class="stat-label">Active Candidates</div>
-    </div>
-    <div class="stat-box pending-stat">
-        <div class="stat-value">{{ stats.pending_review }}</div>
-        <div class="stat-label">Pending Review</div>
-    </div>
-    <div class="stat-box confirmed-stat">
-        <div class="stat-value">{{ stats.confirmed_this_month }}</div>
-        <div class="stat-label">Confirmed This Month</div>
-    </div>
-    <div class="stat-box accuracy-stat">
-        <div class="stat-value">{{ stats.llm_accuracy }}%</div>
-        <div class="stat-label">LLM Accuracy</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=stats.active_candidates title="Active Candidates" color="red" %}
+    {% include "_includes/stat_card.html" with value=stats.pending_review title="Pending Review" color="gray" %}
+    {% include "_includes/stat_card.html" with value=stats.confirmed_this_month title="Confirmed This Month" color="green" %}
+    {% include "_includes/stat_card.html" with value=stats.llm_accuracy|stringformat:"d"|add:"%" title="LLM Accuracy" color="blue" %}
 </div>
 
 <div class="hai-type-tabs">
@@ -35,7 +23,7 @@
 
 <p><strong>{{ candidates|length }}</strong> candidate{{ candidates|length|pluralize }}</p>
 
-<table>
+<table class="data-table">
     <tr>
         <th>Status</th>
         <th>HAI Type</th>
@@ -50,10 +38,10 @@
     {% for candidate in candidates %}
     <tr>
         <td>
-            <span class="badge {{ candidate.status|lower }}">{{ candidate.get_status_display }}</span>
+            {% include "_includes/badge.html" with text=candidate.get_status_display color=candidate.status|lower %}
         </td>
         <td>
-            <span class="badge {{ candidate.hai_type|lower }}">{{ candidate.get_hai_type_display }}</span>
+            {% include "_includes/badge.html" with text=candidate.get_hai_type_display color=candidate.hai_type|lower %}
         </td>
         <td>
             {% if candidate.patient_name %}
@@ -68,12 +56,13 @@
         <td style="text-align: center;">{{ candidate.device_days|default:"-" }}</td>
         <td>
             {% if candidate.llm_decision %}
-            <span class="badge {{ candidate.llm_decision|lower }}">
-                {% if candidate.llm_decision == 'hai_confirmed' %}HAI
-                {% elif candidate.llm_decision == 'not_hai' %}Not HAI
-                {% else %}{{ candidate.llm_decision }}
-                {% endif %}
-            </span>
+            {% if candidate.llm_decision == 'hai_confirmed' %}
+                {% include "_includes/badge.html" with text="HAI" color=candidate.llm_decision|lower %}
+            {% elif candidate.llm_decision == 'not_hai' %}
+                {% include "_includes/badge.html" with text="Not HAI" color=candidate.llm_decision|lower %}
+            {% else %}
+                {% include "_includes/badge.html" with text=candidate.llm_decision color=candidate.llm_decision|lower %}
+            {% endif %}
             {% else %}
             <span style="color: #95a5a6;">Pending</span>
             {% endif %}
@@ -90,7 +79,7 @@
             {% endif %}
         </td>
         <td>
-            <a href="{% url 'hai_detection:candidate_detail' candidate.id %}" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">
+            <a href="{% url 'hai_detection:candidate_detail' candidate.id %}" class="btn btn--primary" style="font-size: 12px; padding: 5px 10px;">
                 Review
             </a>
         </td>

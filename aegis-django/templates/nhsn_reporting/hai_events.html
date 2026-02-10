@@ -9,117 +9,113 @@
 </div>
 
 <!-- Status Stats -->
-<div class="stats-row">
-    <div class="stat-card amber">
-        <div class="stat-value">{{ unreported_count|default:0 }}</div>
-        <div class="stat-label">Unreported Events</div>
-    </div>
-    <div class="stat-card green">
-        <div class="stat-value">{{ reported_count|default:0 }}</div>
-        <div class="stat-label">Reported Events</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=unreported_count|default:0 title="Unreported Events" color="yellow" %}
+    {% include "_includes/stat_card.html" with value=reported_count|default:0 title="Reported Events" color="green" %}
 </div>
 
-<div class="card">
-    <div class="card-header">
+<div class="detail-section">
+    <div class="detail-section__title" style="display: flex; align-items: center; justify-content: space-between;">
         HAI Events
-        <div>
-            <a href="{% url 'nhsn_reporting:api_hai_export' %}?status={{ status_filter }}" class="btn btn-outline btn-sm">Export CSV</a>
-        </div>
+        <a href="{% url 'nhsn_reporting:api_hai_export' %}?status={{ status_filter }}" class="btn btn--secondary btn--sm">Export CSV</a>
     </div>
-    <div class="card-body">
-        <form method="get" class="filters" id="filter-form">
-            <label>Status:</label>
-            <select name="status" onchange="this.form.submit()">
-                <option value="" {% if not status_filter %}selected{% endif %}>All Events</option>
-                <option value="unreported" {% if status_filter == 'unreported' %}selected{% endif %}>Unreported</option>
-                <option value="reported" {% if status_filter == 'reported' %}selected{% endif %}>Reported</option>
-            </select>
+    <div class="filter-bar">
+        <form method="get" class="filter-form" id="filter-form">
+            <div class="filter-group">
+                <label>Status:</label>
+                <select name="status" onchange="this.form.submit()">
+                    <option value="" {% if not status_filter %}selected{% endif %}>All Events</option>
+                    <option value="unreported" {% if status_filter == 'unreported' %}selected{% endif %}>Unreported</option>
+                    <option value="reported" {% if status_filter == 'reported' %}selected{% endif %}>Reported</option>
+                </select>
+            </div>
 
             {% if status_filter %}
-            <a href="{% url 'nhsn_reporting:hai_events' %}" class="btn btn-sm btn-secondary">Clear</a>
-            {% endif %}
-        </form>
-
-        {% if events %}
-        <form method="post" id="mark-submitted-form">
-            {% csrf_token %}
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th style="width: 40px;">
-                            <input type="checkbox" id="select-all" title="Select all">
-                        </th>
-                        <th>Event Type</th>
-                        <th>Date of Event</th>
-                        <th>Patient</th>
-                        <th>Location</th>
-                        <th>Pathogen</th>
-                        <th>Status</th>
-                        <th>Reported Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for event in events %}
-                    <tr>
-                        <td>
-                            {% if not event.reported %}
-                            <input type="checkbox" name="event_ids" value="{{ event.id }}">
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge badge-{{ event.event_type|lower }}">{{ event.event_type }}</span>
-                        </td>
-                        <td>{{ event.event_date|date:"M d, Y" }}</td>
-                        <td>
-                            <strong>{{ event.patient_name }}</strong><br>
-                            <small style="color: #888;">{{ event.patient_mrn }}</small>
-                        </td>
-                        <td>{{ event.location|default:"--" }}</td>
-                        <td>
-                            {% if event.pathogen %}
-                            <em>{{ event.pathogen }}</em>
-                            {% else %}
-                            <span style="color: #888;">--</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if event.reported %}
-                            <span class="badge badge-reported">Reported</span>
-                            {% else %}
-                            <span class="badge badge-unreported">Unreported</span>
-                            {% endif %}
-                        </td>
-                        <td style="font-size: 0.85rem;">
-                            {% if event.reported_date %}
-                            {{ event.reported_date|date:"M d, Y" }}
-                            {% else %}
-                            <span style="color: #888;">--</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-
-            {% if unreported_count > 0 %}
-            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
-                <button type="button" class="btn btn-primary" onclick="markSubmitted()">Mark Selected as Submitted</button>
-                <span id="selection-count" style="font-size: 0.85rem; color: #666;">0 selected</span>
+            <div class="filter-group">
+                <a href="{% url 'nhsn_reporting:hai_events' %}" class="btn btn--secondary btn--sm">Clear</a>
             </div>
             {% endif %}
         </form>
-        {% else %}
-        <div class="empty-state">
-            <h3>No HAI events</h3>
-            <p>No HAI events match the current filter.</p>
+    </div>
+
+    {% if events %}
+    <form method="post" id="mark-submitted-form">
+        {% csrf_token %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" id="select-all" title="Select all">
+                    </th>
+                    <th>Event Type</th>
+                    <th>Date of Event</th>
+                    <th>Patient</th>
+                    <th>Location</th>
+                    <th>Pathogen</th>
+                    <th>Status</th>
+                    <th>Reported Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for event in events %}
+                <tr>
+                    <td>
+                        {% if not event.reported %}
+                        <input type="checkbox" name="event_ids" value="{{ event.id }}">
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% include "_includes/badge.html" with text=event.event_type color=event.event_type|lower %}
+                    </td>
+                    <td>{{ event.event_date|date:"M d, Y" }}</td>
+                    <td>
+                        <strong>{{ event.patient_name }}</strong><br>
+                        <small style="color: #888;">{{ event.patient_mrn }}</small>
+                    </td>
+                    <td>{{ event.location|default:"--" }}</td>
+                    <td>
+                        {% if event.pathogen %}
+                        <em>{{ event.pathogen }}</em>
+                        {% else %}
+                        <span style="color: #888;">--</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if event.reported %}
+                            {% include "_includes/badge.html" with text="Reported" color="green" %}
+                        {% else %}
+                            {% include "_includes/badge.html" with text="Unreported" color="yellow" %}
+                        {% endif %}
+                    </td>
+                    <td style="font-size: 0.85rem;">
+                        {% if event.reported_date %}
+                        {{ event.reported_date|date:"M d, Y" }}
+                        {% else %}
+                        <span style="color: #888;">--</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% if unreported_count > 0 %}
+        <div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+            <button type="button" class="btn btn--primary" onclick="markSubmitted()">Mark Selected as Submitted</button>
+            <span id="selection-count" style="font-size: 0.85rem; color: #666;">0 selected</span>
         </div>
         {% endif %}
+    </form>
+    {% else %}
+    <div class="empty-state">
+        <h3>No HAI events</h3>
+        <p>No HAI events match the current filter.</p>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
     // Select all checkbox
     document.getElementById('select-all')?.addEventListener('change', function() {

@@ -3,23 +3,11 @@
 {% block content %}
 <h2>ASHP Bundle Compliance Dashboard</h2>
 
-<div class="stats-row">
-    <div class="stat-box cases-stat">
-        <div class="stat-value">{{ stats.total_cases|default:"0" }}</div>
-        <div class="stat-label">Total Cases (30d)</div>
-    </div>
-    <div class="stat-box compliance-stat">
-        <div class="stat-value">{{ stats.compliance_rate|default:"0"|floatformat:1 }}%</div>
-        <div class="stat-label">Bundle Compliance</div>
-    </div>
-    <div class="stat-box alerts-stat">
-        <div class="stat-value">{{ stats.pending_alerts|default:"0" }}</div>
-        <div class="stat-label">Pending Alerts</div>
-    </div>
-    <div class="stat-box score-stat">
-        <div class="stat-value">{{ stats.avg_score|default:"0"|floatformat:0 }}%</div>
-        <div class="stat-label">Avg Score</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=stats.total_cases|default:"0" title="Total Cases (30d)" color="teal" %}
+    {% include "_includes/stat_card.html" with value=stats.compliance_rate|default:"0"|floatformat:1 title="Bundle Compliance" subtitle="%" color="green" %}
+    {% include "_includes/stat_card.html" with value=stats.pending_alerts|default:"0" title="Pending Alerts" color="red" %}
+    {% include "_includes/stat_card.html" with value=stats.avg_score|default:"0"|floatformat:0 title="Avg Score" subtitle="%" color="blue" %}
 </div>
 
 <!-- Per-Element Rates -->
@@ -46,9 +34,9 @@
 <div class="section">
     <h2>Pending Alerts</h2>
     {% for alert in pending_alerts %}
-    <div class="alert-box {{ alert.severity }}">
+    <div class="detail-section" style="border-left: 5px solid {% if alert.severity == 'critical' %}var(--color-danger){% elif alert.severity == 'high' %}#e67e22{% elif alert.severity == 'medium' %}var(--color-warning){% else %}var(--color-info){% endif %}; margin-bottom: 10px;">
         <strong>{{ alert.title }}</strong>
-        <span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span>
+        {% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity %}
         <p>{{ alert.summary }}</p>
         <small class="text-muted">{{ alert.created_at|date:"Y-m-d H:i" }}</small>
         {% if alert.details.case_id %}
@@ -63,7 +51,7 @@
 <div class="section">
     <h2>Recent Evaluations</h2>
     {% if recent_evaluations %}
-    <table>
+    <table class="data-table">
         <tr>
             <th>Patient</th>
             <th>Procedure</th>
@@ -83,22 +71,22 @@
             </td>
             <td style="text-align: center;">
                 {% if eval.excluded %}
-                <span class="badge excluded">Excluded</span>
+                {% include "_includes/badge.html" with text="Excluded" color="gray" %}
                 {% elif eval.bundle_compliant %}
-                <span class="badge compliant">Compliant</span>
+                {% include "_includes/badge.html" with text="Compliant" color="green" %}
                 {% else %}
-                <span class="badge non-compliant">Non-compliant</span>
+                {% include "_includes/badge.html" with text="Non-compliant" color="red" %}
                 {% endif %}
             </td>
             <td>{{ eval.evaluation_time|date:"Y-m-d H:i" }}</td>
             <td style="text-align: center;">
-                <a href="{% url 'surgical_prophylaxis:case_detail' eval.case.id %}" class="btn btn-primary btn-sm">View</a>
+                <a href="{% url 'surgical_prophylaxis:case_detail' eval.case.id %}" class="btn btn--primary btn--sm">View</a>
             </td>
         </tr>
         {% endfor %}
     </table>
     {% else %}
-    <div class="action-card" style="text-align: center; padding: 40px;">
+    <div class="detail-section" style="text-align: center; padding: 40px;">
         <h3>No Evaluations Yet</h3>
         <p class="text-muted">Run <code>python manage.py create_demo_prophylaxis</code> to create demo data.</p>
     </div>
@@ -106,9 +94,11 @@
 </div>
 
 <div class="section">
-    <a href="{% url 'surgical_prophylaxis:compliance' %}" class="btn btn-outline">View Compliance Trends</a>
-    <a href="{% url 'surgical_prophylaxis:realtime' %}" class="btn btn-outline">Real-time Monitoring</a>
-    <a href="{% url 'surgical_prophylaxis:api_export' %}" class="btn btn-outline">Export CSV</a>
+    <div class="action-group">
+        <a href="{% url 'surgical_prophylaxis:compliance' %}" class="btn btn--secondary">View Compliance Trends</a>
+        <a href="{% url 'surgical_prophylaxis:realtime' %}" class="btn btn--secondary">Real-time Monitoring</a>
+        <a href="{% url 'surgical_prophylaxis:api_export' %}" class="btn btn--secondary">Export CSV</a>
+    </div>
 </div>
 
 {% endblock %}

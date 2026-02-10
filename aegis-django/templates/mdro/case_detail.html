@@ -5,7 +5,7 @@
     <div>
         <h2 style="margin: 0;">MDRO Case Details</h2>
     </div>
-    <a href="{% url 'mdro:cases' %}" class="btn btn-secondary">Back to Cases</a>
+    <a href="{% url 'mdro:cases' %}" class="btn btn--secondary">Back to Cases</a>
 </div>
 
 <!-- Status badges -->
@@ -14,19 +14,19 @@
         {{ case.mdro_type|upper }}
     </span>
     {% if case.transmission_status == 'healthcare' %}
-    <span class="badge badge-warning badge-lg">Healthcare Onset</span>
+    {% include "_includes/badge.html" with text="Healthcare Onset" color="amber" %}
     {% elif case.transmission_status == 'community' %}
-    <span class="badge badge-info badge-lg">Community Onset</span>
+    {% include "_includes/badge.html" with text="Community Onset" color="blue" %}
     {% endif %}
     {% if case.is_new %}
-    <span class="badge badge-danger badge-lg">New Isolation</span>
+    {% include "_includes/badge.html" with text="New Isolation" color="red" %}
     {% endif %}
 </div>
 
 <!-- Two-column layout -->
 <div class="detail-layout">
     <!-- Left Column: Patient Context -->
-    <div class="detail-sidebar">
+    <div class="detail-layout__sidebar">
         <div class="sidebar-card">
             <h3>Patient Information</h3>
             <div class="field-row"><span class="field-label">Patient Name</span><span class="field-value">{{ case.patient_name|default:"Unknown" }}</span></div>
@@ -61,9 +61,9 @@
     </div>
 
     <!-- Right Column: Details + Actions -->
-    <div class="detail-main">
+    <div class="detail-layout__main">
         <!-- Resistance Profile -->
-        <div class="main-card">
+        <div class="detail-section">
             <h3>Resistance Profile</h3>
             <div class="classification-summary">
                 <span class="badge badge-mdro badge-{{ case.mdro_type }} badge-lg">
@@ -75,7 +75,7 @@
             {% if case.susceptibilities %}
             <div class="susceptibility-section">
                 <h4>Susceptibility Results</h4>
-                <table class="susceptibility-table">
+                <table class="data-table susceptibility-table">
                     <thead>
                         <tr>
                             <th>Antibiotic</th>
@@ -107,7 +107,7 @@
             {% elif case.resistant_antibiotics %}
             <div class="susceptibility-section">
                 <h4>Resistant Antibiotics</h4>
-                <table class="susceptibility-table">
+                <table class="data-table susceptibility-table">
                     <thead>
                         <tr><th>Antibiotic</th><th>Result</th></tr>
                     </thead>
@@ -131,9 +131,9 @@
 
         <!-- Prior MDRO History -->
         {% if prior_cases %}
-        <div class="main-card">
+        <div class="detail-section">
             <h3>Patient's Prior MDRO History</h3>
-            <table>
+            <table class="data-table">
                 <thead>
                     <tr>
                         <th>MDRO Type</th>
@@ -164,7 +164,7 @@
 
         <!-- IP Review Actions -->
         {% if not case.reviewed_by %}
-        <div class="main-card">
+        <div class="detail-section">
             <h3>Classification Decision</h3>
             <div class="form-group">
                 <label for="reviewer">Reviewer Name</label>
@@ -172,7 +172,7 @@
             </div>
 
             <div class="classification-buttons-single">
-                <button type="button" class="btn btn-confirm btn-block" data-decision="confirmed">
+                <button type="button" class="btn btn--danger btn-block" data-decision="confirmed">
                     Confirm {{ case.mdro_type|upper }}
                 </button>
             </div>
@@ -180,10 +180,10 @@
             <div class="classification-divider"><span>Or:</span></div>
 
             <div class="secondary-buttons">
-                <button type="button" class="btn btn-reject btn-block" data-decision="rejected">
+                <button type="button" class="btn btn--success btn-block" data-decision="rejected">
                     Not {{ case.mdro_type|upper }}
                 </button>
-                <button type="button" class="btn btn-info-needed btn-block" data-decision="needs_more_info">
+                <button type="button" class="btn btn--secondary btn-block" data-decision="needs_more_info">
                     Needs More Info
                 </button>
             </div>
@@ -197,7 +197,7 @@
         </div>
         {% else %}
         <!-- Already reviewed -->
-        <div class="main-card">
+        <div class="detail-section">
             <h3>Classification Complete</h3>
             <div class="review-complete">
                 <span class="status-icon">&#x2713;</span>
@@ -212,8 +212,8 @@
         {% endif %}
 
         <div class="action-bar">
-            <a href="{% url 'mdro:cases' %}" class="btn btn-secondary">&larr; Back to Cases</a>
-            <a href="{% url 'mdro:dashboard' %}" class="btn btn-secondary">Dashboard</a>
+            <a href="{% url 'mdro:cases' %}" class="btn btn--secondary">&larr; Back to Cases</a>
+            <a href="{% url 'mdro:dashboard' %}" class="btn btn--secondary">Dashboard</a>
         </div>
     </div>
 </div>
@@ -274,201 +274,4 @@
     });
 })();
 </script>
-
-<style>
-    .status-bar {
-        display: flex;
-        gap: 0.5rem;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
-    }
-    .badge-lg {
-        padding: 0.5rem 1rem;
-        font-size: 0.875rem;
-    }
-    .detail-layout {
-        display: flex;
-        gap: 20px;
-    }
-    .detail-sidebar {
-        flex: 1;
-        min-width: 280px;
-    }
-    .detail-main {
-        flex: 2;
-    }
-    .sidebar-card, .main-card {
-        background: white;
-        padding: 1.25rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 1rem;
-    }
-    .sidebar-card h3, .main-card h3 {
-        margin: 0 0 1rem 0;
-        font-size: 1rem;
-        border-bottom: 1px solid #e2e8f0;
-        padding-bottom: 0.5rem;
-    }
-    .field-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.4rem 0;
-        font-size: 0.9rem;
-    }
-    .field-label {
-        color: #64748b;
-        font-weight: 500;
-    }
-    .field-value {
-        font-weight: 500;
-        text-align: right;
-    }
-    .classification-summary {
-        padding: 1rem;
-        background: #f8f9fa;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-    .classification-text {
-        font-weight: 500;
-        color: #475569;
-    }
-    .susceptibility-section { margin-top: 1rem; }
-    .susceptibility-section h4 {
-        font-size: 0.8rem;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        margin-bottom: 0.75rem;
-    }
-    .susceptibility-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.875rem;
-        box-shadow: none;
-    }
-    .susceptibility-table th, .susceptibility-table td {
-        padding: 0.5rem;
-        text-align: left;
-        border-bottom: 1px solid #e2e8f0;
-    }
-    .susceptibility-table th {
-        font-weight: 600;
-        color: #64748b;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        background: transparent;
-    }
-    .susc-row.susc-r { background: rgba(220, 53, 69, 0.05); }
-    .susc-row.susc-s { background: rgba(25, 135, 84, 0.05); }
-    .susc-row.susc-i { background: rgba(255, 193, 7, 0.1); }
-    .susc-result { display: flex; align-items: center; gap: 0.5rem; }
-    .susc-badge {
-        display: inline-block;
-        width: 1.5rem;
-        height: 1.5rem;
-        border-radius: 50%;
-        text-align: center;
-        line-height: 1.5rem;
-        font-weight: 600;
-        font-size: 0.75rem;
-    }
-    .susc-badge.susc-r { background: #dc3545; color: white; }
-    .susc-badge.susc-s { background: #198754; color: white; }
-    .susc-badge.susc-i { background: #ffc107; color: black; }
-    .susc-text { color: #64748b; font-size: 0.8rem; }
-    .mic-value { color: #94a3b8; font-size: 0.8rem; font-family: monospace; }
-    .form-group { margin-bottom: 1rem; }
-    .form-group label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; color: #475569; }
-    .form-control, .form-textarea {
-        width: 100%;
-        padding: 0.75rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        font-size: 0.875rem;
-        box-sizing: border-box;
-    }
-    .form-control:focus, .form-textarea:focus {
-        outline: none;
-        border-color: #8f4469;
-        box-shadow: 0 0 0 3px rgba(143, 68, 105, 0.1);
-    }
-    .form-textarea { resize: vertical; }
-    .classification-buttons-single { margin-top: 1rem; }
-    .classification-divider {
-        margin: 1rem 0;
-        text-align: center;
-        color: #64748b;
-        font-size: 0.8rem;
-    }
-    .secondary-buttons {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.5rem;
-    }
-    .btn-confirm {
-        background: #dc2626;
-        color: white;
-        border: 2px solid #dc2626;
-        padding: 1rem;
-        font-weight: 600;
-        font-size: 1rem;
-    }
-    .btn-confirm:hover { background: #b91c1c; border-color: #b91c1c; }
-    .btn-reject {
-        background: #16a34a;
-        color: white;
-        border: 2px solid #16a34a;
-        padding: 1rem;
-        font-weight: 600;
-    }
-    .btn-reject:hover { background: #15803d; border-color: #15803d; }
-    .btn-info-needed {
-        background: #6b7280;
-        color: white;
-        border: 2px solid #6b7280;
-        padding: 1rem;
-        font-weight: 600;
-    }
-    .btn-info-needed:hover { background: #4b5563; border-color: #4b5563; }
-    .classification-buttons-single button.selected,
-    .secondary-buttons button.selected {
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
-    }
-    .review-complete {
-        padding: 1.5rem;
-        border-radius: 8px;
-        text-align: center;
-        background: #f0fdf4;
-        border: 1px solid #10b981;
-    }
-    .review-complete .status-icon { font-size: 2rem; display: block; margin-bottom: 0.5rem; color: #10b981; }
-    .reviewer-info { font-size: 0.85rem; color: #6c757d; margin-top: 0.5rem; }
-    .review-notes-display {
-        margin-top: 1rem;
-        padding: 0.75rem;
-        background: rgba(255,255,255,0.5);
-        border-radius: 4px;
-        font-style: italic;
-        font-size: 0.875rem;
-        text-align: left;
-    }
-    .action-bar {
-        display: flex;
-        gap: 0.5rem;
-        margin-top: 1rem;
-    }
-    .alert { padding: 1rem; border-radius: 6px; margin-bottom: 1rem; }
-    .alert-danger { background: #fef2f2; border: 1px solid #ef4444; color: #991b1b; }
-    .alert-success { background: #f0fdf4; border: 1px solid #10b981; color: #065f46; }
-    .hidden { display: none !important; }
-    @media (max-width: 768px) {
-        .detail-layout { flex-direction: column; }
-    }
-</style>
 {% endblock %}

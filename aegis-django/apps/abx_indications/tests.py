@@ -696,7 +696,6 @@ class TemplateRenderTests(TestCase):
     def test_base_template(self):
         html = render_to_string('abx_indications/base.html')
         self.assertIn('ABX Indication', html)
-        self.assertIn('#d4a017', html)  # amber/gold theme
 
     def test_help_template(self):
         from .logic.taxonomy import INDICATION_TAXONOMY, IndicationCategory

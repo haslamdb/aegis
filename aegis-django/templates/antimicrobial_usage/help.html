@@ -4,7 +4,7 @@
 
 <h2>Help &amp; Documentation</h2>
 
-<div class="help-section">
+<div class="detail-section">
     <h3>Overview</h3>
     <p>
         The Antimicrobial Usage Alerts module monitors broad-spectrum antibiotic duration for
@@ -17,9 +17,9 @@
     </p>
 </div>
 
-<div class="help-section">
+<div class="detail-section">
     <h3>Monitored Medications</h3>
-    <table class="med-table">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Medication</th>
@@ -42,9 +42,9 @@
     </table>
 </div>
 
-<div class="help-section">
+<div class="detail-section">
     <h3>Duration Thresholds</h3>
-    <table class="med-table">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Threshold</th>
@@ -57,13 +57,13 @@
             <tr>
                 <td>Standard</td>
                 <td>&ge; 72 hours (3 days)</td>
-                <td><span class="badge high">High</span></td>
+                <td>{% include "_includes/badge.html" with text="High" color="amber" %}</td>
                 <td>Review for potential de-escalation based on culture data</td>
             </tr>
             <tr>
                 <td>Urgent</td>
                 <td>&ge; 144 hours (6 days)</td>
-                <td><span class="badge critical">Critical</span></td>
+                <td>{% include "_includes/badge.html" with text="Critical" color="red" %}</td>
                 <td>Urgent review &mdash; consider de-escalation or discontinuation</td>
             </tr>
         </tbody>
@@ -74,9 +74,9 @@
     </p>
 </div>
 
-<div class="help-section">
+<div class="detail-section">
     <h3>Alert Severity Levels</h3>
-    <table class="med-table">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Severity</th>
@@ -86,12 +86,12 @@
         </thead>
         <tbody>
             <tr>
-                <td><span class="badge critical">Critical</span></td>
+                <td>{% include "_includes/badge.html" with text="Critical" color="red" %}</td>
                 <td>&ge; 144 hours (2x threshold)</td>
                 <td>Extended broad-spectrum use requiring urgent review for de-escalation or discontinuation</td>
             </tr>
             <tr>
-                <td><span class="badge high">High</span></td>
+                <td>{% include "_includes/badge.html" with text="High" color="amber" %}</td>
                 <td>&ge; 72 hours (threshold)</td>
                 <td>Broad-spectrum use exceeding review threshold; culture results should be available</td>
             </tr>
@@ -99,7 +99,7 @@
     </table>
 </div>
 
-<div class="help-section">
+<div class="detail-section">
     <h3>Alert Workflow</h3>
     <ol>
         <li><strong>Alert Created</strong> &mdash; System detects medication exceeding threshold</li>
@@ -108,9 +108,9 @@
     </ol>
 </div>
 
-<div class="help-section">
+<div class="detail-section">
     <h3>Resolution Options</h3>
-    <table class="med-table">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Resolution</th>
@@ -162,7 +162,7 @@
     </table>
 </div>
 
-<div class="help-section">
+<div class="detail-section">
     <h3>ASP De-escalation Workflow</h3>
     <ol>
         <li>Review the alert and confirm the medication is still active</li>
@@ -174,9 +174,9 @@
     </ol>
 </div>
 
-<div class="help-section">
+<div class="detail-section">
     <h3>API Endpoints</h3>
-    <table class="med-table">
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Endpoint</th>

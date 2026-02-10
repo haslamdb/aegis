@@ -8,94 +8,100 @@
     <p>Currently monitored guideline bundle episodes</p>
 </div>
 
-<div class="card">
-    <div class="card-header">
+<div class="detail-section">
+    <div class="detail-section__title" style="display: flex; align-items: center; justify-content: space-between;">
         Active Episodes
-        <a href="{% url 'guideline_adherence:api_export' %}?type=active" class="btn btn-outline btn-sm">Export CSV</a>
+        <a href="{% url 'guideline_adherence:api_export' %}?type=active" class="btn btn--secondary btn--sm">Export CSV</a>
     </div>
-    <div class="card-body">
-        <form method="get" class="filters">
-            <label>Bundle:</label>
-            <select name="bundle" onchange="this.form.submit()">
-                <option value="">All Bundles</option>
-                {% for b in bundles %}
-                <option value="{{ b.bundle_id }}" {% if current_filters.bundle == b.bundle_id %}selected{% endif %}>{{ b.name }}</option>
-                {% endfor %}
-            </select>
+    <div class="filter-bar">
+        <form method="get" class="filter-form">
+            <div class="filter-group">
+                <label>Bundle:</label>
+                <select name="bundle" onchange="this.form.submit()">
+                    <option value="">All Bundles</option>
+                    {% for b in bundles %}
+                    <option value="{{ b.bundle_id }}" {% if current_filters.bundle == b.bundle_id %}selected{% endif %}>{{ b.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-            <label>Review Status:</label>
-            <select name="review_status" onchange="this.form.submit()">
-                <option value="">All</option>
-                <option value="pending_review" {% if current_filters.review_status == 'pending_review' %}selected{% endif %}>Pending Review</option>
-                <option value="reviewed" {% if current_filters.review_status == 'reviewed' %}selected{% endif %}>Reviewed</option>
-            </select>
+            <div class="filter-group">
+                <label>Review Status:</label>
+                <select name="review_status" onchange="this.form.submit()">
+                    <option value="">All</option>
+                    <option value="pending_review" {% if current_filters.review_status == 'pending_review' %}selected{% endif %}>Pending Review</option>
+                    <option value="reviewed" {% if current_filters.review_status == 'reviewed' %}selected{% endif %}>Reviewed</option>
+                </select>
+            </div>
 
             {% if current_filters.bundle or current_filters.review_status %}
-            <a href="{% url 'guideline_adherence:active_episodes' %}" class="btn btn-sm btn-secondary">Clear</a>
+            <div class="filter-group">
+                <a href="{% url 'guideline_adherence:active_episodes' %}" class="btn btn--secondary btn--sm">Clear</a>
+            </div>
             {% endif %}
         </form>
-
-        {% if episodes %}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Patient</th>
-                    <th>Bundle</th>
-                    <th>Unit</th>
-                    <th>Trigger</th>
-                    <th>Adherence</th>
-                    <th>Met</th>
-                    <th>Not Met</th>
-                    <th>Pending</th>
-                    <th>Review</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for ep in episodes %}
-                <tr>
-                    <td>
-                        <strong>{{ ep.patient_name }}</strong><br>
-                        <small style="color: #888;">{{ ep.patient_mrn }}</small>
-                    </td>
-                    <td>
-                        <a href="{% url 'guideline_adherence:bundle_detail' ep.bundle_id %}" style="color: #1a4b8c; text-decoration: none;">
-                            {{ ep.bundle_name }}
-                        </a>
-                    </td>
-                    <td>{{ ep.patient_unit|default:"--" }}</td>
-                    <td>
-                        <span style="font-size: 0.85rem;">{{ ep.trigger_description|default:ep.trigger_type|truncatewords:6 }}</span><br>
-                        <small style="color: #888;">{{ ep.trigger_time|date:"M d, H:i" }}</small>
-                    </td>
-                    <td>
-                        <span class="badge badge-{{ ep.adherence_level }}">{{ ep.adherence_percentage }}%</span>
-                    </td>
-                    <td style="color: #28a745; font-weight: 600;">{{ ep.elements_met }}</td>
-                    <td style="color: #dc3545; font-weight: 600;">{{ ep.elements_not_met }}</td>
-                    <td style="color: #d4a017; font-weight: 600;">{{ ep.elements_pending }}</td>
-                    <td>
-                        {% if ep.review_status == 'pending_review' %}
-                        <span class="badge badge-pending-review">Pending</span>
-                        {% elif ep.review_status == 'reviewed' %}
-                        <span class="badge badge-reviewed">Reviewed</span>
-                        {% else %}
-                        <span class="badge badge-info">--</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <a href="{% url 'guideline_adherence:episode_detail' ep.id %}" class="btn btn-sm btn-primary">View</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="empty-state">
-            <h3>No active episodes</h3>
-            <p>No episodes match the current filters.</p>
-        </div>
-        {% endif %}
     </div>
+
+    {% if episodes %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Patient</th>
+                <th>Bundle</th>
+                <th>Unit</th>
+                <th>Trigger</th>
+                <th>Adherence</th>
+                <th>Met</th>
+                <th>Not Met</th>
+                <th>Pending</th>
+                <th>Review</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ep in episodes %}
+            <tr>
+                <td>
+                    <strong>{{ ep.patient_name }}</strong><br>
+                    <small style="color: #888;">{{ ep.patient_mrn }}</small>
+                </td>
+                <td>
+                    <a href="{% url 'guideline_adherence:bundle_detail' ep.bundle_id %}">
+                        {{ ep.bundle_name }}
+                    </a>
+                </td>
+                <td>{{ ep.patient_unit|default:"--" }}</td>
+                <td>
+                    <span style="font-size: 0.85rem;">{{ ep.trigger_description|default:ep.trigger_type|truncatewords:6 }}</span><br>
+                    <small style="color: #888;">{{ ep.trigger_time|date:"M d, H:i" }}</small>
+                </td>
+                <td>
+                    {% include "_includes/badge.html" with text=ep.adherence_percentage|stringformat:"d"|add:"%" color=ep.adherence_level %}
+                </td>
+                <td style="color: #28a745; font-weight: 600;">{{ ep.elements_met }}</td>
+                <td style="color: #dc3545; font-weight: 600;">{{ ep.elements_not_met }}</td>
+                <td style="color: #d4a017; font-weight: 600;">{{ ep.elements_pending }}</td>
+                <td>
+                    {% if ep.review_status == 'pending_review' %}
+                        {% include "_includes/badge.html" with text="Pending" color="yellow" %}
+                    {% elif ep.review_status == 'reviewed' %}
+                        {% include "_includes/badge.html" with text="Reviewed" color="green" %}
+                    {% else %}
+                        {% include "_includes/badge.html" with text="--" color="gray" %}
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'guideline_adherence:episode_detail' ep.id %}" class="btn btn--primary btn--sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>No active episodes</h3>
+        <p>No episodes match the current filters.</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

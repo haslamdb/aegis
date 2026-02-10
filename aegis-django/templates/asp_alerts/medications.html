@@ -3,11 +3,11 @@
 {% block content %}
 <h2>Patient Medications</h2>
 
-<div style="background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+<div class="detail-section">
     <h3>Patient ID: {{ patient_id }}</h3>
 
     {% if error %}
-    <div style="background: #fff3cd; padding: 15px; border-radius: 5px; border-left: 5px solid #f39c12; margin: 20px 0;">
+    <div class="alert-details">
         <p><strong>Note:</strong> {{ error }}</p>
         <p>
             This feature requires FHIR integration to retrieve MedicationRequest resources from the EHR.
@@ -16,7 +16,8 @@
     </div>
     {% else %}
     <h4>Current Antibiotic Orders</h4>
-    <table>
+    <table class="data-table">
+        <thead>
         <tr>
             <th>Medication</th>
             <th>Dose</th>
@@ -25,14 +26,17 @@
             <th>Status</th>
             <th>Started</th>
         </tr>
+        </thead>
+        <tbody>
         <tr>
-            <td colspan="6" style="text-align: center;">Medication data will be displayed here</td>
+            <td colspan="6" class="text-center">Medication data will be displayed here</td>
         </tr>
+        </tbody>
     </table>
     {% endif %}
 
     <div style="margin-top: 20px;">
-        <a href="javascript:history.back()" class="btn btn-primary">← Back</a>
+        <a href="javascript:history.back()" class="btn btn--primary">&larr; Back</a>
     </div>
 </div>
 

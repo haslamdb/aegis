@@ -19,24 +19,15 @@
 </div>
 
 <!-- Summary Stats -->
-<div class="stats-row">
-    <div class="stat-box primary">
-        <div class="stat-value">{{ stats.total_cases }}</div>
-        <div class="stat-label">Total MDRO Cases</div>
-    </div>
-    <div class="stat-box warning">
-        <div class="stat-value">{{ stats.healthcare_onset }}</div>
-        <div class="stat-label">Healthcare Onset</div>
-    </div>
-    <div class="stat-box info">
-        <div class="stat-value">{{ stats.community_onset }}</div>
-        <div class="stat-label">Community Onset</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=stats.total_cases title="Total MDRO Cases" color="rose" %}
+    {% include "_includes/stat_card.html" with value=stats.healthcare_onset title="Healthcare Onset" color="amber" %}
+    {% include "_includes/stat_card.html" with value=stats.community_onset title="Community Onset" color="blue" %}
 </div>
 
 <!-- Cases by Type and Unit -->
 <div class="analytics-grid">
-    <div class="analytics-card">
+    <div class="detail-section">
         <h3>Cases by MDRO Type</h3>
         {% if stats.by_type %}
         <div class="bar-chart">
@@ -56,7 +47,7 @@
         {% endif %}
     </div>
 
-    <div class="analytics-card">
+    <div class="detail-section">
         <h3>Cases by Unit</h3>
         {% if stats.by_unit %}
         <div class="bar-chart">
@@ -100,7 +91,7 @@
 <div class="section">
     <h2>Daily Case Trend</h2>
     {% if trend_data %}
-    <table>
+    <table class="data-table">
         <thead>
             <tr>
                 <th>Date</th>
@@ -129,102 +120,6 @@
 </div>
 
 <div class="section">
-    <a href="{% url 'mdro:dashboard' %}" class="btn btn-outline">&larr; Back to Dashboard</a>
+    <a href="{% url 'mdro:dashboard' %}" class="btn btn--secondary">&larr; Back to Dashboard</a>
 </div>
-
-<style>
-    .filter-bar {
-        display: flex;
-        gap: 1rem;
-        padding: 1rem;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 1rem;
-    }
-    .filter-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-    }
-    .filter-group label {
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: #6c757d;
-    }
-    .form-select {
-        padding: 0.5rem;
-        border: 1px solid #cbd5e1;
-        border-radius: 6px;
-        font-size: 0.9rem;
-    }
-    .analytics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
-    }
-    .analytics-card {
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        padding: 1.5rem;
-    }
-    .analytics-card h3 { margin: 0 0 1rem 0; }
-    .bar-chart {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-    .bar-row {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    .bar-label {
-        width: 80px;
-        font-weight: 500;
-        text-align: right;
-    }
-    .bar-container {
-        flex: 1;
-        background: #f1f3f5;
-        border-radius: 4px;
-        height: 28px;
-    }
-    .bar {
-        height: 100%;
-        background: #8f4469;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        justify-content: flex-end;
-        padding-right: 0.5rem;
-        min-width: 30px;
-    }
-    .bar-value { color: white; font-weight: 600; }
-    .bar-mrsa { background: #dc3545; }
-    .bar-vre { background: #6f42c1; }
-    .bar-cre { background: #d63384; }
-    .bar-esbl { background: #fd7e14; }
-    .bar-crpa { background: #0d6efd; }
-    .bar-crab { background: #198754; }
-    .onset-bar {
-        display: flex;
-        height: 40px;
-        border-radius: 8px;
-        overflow: hidden;
-    }
-    .onset-segment {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-weight: 600;
-        font-size: 0.9rem;
-        min-width: 80px;
-    }
-    .onset-healthcare { background: #f39c12; color: #000; }
-    .onset-community { background: #0d6efd; }
-</style>
 {% endblock %}

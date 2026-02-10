@@ -2,23 +2,11 @@
 
 {% block content %}
 <!-- Stats Cards -->
-<div class="stats-row">
-    <div class="stat-box primary">
-        <div class="stat-value">{{ stats.active_count }}</div>
-        <div class="stat-label">Active Mismatches</div>
-    </div>
-    <div class="stat-box danger">
-        <div class="stat-value">{{ stats.critical_count }}</div>
-        <div class="stat-label">Critical (Resistant)</div>
-    </div>
-    <div class="stat-box warning">
-        <div class="stat-value">{{ stats.warning_count }}</div>
-        <div class="stat-label">Warning</div>
-    </div>
-    <div class="stat-box success">
-        <div class="stat-value">{{ stats.resolved_today }}</div>
-        <div class="stat-label">Resolved Today</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=stats.active_count title="Active Mismatches" color="yellow" %}
+    {% include "_includes/stat_card.html" with value=stats.critical_count title="Critical (Resistant)" color="red" %}
+    {% include "_includes/stat_card.html" with value=stats.warning_count title="Warning" color="yellow" %}
+    {% include "_includes/stat_card.html" with value=stats.resolved_today title="Resolved Today" color="green" %}
 </div>
 
 <!-- Filters -->
@@ -51,7 +39,7 @@
 <!-- Active Alerts Table -->
 {% if alerts %}
 <h2>Active Mismatches ({{ alerts|length }})</h2>
-<table>
+<table class="data-table">
     <thead>
         <tr>
             <th>Severity</th>

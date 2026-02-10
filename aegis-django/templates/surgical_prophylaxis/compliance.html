@@ -4,43 +4,33 @@
 <h2>Compliance Report</h2>
 
 <!-- Filters -->
-<div class="filters">
+<div class="filter-bar">
     <form method="get">
-        <label>Procedure Category:</label>
-        <select name="category" onchange="this.form.submit()">
-            <option value="">All Categories</option>
-            {% for cat in categories %}
-            <option value="{{ cat.value }}" {% if current_category == cat.value %}selected{% endif %}>{{ cat.label }}</option>
-            {% endfor %}
-        </select>
+        <div class="filter-group">
+            <label>Procedure Category:</label>
+            <select name="category" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat.value }}" {% if current_category == cat.value %}selected{% endif %}>{{ cat.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
     </form>
 </div>
 
 <!-- Summary Stats -->
-<div class="stats-row">
-    <div class="stat-box cases-stat">
-        <div class="stat-value">{{ total }}</div>
-        <div class="stat-label">Total Evaluations</div>
-    </div>
-    <div class="stat-box compliance-stat">
-        <div class="stat-value">{{ compliance_rate|floatformat:1 }}%</div>
-        <div class="stat-label">Bundle Compliance</div>
-    </div>
-    <div class="stat-box" style="border-top: 4px solid #27ae60;">
-        <div class="stat-value">{{ compliant }}</div>
-        <div class="stat-label">Compliant</div>
-    </div>
-    <div class="stat-box" style="border-top: 4px solid #95a5a6;">
-        <div class="stat-value">{{ excluded }}</div>
-        <div class="stat-label">Excluded</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=total title="Total Evaluations" color="teal" %}
+    {% include "_includes/stat_card.html" with value=compliance_rate|floatformat:1 title="Bundle Compliance" subtitle="%" color="green" %}
+    {% include "_includes/stat_card.html" with value=compliant title="Compliant" color="green" %}
+    {% include "_includes/stat_card.html" with value=excluded title="Excluded" color="gray" %}
 </div>
 
 <!-- Per-Element Compliance -->
 {% if element_rates %}
 <div class="section">
     <h2>Per-Element Compliance Rates</h2>
-    <table>
+    <table class="data-table">
         <tr>
             <th>Element</th>
             <th>Compliance Rate</th>
@@ -67,7 +57,7 @@
 {% if category_stats %}
 <div class="section">
     <h2>Compliance by Procedure Category</h2>
-    <table>
+    <table class="data-table">
         <tr>
             <th>Category</th>
             <th style="text-align: center;">Total</th>
@@ -95,8 +85,10 @@
 {% endif %}
 
 <div class="section">
-    <a href="{% url 'surgical_prophylaxis:api_export' %}" class="btn btn-primary">Export to CSV</a>
-    <a href="{% url 'surgical_prophylaxis:dashboard' %}" class="btn btn-outline">Back to Dashboard</a>
+    <div class="action-group">
+        <a href="{% url 'surgical_prophylaxis:api_export' %}" class="btn btn--primary">Export to CSV</a>
+        <a href="{% url 'surgical_prophylaxis:dashboard' %}" class="btn btn--secondary">Back to Dashboard</a>
+    </div>
 </div>
 
 {% endblock %}

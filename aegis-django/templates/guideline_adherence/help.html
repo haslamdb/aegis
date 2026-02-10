@@ -9,182 +9,172 @@
 </div>
 
 <!-- Workflow Overview -->
-<div class="card">
-    <div class="card-header">Workflow Overview</div>
-    <div class="card-body">
-        <ol style="line-height: 2; padding-left: 1.5rem;">
-            <li><strong>Trigger Detection</strong> -- FHIR polling detects new diagnoses, orders, or lab results that match bundle trigger criteria (ICD-10 codes, LOINC codes).</li>
-            <li><strong>Episode Creation</strong> -- A new bundle episode is created for the patient, with all required elements initialized to "Pending" status.</li>
-            <li><strong>Element Monitoring</strong> -- Each bundle element is tracked against its time window. Lab results, medications, and clinical notes are checked via FHIR queries.</li>
-            <li><strong>LLM Assessment</strong> -- Tiered NLP (7B triage, 70B full analysis) extracts clinical impressions from notes and assesses guideline adherence.</li>
-            <li><strong>Alert Generation</strong> -- If bundle elements are not met within their time windows, alerts are generated for pharmacist/physician review.</li>
-            <li><strong>Human Review</strong> -- Clinicians review the episode, confirm or override the LLM determination, and document any guideline deviations.</li>
-            <li><strong>Completion</strong> -- Once all elements are assessed and the episode is reviewed, it is marked as complete with a final adherence score.</li>
-        </ol>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">Workflow Overview</div>
+    <ol style="line-height: 2; padding-left: 1.5rem;">
+        <li><strong>Trigger Detection</strong> -- FHIR polling detects new diagnoses, orders, or lab results that match bundle trigger criteria (ICD-10 codes, LOINC codes).</li>
+        <li><strong>Episode Creation</strong> -- A new bundle episode is created for the patient, with all required elements initialized to "Pending" status.</li>
+        <li><strong>Element Monitoring</strong> -- Each bundle element is tracked against its time window. Lab results, medications, and clinical notes are checked via FHIR queries.</li>
+        <li><strong>LLM Assessment</strong> -- Tiered NLP (7B triage, 70B full analysis) extracts clinical impressions from notes and assesses guideline adherence.</li>
+        <li><strong>Alert Generation</strong> -- If bundle elements are not met within their time windows, alerts are generated for pharmacist/physician review.</li>
+        <li><strong>Human Review</strong> -- Clinicians review the episode, confirm or override the LLM determination, and document any guideline deviations.</li>
+        <li><strong>Completion</strong> -- Once all elements are assessed and the episode is reviewed, it is marked as complete with a final adherence score.</li>
+    </ol>
 </div>
 
 <!-- Adherence Levels -->
-<div class="card">
-    <div class="card-header">Adherence Levels</div>
-    <div class="card-body">
-        <table class="table">
-            <thead><tr><th>Level</th><th>Criteria</th><th>Description</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td><span class="badge badge-full">Full Adherence</span></td>
-                    <td>100% of applicable elements met</td>
-                    <td>All required bundle elements were completed within their time windows.</td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-partial">Partial Adherence</span></td>
-                    <td>51-99% of applicable elements met</td>
-                    <td>Most elements met, but some required elements are not met or overdue.</td>
-                </tr>
-                <tr>
-                    <td><span class="badge badge-low">Low Adherence</span></td>
-                    <td>0-50% of applicable elements met</td>
-                    <td>Significant gaps in bundle compliance. Review and intervention recommended.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">Adherence Levels</div>
+    <table class="data-table">
+        <thead><tr><th>Level</th><th>Criteria</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr>
+                <td>{% include "_includes/badge.html" with text="Full Adherence" color="green" %}</td>
+                <td>100% of applicable elements met</td>
+                <td>All required bundle elements were completed within their time windows.</td>
+            </tr>
+            <tr>
+                <td>{% include "_includes/badge.html" with text="Partial Adherence" color="yellow" %}</td>
+                <td>51-99% of applicable elements met</td>
+                <td>Most elements met, but some required elements are not met or overdue.</td>
+            </tr>
+            <tr>
+                <td>{% include "_includes/badge.html" with text="Low Adherence" color="red" %}</td>
+                <td>0-50% of applicable elements met</td>
+                <td>Significant gaps in bundle compliance. Review and intervention recommended.</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- Element Status Legend -->
-<div class="card">
-    <div class="card-header">Element Status Legend</div>
-    <div class="card-body">
-        <table class="table">
-            <thead><tr><th>Status</th><th>Description</th></tr></thead>
-            <tbody>
-                <tr><td><span class="badge badge-met">Met</span></td><td>Element requirement has been completed within the time window.</td></tr>
-                <tr><td><span class="badge badge-not-met">Not Met</span></td><td>Element requirement was not completed or the time window has passed.</td></tr>
-                <tr><td><span class="badge badge-pending">Pending</span></td><td>Element has not been assessed yet; still within the time window.</td></tr>
-                <tr><td><span class="badge badge-na">Not Applicable</span></td><td>Element does not apply to this patient (conditional element).</td></tr>
-                <tr><td><span class="badge badge-unable">Unable to Assess</span></td><td>Insufficient data to determine element status.</td></tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">Element Status Legend</div>
+    <table class="data-table">
+        <thead><tr><th>Status</th><th>Description</th></tr></thead>
+        <tbody>
+            <tr><td>{% include "_includes/badge.html" with text="Met" color="green" %}</td><td>Element requirement has been completed within the time window.</td></tr>
+            <tr><td>{% include "_includes/badge.html" with text="Not Met" color="red" %}</td><td>Element requirement was not completed or the time window has passed.</td></tr>
+            <tr><td>{% include "_includes/badge.html" with text="Pending" color="yellow" %}</td><td>Element has not been assessed yet; still within the time window.</td></tr>
+            <tr><td>{% include "_includes/badge.html" with text="Not Applicable" color="gray" %}</td><td>Element does not apply to this patient (conditional element).</td></tr>
+            <tr><td>{% include "_includes/badge.html" with text="Unable to Assess" color="gray" %}</td><td>Insufficient data to determine element status.</td></tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- Review Decisions -->
-<div class="card">
-    <div class="card-header">Review Decision Guide</div>
-    <div class="card-body">
-        <table class="table">
-            <thead><tr><th>Decision</th><th>When to Use</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td><strong>Guideline Appropriate</strong></td>
-                    <td>The patient's care is concordant with the guideline bundle. All relevant elements are met or appropriately documented.</td>
-                </tr>
-                <tr>
-                    <td><strong>Guideline Deviation</strong></td>
-                    <td>One or more bundle elements were not met. Select the deviation type (documentation, timing, missing element, or clinical judgment).</td>
-                </tr>
-                <tr>
-                    <td><strong>Needs More Info</strong></td>
-                    <td>Insufficient information to make a determination. The episode will remain in pending review status.</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+<div class="detail-section">
+    <div class="detail-section__title">Review Decision Guide</div>
+    <table class="data-table">
+        <thead><tr><th>Decision</th><th>When to Use</th></tr></thead>
+        <tbody>
+            <tr>
+                <td><strong>Guideline Appropriate</strong></td>
+                <td>The patient's care is concordant with the guideline bundle. All relevant elements are met or appropriately documented.</td>
+            </tr>
+            <tr>
+                <td><strong>Guideline Deviation</strong></td>
+                <td>One or more bundle elements were not met. Select the deviation type (documentation, timing, missing element, or clinical judgment).</td>
+            </tr>
+            <tr>
+                <td><strong>Needs More Info</strong></td>
+                <td>Insufficient information to make a determination. The episode will remain in pending review status.</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- Bundle Reference -->
 <div class="section-header">Bundle Definitions ({{ bundles|length }} bundles)</div>
 
 {% for bundle_id, bundle in bundles.items %}
-<div class="card help-bundle">
-    <div class="card-header">
+<div class="detail-section help-bundle">
+    <div class="detail-section__title" style="display: flex; align-items: center; justify-content: space-between;">
         {{ bundle.name }}
-        <span class="badge badge-blue">v{{ bundle.version }}</span>
+        {% include "_includes/badge.html" with text="v"|add:bundle.version color="blue" %}
     </div>
-    <div class="card-body">
-        <p class="bundle-desc">{{ bundle.description }}</p>
+    <p class="bundle-desc">{{ bundle.description }}</p>
 
-        <!-- Trigger Criteria -->
-        {% if bundle.trigger_criteria %}
-        <div style="margin-bottom: 1rem;">
-            <strong style="font-size: 0.85rem; color: #666;">Trigger Criteria:</strong>
-            {% for trigger in bundle.trigger_criteria %}
-            <div style="margin-top: 0.3rem; margin-left: 1rem;">
-                <span class="badge badge-{{ trigger.trigger_type }}">{{ trigger.trigger_type|title }}</span>
-                <span style="font-size: 0.85rem; color: #555; margin-left: 0.3rem;">{{ trigger.description }}</span>
-                {% if trigger.icd10_prefixes %}
-                <span style="font-size: 0.8rem; color: #888; margin-left: 0.5rem;">
-                    ICD-10: {% for code in trigger.icd10_prefixes %}<span class="icd-badge">{{ code }}</span>{% endfor %}
-                </span>
-                {% endif %}
-                {% if trigger.loinc_codes %}
-                <span style="font-size: 0.8rem; color: #888; margin-left: 0.5rem;">
-                    LOINC: {% for code in trigger.loinc_codes %}<span class="icd-badge">{{ code }}</span>{% endfor %}
-                </span>
-                {% endif %}
-                {% if trigger.min_age_days or trigger.max_age_days %}
-                <span style="font-size: 0.8rem; color: #888; margin-left: 0.5rem;">
-                    (Age: {% if trigger.min_age_days %}&ge;{{ trigger.min_age_days }}d{% endif %}{% if trigger.min_age_days and trigger.max_age_days %}, {% endif %}{% if trigger.max_age_days %}&le;{{ trigger.max_age_days }}d{% endif %})
-                </span>
-                {% endif %}
-            </div>
+    <!-- Trigger Criteria -->
+    {% if bundle.trigger_criteria %}
+    <div style="margin-bottom: 1rem;">
+        <strong style="font-size: 0.85rem; color: #666;">Trigger Criteria:</strong>
+        {% for trigger in bundle.trigger_criteria %}
+        <div style="margin-top: 0.3rem; margin-left: 1rem;">
+            {% include "_includes/badge.html" with text=trigger.trigger_type|title color=trigger.trigger_type %}
+            <span style="font-size: 0.85rem; color: #555; margin-left: 0.3rem;">{{ trigger.description }}</span>
+            {% if trigger.icd10_prefixes %}
+            <span style="font-size: 0.8rem; color: #888; margin-left: 0.5rem;">
+                ICD-10: {% for code in trigger.icd10_prefixes %}<span class="icd-badge">{{ code }}</span>{% endfor %}
+            </span>
+            {% endif %}
+            {% if trigger.loinc_codes %}
+            <span style="font-size: 0.8rem; color: #888; margin-left: 0.5rem;">
+                LOINC: {% for code in trigger.loinc_codes %}<span class="icd-badge">{{ code }}</span>{% endfor %}
+            </span>
+            {% endif %}
+            {% if trigger.min_age_days or trigger.max_age_days %}
+            <span style="font-size: 0.8rem; color: #888; margin-left: 0.5rem;">
+                (Age: {% if trigger.min_age_days %}&ge;{{ trigger.min_age_days }}d{% endif %}{% if trigger.min_age_days and trigger.max_age_days %}, {% endif %}{% if trigger.max_age_days %}&le;{{ trigger.max_age_days }}d{% endif %})
+            </span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Elements -->
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Element</th>
+                <th>Description</th>
+                <th>Required</th>
+                <th>Time Window</th>
+                <th>Data Source</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for elem in bundle.elements %}
+            <tr>
+                <td style="white-space: nowrap;">
+                    <strong>{{ elem.name }}</strong><br>
+                    <code style="font-size: 0.75rem; color: #888;">{{ elem.element_id }}</code>
+                </td>
+                <td style="font-size: 0.85rem;">{{ elem.description }}</td>
+                <td>
+                    {% if elem.required %}
+                        {% include "_includes/badge.html" with text="Required" color="blue" %}
+                    {% else %}
+                        {% include "_includes/badge.html" with text="Conditional" color="gray" %}
+                    {% endif %}
+                </td>
+                <td style="white-space: nowrap;">
+                    {% if elem.time_window_hours %}
+                    {{ elem.time_window_hours }}h
+                    {% else %}
+                    <span style="color: #888;">--</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% include "_includes/badge.html" with text=elem.data_source color="gray" %}
+                </td>
+            </tr>
             {% endfor %}
-        </div>
-        {% endif %}
+        </tbody>
+    </table>
 
-        <!-- Elements -->
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Element</th>
-                    <th>Description</th>
-                    <th>Required</th>
-                    <th>Time Window</th>
-                    <th>Data Source</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for elem in bundle.elements %}
-                <tr>
-                    <td style="white-space: nowrap;">
-                        <strong>{{ elem.name }}</strong><br>
-                        <code style="font-size: 0.75rem; color: #888;">{{ elem.element_id }}</code>
-                    </td>
-                    <td style="font-size: 0.85rem;">{{ elem.description }}</td>
-                    <td>
-                        {% if elem.required %}
-                        <span class="badge badge-required">Required</span>
-                        {% else %}
-                        <span class="badge badge-optional">Conditional</span>
-                        {% endif %}
-                    </td>
-                    <td style="white-space: nowrap;">
-                        {% if elem.time_window_hours %}
-                        {{ elem.time_window_hours }}h
-                        {% else %}
-                        <span style="color: #888;">--</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <span class="badge badge-info">{{ elem.data_source }}</span>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-
-        <!-- References -->
-        {% if bundle.references %}
-        <div style="margin-top: 0.75rem;">
-            <strong style="font-size: 0.85rem; color: #666;">References:</strong>
-            <ul style="padding-left: 1.2rem; margin-top: 0.3rem;">
-                {% for ref in bundle.references %}
-                <li style="font-size: 0.85rem; color: #555; padding: 0.15rem 0;">{{ ref }}</li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endif %}
+    <!-- References -->
+    {% if bundle.references %}
+    <div style="margin-top: 0.75rem;">
+        <strong style="font-size: 0.85rem; color: #666;">References:</strong>
+        <ul style="padding-left: 1.2rem; margin-top: 0.3rem;">
+            {% for ref in bundle.references %}
+            <li style="font-size: 0.85rem; color: #555; padding: 0.15rem 0;">{{ ref }}</li>
+            {% endfor %}
+        </ul>
     </div>
+    {% endif %}
 </div>
 {% endfor %}
 {% endblock %}

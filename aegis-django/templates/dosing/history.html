@@ -3,46 +3,54 @@
 {% block content %}
 <h2>Dosing Alert History (Last {{ days }} days)</h2>
 
-<div class="filters">
-    <form method="get">
-        <label>Severity:</label>
-        <select name="severity" onchange="this.form.submit()">
-            <option value="">All</option>
-            <option value="critical" {% if current_filters.severity == 'critical' %}selected{% endif %}>Critical</option>
-            <option value="high" {% if current_filters.severity == 'high' %}selected{% endif %}>High</option>
-            <option value="medium" {% if current_filters.severity == 'medium' %}selected{% endif %}>Medium</option>
-            <option value="low" {% if current_filters.severity == 'low' %}selected{% endif %}>Low</option>
-        </select>
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label>Severity:</label>
+            <select name="severity" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="critical" {% if current_filters.severity == 'critical' %}selected{% endif %}>Critical</option>
+                <option value="high" {% if current_filters.severity == 'high' %}selected{% endif %}>High</option>
+                <option value="medium" {% if current_filters.severity == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="low" {% if current_filters.severity == 'low' %}selected{% endif %}>Low</option>
+            </select>
+        </div>
 
-        <label>Resolution:</label>
-        <select name="resolution" onchange="this.form.submit()">
-            <option value="">All Reasons</option>
-            {% for reason_value, reason_label in resolution_reasons %}
-            <option value="{{ reason_value }}" {% if current_filters.resolution == reason_value %}selected{% endif %}>
-                {{ reason_label }}
-            </option>
-            {% endfor %}
-        </select>
+        <div class="filter-group">
+            <label>Resolution:</label>
+            <select name="resolution" onchange="this.form.submit()">
+                <option value="">All Reasons</option>
+                {% for reason_value, reason_label in resolution_reasons %}
+                <option value="{{ reason_value }}" {% if current_filters.resolution == reason_value %}selected{% endif %}>
+                    {{ reason_label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-        <label>Days:</label>
-        <select name="days" onchange="this.form.submit()">
-            <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
-            <option value="14" {% if days == 14 %}selected{% endif %}>14 days</option>
-            <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
-            <option value="60" {% if days == 60 %}selected{% endif %}>60 days</option>
-            <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
-        </select>
+        <div class="filter-group">
+            <label>Days:</label>
+            <select name="days" onchange="this.form.submit()">
+                <option value="7" {% if days == 7 %}selected{% endif %}>7 days</option>
+                <option value="14" {% if days == 14 %}selected{% endif %}>14 days</option>
+                <option value="30" {% if days == 30 %}selected{% endif %}>30 days</option>
+                <option value="60" {% if days == 60 %}selected{% endif %}>60 days</option>
+                <option value="90" {% if days == 90 %}selected{% endif %}>90 days</option>
+            </select>
+        </div>
 
-        <button type="submit" class="btn btn-primary">Apply</button>
+        <div class="filter-group">
+            <button type="submit" class="btn btn--primary">Apply</button>
+        </div>
     </form>
 </div>
 
 <div style="display: flex; justify-content: space-between; align-items: center;">
     <p><strong>{{ alerts|length }}</strong> resolved alert{{ alerts|length|pluralize }}</p>
-    <a href="{% url 'dosing:export_history' %}?days={{ days }}" class="btn btn-primary" style="font-size: 12px;">Export CSV</a>
+    <a href="{% url 'dosing:export_history' %}?days={{ days }}" class="btn btn--primary" style="font-size: 12px;">Export CSV</a>
 </div>
 
-<table>
+<table class="data-table">
     <tr>
         <th>Resolved</th>
         <th>Severity</th>
@@ -56,11 +64,11 @@
     {% for alert in alerts %}
     <tr>
         <td>{{ alert.resolved_at|date:"Y-m-d H:i" }}</td>
-        <td><span class="badge {{ alert.severity|lower }}">{{ alert.get_severity_display }}</span></td>
+        <td>{% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity|lower %}</td>
         <td>
             {% if alert.patient_name %}
                 {{ alert.patient_name }}<br>
-                <small style="color: #7f8c8d;">MRN: {{ alert.patient_mrn }}</small>
+                <small class="text-muted">MRN: {{ alert.patient_mrn }}</small>
             {% else %}
                 Unknown
             {% endif %}
@@ -70,7 +78,7 @@
         <td>{{ alert.get_resolution_reason_display|default:"N/A" }}</td>
         <td>{{ alert.resolved_by.username|default:"System" }}</td>
         <td>
-            <a href="{% url 'dosing:detail' alert.id %}" class="btn btn-primary" style="font-size: 12px; padding: 5px 10px;">
+            <a href="{% url 'dosing:detail' alert.id %}" class="btn btn--primary" style="font-size: 12px; padding: 5px 10px;">
                 View
             </a>
         </td>

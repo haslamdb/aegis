@@ -5,11 +5,11 @@
     <div>
         <h2 style="margin: 0;">Help &amp; Documentation</h2>
     </div>
-    <a href="{% url 'mdro:dashboard' %}" class="btn btn-secondary">Back to Dashboard</a>
+    <a href="{% url 'mdro:dashboard' %}" class="btn btn--secondary">Back to Dashboard</a>
 </div>
 
 <div class="help-content">
-    <div class="help-card">
+    <div class="detail-section">
         <h2>Overview</h2>
         <p>The MDRO Surveillance module automatically detects and tracks Multi-Drug Resistant Organisms from
            microbiology culture results. It provides real-time surveillance for Infection Prevention teams
@@ -25,11 +25,11 @@
         </ul>
     </div>
 
-    <div class="help-card">
+    <div class="detail-section">
         <h2>MDRO Classification Criteria</h2>
         <p>Classification follows CDC/NHSN definitions for consistency between real-time surveillance and quarterly NHSN AR reporting.</p>
 
-        <table class="help-table">
+        <table class="data-table">
             <thead>
                 <tr>
                     <th>MDRO Type</th>
@@ -78,16 +78,16 @@
             </tbody>
         </table>
 
-        <div class="alert-box info">
+        <div class="action-card">
             <strong>Note:</strong> CRE classification takes precedence over ESBL. If an organism is resistant to carbapenems, it is classified as CRE rather than ESBL.
         </div>
     </div>
 
-    <div class="help-card">
+    <div class="detail-section">
         <h2>Transmission Classification</h2>
         <p>Cases are classified based on time from hospital admission to culture collection:</p>
 
-        <table class="help-table">
+        <table class="data-table">
             <thead>
                 <tr>
                     <th>Classification</th>
@@ -97,12 +97,12 @@
             </thead>
             <tbody>
                 <tr>
-                    <td><span class="badge badge-info">Community Onset</span></td>
+                    <td>{% include "_includes/badge.html" with text="Community Onset" color="blue" %}</td>
                     <td>Culture collected &le;48 hours after admission</td>
                     <td>Patient arrived with MDRO; focus on screening and isolation protocols</td>
                 </tr>
                 <tr>
-                    <td><span class="badge badge-warning">Healthcare Onset</span></td>
+                    <td>{% include "_includes/badge.html" with text="Healthcare Onset" color="amber" %}</td>
                     <td>Culture collected &gt;48 hours after admission</td>
                     <td>Possible hospital acquisition; investigate potential transmission and environmental factors</td>
                 </tr>
@@ -110,7 +110,7 @@
         </table>
     </div>
 
-    <div class="help-card">
+    <div class="detail-section">
         <h2>Django Management Commands</h2>
 
         <h3>Create Demo Data</h3>
@@ -131,7 +131,7 @@ python manage.py monitor_mdro --once
 python manage.py monitor_mdro --once --hours 72</code></pre>
     </div>
 
-    <div class="help-card">
+    <div class="detail-section">
         <h2>IP Case Review Workflow</h2>
         <ol>
             <li><strong>View Case Details</strong> - Patient info, organism, susceptibilities, unit, culture date</li>
@@ -142,9 +142,9 @@ python manage.py monitor_mdro --once --hours 72</code></pre>
         </ol>
     </div>
 
-    <div class="help-card">
+    <div class="detail-section">
         <h2>Dashboard Pages</h2>
-        <table class="help-table">
+        <table class="data-table">
             <thead>
                 <tr><th>Page</th><th>URL</th><th>Description</th></tr>
             </thead>
@@ -173,9 +173,9 @@ python manage.py monitor_mdro --once --hours 72</code></pre>
         </table>
     </div>
 
-    <div class="help-card">
+    <div class="detail-section">
         <h2>API Endpoints</h2>
-        <table class="help-table">
+        <table class="data-table">
             <thead>
                 <tr><th>Endpoint</th><th>Method</th><th>Description</th></tr>
             </thead>
@@ -194,36 +194,4 @@ python manage.py monitor_mdro --once --hours 72</code></pre>
         </table>
     </div>
 </div>
-
-<style>
-    .help-content { max-width: 900px; }
-    .help-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 1.5rem;
-    }
-    .help-card h2 { margin-top: 0; }
-    .help-card h3 { margin-top: 1.5rem; }
-    .help-table {
-        box-shadow: none;
-        margin: 1rem 0;
-    }
-    .help-table th {
-        background: #f1f5f9;
-        color: #334155;
-    }
-    pre {
-        background: #1e293b;
-        color: #e2e8f0;
-        padding: 1rem;
-        border-radius: 6px;
-        overflow-x: auto;
-        font-size: 0.85rem;
-    }
-    code {
-        font-family: 'Courier New', monospace;
-    }
-</style>
 {% endblock %}

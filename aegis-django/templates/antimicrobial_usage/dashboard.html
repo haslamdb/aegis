@@ -3,46 +3,40 @@
 {% block content %}
 
 <!-- Stats Row -->
-<div class="stats-row">
-    <div class="stat-box active-stat">
-        <div class="stat-value">{{ stats.active_count }}</div>
-        <div class="stat-label">Active Alerts</div>
-    </div>
-    <div class="stat-box critical-stat">
-        <div class="stat-value">{{ stats.critical_count }}</div>
-        <div class="stat-label">Critical</div>
-    </div>
-    <div class="stat-box high-stat">
-        <div class="stat-value">{{ stats.high_count }}</div>
-        <div class="stat-label">High</div>
-    </div>
-    <div class="stat-box resolved-stat">
-        <div class="stat-value">{{ stats.resolved_today }}</div>
-        <div class="stat-label">Resolved Today</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=stats.active_count title="Active Alerts" color="teal" %}
+    {% include "_includes/stat_card.html" with value=stats.critical_count title="Critical" color="red" %}
+    {% include "_includes/stat_card.html" with value=stats.high_count title="High" color="amber" %}
+    {% include "_includes/stat_card.html" with value=stats.resolved_today title="Resolved Today" color="green" %}
 </div>
 
 <!-- Filters -->
-<div class="filters">
-    <form method="get">
-        <label>Severity:</label>
-        <select name="severity" onchange="this.form.submit()">
-            <option value="">All</option>
-            <option value="critical" {% if current_filters.severity == "critical" %}selected{% endif %}>Critical</option>
-            <option value="high" {% if current_filters.severity == "high" %}selected{% endif %}>High</option>
-        </select>
+<div class="filter-bar">
+    <form method="get" class="filter-form">
+        <div class="filter-group">
+            <label>Severity:</label>
+            <select name="severity" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="critical" {% if current_filters.severity == "critical" %}selected{% endif %}>Critical</option>
+                <option value="high" {% if current_filters.severity == "high" %}selected{% endif %}>High</option>
+            </select>
+        </div>
 
-        <label>Medication:</label>
-        <select name="medication" onchange="this.form.submit()">
-            <option value="">All Medications</option>
-            {% for med in med_list %}
-            <option value="{{ med }}" {% if current_filters.medication == med %}selected{% endif %}>{{ med }}</option>
-            {% endfor %}
-        </select>
+        <div class="filter-group">
+            <label>Medication:</label>
+            <select name="medication" onchange="this.form.submit()">
+                <option value="">All Medications</option>
+                {% for med in med_list %}
+                <option value="{{ med }}" {% if current_filters.medication == med %}selected{% endif %}>{{ med }}</option>
+                {% endfor %}
+            </select>
+        </div>
 
-        {% if current_filters.severity or current_filters.medication %}
-        <a href="{% url 'antimicrobial_usage:dashboard' %}" class="btn btn-primary" style="font-size: 12px;">Clear Filters</a>
-        {% endif %}
+        <div class="filter-group">
+            {% if current_filters.severity or current_filters.medication %}
+            <a href="{% url 'antimicrobial_usage:dashboard' %}" class="btn btn--secondary" style="font-size: 12px;">Clear Filters</a>
+            {% endif %}
+        </div>
     </form>
 </div>
 
@@ -50,7 +44,7 @@
 <h2>Active Alerts</h2>
 
 {% if alerts %}
-<table>
+<table class="data-table">
     <thead>
         <tr>
             <th>Severity</th>
@@ -65,7 +59,7 @@
     <tbody>
         {% for alert in alerts %}
         <tr>
-            <td><span class="badge {{ alert.severity }}">{{ alert.get_severity_display }}</span></td>
+            <td>{% include "_includes/badge.html" with text=alert.get_severity_display color=alert.severity %}</td>
             <td>
                 <strong>{{ alert.patient_name }}</strong><br>
                 <small>{{ alert.patient_mrn }}</small>
@@ -88,7 +82,7 @@
                 {% endif %}
             </td>
             <td>
-                <a href="{% url 'antimicrobial_usage:detail' alert.id %}" class="btn btn-primary" style="font-size: 12px;">Review</a>
+                <a href="{% url 'antimicrobial_usage:detail' alert.id %}" class="btn btn--primary" style="font-size: 12px;">Review</a>
             </td>
         </tr>
         {% endfor %}
@@ -96,11 +90,11 @@
 </table>
 
 <p>
-    <a href="{% url 'antimicrobial_usage:api_export' %}?type=active" class="btn btn-primary" style="font-size: 12px;">Export CSV</a>
+    <a href="{% url 'antimicrobial_usage:api_export' %}?type=active" class="btn btn--primary" style="font-size: 12px;">Export CSV</a>
 </p>
 
 {% else %}
-<div class="alert-box">
+<div class="action-card">
     <p>No active antimicrobial usage alerts. All broad-spectrum antibiotics are within threshold limits.</p>
 </div>
 {% endif %}

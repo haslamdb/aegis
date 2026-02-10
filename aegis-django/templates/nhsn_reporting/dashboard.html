@@ -9,23 +9,17 @@
 </div>
 
 <!-- Stats Row -->
-<div class="stats-row">
-    <div class="stat-card green">
-        <div class="stat-value">{{ stats.au_dot_rate|default:"--" }}</div>
-        <div class="stat-label">AU Monthly DOT Rate (per 1,000 PD)</div>
-    </div>
-    <div class="stat-card dark-green">
-        <div class="stat-value">{{ stats.ar_pct_resistant|default:"--" }}{% if stats.ar_pct_resistant %}%{% endif %}</div>
-        <div class="stat-label">AR Quarterly %R</div>
-    </div>
-    <div class="stat-card accent">
-        <div class="stat-value">{{ stats.active_hai_events|default:0 }}</div>
-        <div class="stat-label">Active HAI Events</div>
-    </div>
-    <div class="stat-card {% if stats.denominator_coverage >= 80 %}green{% elif stats.denominator_coverage >= 50 %}amber{% else %}red{% endif %}">
-        <div class="stat-value">{{ stats.denominator_coverage|default:0 }}%</div>
-        <div class="stat-label">Denominator Coverage</div>
-    </div>
+<div class="stat-cards">
+    {% include "_includes/stat_card.html" with value=stats.au_dot_rate|default:"--" title="AU Monthly DOT Rate (per 1,000 PD)" color="green" %}
+    {% include "_includes/stat_card.html" with value=stats.ar_pct_resistant|default:"--" title="AR Quarterly %R" color="teal" %}
+    {% include "_includes/stat_card.html" with value=stats.active_hai_events|default:0 title="Active HAI Events" color="blue" %}
+    {% if stats.denominator_coverage >= 80 %}
+        {% include "_includes/stat_card.html" with value=stats.denominator_coverage|default:0|stringformat:"d"|add:"%" title="Denominator Coverage" color="green" %}
+    {% elif stats.denominator_coverage >= 50 %}
+        {% include "_includes/stat_card.html" with value=stats.denominator_coverage|default:0|stringformat:"d"|add:"%" title="Denominator Coverage" color="yellow" %}
+    {% else %}
+        {% include "_includes/stat_card.html" with value=stats.denominator_coverage|default:0|stringformat:"d"|add:"%" title="Denominator Coverage" color="red" %}
+    {% endif %}
 </div>
 
 <!-- Configuration Status -->
@@ -67,51 +61,49 @@
 </div>
 
 <!-- Recent Submissions -->
-<div class="card">
-    <div class="card-header">
+<div class="detail-section">
+    <div class="detail-section__title" style="display: flex; align-items: center; justify-content: space-between;">
         Recent Submissions
-        <a href="{% url 'nhsn_reporting:submission' %}" class="btn btn-sm btn-primary">View All</a>
+        <a href="{% url 'nhsn_reporting:submission' %}" class="btn btn--primary btn--sm">View All</a>
     </div>
-    <div class="card-body">
-        {% if recent_submissions %}
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Period</th>
-                    <th>Method</th>
-                    <th>Status</th>
-                    <th>User</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for sub in recent_submissions %}
-                <tr>
-                    <td>{{ sub.submitted_at|date:"M d, Y H:i" }}</td>
-                    <td><span class="badge badge-blue">{{ sub.report_type|upper }}</span></td>
-                    <td>{{ sub.period_label|default:sub.period }}</td>
-                    <td>{{ sub.method }}</td>
-                    <td>
-                        {% if sub.status == 'success' %}
-                        <span class="badge badge-success">Success</span>
-                        {% elif sub.status == 'failed' %}
-                        <span class="badge badge-failed">Failed</span>
-                        {% else %}
-                        <span class="badge badge-pending">{{ sub.status|title }}</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ sub.submitted_by|default:"--" }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="empty-state">
-            <h3>No submissions yet</h3>
-            <p>No NHSN reports have been submitted. Use the Submission page to export and submit data.</p>
-        </div>
-        {% endif %}
+    {% if recent_submissions %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Period</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>User</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in recent_submissions %}
+            <tr>
+                <td>{{ sub.submitted_at|date:"M d, Y H:i" }}</td>
+                <td>{% include "_includes/badge.html" with text=sub.report_type|upper color="blue" %}</td>
+                <td>{{ sub.period_label|default:sub.period }}</td>
+                <td>{{ sub.method }}</td>
+                <td>
+                    {% if sub.status == 'success' %}
+                        {% include "_includes/badge.html" with text="Success" color="green" %}
+                    {% elif sub.status == 'failed' %}
+                        {% include "_includes/badge.html" with text="Failed" color="red" %}
+                    {% else %}
+                        {% include "_includes/badge.html" with text=sub.status|title color="yellow" %}
+                    {% endif %}
+                </td>
+                <td>{{ sub.submitted_by|default:"--" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <h3>No submissions yet</h3>
+        <p>No NHSN reports have been submitted. Use the Submission page to export and submit data.</p>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
