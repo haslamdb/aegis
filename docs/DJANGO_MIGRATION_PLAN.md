@@ -383,74 +383,83 @@ Apps created: `core`, `authentication`, `alerts`, `metrics`, `notifications`, `a
 
 ---
 
-## Phase 7: Deployment & Infrastructure
+## Phase 7: Deployment & Infrastructure ✅ COMPLETE
 
-**Goal:** Production-grade containerized deployment with PostgreSQL, monitoring, and CI/CD.
+**Goal:** Native deployment with PostgreSQL on ZFS, Redis, Gunicorn+systemd, Nginx+TLS. No Docker — bare metal on Threadripper PRO.
 
-### 7.1 PostgreSQL Migration
+**Decision:** Went with native deployment (Gunicorn + systemd) instead of Docker Compose. Simpler for single-server staging, direct access to GPU for Ollama, no container overhead on 64-core/503GB machine.
 
-- [ ] Install PostgreSQL 16 on production server (or use CCHMC-provided instance)
-- [ ] Configure `settings/production.py` with PostgreSQL connection (DATABASE_URL via python-decouple)
-- [ ] Run `python manage.py migrate` against PostgreSQL
-- [ ] Import existing SQLite data: `python manage.py dumpdata | python manage.py loaddata` (or custom migration script)
-- [ ] Verify data integrity: compare record counts, spot-check key records
-- [ ] Configure connection pooling via `django-db-connection-pool` or pgBouncer
-- [ ] Set up nightly backups (pg_dump) and WAL archiving for point-in-time recovery
-- [ ] Enable SSL for database connections
+### 7.1 PostgreSQL 16 on ZFS ✅
 
-### 7.2 Docker Containerization
+- [x] Created ZFS dataset: `fastpool/postgres` (recordsize=8k, lz4, atime=off, primarycache=metadata)
+- [x] Installed PostgreSQL 16 (`apt install postgresql-16`)
+- [x] Moved data directory to `/fastpool/postgres/`
+- [x] Created database `aegis_django` with user `aegis`
+- [x] Configured `pg_hba.conf` for local md5 auth
+- [x] All Django migrations applied to PostgreSQL
+- [ ] Nightly pg_dump backups (TODO: add to ZFS backup script)
+- [ ] Connection pooling via pgBouncer (deferred — not needed at current scale)
 
-Docker Compose services:
+### 7.2 Redis ✅
 
-```yaml
-services:
-  web:          # Django + Gunicorn (4 workers)
-  celery:       # Celery worker (default queue)
-  celery-llm:   # Celery worker (llm queue, GPU-capable host)
-  celery-beat:  # Celery Beat scheduler
-  hl7-listener: # Surgical prophylaxis HL7 ADT TCP listener
-  redis:        # Celery broker + cache
-  postgres:     # PostgreSQL 16
-  nginx:        # Reverse proxy + static files + TLS termination
-  ollama:       # LLM server (llama3.3:70b, qwen2.5:7b)
-```
+- [x] Installed `redis-server`
+- [x] Configured: `bind 127.0.0.1`, `maxmemory 2gb`, `maxmemory-policy allkeys-lru`
+- [x] Enabled via systemd
+- [x] Celery broker on db0, Django cache on db1
 
-- [ ] Write `Dockerfile` (Python 3.11-slim, multi-stage build, non-root user)
-- [ ] Write `docker-compose.yml` with all services above
-- [ ] Write `docker-compose.prod.yml` override (production secrets, volumes, restart policies)
-- [ ] Configure health checks for all containers
-- [ ] Static files: `collectstatic` in build, served by Nginx
-- [ ] Media files: volume mount for any uploaded documents
-- [ ] Environment variables: `.env` file (not committed), documented in `.env.example`
+### 7.3 Staging Settings ✅
 
-### 7.3 TLS & Reverse Proxy
+- [x] Created `aegis_project/settings/staging.py` (extends production, local PG/Redis, no SSL redirect)
+- [x] `.env` on server with staging config, `.env.dev` backed up
+- [x] `SECURE_SSL_REDIRECT = False` (Nginx handles TLS termination)
+- [x] `SECURE_PROXY_SSL_HEADER` inherited from production (reads `X-Forwarded-Proto`)
+- [x] Logs to `/var/log/aegis/`, static files at `/var/www/aegis-django/static/`
 
-- [ ] Nginx config: TLS 1.2+, HSTS, OCSP stapling
-- [ ] Let's Encrypt certificate for `aegis-asp.com` (or CCHMC-provided cert)
-- [ ] Proxy headers: `X-Forwarded-For`, `X-Forwarded-Proto` for Django `SECURE_PROXY_SSL_HEADER`
-- [ ] Rate limiting at Nginx level (backup to application-level)
-- [ ] Static file caching headers (1 year for hashed assets)
+### 7.4 Gunicorn + Systemd ✅
 
-### 7.4 CI/CD Pipeline
+3 systemd services:
 
-GitHub Actions workflows:
+- [x] `aegis-django.service` — Gunicorn, 4 workers, port 8083, 120s timeout
+- [x] `aegis-celery.service` — Celery multi: default_worker (4 concurrency, default queue) + llm_worker (2 concurrency, llm+batch queues)
+- [x] `aegis-celerybeat.service` — Celery Beat scheduler
+- [x] All enabled and running
+- [x] Config files in `deploy/systemd/`
 
-- [ ] **`test.yml`** — On PR: run `python manage.py test` against SQLite, lint with ruff, type-check with mypy
-- [ ] **`deploy-staging.yml`** — On merge to `develop`: build Docker image, push to registry, deploy to staging
-- [ ] **`deploy-prod.yml`** — On merge to `main`: build, push, deploy with manual approval gate
-- [ ] Container registry: GitHub Container Registry (ghcr.io) or CCHMC-provided registry
-- [ ] Deployment target: `docker compose pull && docker compose up -d` via SSH or Watchtower
+### 7.5 Nginx + TLS ✅
 
-### 7.5 Monitoring & Observability
+- [x] Let's Encrypt cert for `staging.aegis-asp.com` via certbot
+- [x] HTTP → HTTPS redirect
+- [x] Proxy to 127.0.0.1:8083 with `X-Forwarded-Proto` header
+- [x] Static files served directly with 7d cache
+- [x] Health check endpoint excluded from access log
+- [x] Flask app at `aegis-asp.com` completely untouched
+- [x] Config in `deploy/nginx/aegis-django-staging`
 
-- [ ] **Error tracking:** Sentry (self-hosted or cloud) — capture unhandled exceptions, slow queries
-- [ ] **Application logging:** Structured JSON logs → syslog or ELK stack
-  - Audit logs: separate file, 500MB x 50 rotations (HIPAA requirement — already configured)
-  - Application logs: stdout for Docker, captured by logging driver
-- [ ] **Health checks:** `/health/` endpoint (database, Redis, Celery, Ollama connectivity)
-- [ ] **Uptime monitoring:** UptimeRobot or Healthchecks.io for `/health/` endpoint
-- [ ] **Metrics:** Prometheus + Grafana (optional) — request latency, task queue depth, error rate
-- [ ] **Alerting:** PagerDuty or email for critical failures (database down, task queue stalled, LLM unavailable)
+### 7.6 Health Check ✅
+
+- [x] `/health/` endpoint in `apps/core/views.py`
+- [x] Checks: database (SELECT 1), Redis (ping), Ollama (GET /api/tags)
+- [x] Returns JSON: `{"status": "healthy", "checks": {...}}` with latency_ms
+- [x] 503 if any check fails, 200 if all pass
+- [x] 3 unit tests
+
+### 7.7 CI/CD ✅
+
+- [x] `.github/workflows/test.yml` — Python 3.12, install dev requirements, run tests (SQLite)
+- [x] Triggers on push/PR to main, only when `aegis-django/` or workflow changes
+- [ ] Deploy-on-merge workflow (deferred — manual deploy via `setup-staging.sh` for now)
+
+### 7.8 Deploy Script ✅
+
+- [x] `deploy/setup-staging.sh` — full automated setup (PostgreSQL, Redis, dirs, venv, .env, systemd, nginx)
+- [x] Idempotent — safe to re-run
+
+### Deferred
+
+- [ ] Sentry error tracking (optional for staging)
+- [ ] Uptime monitoring (UptimeRobot or similar)
+- [ ] Auto-deploy on merge (GitHub Actions + SSH)
+- [ ] pg_dump nightly backup integration with ZFS backup script
 
 ---
 
@@ -638,8 +647,8 @@ location / {
 | 3. Module Migration | ✅ COMPLETE | All 12 modules migrated |
 | 4. Background Tasks | ✅ COMPLETE | Celery + Redis, 15 periodic tasks, 3 queues, 22 tests |
 | 5. Unified API | ✅ COMPLETE | `/api/v1/` with 13 endpoint groups, FHIR centralization, 242 tests |
-| 6. Testing & QA | ✅ COMPLETE | 1082 tests, security audit, integration tests, zero empty stubs |
-| 7. Deployment | TODO | PostgreSQL, Docker Compose, CI/CD, monitoring |
+| 6. Testing & QA | ✅ COMPLETE | 1085 tests, security audit, integration tests, zero empty stubs |
+| 7. Deployment | ✅ COMPLETE | PostgreSQL/ZFS, Gunicorn+systemd, Nginx+TLS, CI, health check. Live at staging.aegis-asp.com |
 | 8. CCHMC IT | TODO | SSO, Epic access, security audit, HIPAA docs |
 | 9. Cutover | TODO | Data migration, DNS switch, Flask decommission |
 

@@ -1,13 +1,84 @@
 """Core app tests, including Celery integration tests and base model tests."""
 
+import json
 import uuid
 from datetime import timedelta
 
-from django.test import TestCase, override_settings
+from django.test import TestCase, RequestFactory, override_settings
 from django.utils import timezone
 from unittest.mock import patch, MagicMock
 
 from apps.alerts.models import Alert, AlertType, AlertStatus, AlertSeverity
+from apps.core.views import health_check
+
+
+# =============================================================================
+# Health Check Endpoint Tests
+# =============================================================================
+
+class HealthCheckViewTests(TestCase):
+    """Test the /health/ endpoint."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    @patch('apps.core.views.requests.get')
+    @patch('apps.core.views.redis.from_url')
+    def test_health_check_all_healthy(self, mock_redis_from_url, mock_requests_get):
+        """Returns 200 when all services are up."""
+        mock_redis = MagicMock()
+        mock_redis.ping.return_value = True
+        mock_redis_from_url.return_value = mock_redis
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_requests_get.return_value = mock_response
+
+        request = self.factory.get('/health/')
+        response = health_check(request)
+
+        self.assertEqual(response.status_code, 200)
+        data = json.loads(response.content)
+        self.assertEqual(data['status'], 'healthy')
+        self.assertTrue(data['checks']['database']['status'])
+        self.assertTrue(data['checks']['redis']['status'])
+        self.assertTrue(data['checks']['ollama']['status'])
+
+    @patch('apps.core.views.requests.get')
+    @patch('apps.core.views.redis.from_url')
+    def test_health_check_redis_down(self, mock_redis_from_url, mock_requests_get):
+        """Returns 503 when Redis is down."""
+        mock_redis_from_url.side_effect = Exception("Connection refused")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_requests_get.return_value = mock_response
+
+        request = self.factory.get('/health/')
+        response = health_check(request)
+
+        self.assertEqual(response.status_code, 503)
+        data = json.loads(response.content)
+        self.assertEqual(data['status'], 'unhealthy')
+        self.assertFalse(data['checks']['redis']['status'])
+
+    @patch('apps.core.views.requests.get')
+    @patch('apps.core.views.redis.from_url')
+    def test_health_check_ollama_down(self, mock_redis_from_url, mock_requests_get):
+        """Returns 503 when Ollama is down."""
+        mock_redis = MagicMock()
+        mock_redis.ping.return_value = True
+        mock_redis_from_url.return_value = mock_redis
+
+        mock_requests_get.side_effect = Exception("Connection refused")
+
+        request = self.factory.get('/health/')
+        response = health_check(request)
+
+        self.assertEqual(response.status_code, 503)
+        data = json.loads(response.content)
+        self.assertEqual(data['status'], 'unhealthy')
+        self.assertFalse(data['checks']['ollama']['status'])
 from apps.authentication.models import User, UserRole
 
 

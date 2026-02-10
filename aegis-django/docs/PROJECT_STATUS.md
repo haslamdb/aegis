@@ -1,12 +1,12 @@
 # AEGIS Django Migration - Project Status
 
 **Last Updated:** 2026-02-09
-**Phase:** 6 - Testing & Quality Assurance COMPLETE
-**Priority:** Active Development
+**Phase:** 7 - Deployment & Infrastructure COMPLETE
+**Priority:** Active Development — Staging live at staging.aegis-asp.com
 
 ## Current Status
 
-Django migration Phase 3 is COMPLETE. All 12 modules have been migrated from Flask to Django:
+Django migration through Phase 7 is COMPLETE. All 12 modules migrated, tested, and deployed to staging:
 
 1. **Action Analytics** - Read-only analytics dashboard (Phase 2, audited and fixed)
 2. **ASP Alerts** - Complete ASP bacteremia/stewardship alerts with clinical features (Phase 2)
@@ -126,12 +126,12 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - [x] Centralized FHIR client at `apps/core/fhir/` (BaseFHIRClient ABC, HAPIFHIRClient, EpicFHIRClient with JWT bearer flow)
 - [x] FHIR parsers: bundle extraction, datetime parsing, patient/medication extraction
 - [x] `get_fhir_client()` factory for HAPI vs Epic selection
-- [x] 242 Phase 5 tests, 1082 total project tests passing
+- [x] 242 Phase 5 tests, 1085 total project tests passing
 - [ ] Epic CDS Hooks endpoint (deferred to Phase 5b or Phase 6)
 
 ### Phase 6: Testing & Quality Assurance (COMPLETE)
 - [x] Fill test gaps: foundation (core, auth, alerts, metrics) + remaining modules (HAI, MDRO, ASP, Dosing, Outbreak)
-- [x] 1082 total tests, all passing (target was 800+)
+- [x] 1085 total tests, all passing (target was 800+; +3 health check tests in Phase 7)
 - [x] Zero empty test stubs remaining (was 8 of 16 modules)
 - [x] Cross-module integration tests: HAI→Alert, MDRO→Alert, Alert lifecycle, management commands
 - [x] Security audit tests: API auth required, PHI safety, token auth, CSRF protection
@@ -140,12 +140,17 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - [ ] Performance: 500 patients, 50 concurrent users, page load < 2s, API < 500ms — deferred to Phase 7
 - [ ] UAT sign-off from all 4 roles (pharmacist, IP, physician, admin) — deferred to Phase 8
 
-### Phase 7: Deployment & Infrastructure
-- [ ] PostgreSQL 16 migration (replace SQLite, import existing data, connection pooling, nightly backups)
-- [ ] Docker Compose: web, celery (2 queues), celery-beat, hl7-listener, redis, postgres, nginx, ollama
-- [ ] TLS: Nginx with HSTS, OCSP stapling (Let's Encrypt or CCHMC cert)
-- [ ] CI/CD: GitHub Actions — test on PR, deploy staging on develop, deploy prod on main (manual gate)
-- [ ] Monitoring: Sentry (errors), structured JSON logs, `/health/` endpoint, uptime monitoring
+### Phase 7: Deployment & Infrastructure (COMPLETE)
+- [x] PostgreSQL 16 on ZFS (`fastpool/postgres`, recordsize=8k, lz4 compression)
+- [x] Redis (broker + cache, 2GB maxmemory, allkeys-lru)
+- [x] Gunicorn (4 workers, port 8083) + 3 systemd services (django, celery, celerybeat)
+- [x] Nginx + Let's Encrypt TLS at `staging.aegis-asp.com`
+- [x] `/health/` endpoint (DB, Redis, Ollama checks with latency)
+- [x] GitHub Actions CI (`.github/workflows/test.yml` — Python 3.12, run tests on push/PR)
+- [x] Staging settings (`aegis_project/settings/staging.py`)
+- [x] Deploy script (`deploy/setup-staging.sh`) and config files
+- [x] Flask app untouched at `aegis-asp.com`
+- [x] 1085 tests passing (3 new health check tests)
 
 ### Phase 8: CCHMC IT Integration
 - [ ] SSO: Connect SAML backend to CCHMC IdP (ADFS/Azure AD), AD group → role mapping
@@ -408,7 +413,22 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 - Token authentication via `rest_framework.authtoken`, DRF throttling (100/min read, 30/min write)
 - Swagger UI at `/api/docs/`, OpenAPI schema at `/api/schema/`
 - Added `apps/__init__.py` for proper test autodiscovery (fixes namespace package issue)
-- 242 new Phase 5 tests, 1082 total project tests passing
+- 242 new Phase 5 tests, 1085 total project tests passing
+
+**2026-02-09 (cont.):**
+- Completed Phase 7: Deployment & Infrastructure
+- PostgreSQL 16 installed on ZFS dataset (`fastpool/postgres`, recordsize=8k, lz4, atime=off)
+- Redis installed (bind 127.0.0.1, maxmemory 2gb, allkeys-lru eviction)
+- Created `aegis_project/settings/staging.py` (extends production, local PG/Redis, SSL redirect off)
+- Created `/health/` endpoint in `apps/core/views.py` (checks DB, Redis, Ollama with latency)
+- 3 systemd services: `aegis-django.service` (Gunicorn, 4 workers, port 8083), `aegis-celery.service` (4 default + 2 LLM workers), `aegis-celerybeat.service`
+- Nginx + Let's Encrypt TLS at `staging.aegis-asp.com` (proxy to 8083, static file serving)
+- GitHub Actions CI: `.github/workflows/test.yml` (Python 3.12, SQLite, on push/PR)
+- Deploy configs in `deploy/`: `systemd/` (3 unit files), `nginx/` (site config), `setup-staging.sh` (automated setup)
+- All migrations applied to PostgreSQL, static files collected
+- Flask app at `aegis-asp.com` completely untouched
+- 3 new health check tests, 1085 total tests passing
+- All services verified healthy: `curl https://staging.aegis-asp.com/health/` → `{"status": "healthy"}`
 
 **2026-02-09 (cont.):**
 - Completed Phase 6: Testing & Quality Assurance
@@ -525,3 +545,19 @@ Phase 3 (module migration) is complete. The remaining phases focus on production
 | NHSN tasks | `apps/nhsn_reporting/tasks.py` |
 | Celery tests (22) | `apps/core/tests.py` |
 | Operations guide | `docs/CELERY_OPERATIONS.md` |
+
+### Key Files (Phase 7 — Deployment)
+
+| Component | Location |
+|-----------|----------|
+| Staging settings | `aegis_project/settings/staging.py` |
+| Health check view | `apps/core/views.py` |
+| Health check tests (3) | `apps/core/tests.py` (HealthCheckViewTests) |
+| Gunicorn systemd unit | `deploy/systemd/aegis-django.service` |
+| Celery systemd unit | `deploy/systemd/aegis-celery.service` |
+| Celery Beat systemd unit | `deploy/systemd/aegis-celerybeat.service` |
+| Nginx site config | `deploy/nginx/aegis-django-staging` |
+| Setup script | `deploy/setup-staging.sh` |
+| CI workflow | `.github/workflows/test.yml` |
+| Staging requirements | `requirements/staging.txt` |
+| .env template | `.env.staging` |

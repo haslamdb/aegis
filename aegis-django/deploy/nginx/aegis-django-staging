@@ -1,0 +1,80 @@
+# AEGIS Django - Staging (staging.aegis-asp.com)
+# Nginx reverse proxy → Gunicorn on port 8083
+
+# HTTP → HTTPS redirect
+server {
+    listen 80;
+    listen [::]:80;
+    server_name staging.aegis-asp.com;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name staging.aegis-asp.com;
+
+    # TLS - managed by certbot
+    ssl_certificate /etc/letsencrypt/live/staging.aegis-asp.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/staging.aegis-asp.com/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+    # Security headers
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    # Static files
+    location /static/ {
+        alias /var/www/aegis-django/static/;
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Media files
+    location /media/ {
+        alias /var/www/aegis-django/media/;
+        expires 1d;
+    }
+
+    # Django application
+    location / {
+        proxy_pass http://127.0.0.1:8083;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
+
+        # Timeouts for long-running LLM requests
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 10s;
+    }
+
+    # Health check - no access log noise
+    location /health/ {
+        proxy_pass http://127.0.0.1:8083;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        access_log off;
+    }
+
+    # Deny access to hidden files
+    location ~ /\. {
+        deny all;
+    }
+
+    client_max_body_size 10M;
+}

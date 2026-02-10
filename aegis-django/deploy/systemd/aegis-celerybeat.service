@@ -1,0 +1,22 @@
+[Unit]
+Description=AEGIS Celery Beat Scheduler
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=david
+Group=david
+WorkingDirectory=/home/david/projects/aegis/aegis-django
+EnvironmentFile=/home/david/projects/aegis/aegis-django/.env
+ExecStart=/home/david/projects/aegis/aegis-django/venv/bin/celery \
+    -A aegis_project beat \
+    --schedule=/run/user/1000/celery/celerybeat-schedule \
+    --pidfile=/run/user/1000/celery/celerybeat.pid \
+    --loglevel=INFO \
+    --logfile=/var/log/aegis/celerybeat.log
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

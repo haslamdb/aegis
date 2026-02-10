@@ -1,0 +1,40 @@
+[Unit]
+Description=AEGIS Celery Workers
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=forking
+User=david
+Group=david
+WorkingDirectory=/home/david/projects/aegis/aegis-django
+EnvironmentFile=/home/david/projects/aegis/aegis-django/.env
+ExecStart=/home/david/projects/aegis/aegis-django/venv/bin/celery \
+    -A aegis_project multi start \
+    default_worker llm_worker \
+    -Q:default_worker default \
+    -Q:llm_worker llm,batch \
+    -c:default_worker 4 \
+    -c:llm_worker 2 \
+    --pidfile=/run/user/1000/celery/%n.pid \
+    --logfile=/var/log/aegis/celery-%n.log \
+    --loglevel=INFO
+ExecStop=/home/david/projects/aegis/aegis-django/venv/bin/celery \
+    -A aegis_project multi stopwait \
+    default_worker llm_worker \
+    --pidfile=/run/user/1000/celery/%n.pid
+ExecReload=/home/david/projects/aegis/aegis-django/venv/bin/celery \
+    -A aegis_project multi restart \
+    default_worker llm_worker \
+    -Q:default_worker default \
+    -Q:llm_worker llm,batch \
+    -c:default_worker 4 \
+    -c:llm_worker 2 \
+    --pidfile=/run/user/1000/celery/%n.pid \
+    --logfile=/var/log/aegis/celery-%n.log \
+    --loglevel=INFO
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

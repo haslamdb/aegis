@@ -1,0 +1,2 @@
+# AEGIS Django - Staging Requirements
+-r production.txt

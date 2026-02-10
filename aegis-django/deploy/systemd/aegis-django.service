@@ -1,0 +1,26 @@
+[Unit]
+Description=AEGIS Django (Gunicorn)
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service redis-server.service
+
+[Service]
+Type=notify
+User=david
+Group=david
+WorkingDirectory=/home/david/projects/aegis/aegis-django
+EnvironmentFile=/home/david/projects/aegis/aegis-django/.env
+ExecStart=/home/david/projects/aegis/aegis-django/venv/bin/gunicorn \
+    aegis_project.wsgi:application \
+    --bind 127.0.0.1:8083 \
+    --workers 4 \
+    --timeout 120 \
+    --access-logfile /var/log/aegis/gunicorn-access.log \
+    --error-logfile /var/log/aegis/gunicorn-error.log \
+    --capture-output
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
